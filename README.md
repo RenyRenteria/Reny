@@ -23,7 +23,7 @@ Use this repository as the site repository in Laravel Forge:
 - Repository: `RenyRenteria/Reny`
 - Branch: `main`
 - Web directory: `/public`
-- PHP: `8.3+`
+- PHP: `8.4+`
 - Database: MySQL
 - Queue driver: `database`
 - Cache/session driver: `database`
