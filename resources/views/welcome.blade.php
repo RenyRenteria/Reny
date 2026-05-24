@@ -52,8 +52,10 @@
                         </a>
                         <a class="tab" href="#store">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                                <path d="M6 8h12l-1 13H7L6 8Z"></path>
-                                <path d="M9 8a3 3 0 0 1 6 0"></path>
+                                <path d="M4 10h16"></path>
+                                <path d="M5 10l1.5-5h11L19 10"></path>
+                                <path d="M6 10v9h12v-9"></path>
+                                <path d="M9 19v-5h6v5"></path>
                             </svg>
                             <span>STORE</span>
                         </a>
