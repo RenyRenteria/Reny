@@ -51,9 +51,20 @@
                             <span>COMMUNITY</span>
                         </a>
                         <a class="tab" href="#store">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                                <path d="M6 8h12l-1 13H7L6 8Z"></path>
-                                <path d="M9 8a3 3 0 0 1 6 0"></path>
+                            <svg
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                aria-hidden="true"
+                            >
+                                <path d="M4 10h16"></path>
+                                <path d="M5 10l1.2-5.2A1 1 0 0 1 7.2 4h9.6a1 1 0 0 1 1 .8L19 10"></path>
+                                <path d="M5 10v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8"></path>
+                                <path d="M8 10a2 2 0 0 0 4 0"></path>
+                                <path d="M12 10a2 2 0 0 0 4 0"></path>
+                                <path d="M9 20v-5h6v5"></path>
                             </svg>
                             <span>STORE</span>
                         </a>
