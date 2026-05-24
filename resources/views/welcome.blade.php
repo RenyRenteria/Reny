@@ -81,20 +81,7 @@
                                 alt="Reny Renteria"
                             >
                         </a>
-                        <button class="menu-button" type="button" aria-label="Open menu">
-                            <span></span>
-                            <span></span>
-                            <span></span>
-                        </button>
                     </div>
-
-                    <nav class="mobile-tabs" aria-label="Main menu">
-                        <a class="is-active" href="#music" aria-current="page">MUSIC</a>
-                        <a href="#videos">VIDEOS</a>
-                        <a href="#photos">PHOTOS</a>
-                        <a href="#community">COMMUNITY</a>
-                        <a href="#store">STORE</a>
-                    </nav>
                 </header>
 
                 <section class="hero" aria-label="Featured album">
@@ -194,6 +181,47 @@
                         </article>
                     </div>
                 </section>
+
+                <nav class="mobile-bottom-nav" aria-label="Mobile menu">
+                    <a class="is-active" href="#music" aria-current="page">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                            <path d="M9 18V5l10-2v13"></path>
+                            <circle cx="7" cy="18" r="3"></circle>
+                            <circle cx="17" cy="16" r="3"></circle>
+                        </svg>
+                        <span class="sr-only">MUSIC</span>
+                    </a>
+                    <a href="#videos">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                            <path d="m22 8-6 4 6 4V8Z"></path>
+                            <rect x="2" y="6" width="14" height="12" rx="2"></rect>
+                        </svg>
+                        <span class="sr-only">VIDEOS</span>
+                    </a>
+                    <a href="#photos">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                            <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                            <path d="m21 15-5-5L5 21"></path>
+                        </svg>
+                        <span class="sr-only">PHOTOS</span>
+                    </a>
+                    <a href="#community">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                            <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z"></path>
+                        </svg>
+                        <span class="sr-only">COMMUNITY</span>
+                    </a>
+                    <a href="#store">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                            <path d="M4 10h16"></path>
+                            <path d="M5 10l1.5-5h11L19 10"></path>
+                            <path d="M6 10v9h12v-9"></path>
+                            <path d="M9 19v-5h6v5"></path>
+                        </svg>
+                        <span class="sr-only">STORE</span>
+                    </a>
+                </nav>
             </main>
         </div>
     </body>
