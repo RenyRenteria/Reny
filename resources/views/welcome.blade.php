@@ -29,7 +29,7 @@
                             </svg>
                             <span>MUSIC</span>
                         </a>
-                        <a class="tab" href="#videos">
+                        <a class="tab" href="{{ route('videos') }}">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                                 <path d="m22 8-6 4 6 4V8Z"></path>
                                 <rect x="2" y="6" width="14" height="12" rx="2"></rect>
@@ -191,7 +191,7 @@
                         </svg>
                         <span class="sr-only">MUSIC</span>
                     </a>
-                    <a href="#videos">
+                    <a href="{{ route('videos') }}">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                             <path d="m22 8-6 4 6 4V8Z"></path>
                             <rect x="2" y="6" width="14" height="12" rx="2"></rect>
