@@ -21,7 +21,7 @@
                     </a>
 
                     <nav class="tabs" aria-label="Main menu">
-                        <a class="tab is-active" href="#music" aria-current="page">
+                        <a class="tab is-active" href="{{ url('/') }}" aria-current="page">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                                 <path d="M9 18V5l10-2v13"></path>
                                 <circle cx="7" cy="18" r="3"></circle>
@@ -29,7 +29,7 @@
                             </svg>
                             <span>MUSIC</span>
                         </a>
-                        <a class="tab" href="#videos">
+                        <a class="tab" href="{{ url('/videos') }}">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                                 <path d="m22 8-6 4 6 4V8Z"></path>
                                 <rect x="2" y="6" width="14" height="12" rx="2"></rect>
@@ -183,7 +183,7 @@
                 </section>
 
                 <nav class="mobile-bottom-nav" aria-label="Mobile menu">
-                    <a class="is-active" href="#music" aria-current="page">
+                    <a class="is-active" href="{{ url('/') }}" aria-current="page">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                             <path d="M9 18V5l10-2v13"></path>
                             <circle cx="7" cy="18" r="3"></circle>
@@ -191,7 +191,7 @@
                         </svg>
                         <span class="sr-only">MUSIC</span>
                     </a>
-                    <a href="#videos">
+                    <a href="{{ url('/videos') }}">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                             <path d="m22 8-6 4 6 4V8Z"></path>
                             <rect x="2" y="6" width="14" height="12" rx="2"></rect>
