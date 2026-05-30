@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Reny Renteria | Videos Tab Mock</title>
+        <style>
+            :root {
+                --paper: #fbf6ef;
+                --panel: #fffaf3;
+                --line: #e8ddd0;
+                --ink: #121212;
+                --muted: #74716e;
+                --accent: #997332;
+                --accent-soft: #efe5d4;
+                --red: #f01437;
+                --purple: #7251c9;
+                --sidebar-width: 17.125rem;
+                --shadow: 0 1.125rem 3.125rem rgba(26, 21, 16, 0.08);
+            }
+
+            * {
+                box-sizing: border-box;
+            }
+
+            html {
+                min-height: 100%;
+                background: var(--paper);
+            }
+
+            body {
+                min-height: 100vh;
+                margin: 0;
+                background: var(--paper);
+                color: var(--ink);
+                font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+                letter-spacing: 0;
+            }
+
+            a {
+                color: inherit;
+                text-decoration: none;
+            }
+
+            button {
+                color: inherit;
+                font: inherit;
+            }
+
+            .sr-only {
+                position: absolute;
+                width: 1px;
+                height: 1px;
+                margin: -1px;
+                padding: 0;
+                overflow: hidden;
+                border: 0;
+                clip: rect(0, 0, 0, 0);
+                clip-path: inset(50%);
+                white-space: nowrap;
+            }
+
+            .videos-shell {
+                display: grid;
+                grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+                min-height: 100vh;
+            }
+
+            .sidebar {
+                position: sticky;
+                top: 0;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+                height: 100vh;
+                padding: 2rem 2.25rem 2.125rem;
+                border-right: 1px solid var(--line);
+                background: rgba(255, 250, 243, 0.76);
+                gap: 2.25rem;
+            }
+
+            .brand-link {
+                display: inline-flex;
+                align-items: center;
+                width: fit-content;
+            }
+
+            .brand-logo {
+                display: block;
+                width: 11.875rem;
+                max-width: 100%;
+                height: auto;
+                mix-blend-mode: multiply;
+            }
+
+            .tabs {
+                display: grid;
+                gap: 1.125rem;
+                margin-top: 3.25rem;
+            }
+
+            .tab {
+                position: relative;
+                display: grid;
+                grid-template-columns: 1.75rem minmax(0, 1fr);
+                align-items: center;
+                min-height: 2.125rem;
+                color: var(--muted);
+                font-size: 0.875rem;
+                font-weight: 800;
+                gap: 1.125rem;
+                letter-spacing: 0.12em;
+                text-transform: uppercase;
+                transition: color 160ms ease, transform 160ms ease;
+            }
+
+            .tab svg {
+                width: 1.375rem;
+                height: 1.375rem;
+                stroke-width: 1.9;
+            }
+
+            .tab:hover,
+            .tab:focus-visible,
+            .tab.is-active {
+                color: var(--accent);
+            }
+
+            .tab:hover,
+            .tab:focus-visible {
+                transform: translateX(0.125rem);
+            }
+
+            .tab.is-active::before {
+                content: "";
+                position: absolute;
+                top: 0.25rem;
+                left: -1.875rem;
+                width: 0.25rem;
+                height: 1.625rem;
+                border-radius: 999px;
+                background: var(--accent);
+            }
+
+            .member-card {
+                display: grid;
+                grid-template-columns: 2.125rem minmax(0, 1fr);
+                align-items: center;
+                width: 10.25rem;
+                padding: 0.625rem 0.75rem;
+                border: 1px solid #eee6dd;
+                border-radius: 0.25rem;
+                background: rgba(255, 255, 255, 0.72);
+                box-shadow: 0 0.5rem 1.125rem rgba(28, 20, 12, 0.05);
+                gap: 0.625rem;
+            }
+
+            .member-avatar {
+                width: 2rem;
+                aspect-ratio: 1;
+                border-radius: 0.5rem;
+                background:
+                    radial-gradient(circle at 50% 35%, #201612 0 28%, transparent 29%),
+                    radial-gradient(ellipse at 50% 100%, #201612 0 42%, transparent 43%),
+                    linear-gradient(135deg, var(--accent), #f1d7bc);
+            }
+
+            .member-card strong,
+            .member-card span {
+                display: block;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .member-card strong {
+                font-size: 0.625rem;
+                line-height: 1.1;
+            }
+
+            .member-card span {
+                margin-top: 0.0625rem;
+                color: var(--muted);
+                font-size: 0.5625rem;
+                font-weight: 900;
+                letter-spacing: 0.08em;
+            }
+
+            .main-content {
+                min-width: 0;
+                padding: 4.125rem 7vw 4rem 3rem;
+            }
+
+            .mobile-header,
+            .mobile-bottom-nav {
+                display: none;
+            }
+
+            .video-hero {
+                position: relative;
+                display: grid;
+                grid-template-columns: minmax(19rem, 0.78fr) minmax(22rem, 1fr);
+                min-height: 22rem;
+                overflow: hidden;
+                border-radius: 0.5rem;
+                background:
+                    linear-gradient(90deg, rgba(12, 10, 10, 0.98) 0%, rgba(12, 10, 10, 0.9) 54%, rgba(12, 10, 10, 0.55) 100%),
+                    radial-gradient(circle at 78% 26%, rgba(114, 81, 201, 0.9), transparent 30%),
+                    linear-gradient(135deg, #171412 0%, #111111 45%, #5e3bc1 100%);
+                box-shadow: var(--shadow);
+                color: #ffffff;
+            }
+
+            .video-hero::before {
+                content: "";
+                position: absolute;
+                inset: 0;
+                background-image:
+                    linear-gradient(115deg, transparent 0 42%, rgba(255, 255, 255, 0.12) 42% 43%, transparent 43%),
+                    repeating-linear-gradient(172deg, rgba(255, 255, 255, 0.07) 0 1px, transparent 1px 10px);
+                opacity: 0.18;
+                pointer-events: none;
+            }
+
+            .hero-content {
+                position: relative;
+                z-index: 2;
+                padding: 2.625rem 0 2.875rem 3rem;
+            }
+
+            .eyebrow {
+                margin: 0;
+                color: var(--red);
+                font-size: 1.125rem;
+                font-weight: 950;
+                letter-spacing: 0.08em;
+                line-height: 0.95;
+                text-transform: uppercase;
+            }
+
+            .video-hero h1 {
+                margin: 1.25rem 0 1rem;
+                color: var(--red);
+                font-size: clamp(2.75rem, 6vw, 5.25rem);
+                font-weight: 1000;
+                letter-spacing: 0;
+                line-height: 0.84;
+                text-transform: uppercase;
+            }
+
+            .video-hero h2 {
+                margin: 0 0 0.625rem;
+                color: var(--red);
+                font-size: 1.625rem;
+                font-weight: 950;
+                letter-spacing: 0.06em;
+                line-height: 1;
+                text-transform: uppercase;
+            }
+
+            .hero-copy {
+                max-width: 31rem;
+                margin: 0;
+                color: rgba(255, 255, 255, 0.72);
+                font-size: 0.8125rem;
+                font-weight: 700;
+                line-height: 1.45;
+            }
+
+            .hero-link {
+                margin: 1.875rem 0 0;
+                color: var(--red);
+                font-size: 0.8125rem;
+                font-weight: 950;
+                letter-spacing: 0.06em;
+                line-height: 1.3;
+                text-transform: uppercase;
+            }
+
+            .featured-video {
+                position: relative;
+                z-index: 2;
+                align-self: center;
+                width: min(35rem, calc(100% - 3rem));
+                margin: 2rem 3rem 2rem auto;
+            }
+
+            .video-frame,
+            .video-thumb {
+                position: relative;
+                overflow: hidden;
+                border-radius: 0.375rem;
+                background: #0d0d0d;
+                box-shadow: 0 1.375rem 2.75rem rgba(0, 0, 0, 0.36);
+            }
+
+            .video-frame {
+                aspect-ratio: 16 / 9;
+                border: 0.5rem solid #0e0e0e;
+            }
+
+            .video-frame iframe,
+            .video-thumb iframe {
+                position: absolute;
+                inset: 0;
+                width: 100%;
+                height: 100%;
+                border: 0;
+            }
+
+            .featured-meta {
+                display: grid;
+                grid-template-columns: minmax(0, 1fr) auto;
+                align-items: center;
+                padding: 0.875rem 0 0;
+                gap: 1rem;
+            }
+
+            .featured-meta strong,
+            .featured-meta span {
+                display: block;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .featured-meta strong {
+                color: #ffffff;
+                font-size: 0.9375rem;
+                line-height: 1.15;
+            }
+
+            .featured-meta span {
+                margin-top: 0.1875rem;
+                color: rgba(255, 255, 255, 0.62);
+                font-size: 0.75rem;
+                font-weight: 700;
+            }
+
+            .youtube-pill {
+                display: inline-flex;
+                align-items: center;
+                min-height: 2rem;
+                padding: 0 0.75rem;
+                border: 1px solid rgba(255, 255, 255, 0.18);
+                border-radius: 999px;
+                background: rgba(255, 255, 255, 0.08);
+                color: #ffffff;
+                font-size: 0.6875rem;
+                font-weight: 950;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+                white-space: nowrap;
+            }
+
+            .content-section {
+                margin-top: 2rem;
+            }
+
+            .section-head {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin-bottom: 0.875rem;
+                gap: 1.125rem;
+            }
+
+            .section-head h3 {
+                margin: 0;
+                font-size: 1.8125rem;
+                font-weight: 500;
+                letter-spacing: 0;
+                line-height: 1.15;
+            }
+
+            .view-all {
+                border: 0;
+                background: transparent;
+                color: var(--accent);
+                cursor: pointer;
+                font-size: 0.75rem;
+                font-weight: 900;
+                letter-spacing: 0.12em;
+                text-transform: uppercase;
+            }
+
+            .video-grid {
+                display: grid;
+                grid-template-columns: repeat(3, minmax(12rem, 1fr));
+                gap: 1.25rem;
+            }
+
+            .video-grid.series-grid {
+                grid-template-columns: repeat(2, minmax(15rem, 1fr));
+            }
+
+            .video-card {
+                min-width: 0;
+            }
+
+            .video-thumb {
+                aspect-ratio: 16 / 9;
+                border: 1px solid rgba(18, 18, 18, 0.08);
+            }
+
+            .video-card h4 {
+                margin: 0.625rem 0 0.125rem;
+                overflow: hidden;
+                color: var(--ink);
+                font-size: 0.875rem;
+                font-weight: 800;
+                line-height: 1.2;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .video-card p {
+                margin: 0;
+                color: var(--muted);
+                font-size: 0.75rem;
+                font-weight: 650;
+                line-height: 1.35;
+            }
+
+            .playlist-card {
+                display: grid;
+                grid-template-columns: minmax(11rem, 0.52fr) minmax(0, 1fr);
+                min-width: 0;
+                overflow: hidden;
+                border: 1px solid var(--line);
+                border-radius: 0.5rem;
+                background: rgba(255, 255, 255, 0.5);
+            }
+
+            .playlist-stack {
+                position: relative;
+                min-height: 10.75rem;
+                background:
+                    linear-gradient(135deg, rgba(240, 20, 55, 0.86), rgba(114, 81, 201, 0.82)),
+                    var(--thumb-url) center / cover;
+            }
+
+            .playlist-stack::before,
+            .playlist-stack::after {
+                content: "";
+                position: absolute;
+                inset: 1rem;
+                border: 0.125rem solid rgba(255, 255, 255, 0.72);
+                transform: translate(0.5rem, 0.5rem);
+            }
+
+            .playlist-stack::after {
+                transform: translate(1rem, 1rem);
+                opacity: 0.55;
+            }
+
+            .playlist-copy {
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+                min-width: 0;
+                padding: 1rem;
+            }
+
+            .playlist-copy span {
+                color: var(--accent);
+                font-size: 0.6875rem;
+                font-weight: 950;
+                letter-spacing: 0.1em;
+                text-transform: uppercase;
+            }
+
+            .playlist-copy h4 {
+                margin: 0.375rem 0 0.375rem;
+                font-size: 1.125rem;
+                line-height: 1.1;
+            }
+
+            .playlist-copy p {
+                margin: 0;
+                color: var(--muted);
+                font-size: 0.8125rem;
+                font-weight: 650;
+                line-height: 1.35;
+            }
+
+            .playlist-link {
+                margin-top: 1rem;
+                color: var(--ink);
+                font-size: 0.75rem;
+                font-weight: 950;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+            }
+
+            @media (max-width: 75rem) {
+                .main-content {
+                    padding-right: 2.25rem;
+                }
+
+                .video-hero {
+                    grid-template-columns: minmax(18rem, 0.7fr) minmax(20rem, 1fr);
+                }
+
+                .featured-video {
+                    width: min(31rem, calc(100% - 2rem));
+                    margin-right: 2rem;
+                }
+
+                .video-grid {
+                    grid-template-columns: repeat(2, minmax(12rem, 1fr));
+                }
+            }
+
+            @media (max-width: 53.75rem) {
+                .videos-shell {
+                    display: block;
+                }
+
+                .sidebar {
+                    display: none;
+                }
+
+                .main-content {
+                    padding: 1rem 1.125rem calc(6.25rem + env(safe-area-inset-bottom));
+                }
+
+                .mobile-header {
+                    display: block;
+                    margin-bottom: 1rem;
+                }
+
+                .mobile-brand {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    min-height: 6rem;
+                }
+
+                .mobile-brand .brand-logo {
+                    width: min(14.5rem, 70vw);
+                }
+
+                .mobile-bottom-nav {
+                    position: fixed;
+                    right: 0;
+                    bottom: 0;
+                    left: 0;
+                    z-index: 20;
+                    display: grid;
+                    grid-template-columns: repeat(5, minmax(0, 1fr));
+                    height: calc(5rem + env(safe-area-inset-bottom));
+                    padding-bottom: env(safe-area-inset-bottom);
+                    border-top: 1px solid rgba(153, 115, 50, 0.36);
+                    background: rgba(255, 247, 233, 0.96);
+                    box-shadow: 0 -0.875rem 1.875rem rgba(28, 20, 12, 0.12);
+                    backdrop-filter: blur(12px);
+                }
+
+                .mobile-bottom-nav a {
+                    position: relative;
+                    display: grid;
+                    place-items: center;
+                    min-width: 0;
+                    border-right: 1px solid rgba(153, 115, 50, 0.36);
+                    color: var(--muted);
+                    transition: background-color 160ms ease, color 160ms ease;
+                }
+
+                .mobile-bottom-nav a:last-child {
+                    border-right: 0;
+                }
+
+                .mobile-bottom-nav a.is-active,
+                .mobile-bottom-nav a:focus-visible {
+                    background: rgba(153, 115, 50, 0.08);
+                    color: var(--accent);
+                    outline: 0;
+                }
+
+                .mobile-bottom-nav svg {
+                    width: 1.75rem;
+                    height: 1.75rem;
+                    stroke-width: 1.9;
+                }
+
+                .video-hero {
+                    display: block;
+                    min-height: 0;
+                }
+
+                .hero-content {
+                    padding: 1.75rem 1.5rem 0;
+                }
+
+                .video-hero h1 {
+                    max-width: 27.5rem;
+                    font-size: clamp(2.875rem, 16vw, 4.625rem);
+                }
+
+                .hero-copy {
+                    max-width: 24.375rem;
+                }
+
+                .featured-video {
+                    width: auto;
+                    margin: 1.75rem 1.25rem 1.5rem;
+                }
+
+                .video-grid,
+                .video-grid.series-grid {
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                }
+            }
+
+            @media (max-width: 38rem) {
+                .main-content {
+                    padding-inline: 0.875rem;
+                }
+
+                .hero-content {
+                    padding: 1.5625rem 1.25rem 0;
+                }
+
+                .eyebrow {
+                    font-size: 0.9375rem;
+                }
+
+                .video-hero h2 {
+                    font-size: 1.125rem;
+                }
+
+                .hero-copy {
+                    font-size: 0.75rem;
+                }
+
+                .featured-meta {
+                    grid-template-columns: 1fr;
+                }
+
+                .section-head h3 {
+                    font-size: 1.5625rem;
+                }
+
+                .video-grid,
+                .video-grid.series-grid {
+                    grid-template-columns: 1fr;
+                }
+
+                .playlist-card {
+                    grid-template-columns: 1fr;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="videos-shell">
+            <aside class="sidebar" aria-label="Primary navigation">
+                <div>
+                    <a class="brand-link" href="/" aria-label="Reny Renteria home">
+                        <img class="brand-logo" src="/images/reny-renteria-logo.png" alt="Reny Renteria">
+                    </a>
+
+                    <nav class="tabs" aria-label="Main menu">
+                        <a class="tab" href="#music">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                                <path d="M9 18V5l10-2v13"></path>
+                                <circle cx="7" cy="18" r="3"></circle>
+                                <circle cx="17" cy="16" r="3"></circle>
+                            </svg>
+                            <span>MUSIC</span>
+                        </a>
+                        <a class="tab is-active" href="#videos" aria-current="page">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                                <path d="m22 8-6 4 6 4V8Z"></path>
+                                <rect x="2" y="6" width="14" height="12" rx="2"></rect>
+                            </svg>
+                            <span>VIDEOS</span>
+                        </a>
+                        <a class="tab" href="#photos">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                                <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                                <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                                <path d="m21 15-5-5L5 21"></path>
+                            </svg>
+                            <span>PHOTOS</span>
+                        </a>
+                        <a class="tab" href="#community">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                                <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z"></path>
+                            </svg>
+                            <span>COMMUNITY</span>
+                        </a>
+                        <a class="tab" href="#store">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                                <path d="M4 10h16"></path>
+                                <path d="M5 10l1.5-5h11L19 10"></path>
+                                <path d="M6 10v9h12v-9"></path>
+                                <path d="M9 19v-5h6v5"></path>
+                            </svg>
+                            <span>STORE</span>
+                        </a>
+                    </nav>
+                </div>
+
+                <div class="member-card">
+                    <div class="member-avatar" aria-hidden="true"></div>
+                    <div>
+                        <strong>Alex Carter</strong>
+                        <span>VIP MEMBER</span>
+                    </div>
+                </div>
+            </aside>
+
+            <main class="main-content" id="videos">
+                <header class="mobile-header">
+                    <div class="mobile-brand">
+                        <a class="brand-link" href="/" aria-label="Reny Renteria home">
+                            <img class="brand-logo" src="/images/reny-renteria-logo.png" alt="Reny Renteria">
+                        </a>
+                    </div>
+                </header>
+
+                <section class="video-hero" aria-label="Featured video">
+                    <div class="hero-content">
+                        <p class="eyebrow">Video<br>Premiere</p>
+                        <h1>Watch<br>Now</h1>
+                        <h2>Official Music Videos</h2>
+                        <p class="hero-copy">
+                            A YouTube-first video hub for Reny Renteria with official releases,
+                            live performances, playlists, behind the scenes clips, and vlogs in one place.
+                        </p>
+                        <p class="hero-link">Streaming from<br>youtube.com/renyrenteriam</p>
+                    </div>
+
+                    <div class="featured-video">
+                        <div class="video-frame">
+                            <iframe
+                                src="https://www.youtube.com/embed/Ue8orNrHw9s"
+                                title="Reny Renteria - I Swear (Official Music Video)"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                allowfullscreen>
+                            </iframe>
+                        </div>
+                        <div class="featured-meta">
+                            <div>
+                                <strong>Reny Renteria - I Swear (Official Music Video)</strong>
+                                <span>Featured YouTube premiere</span>
+                            </div>
+                            <a class="youtube-pill" href="https://www.youtube.com/watch?v=Ue8orNrHw9s" target="_blank" rel="noreferrer">Open YouTube</a>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="content-section" aria-labelledby="music-videos-title">
+                    <div class="section-head">
+                        <h3 id="music-videos-title">Music videos</h3>
+                        <button class="view-all" type="button">VIEW ALL</button>
+                    </div>
+
+                    <div class="video-grid">
+                        <article class="video-card">
+                            <div class="video-thumb">
+                                <iframe src="https://www.youtube.com/embed/Ue8orNrHw9s" title="Reny Renteria - I Swear (Official Music Video)" allowfullscreen></iframe>
+                            </div>
+                            <h4>I Swear</h4>
+                            <p>Official Music Video</p>
+                        </article>
+                        <article class="video-card">
+                            <div class="video-thumb">
+                                <iframe src="https://www.youtube.com/embed/mfaOU7LFheE" title="Reny Renteria - Aguita de Coco (Video Oficial)" allowfullscreen></iframe>
+                            </div>
+                            <h4>Ag&uuml;ita de Coco</h4>
+                            <p>Video Oficial</p>
+                        </article>
+                        <article class="video-card">
+                            <div class="video-thumb">
+                                <iframe src="https://www.youtube.com/embed/GUISQgRCY44" title="Reny Renteria - Want a man (Official Music Video)" allowfullscreen></iframe>
+                            </div>
+                            <h4>Want a man</h4>
+                            <p>Official Music Video</p>
+                        </article>
+                        <article class="video-card">
+                            <div class="video-thumb">
+                                <iframe src="https://www.youtube.com/embed/w-W-Szxuk_A" title="Reny Renteria - Crossroads (Official Music Video)" allowfullscreen></iframe>
+                            </div>
+                            <h4>Crossroads</h4>
+                            <p>Official Music Video</p>
+                        </article>
+                        <article class="video-card">
+                            <div class="video-thumb">
+                                <iframe src="https://www.youtube.com/embed/FBw7qjIngms" title="Reny Renteria - Nada de mi (Official Music Video)" allowfullscreen></iframe>
+                            </div>
+                            <h4>Nada de m&iacute;</h4>
+                            <p>Official Music Video</p>
+                        </article>
+                        <article class="video-card">
+                            <div class="video-thumb">
+                                <iframe src="https://www.youtube.com/embed/M5rPAEwICrA" title="Reny Renteria - Lay on my shoulder (Music Video)" allowfullscreen></iframe>
+                            </div>
+                            <h4>Lay on my shoulder</h4>
+                            <p>Music Video</p>
+                        </article>
+                    </div>
+                </section>
+
+                <section class="content-section" aria-labelledby="series-title">
+                    <div class="section-head">
+                        <h3 id="series-title">Series (Playlists)</h3>
+                        <button class="view-all" type="button">VIEW ALL</button>
+                    </div>
+
+                    <div class="video-grid series-grid">
+                        <article class="playlist-card">
+                            <div class="playlist-stack" style="--thumb-url: url('https://i.ytimg.com/vi/Ij8QJWR1LP0/hqdefault.jpg');" aria-hidden="true"></div>
+                            <div class="playlist-copy">
+                                <div>
+                                    <span>Playlist</span>
+                                    <h4>Raspao a Dolar</h4>
+                                    <p>Conversaciones, cultura pop y temas de actualidad con formato de episodio.</p>
+                                </div>
+                                <a class="playlist-link" href="https://www.youtube.com/watch?v=Ij8QJWR1LP0" target="_blank" rel="noreferrer">Start watching</a>
+                            </div>
+                        </article>
+                        <article class="playlist-card">
+                            <div class="playlist-stack" style="--thumb-url: url('https://i.ytimg.com/vi/USfTD9rZ3o8/hqdefault.jpg');" aria-hidden="true"></div>
+                            <div class="playlist-copy">
+                                <div>
+                                    <span>Playlist</span>
+                                    <h4>Studio Sessions</h4>
+                                    <p>Recording sessions, studio clips, rehearsals, and in-progress music moments.</p>
+                                </div>
+                                <a class="playlist-link" href="https://www.youtube.com/watch?v=USfTD9rZ3o8" target="_blank" rel="noreferrer">Start watching</a>
+                            </div>
+                        </article>
+                    </div>
+                </section>
+
+                <section class="content-section" aria-labelledby="performances-title">
+                    <div class="section-head">
+                        <h3 id="performances-title">Performances videos</h3>
+                        <button class="view-all" type="button">VIEW ALL</button>
+                    </div>
+
+                    <div class="video-grid">
+                        <article class="video-card">
+                            <div class="video-thumb">
+                                <iframe src="https://www.youtube.com/embed/6PSCI5m43wk" title="Reny Renteria - Places (Live en Tu Manana)" allowfullscreen></iframe>
+                            </div>
+                            <h4>Places</h4>
+                            <p>Live en Tu Ma&ntilde;ana</p>
+                        </article>
+                        <article class="video-card">
+                            <div class="video-thumb">
+                                <iframe src="https://www.youtube.com/embed/PrOrIS-6NvE" title="Reny Renteria - Aguita de Coco (En vivo en Tu Manana)" allowfullscreen></iframe>
+                            </div>
+                            <h4>Ag&uuml;ita de Coco</h4>
+                            <p>En vivo en Tu Ma&ntilde;ana</p>
+                        </article>
+                        <article class="video-card">
+                            <div class="video-thumb">
+                                <iframe src="https://www.youtube.com/embed/q_pDpnIijWY" title="Reny Renteria - Stamina Live at Miss Universe Panama 2024" allowfullscreen></iframe>
+                            </div>
+                            <h4>Stamina</h4>
+                            <p>Live at Miss Universe Panama 2024</p>
+                        </article>
+                        <article class="video-card">
+                            <div class="video-thumb">
+                                <iframe src="https://www.youtube.com/embed/sfOvmqQjpu0" title="Reny Renteria - You Better Run (Live at Festival de La Rosa Dorada 2024)" allowfullscreen></iframe>
+                            </div>
+                            <h4>You Better Run</h4>
+                            <p>Live at Festival de La Rosa Dorada</p>
+                        </article>
+                        <article class="video-card">
+                            <div class="video-thumb">
+                                <iframe src="https://www.youtube.com/embed/Sb0IcEiAPbA" title="Reny Renteria - Touch it (Live performance on Tu Manana)" allowfullscreen></iframe>
+                            </div>
+                            <h4>Touch it</h4>
+                            <p>Live performance on Tu Ma&ntilde;ana</p>
+                        </article>
+                        <article class="video-card">
+                            <div class="video-thumb">
+                                <iframe src="https://www.youtube.com/embed/0Xvjl-s4PwI" title="Reny Renteria - In Your Heart (Live Performance Music Video)" allowfullscreen></iframe>
+                            </div>
+                            <h4>In Your Heart</h4>
+                            <p>Live Performance Music Video</p>
+                        </article>
+                    </div>
+                </section>
+
+                <section class="content-section" aria-labelledby="behind-title">
+                    <div class="section-head">
+                        <h3 id="behind-title">Behind the scenes</h3>
+                        <button class="view-all" type="button">VIEW ALL</button>
+                    </div>
+
+                    <div class="video-grid">
+                        <article class="video-card">
+                            <div class="video-thumb">
+                                <iframe src="https://www.youtube.com/embed/USfTD9rZ3o8" title="Reny Renteria - Wave (Studio Recording Session)" allowfullscreen></iframe>
+                            </div>
+                            <h4>Wave</h4>
+                            <p>Studio Recording Session</p>
+                        </article>
+                        <article class="video-card">
+                            <div class="video-thumb">
+                                <iframe src="https://www.youtube.com/embed/pBmyvcI8vtQ" title="Reny Renteria - Places (Studio Clip)" allowfullscreen></iframe>
+                            </div>
+                            <h4>Places</h4>
+                            <p>Studio Clip</p>
+                        </article>
+                        <article class="video-card">
+                            <div class="video-thumb">
+                                <iframe src="https://www.youtube.com/embed/cXo8awFAt4s" title="Reny Renteria - Places Dance Rehearsal with Ching" allowfullscreen></iframe>
+                            </div>
+                            <h4>Places</h4>
+                            <p>Dance Rehearsal with Ching</p>
+                        </article>
+                        <article class="video-card">
+                            <div class="video-thumb">
+                                <iframe src="https://www.youtube.com/embed/7ujK5dYKF7Q" title="Reny Renteria - Make It Louder (Studio Recording Session)" allowfullscreen></iframe>
+                            </div>
+                            <h4>Make It Louder</h4>
+                            <p>Studio Recording Session</p>
+                        </article>
+                    </div>
+                </section>
+
+                <section class="content-section" aria-labelledby="vlogs-title">
+                    <div class="section-head">
+                        <h3 id="vlogs-title">Vlogs</h3>
+                        <button class="view-all" type="button">VIEW ALL</button>
+                    </div>
+
+                    <div class="video-grid">
+                        <article class="video-card">
+                            <div class="video-thumb">
+                                <iframe src="https://www.youtube.com/embed/fA7CVtk0uNw" title="Reny Renteria visitando Mas23" allowfullscreen></iframe>
+                            </div>
+                            <h4>Visitando Mas23</h4>
+                            <p>Panama vlog short</p>
+                        </article>
+                        <article class="video-card">
+                            <div class="video-thumb">
+                                <iframe src="https://www.youtube.com/embed/yz6mBW-BshM" title="IA o arte real? Craftmanship by Christian Javier" allowfullscreen></iframe>
+                            </div>
+                            <h4>IA o arte real?</h4>
+                            <p>Craftmanship by Christian Javier</p>
+                        </article>
+                        <article class="video-card">
+                            <div class="video-thumb">
+                                <iframe src="https://www.youtube.com/embed/fcGJ7aZ39Hw" title="New merch out now on 5D Stage" allowfullscreen></iframe>
+                            </div>
+                            <h4>New merch out now</h4>
+                            <p>5D Stage update</p>
+                        </article>
+                    </div>
+                </section>
+
+                <nav class="mobile-bottom-nav" aria-label="Mobile menu">
+                    <a href="#music">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                            <path d="M9 18V5l10-2v13"></path>
+                            <circle cx="7" cy="18" r="3"></circle>
+                            <circle cx="17" cy="16" r="3"></circle>
+                        </svg>
+                        <span class="sr-only">MUSIC</span>
+                    </a>
+                    <a class="is-active" href="#videos" aria-current="page">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                            <path d="m22 8-6 4 6 4V8Z"></path>
+                            <rect x="2" y="6" width="14" height="12" rx="2"></rect>
+                        </svg>
+                        <span class="sr-only">VIDEOS</span>
+                    </a>
+                    <a href="#photos">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                            <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                            <path d="m21 15-5-5L5 21"></path>
+                        </svg>
+                        <span class="sr-only">PHOTOS</span>
+                    </a>
+                    <a href="#community">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                            <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z"></path>
+                        </svg>
+                        <span class="sr-only">COMMUNITY</span>
+                    </a>
+                    <a href="#store">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                            <path d="M4 10h16"></path>
+                            <path d="M5 10l1.5-5h11L19 10"></path>
+                            <path d="M6 10v9h12v-9"></path>
+                            <path d="M9 19v-5h6v5"></path>
+                        </svg>
+                        <span class="sr-only">STORE</span>
+                    </a>
+                </nav>
+            </main>
+        </div>
+    </body>
+</html>
