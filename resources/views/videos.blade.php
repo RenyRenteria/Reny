@@ -155,6 +155,7 @@
                             <iframe
                                 src="https://www.youtube.com/embed/Ue8orNrHw9s"
                                 title="Reny Renteria - I Swear (Official Music Video)"
+                                loading="lazy"
                                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                                 allowfullscreen>
                             </iframe>
@@ -177,18 +178,7 @@
 
                     <div class="video-grid">
                         @foreach ($musicVideos as $video)
-                            <article class="video-card">
-                                <div class="video-thumb">
-                                    <iframe
-                                        src="https://www.youtube.com/embed/{{ $video['id'] }}"
-                                        title="{{ $video['label'] }}"
-                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                                        allowfullscreen>
-                                    </iframe>
-                                </div>
-                                <h4>{{ $video['title'] }}</h4>
-                                <p>{{ $video['subtitle'] }}</p>
-                            </article>
+                            @include('partials.video-card', ['video' => $video])
                         @endforeach
                     </div>
                 </section>
@@ -225,18 +215,7 @@
 
                         <div class="video-grid">
                             @foreach ($section['items'] as $video)
-                                <article class="video-card">
-                                    <div class="video-thumb">
-                                        <iframe
-                                            src="https://www.youtube.com/embed/{{ $video['id'] }}"
-                                            title="{{ $video['label'] }}"
-                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                                            allowfullscreen>
-                                        </iframe>
-                                    </div>
-                                    <h4>{{ $video['title'] }}</h4>
-                                    <p>{{ $video['subtitle'] }}</p>
-                                </article>
+                                @include('partials.video-card', ['video' => $video])
                             @endforeach
                         </div>
                     </section>
