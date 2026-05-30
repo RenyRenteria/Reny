@@ -86,19 +86,32 @@
 
                 <section class="hero" aria-label="Featured album">
                     <div class="hero-content">
-                        <p class="eyebrow">First<br>Album</p>
-                        <h1>Biggest<br>Launch</h1>
-                        <h2>Comeback Album!</h2>
-                        <p class="hero-copy">
-                            A cinematic release package for Reny Renteria, built around a lead album,
-                            featured tracks, fan updates, and premium music drops.
-                        </p>
-                        <p class="hero-link">Visit us today at<br>renyrenteria.com</p>
+                        @if ($hero->eyebrow)
+                            <p class="eyebrow">{!! nl2br(e($hero->eyebrow)) !!}</p>
+                        @endif
+                        <h1>{!! nl2br(e($hero->title)) !!}</h1>
+                        @if ($hero->subtitle)
+                            <h2>{{ $hero->subtitle }}</h2>
+                        @endif
+                        @if ($hero->body)
+                            <p class="hero-copy">{{ $hero->body }}</p>
+                        @endif
+                        @if ($hero->link_text)
+                            <p class="hero-link">{!! nl2br(e($hero->link_text)) !!}</p>
+                        @endif
                     </div>
 
-                    <div class="artist-card" aria-hidden="true">
+                    @php($heroImage = $hero->image_path ? \Illuminate\Support\Facades\Storage::url($hero->image_path) : null)
+                    <div
+                        class="artist-card {{ $heroImage ? 'has-image' : '' }}"
+                        @if ($heroImage) style="background-image: url('{{ $heroImage }}')" @endif
+                        aria-label="{{ $hero->title }} artwork"
+                    >
                         <div class="disc-badge">RR</div>
                         <div class="barcode"></div>
+                        @if ($hero->badge_text)
+                            <span class="artist-card-label">{{ $hero->badge_text }}</span>
+                        @endif
                     </div>
                 </section>
 
@@ -109,34 +122,20 @@
                     </div>
 
                     <div class="albums">
-                        <article class="album">
-                            <div class="cover cover-a" data-title="Reny">
-                                <button class="play-button" type="button" aria-label="Play Reny Sessions"><span></span></button>
-                            </div>
-                            <h4>Reny Sessions</h4>
-                            <p>12 tracks</p>
-                        </article>
-                        <article class="album">
-                            <div class="cover cover-b" data-title="Bano">
-                                <button class="play-button" type="button" aria-label="Play Bano #1"><span></span></button>
-                            </div>
-                            <h4>Bano #1</h4>
-                            <p>10 tracks</p>
-                        </article>
-                        <article class="album">
-                            <div class="cover cover-c" data-title="First">
-                                <button class="play-button" type="button" aria-label="Play First Album"><span></span></button>
-                            </div>
-                            <h4>First Album</h4>
-                            <p>8 tracks</p>
-                        </article>
-                        <article class="album">
-                            <div class="cover cover-d" data-title="Live">
-                                <button class="play-button" type="button" aria-label="Play Live Cuts"><span></span></button>
-                            </div>
-                            <h4>Live Cuts</h4>
-                            <p>6 tracks</p>
-                        </article>
+                        @foreach ($albums as $index => $album)
+                            @php($albumImage = $album->image_path ? \Illuminate\Support\Facades\Storage::url($album->image_path) : null)
+                            <article class="album">
+                                <div
+                                    class="cover {{ $albumImage ? 'has-image' : 'cover-'.chr(97 + ($index % 4)) }}"
+                                    data-title="{{ $album->cover_label ?: $album->title }}"
+                                    @if ($albumImage) style="background-image: url('{{ $albumImage }}')" @endif
+                                >
+                                    <button class="play-button" type="button" aria-label="Play {{ $album->title }}"><span></span></button>
+                                </div>
+                                <h4>{{ $album->title }}</h4>
+                                <p>{{ $album->track_count }} {{ \Illuminate\Support\Str::plural('track', $album->track_count) }}</p>
+                            </article>
+                        @endforeach
                     </div>
                 </section>
 
@@ -147,38 +146,26 @@
                     </div>
 
                     <div class="singles">
-                        <article class="single">
-                            <div class="single-art" aria-hidden="true"></div>
-                            <div>
-                                <strong>Biggest Launch</strong>
-                                <span>Reny Renteria</span>
-                            </div>
-                            <button class="mini-play" type="button" aria-label="Play Biggest Launch"><span></span></button>
-                        </article>
-                        <article class="single">
-                            <div class="single-art" aria-hidden="true"></div>
-                            <div>
-                                <strong>Comeback Album</strong>
-                                <span>Reny Renteria</span>
-                            </div>
-                            <button class="mini-play" type="button" aria-label="Play Comeback Album"><span></span></button>
-                        </article>
-                        <article class="single">
-                            <div class="single-art" aria-hidden="true"></div>
-                            <div>
-                                <strong>First Drop</strong>
-                                <span>Reny Renteria</span>
-                            </div>
-                            <button class="mini-play" type="button" aria-label="Play First Drop"><span></span></button>
-                        </article>
-                        <article class="single">
-                            <div class="single-art" aria-hidden="true"></div>
-                            <div>
-                                <strong>VIP Mix</strong>
-                                <span>Exclusive</span>
-                            </div>
-                            <button class="mini-play" type="button" aria-label="Play VIP Mix"><span></span></button>
-                        </article>
+                        @foreach ($singles as $single)
+                            @php($singleImage = $single->image_path ? \Illuminate\Support\Facades\Storage::url($single->image_path) : null)
+                            @php($singleAudio = $single->audio_path ? \Illuminate\Support\Facades\Storage::url($single->audio_path) : $single->audio_url)
+                            <article class="single">
+                                <div
+                                    class="single-art {{ $singleImage ? 'has-image' : '' }}"
+                                    @if ($singleImage) style="background-image: url('{{ $singleImage }}')" @endif
+                                    aria-hidden="true"
+                                ></div>
+                                <div>
+                                    <strong>{{ $single->title }}</strong>
+                                    <span>{{ $single->artist ?: 'Reny Renteria' }}</span>
+                                </div>
+                                @if ($singleAudio)
+                                    <a class="mini-play" href="{{ $singleAudio }}" aria-label="Play {{ $single->title }}"><span></span></a>
+                                @else
+                                    <button class="mini-play" type="button" aria-label="Play {{ $single->title }}"><span></span></button>
+                                @endif
+                            </article>
+                        @endforeach
                     </div>
                 </section>
 
