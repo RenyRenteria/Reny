@@ -74,7 +74,7 @@
                             </svg>
                             <span>VIDEOS</span>
                         </a>
-                        <a class="tab" href="#photos">
+                        <a class="tab" href="{{ url('/photos') }}">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                                 <rect x="3" y="3" width="18" height="18" rx="2"></rect>
                                 <circle cx="8.5" cy="8.5" r="1.5"></circle>
@@ -244,7 +244,7 @@
                         </svg>
                         <span class="sr-only">VIDEOS</span>
                     </a>
-                    <a href="#photos">
+                    <a href="{{ url('/photos') }}">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                             <rect x="3" y="3" width="18" height="18" rx="2"></rect>
                             <circle cx="8.5" cy="8.5" r="1.5"></circle>
