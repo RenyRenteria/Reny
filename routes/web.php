@@ -13,3 +13,7 @@ Route::get('/videos', function () {
 Route::get('/photos', function () {
     return view('photos');
 });
+
+Route::get('/community', function () {
+    return view('community');
+});
