@@ -145,7 +145,7 @@
                             </svg>
                             <span>PHOTOS</span>
                         </a>
-                        <a class="tab" href="#community">
+                        <a class="tab" href="{{ url('/community') }}">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                                 <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z"></path>
                             </svg>
@@ -234,7 +234,7 @@
                         </svg>
                         <span class="sr-only">PHOTOS</span>
                     </a>
-                    <a href="#community">
+                    <a href="{{ url('/community') }}">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                             <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z"></path>
                         </svg>
