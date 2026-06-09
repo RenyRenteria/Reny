@@ -1369,6 +1369,7 @@
                 align-items: flex-start;
                 flex-direction: column;
                 margin-top: 16px;
+                margin-bottom: 22px;
             }
 
             .section-title h2,
