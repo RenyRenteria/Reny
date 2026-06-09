@@ -18,6 +18,8 @@ class StorePageTest extends TestCase
         $response->assertSee('Checkout Drop');
         $response->assertSee('RSVP');
         $response->assertSee('Buy Ticket');
+        $response->assertSee('<b>Date</b> Aug 24, 2026', false);
+        $response->assertSee('<b>Place</b> Panama City, Panama', false);
         $response->assertSee('href="/store"', false);
         $response->assertSee('aria-current="page"', false);
         $response->assertDontSee('Objects');

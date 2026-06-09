@@ -513,16 +513,29 @@
         }
 
         .event-meta {
-            display: grid;
-            gap: 7px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
         }
 
         .event-meta span {
+            display: inline-flex;
+            align-items: center;
+            min-height: 28px;
+            padding: 0 9px;
+            border: 1px solid var(--line);
+            border-radius: 999px;
             color: var(--muted);
             font-size: 11px;
             font-weight: 500;
             letter-spacing: 0.08em;
             text-transform: uppercase;
+        }
+
+        .event-meta b {
+            margin-right: 5px;
+            color: var(--gold);
+            font-weight: 500;
         }
 
         .event-actions {
@@ -1267,7 +1280,7 @@
 
         @media (max-width: 520px) {
             .mobile-header {
-                min-height: 66px;
+                min-height: 58px;
             }
 
             .mobile-bottom-nav {
@@ -1284,7 +1297,7 @@
             }
 
             .topline h1 {
-                font-size: 36px;
+                font-size: 34px;
             }
 
             .actions {
@@ -1300,11 +1313,11 @@
             }
 
             .feature {
-                min-height: 292px;
+                min-height: 254px;
             }
 
             .feature-image {
-                min-height: 292px;
+                min-height: 254px;
             }
 
             .feature-image::after {
@@ -1316,22 +1329,22 @@
             .feature-copy {
                 position: absolute;
                 inset: auto 0 0;
-                padding: 16px;
+                padding: 14px;
                 border-top: 0;
                 background: linear-gradient(180deg, transparent, rgba(15, 14, 12, 0.9) 34%, rgba(15, 14, 12, 0.98));
             }
 
             .feature h2 {
-                margin-top: 10px;
-                font-size: 30px;
+                margin-top: 8px;
+                font-size: 28px;
             }
 
             .drop-strip {
-                margin-top: 12px;
+                margin-top: 10px;
             }
 
             .feature-price {
-                margin-top: 14px;
+                margin-top: 12px;
             }
 
             .feature-price {
@@ -1368,8 +1381,8 @@
             .market {
                 align-items: flex-start;
                 flex-direction: column;
-                margin-top: 16px;
-                margin-bottom: 22px;
+                margin-top: 12px;
+                margin-bottom: 18px;
             }
 
             .section-title h2,
@@ -1379,6 +1392,12 @@
 
             .event-card {
                 min-height: 318px;
+            }
+
+            .event-meta span {
+                min-height: 26px;
+                padding: 0 8px;
+                font-size: 10px;
             }
 
             .product-card,
@@ -1635,8 +1654,8 @@
                             <span class="event-kicker">Live show</span>
                             <h3>Reny Live · Studio Night</h3>
                             <div class="event-meta">
-                                <span>Aug 24, 2026</span>
-                                <span>Panama City, Panama</span>
+                                <span><b>Date</b> Aug 24, 2026</span>
+                                <span><b>Place</b> Panama City, Panama</span>
                             </div>
                             <div class="event-actions">
                                 <button type="button" class="button gold" data-buy="concert">Buy ticket</button>
@@ -1649,8 +1668,8 @@
                             <span class="event-kicker">Digital event</span>
                             <h3>Making The Deluxe Album</h3>
                             <div class="event-meta">
-                                <span>Jul 12, 2026</span>
-                                <span>Royal Stream</span>
+                                <span><b>Date</b> Jul 12, 2026</span>
+                                <span><b>Place</b> Royal Stream</span>
                             </div>
                             <div class="event-actions">
                                 <button type="button" class="button light" data-rsvp="Making The Deluxe Album">RSVP</button>
@@ -1663,8 +1682,8 @@
                             <span class="event-kicker">Listening session</span>
                             <h3>Deluxe Preview Session</h3>
                             <div class="event-meta">
-                                <span>Sep 06, 2026</span>
-                                <span>Deluxe Listening Room</span>
+                                <span><b>Date</b> Sep 06, 2026</span>
+                                <span><b>Place</b> Deluxe Listening Room</span>
                             </div>
                             <div class="event-actions">
                                 <button type="button" class="button light" data-buy="listening">Buy ticket</button>
