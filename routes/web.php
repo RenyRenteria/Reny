@@ -17,3 +17,7 @@ Route::get('/photos', function () {
 Route::get('/community', function () {
     return view('community');
 });
+
+Route::get('/store', function () {
+    return view('store');
+});
