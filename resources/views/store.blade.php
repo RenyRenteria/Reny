@@ -1300,11 +1300,11 @@
             }
 
             .feature {
-                min-height: 340px;
+                min-height: 292px;
             }
 
             .feature-image {
-                min-height: 340px;
+                min-height: 292px;
             }
 
             .feature-image::after {
@@ -1316,22 +1316,22 @@
             .feature-copy {
                 position: absolute;
                 inset: auto 0 0;
-                padding: 18px;
+                padding: 16px;
                 border-top: 0;
                 background: linear-gradient(180deg, transparent, rgba(15, 14, 12, 0.9) 34%, rgba(15, 14, 12, 0.98));
             }
 
             .feature h2 {
-                margin-top: 12px;
-                font-size: 32px;
+                margin-top: 10px;
+                font-size: 30px;
             }
 
             .drop-strip {
-                margin-top: 16px;
+                margin-top: 12px;
             }
 
             .feature-price {
-                margin-top: 18px;
+                margin-top: 14px;
             }
 
             .feature-price {
@@ -1368,6 +1368,7 @@
             .market {
                 align-items: flex-start;
                 flex-direction: column;
+                margin-top: 16px;
             }
 
             .section-title h2,
