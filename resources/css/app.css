@@ -270,6 +270,14 @@
     z-index: 1;
 }
 
+.store-checkout-note {
+    margin: -0.25rem 0 0.875rem;
+    color: var(--muted);
+    font-size: 0.8125rem;
+    font-weight: 800;
+    line-height: 1.35;
+}
+
 @media (max-width: 40rem) {
     .auth-shell {
         align-items: stretch;

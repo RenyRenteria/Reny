@@ -446,6 +446,7 @@ if (storeShell) {
     const bagList = document.getElementById('bagList');
     const bagTotal = document.getElementById('bagTotal');
     const tierLabel = document.getElementById('tierLabel');
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
     document.querySelectorAll('[data-detail]').forEach((button) => {
         products[button.dataset.detail] = {
@@ -731,20 +732,58 @@ if (storeShell) {
         });
     });
 
-    document.getElementById('completePurchase')?.addEventListener('click', () => {
+    document.getElementById('completePurchase')?.addEventListener('click', async (event) => {
         if (!bag.length) {
             showStoreToast('Add a product first.');
             return;
         }
 
-        if (tierLabel) {
-            tierLabel.textContent = bag.includes('royal') ? 'ROYAL MEMBER' : 'PROFILE UPDATED';
+        const button = event.currentTarget;
+        const identifier = document.getElementById('emailField')?.value?.trim();
+
+        if (!identifier) {
+            showStoreToast('Add email or phone.');
+            return;
         }
 
-        bag = [];
-        renderBag();
-        closeStoreLayer('bagLayer');
-        showStoreToast('Receipt sent. Profile updated.');
+        button.disabled = true;
+        button.textContent = 'Processing...';
+
+        try {
+            const response = await fetch(button.dataset.checkoutEndpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
+                body: JSON.stringify({
+                    identifier,
+                    product_keys: bag,
+                    currency,
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error('Checkout failed');
+            }
+
+            const payload = await response.json();
+
+            if (tierLabel && payload.royal_status === 'royal_active') {
+                tierLabel.textContent = 'ROYAL MEMBER';
+            }
+
+            bag = [];
+            renderBag();
+            closeStoreLayer('bagLayer');
+            showStoreToast('Royal Pass activated for 1 month.');
+        } catch (error) {
+            showStoreToast('Checkout failed. Try again.');
+        } finally {
+            button.disabled = false;
+            button.textContent = 'Complete with PayPal';
+        }
     });
 
     document.querySelectorAll('[data-close]').forEach((button) => {

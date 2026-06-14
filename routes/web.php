@@ -4,6 +4,8 @@ use App\Http\Controllers\AccountController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\Commerce\CheckoutController;
+use App\Http\Controllers\Commerce\PaypalWebhookController;
 use App\Http\Controllers\Royal\PremiumContentController;
 use Illuminate\Support\Facades\Route;
 
@@ -48,3 +50,6 @@ Route::middleware('auth')->group(function () {
 Route::get('/session-expired', function () {
     return view('auth.session-expired');
 })->name('session.expired');
+
+Route::post('/checkout/paypal', [CheckoutController::class, 'store'])->name('checkout.paypal');
+Route::post('/paypal/refund', [PaypalWebhookController::class, 'refund'])->name('paypal.refund');
