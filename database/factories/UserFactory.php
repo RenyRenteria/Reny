@@ -27,8 +27,12 @@ class UserFactory extends Factory
         return [
             'name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
+            'phone' => null,
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
+            'role' => 'fan',
+            'royal_status' => 'open',
+            'royal_ends_at' => null,
             'remember_token' => Str::random(10),
         ];
     }
@@ -40,6 +44,22 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'email_verified_at' => null,
+        ]);
+    }
+
+    public function royal(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'royal_status' => 'royal_active',
+            'royal_ends_at' => now()->addMonth(),
+        ]);
+    }
+
+    public function expiredRoyal(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'royal_status' => 'royal_expired',
+            'royal_ends_at' => now()->subDay(),
         ]);
     }
 }

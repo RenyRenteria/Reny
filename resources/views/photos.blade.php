@@ -163,13 +163,7 @@
                     </nav>
                 </div>
 
-                <div class="member-card">
-                    <div class="member-avatar" aria-hidden="true"></div>
-                    <div>
-                        <strong>Alex Carter</strong>
-                        <span>VIP MEMBER</span>
-                    </div>
-                </div>
+                <x-member-card />
             </aside>
 
             <main class="main-content photos-content" id="photos">

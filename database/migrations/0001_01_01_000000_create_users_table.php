@@ -15,8 +15,12 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('email')->unique();
+            $table->string('phone')->nullable()->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
+            $table->string('role')->default('fan');
+            $table->string('royal_status')->default('open');
+            $table->timestamp('royal_ends_at')->nullable();
             $table->rememberToken();
             $table->timestamps();
         });
