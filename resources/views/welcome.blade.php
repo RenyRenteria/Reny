@@ -32,14 +32,14 @@
                             </svg>
                             <span>MUSIC</span>
                         </a>
-                        <a class="tab" href="#videos">
+                        <a class="tab" href="{{ url('/videos') }}">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                                 <path d="m22 8-6 4 6 4V8Z"></path>
                                 <rect x="2" y="6" width="14" height="12" rx="2"></rect>
                             </svg>
                             <span>VIDEOS</span>
                         </a>
-                        <a class="tab" href="#photos">
+                        <a class="tab" href="{{ url('/photos') }}">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                                 <rect x="3" y="3" width="18" height="18" rx="2"></rect>
                                 <circle cx="8.5" cy="8.5" r="1.5"></circle>
@@ -47,13 +47,13 @@
                             </svg>
                             <span>PHOTOS</span>
                         </a>
-                        <a class="tab" href="#community" data-tab-link="community">
+                        <a class="tab" href="{{ url('/community') }}">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                                 <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z"></path>
                             </svg>
                             <span>COMMUNITY</span>
                         </a>
-                        <a class="tab" href="#store">
+                        <a class="tab" href="{{ url('/store') }}">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                                 <path d="M4 10h16"></path>
                                 <path d="M5 10l1.5-5h11L19 10"></path>
@@ -74,7 +74,7 @@
                 </div>
             </aside>
 
-            <main class="main-content" id="music">
+            <main class="main-content" id="music-page">
                 <header class="mobile-header">
                     <div class="mobile-brand">
                         <a class="brand-link" href="/" aria-label="Reny Renteria home">
@@ -453,14 +453,14 @@
                         </svg>
                         <span class="sr-only">MUSIC</span>
                     </a>
-                    <a href="#videos">
+                    <a href="{{ url('/videos') }}">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                             <path d="m22 8-6 4 6 4V8Z"></path>
                             <rect x="2" y="6" width="14" height="12" rx="2"></rect>
                         </svg>
                         <span class="sr-only">VIDEOS</span>
                     </a>
-                    <a href="#photos">
+                    <a href="{{ url('/photos') }}">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                             <rect x="3" y="3" width="18" height="18" rx="2"></rect>
                             <circle cx="8.5" cy="8.5" r="1.5"></circle>
@@ -468,13 +468,13 @@
                         </svg>
                         <span class="sr-only">PHOTOS</span>
                     </a>
-                    <a href="#community" data-tab-link="community">
+                    <a href="{{ url('/community') }}">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                             <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z"></path>
                         </svg>
                         <span class="sr-only">COMMUNITY</span>
                     </a>
-                    <a href="#store">
+                    <a href="{{ url('/store') }}">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                             <path d="M4 10h16"></path>
                             <path d="M5 10l1.5-5h11L19 10"></path>
