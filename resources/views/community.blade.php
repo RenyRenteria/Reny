@@ -12,9 +12,12 @@
         <div class="community-shell">
             <aside class="sidebar" aria-label="Primary navigation">
                 <div>
-                    <a class="community-brand" href="{{ url('/') }}" aria-label="Reny Renteria home">
-                        <strong>Reny</strong>
-                        <span>Renteria</span>
+                    <a class="brand-link" href="{{ url('/') }}" aria-label="Reny Renteria home">
+                        <img
+                            class="brand-logo"
+                            src="{{ asset('images/reny-renteria-logo.png') }}"
+                            alt="Reny Renteria"
+                        >
                     </a>
 
                     <nav class="tabs" aria-label="Main menu">
@@ -70,9 +73,12 @@
 
             <main class="main-content community-content" id="community">
                 <header class="mobile-header community-mobile-header">
-                    <a class="community-brand" href="{{ url('/') }}" aria-label="Reny Renteria home">
-                        <strong>Reny</strong>
-                        <span>Renteria</span>
+                    <a class="brand-link" href="{{ url('/') }}" aria-label="Reny Renteria home">
+                        <img
+                            class="brand-logo"
+                            src="{{ asset('images/reny-renteria-logo.png') }}"
+                            alt="Reny Renteria"
+                        >
                     </a>
                     <div class="direct-posts">
                         <span>

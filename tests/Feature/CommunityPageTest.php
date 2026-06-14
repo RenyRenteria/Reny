@@ -19,9 +19,11 @@ class CommunityPageTest extends TestCase
         $response->assertSee('Create group');
         $response->assertSee('class="tab is-active"', false);
         $response->assertSee('href="' . url('/community') . '"', false);
+        $response->assertSee('images/reny-renteria-logo.png');
 
         $html = $response->getContent();
 
+        $this->assertSame(2, substr_count($html, 'images/reny-renteria-logo.png'));
         $this->assertSame(1, substr_count($html, 'class="community-grid"'));
         $this->assertSame(1, substr_count($html, 'class="side-column"'));
         $this->assertSame(2, substr_count($html, 'class="post-card'));
