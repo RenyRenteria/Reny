@@ -65,13 +65,7 @@
                     </nav>
                 </div>
 
-                <div class="member-card">
-                    <div class="member-avatar" aria-hidden="true"></div>
-                    <div>
-                        <strong>Alex Carter</strong>
-                        <span>VIP MEMBER</span>
-                    </div>
-                </div>
+                <x-member-card />
             </aside>
 
             <main class="main-content" id="music-page">
@@ -175,14 +169,20 @@
                                 </div>
                                 <button class="mini-play" type="button" aria-label="Play First Drop"><span></span></button>
                             </article>
-                            <article class="single">
-                                <div class="single-art" aria-hidden="true"></div>
-                                <div>
-                                    <strong>VIP Mix</strong>
-                                    <span>Exclusive</span>
-                                </div>
-                                <button class="mini-play" type="button" aria-label="Play VIP Mix"><span></span></button>
-                            </article>
+                            <x-access-gate
+                                section="music"
+                                title="VIP Mix"
+                                preview="Open users can see the drop; full playback requires Royal Pass."
+                            >
+                                <article class="single">
+                                    <div class="single-art" aria-hidden="true"></div>
+                                    <div>
+                                        <strong>VIP Mix</strong>
+                                        <span>Royal-only audio stream</span>
+                                    </div>
+                                    <button class="mini-play" type="button" aria-label="Play VIP Mix"><span></span></button>
+                                </article>
+                            </x-access-gate>
                         </div>
                     </section>
                 </section>
@@ -290,7 +290,13 @@
 
                                 <div class="vote-footer">
                                     <span>1248 total votes</span>
-                                    <button class="soft-button" type="button">Vote</button>
+                                    <x-access-gate
+                                        section="community"
+                                        title="Voting requires Royal Pass"
+                                        preview="Poll results stay visible in Open mode."
+                                    >
+                                        <button class="soft-button" type="button">Vote</button>
+                                    </x-access-gate>
                                 </div>
                             </section>
 
@@ -376,19 +382,30 @@
                                 </article>
                             </div>
 
-                            <div class="club-actions">
-                                <button class="outline-button" type="button">
-                                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                                        <path d="M12 5v14"></path>
-                                        <path d="M5 12h14"></path>
-                                    </svg>
-                                    Create group
-                                </button>
-                                <button class="join-button" type="button">Join group</button>
-                            </div>
+                            <x-access-gate
+                                section="community"
+                                title="Groups are Royal actions"
+                                preview="Club previews stay public; creating or joining requires Royal Pass."
+                            >
+                                <div class="club-actions">
+                                    <button class="outline-button" type="button">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                                            <path d="M12 5v14"></path>
+                                            <path d="M5 12h14"></path>
+                                        </svg>
+                                        Create group
+                                    </button>
+                                    <button class="join-button" type="button">Join group</button>
+                                </div>
+                            </x-access-gate>
 
                             <div class="chat-wrap">
-                                <section class="chat-card" aria-labelledby="chat-title">
+                                <x-access-gate
+                                    section="community"
+                                    title="Clubhouse Chat"
+                                    preview="Chat previews are visible in Open mode; sending messages requires Royal Pass."
+                                >
+                                    <section class="chat-card" aria-labelledby="chat-title">
                                     <div class="chat-head">
                                         <div>
                                             <h2 id="chat-title">Clubhouse Chat</h2>
@@ -431,14 +448,15 @@
                                             </svg>
                                         </button>
                                     </form>
-                                </section>
+                                    </section>
 
-                                <button class="compose-button" type="button" aria-label="Compose post">
-                                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                                        <path d="M12 20h9"></path>
-                                        <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
-                                    </svg>
-                                </button>
+                                    <button class="compose-button" type="button" aria-label="Compose post">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                                            <path d="M12 20h9"></path>
+                                            <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
+                                        </svg>
+                                    </button>
+                                </x-access-gate>
                             </div>
                         </aside>
                     </div>

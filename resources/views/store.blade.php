@@ -110,6 +110,7 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="csrf-token" content="{{ csrf_token() }}">
 
         <title>Store | Reny Renteria</title>
 
@@ -172,13 +173,7 @@
                     </nav>
                 </div>
 
-                <div class="member-card">
-                    <div class="member-avatar" aria-hidden="true"></div>
-                    <div>
-                        <strong>Alex Carter</strong>
-                        <span id="tierLabel">VIP MEMBER</span>
-                    </div>
-                </div>
+                <x-member-card />
             </aside>
 
             <main class="main-content store-content" id="store">
@@ -355,9 +350,10 @@
                 <div class="store-checkout-grid">
                     <div class="store-checkout-panel">
                         <h3>Step 1 - Bag</h3>
+                        <p class="store-checkout-note">Every completed purchase activates Royal Pass for 1 month on this account.</p>
                         <div class="store-bag-list" id="bagList"></div>
-                        <label class="sr-only" for="emailField">Receipt email</label>
-                        <input class="store-email" id="emailField" type="email" value="fan@renyrenteria.com">
+                        <label class="sr-only" for="emailField">Receipt email or phone</label>
+                        <input class="store-email" id="emailField" type="text" value="fan@renyrenteria.com">
                         <div class="store-total-row">
                             <span>Total</span>
                             <strong id="bagTotal">$0</strong>
@@ -366,12 +362,12 @@
                     <div class="store-checkout-panel">
                         <h3>Step 2 - Pay</h3>
                         <div class="store-payments" role="radiogroup" aria-label="Payment method">
-                            <button class="is-active" type="button">Card</button>
-                            <button type="button">PayPal</button>
+                            <button class="is-active" type="button">PayPal</button>
+                            <button type="button">Card</button>
                             <button type="button">Apple Pay</button>
                             <button type="button">Local</button>
                         </div>
-                        <button class="store-button" id="completePurchase" type="button">Complete</button>
+                        <button class="store-button" id="completePurchase" type="button" data-checkout-endpoint="{{ route('checkout.paypal') }}">Complete with PayPal</button>
                     </div>
                 </div>
             </div>
