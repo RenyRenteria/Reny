@@ -1,19 +1,6 @@
 @php
     $products = [
         [
-            'key' => 'crown',
-            'name' => 'Crown Jacket No. 01',
-            'type' => 'Drop',
-            'category' => 'drops physical',
-            'price' => 380,
-            'availability' => '12 left of 50',
-            'points' => '+950 pts',
-            'pass' => 'Royal Pass early access',
-            'access' => 'Certificate included',
-            'image' => 'merch.jpg',
-            'summary' => 'Numbered Royal exclusive piece with automatic certificate and profile ownership.',
-        ],
-        [
             'key' => 'deluxe',
             'name' => 'Deluxe Digital Album',
             'type' => 'Digital',
@@ -89,7 +76,7 @@
             'date' => 'Aug 24, 2026',
             'place' => 'Panama City',
             'price' => 42,
-            'image' => 'performance.jpg',
+            'image' => 'reny-store-concert-poster.png',
             'action' => 'Buy ticket',
             'mode' => 'buy',
         ],
@@ -218,7 +205,7 @@
                 </div>
 
                 <section class="store-hero" aria-labelledby="store-hero-title">
-                    <img src="{{ asset('images/photos/performance.jpg') }}" alt="Reny concert performance poster">
+                    <img src="{{ asset('images/photos/reny-store-concert-poster.png') }}" alt="Reny Live Studio Night concert poster">
                     <div class="store-hero-copy">
                         <span>Upcoming concert</span>
                         <h1 id="store-hero-title">Reny Live - Studio Night</h1>
@@ -226,34 +213,6 @@
                         <div class="store-hero-actions">
                             <strong data-price="concert">$42</strong>
                             <button class="store-button store-button-light" type="button" data-buy="concert">Buy ticket</button>
-                        </div>
-                    </div>
-                </section>
-
-                <section class="store-feature" aria-labelledby="drop-title">
-                    <div class="store-feature-image">
-                        <img src="{{ asset('images/photos/merch.jpg') }}" alt="Crown Jacket No. 01">
-                    </div>
-                    <div class="store-feature-copy">
-                        <span>Limited drop</span>
-                        <h2 id="drop-title">Crown Jacket No. 01</h2>
-                        <div class="store-drop-strip">
-                            <div>
-                                <strong id="dropChip">12 of 50</strong>
-                                <span>Available</span>
-                            </div>
-                            <div>
-                                <strong id="pieceChip">#39</strong>
-                                <span>Next piece</span>
-                            </div>
-                            <div>
-                                <strong>48h</strong>
-                                <span>Early access</span>
-                            </div>
-                        </div>
-                        <div class="store-feature-actions">
-                            <strong data-price="crown">$380</strong>
-                            <button class="store-button" type="button" data-buy="crown">Checkout Drop</button>
                         </div>
                     </div>
                 </section>
@@ -413,34 +372,6 @@
                             <button type="button">Local</button>
                         </div>
                         <button class="store-button" id="completePurchase" type="button">Complete</button>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <section class="store-modal-layer" id="certificateLayer" hidden inert>
-            <div class="store-dialog" role="dialog" aria-modal="true" aria-labelledby="certificateTitle">
-                <div class="store-dialog-head">
-                    <h2 id="certificateTitle">Certificate</h2>
-                    <button class="store-icon-button" type="button" data-close="certificateLayer" aria-label="Close certificate">Close</button>
-                </div>
-                <div class="store-certificate-card">
-                    <span>Digital Certificate</span>
-                    <h3>Crown Jacket No. 01</h3>
-                    <p>Ownership recorded to profile. Receipt sent by email. Royal tier and points updated immediately.</p>
-                    <div class="store-certificate-meta">
-                        <div>
-                            <strong id="certificatePiece">#39 / 50</strong>
-                            <span>Piece</span>
-                        </div>
-                        <div>
-                            <strong>+950</strong>
-                            <span>Points</span>
-                        </div>
-                        <div>
-                            <strong>Royal</strong>
-                            <span>Tier</span>
-                        </div>
                     </div>
                 </div>
             </div>

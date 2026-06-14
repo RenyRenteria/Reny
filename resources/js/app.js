@@ -418,7 +418,6 @@ const storeShell = document.querySelector('.store-shell');
 
 if (storeShell) {
     const prices = {
-        crown: 380,
         deluxe: 24,
         singles: 8,
         royal: 19,
@@ -441,8 +440,6 @@ if (storeShell) {
     let bag = [];
     let activeProduct = null;
     let focusedBeforeStoreModal = null;
-    let dropLeft = 12;
-    let nextPiece = 39;
 
     const storeToast = document.getElementById('storeToast');
     const bagCount = document.getElementById('bagCount');
@@ -567,23 +564,6 @@ if (storeShell) {
         focusedBeforeStoreModal?.focus();
     };
 
-    const updateDrop = () => {
-        const dropChip = document.getElementById('dropChip');
-        const pieceChip = document.getElementById('pieceChip');
-
-        if (dropChip) {
-            dropChip.textContent = `${dropLeft} of 50`;
-        }
-
-        if (pieceChip) {
-            pieceChip.textContent = `#${nextPiece}`;
-        }
-
-        if (products.crown) {
-            products.crown.availability = `${dropLeft} left of 50`;
-        }
-    };
-
     const renderBag = () => {
         if (!bagCount || !bagList || !bagTotal) {
             return;
@@ -679,7 +659,7 @@ if (storeShell) {
             grid.append(cell);
         });
 
-        document.getElementById('detailBuy').textContent = key === 'crown' ? 'Checkout Drop' : 'Add to bag';
+        document.getElementById('detailBuy').textContent = 'Add to bag';
         openStoreLayer('detailLayer');
     };
 
@@ -757,28 +737,14 @@ if (storeShell) {
             return;
         }
 
-        const boughtCrown = bag.includes('crown');
-
-        if (boughtCrown && dropLeft > 0) {
-            document.getElementById('certificatePiece').textContent = `#${nextPiece} / 50`;
-            dropLeft -= 1;
-            nextPiece += 1;
-            updateDrop();
-        }
-
         if (tierLabel) {
-            tierLabel.textContent = bag.includes('royal') || boughtCrown ? 'ROYAL MEMBER' : 'PROFILE UPDATED';
+            tierLabel.textContent = bag.includes('royal') ? 'ROYAL MEMBER' : 'PROFILE UPDATED';
         }
 
         bag = [];
         renderBag();
         closeStoreLayer('bagLayer');
-
-        if (boughtCrown) {
-            openStoreLayer('certificateLayer');
-        } else {
-            showStoreToast('Receipt sent. Profile updated.');
-        }
+        showStoreToast('Receipt sent. Profile updated.');
     });
 
     document.querySelectorAll('[data-close]').forEach((button) => {
@@ -786,7 +752,7 @@ if (storeShell) {
     });
 
     document.addEventListener('keydown', (event) => {
-        const openLayerId = ['certificateLayer', 'bagLayer', 'detailLayer'].find((id) => {
+        const openLayerId = ['bagLayer', 'detailLayer'].find((id) => {
             const layer = document.getElementById(id);
             return layer && !layer.hidden;
         });
@@ -806,5 +772,4 @@ if (storeShell) {
 
     updateStorePrices();
     renderBag();
-    updateDrop();
 }
