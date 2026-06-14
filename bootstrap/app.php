@@ -15,6 +15,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'royal' => EnsureRoyalAccess::class,
         ]);
+
+        $middleware->validateCsrfTokens(except: [
+            'paypal/*',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
