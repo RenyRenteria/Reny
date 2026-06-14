@@ -1,84 +1,3 @@
-@php
-    $directPosts = [
-        [
-            'title' => 'Studio note from Reny',
-            'date' => 'Today',
-            'body' => 'Finishing the next release window with final vocal edits, choreography notes, and visuals for the fan club first.',
-            'image' => 'studio.jpg',
-            'reactions' => 284,
-            'replies' => 38,
-        ],
-        [
-            'title' => 'Capri photo drop',
-            'date' => 'This week',
-            'body' => 'A few frames from the travel archive are moving into the Photos tab. More country-specific drops coming next.',
-            'image' => 'capri.jpg',
-            'reactions' => 319,
-            'replies' => 51,
-        ],
-    ];
-
-    $polls = [
-        [
-            'question' => 'Which drop should go first?',
-            'total' => 1248,
-            'options' => [
-                ['label' => 'Studio photos', 'percent' => 42],
-                ['label' => 'Performance stills', 'percent' => 34],
-                ['label' => 'Travel archive', 'percent' => 24],
-            ],
-        ],
-        [
-            'question' => 'Next community live topic?',
-            'total' => 936,
-            'options' => [
-                ['label' => 'Photo Q&A', 'percent' => 36],
-                ['label' => 'Songwriting stories', 'percent' => 33],
-                ['label' => 'Country meetups', 'percent' => 31],
-            ],
-        ],
-    ];
-
-    $groups = [
-        [
-            'country' => 'Dominican Republic',
-            'members' => '8.4K',
-            'activity' => 'Planning Santo Domingo listening party',
-            'messages' => [
-                ['author' => 'Mia', 'text' => 'Who is going to the first meetup?'],
-                ['author' => 'Luis', 'text' => 'We should pin a date after the next Reny post.'],
-            ],
-        ],
-        [
-            'country' => 'Panama',
-            'members' => '6.9K',
-            'activity' => 'Sharing radio and TV clips',
-            'messages' => [
-                ['author' => 'Ana', 'text' => 'The Mas23 visit belongs in the archive.'],
-                ['author' => 'Rafa', 'text' => 'I can help organize the Panama photo thread.'],
-            ],
-        ],
-        [
-            'country' => 'Colombia',
-            'members' => '4.2K',
-            'activity' => 'Building the Bogota fan map',
-            'messages' => [
-                ['author' => 'Valen', 'text' => 'Bogota group is ready for a watch party.'],
-                ['author' => 'Nico', 'text' => 'Let us split cities into subthreads later.'],
-            ],
-        ],
-        [
-            'country' => 'Mexico',
-            'members' => '5.1K',
-            'activity' => 'Collecting playlist ideas',
-            'messages' => [
-                ['author' => 'Sofi', 'text' => 'Mexico City needs its own drop night.'],
-                ['author' => 'Diego', 'text' => 'I will invite more fans from the dance group.'],
-            ],
-        ],
-    ];
-@endphp
-
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
@@ -93,12 +12,9 @@
         <div class="community-shell">
             <aside class="sidebar" aria-label="Primary navigation">
                 <div>
-                    <a class="brand-link" href="{{ url('/') }}" aria-label="Reny Renteria home">
-                        <img
-                            class="brand-logo"
-                            src="{{ asset('images/reny-renteria-logo.png') }}"
-                            alt="Reny Renteria"
-                        >
+                    <a class="community-brand" href="{{ url('/') }}" aria-label="Reny Renteria home">
+                        <strong>Reny</strong>
+                        <span>Renteria</span>
                     </a>
 
                     <nav class="tabs" aria-label="Main menu">
@@ -108,14 +24,14 @@
                                 <circle cx="7" cy="18" r="3"></circle>
                                 <circle cx="17" cy="16" r="3"></circle>
                             </svg>
-                            <span>MUSIC</span>
+                            <span>Music</span>
                         </a>
                         <a class="tab" href="{{ url('/videos') }}">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                                 <path d="m22 8-6 4 6 4V8Z"></path>
                                 <rect x="2" y="6" width="14" height="12" rx="2"></rect>
                             </svg>
-                            <span>VIDEOS</span>
+                            <span>Videos</span>
                         </a>
                         <a class="tab" href="{{ url('/photos') }}">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
@@ -123,13 +39,13 @@
                                 <circle cx="8.5" cy="8.5" r="1.5"></circle>
                                 <path d="m21 15-5-5L5 21"></path>
                             </svg>
-                            <span>PHOTOS</span>
+                            <span>Photos</span>
                         </a>
                         <a class="tab is-active" href="{{ url('/community') }}" aria-current="page">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                                 <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z"></path>
                             </svg>
-                            <span>COMMUNITY</span>
+                            <span>Community</span>
                         </a>
                         <a class="tab" href="{{ url('/store') }}">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
@@ -138,7 +54,7 @@
                                 <path d="M6 10v9h12v-9"></path>
                                 <path d="M9 19v-5h6v5"></path>
                             </svg>
-                            <span>STORE</span>
+                            <span>Store</span>
                         </a>
                     </nav>
                 </div>
@@ -147,160 +63,281 @@
                     <div class="member-avatar" aria-hidden="true"></div>
                     <div>
                         <strong>Alex Carter</strong>
-                        <span>VIP MEMBER</span>
+                        <span>VIP Member</span>
                     </div>
                 </div>
             </aside>
 
             <main class="main-content community-content" id="community">
-                <header class="mobile-header">
-                    <div class="mobile-brand">
-                        <a class="brand-link" href="{{ url('/') }}" aria-label="Reny Renteria home">
-                            <img
-                                class="brand-logo"
-                                src="{{ asset('images/reny-renteria-logo.png') }}"
-                                alt="Reny Renteria"
-                            >
-                        </a>
+                <header class="mobile-header community-mobile-header">
+                    <a class="community-brand" href="{{ url('/') }}" aria-label="Reny Renteria home">
+                        <strong>Reny</strong>
+                        <span>Renteria</span>
+                    </a>
+                    <div class="direct-posts">
+                        <span>
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M12 3l2.7 5.4 6 .9-4.4 4.2 1 6-5.3-2.8-5.3 2.8 1-6-4.4-4.2 6-.9L12 3Z"></path>
+                            </svg>
+                        </span>
+                        Reny Direct Posts
                     </div>
                 </header>
 
-                <section class="community-section direct-posts" aria-labelledby="direct-posts-title">
-                    <div class="community-section-head">
-                        <div>
-                            <span>Official feed</span>
-                            <h1 id="direct-posts-title">Reny Direct Posts</h1>
+                <div class="community-grid">
+                    <section class="feed-column" aria-label="Official community feed">
+                        <div class="feed-heading">
+                            <div>
+                                <p class="community-eyebrow">Fan-safe &amp; moderated</p>
+                                <h1>Official Feed</h1>
+                            </div>
+                            <div class="direct-posts">
+                                <span>
+                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                        <path d="M12 3l2.7 5.4 6 .9-4.4 4.2 1 6-5.3-2.8-5.3 2.8 1-6-4.4-4.2 6-.9L12 3Z"></path>
+                                    </svg>
+                                </span>
+                                Reny Direct Posts
+                            </div>
                         </div>
-                        <button class="view-all community-toast-trigger" type="button" data-toast="Archive coming soon">VIEW ALL</button>
-                    </div>
 
-                    <div class="direct-post-grid">
-                        @foreach ($directPosts as $post)
-                            <article class="direct-post-card">
-                                <img
-                                    src="{{ asset('images/photos/' . $post['image']) }}"
-                                    alt="{{ $post['title'] }}"
-                                    loading="lazy"
-                                    decoding="async"
-                                >
-                                <div class="direct-post-copy">
-                                    <span>{{ $post['date'] }}</span>
-                                    <h2>{{ $post['title'] }}</h2>
-                                    <p>{{ $post['body'] }}</p>
-                                    <div class="post-actions" aria-label="Post actions">
-                                        <button class="reaction-button" type="button" data-count="{{ $post['reactions'] }}">
-                                            <span class="reaction-count">{{ $post['reactions'] }}</span> likes
-                                        </button>
-                                        <button class="reply-count-button community-toast-trigger" type="button" data-toast="Thread view coming soon">
-                                            {{ $post['replies'] }} replies
-                                        </button>
+                        <article class="post-card">
+                            <div class="post-head">
+                                <div class="post-icon">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                        <path d="M12 2v20"></path>
+                                        <path d="M8 7v5a4 4 0 0 0 8 0V7"></path>
+                                        <path d="M6 12a6 6 0 0 0 12 0"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h2>Studio note from Reny</h2>
+                                    <div class="post-time">Today</div>
+                                </div>
+                            </div>
+
+                            <p class="post-copy">
+                                Finishing the next release window with final vocal edits,
+                                choreography notes, and visuals for the fan club first.
+                            </p>
+
+                            <div class="media-frame">
+                                <img src="https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=1400&q=80" alt="Warm recording studio with microphone and instruments">
+                                <button class="media-cta" type="button">
+                                    View Reny note
+                                    <span aria-hidden="true">→</span>
+                                </button>
+                            </div>
+
+                            <div class="post-actions">
+                                <div class="post-metrics">
+                                    <span class="metric heart">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                                            <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8Z"></path>
+                                        </svg>
+                                        284
+                                    </span>
+                                    <span class="metric">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                                            <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z"></path>
+                                        </svg>
+                                        38 replies
+                                    </span>
+                                </div>
+                                <span class="share">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                        <circle cx="18" cy="5" r="3"></circle>
+                                        <circle cx="6" cy="12" r="3"></circle>
+                                        <circle cx="18" cy="19" r="3"></circle>
+                                        <path d="m8.6 13.5 6.8 4"></path>
+                                        <path d="m15.4 6.5-6.8 4"></path>
+                                    </svg>
+                                </span>
+                            </div>
+                        </article>
+
+                        <section class="vote-card" aria-labelledby="fan-votes-title">
+                            <div class="section-kicker">
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <rect x="4" y="4" width="16" height="16" rx="2"></rect>
+                                    <path d="M8 9h8"></path>
+                                    <path d="M8 13h5"></path>
+                                    <path d="M8 17h8"></path>
+                                </svg>
+                                <span id="fan-votes-title">Fan Votes</span>
+                            </div>
+
+                            <h3>Which drop should go first?</h3>
+
+                            <div class="poll">
+                                <div class="poll-row">
+                                    <div class="poll-label"><span>Studio photos</span><span>42%</span></div>
+                                    <div class="poll-track"><span class="poll-fill" style="width: 42%"></span></div>
+                                </div>
+                                <div class="poll-row">
+                                    <div class="poll-label"><span>Performance stills</span><span>34%</span></div>
+                                    <div class="poll-track"><span class="poll-fill" style="width: 34%"></span></div>
+                                </div>
+                                <div class="poll-row">
+                                    <div class="poll-label"><span>Travel archive</span><span>24%</span></div>
+                                    <div class="poll-track"><span class="poll-fill" style="width: 24%"></span></div>
+                                </div>
+                            </div>
+
+                            <div class="vote-footer">
+                                <span>1248 total votes</span>
+                                <button class="soft-button" type="button">Vote</button>
+                            </div>
+                        </section>
+
+                        <article class="post-card photo-post">
+                            <div class="post-head">
+                                <div class="post-icon">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                        <path d="m4 16 16-4"></path>
+                                        <path d="m4 12 6-1.5"></path>
+                                        <path d="m7 7 3 7 4-11 3 7"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h2>Capri photo drop</h2>
+                                    <div class="post-time">This week</div>
+                                </div>
+                            </div>
+
+                            <p class="post-copy">
+                                A few frames from the travel archive are moving into the Photos tab.
+                                More country-specific drops coming next.
+                            </p>
+
+                            <div class="media-frame">
+                                <img src="https://images.unsplash.com/photo-1533105079780-92b9be482077?auto=format&fit=crop&w=1400&q=80" alt="Capri coastline and turquoise sea">
+                            </div>
+
+                            <div class="post-actions">
+                                <div class="post-metrics">
+                                    <span class="metric heart">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                                            <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8Z"></path>
+                                        </svg>
+                                        319
+                                    </span>
+                                    <span class="metric">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                                            <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z"></path>
+                                        </svg>
+                                        51 replies
+                                    </span>
+                                </div>
+                                <span class="share">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                        <circle cx="18" cy="5" r="3"></circle>
+                                        <circle cx="6" cy="12" r="3"></circle>
+                                        <circle cx="18" cy="19" r="3"></circle>
+                                        <path d="m8.6 13.5 6.8 4"></path>
+                                        <path d="m15.4 6.5-6.8 4"></path>
+                                    </svg>
+                                </span>
+                            </div>
+                        </article>
+                    </section>
+
+                    <aside class="side-column" aria-label="Community sidebar">
+                        <div class="side-head">
+                            <h2>Country Clubs</h2>
+                            <a href="#clubs">View all</a>
+                        </div>
+
+                        <div class="club-list" id="clubs">
+                            <article class="club-card">
+                                <div class="flag" aria-hidden="true">🇩🇴</div>
+                                <div>
+                                    <strong>Dominican Republic</strong>
+                                    <span>8.4K members · Planning Santo Domingo party</span>
+                                </div>
+                            </article>
+                            <article class="club-card">
+                                <div class="flag" aria-hidden="true">🇵🇦</div>
+                                <div>
+                                    <strong>Panama</strong>
+                                    <span>6.9K members · Sharing radio clips</span>
+                                </div>
+                            </article>
+                            <article class="club-card">
+                                <div class="flag" aria-hidden="true">🇨🇴</div>
+                                <div>
+                                    <strong>Colombia</strong>
+                                    <span>4.2K members · Building the Bogota map</span>
+                                </div>
+                            </article>
+                        </div>
+
+                        <div class="club-actions">
+                            <button class="outline-button" type="button">
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M12 5v14"></path>
+                                    <path d="M5 12h14"></path>
+                                </svg>
+                                Create group
+                            </button>
+                            <button class="join-button" type="button">Join group</button>
+                        </div>
+
+                        <div class="chat-wrap">
+                            <section class="chat-card" aria-labelledby="chat-title">
+                                <div class="chat-head">
+                                    <div>
+                                        <h2 id="chat-title">Clubhouse Chat</h2>
+                                        <span class="reply-chip">Kind replies only</span>
+                                    </div>
+                                    <span class="status-dot" aria-label="Live chat"></span>
+                                </div>
+
+                                <div class="chat-thread">
+                                    <div class="message">
+                                        <div class="avatar mia" aria-hidden="true"></div>
+                                        <div class="bubble-wrap">
+                                            <div class="bubble-meta"><strong>Mia</strong> · 3:42 PM</div>
+                                            <div class="bubble">Who is going to the first meetup?</div>
+                                        </div>
+                                    </div>
+                                    <div class="message">
+                                        <div class="avatar luis" aria-hidden="true"></div>
+                                        <div class="bubble-wrap">
+                                            <div class="bubble-meta"><strong>Luis</strong> · 3:45 PM</div>
+                                            <div class="bubble">We should pin a date after the next Reny post.</div>
+                                        </div>
+                                    </div>
+                                    <div class="message self">
+                                        <div class="bubble-wrap">
+                                            <div class="bubble-meta">Just now · <strong>Alex</strong></div>
+                                            <div class="bubble">I'm definitely down! Let's do it.</div>
+                                        </div>
+                                        <div class="avatar alex" aria-hidden="true"></div>
                                     </div>
                                 </div>
-                            </article>
-                        @endforeach
-                    </div>
-                </section>
 
-                <section class="community-section polls-section" aria-labelledby="polls-title">
-                    <div class="community-section-head">
-                        <div>
-                            <span>Fan votes</span>
-                            <h2 id="polls-title">Polls</h2>
-                        </div>
-                        <button class="view-all community-toast-trigger" type="button" data-toast="Poll archive coming soon">VIEW ALL</button>
-                    </div>
+                                <form class="chat-input">
+                                    <label class="sr-only" for="message">Type a message</label>
+                                    <input id="message" type="text" placeholder="Type a message...">
+                                    <button class="send-button" type="button" aria-label="Send message">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                                            <path d="m3 11 18-8-8 18-2-8-8-2Z"></path>
+                                            <path d="m11 13 10-10"></path>
+                                        </svg>
+                                    </button>
+                                </form>
+                            </section>
 
-                    <div class="poll-grid">
-                        @foreach ($polls as $poll)
-                            <article class="poll-card" data-poll>
-                                <div class="poll-card-head">
-                                    <h3>{{ $poll['question'] }}</h3>
-                                    <span>{{ $poll['total'] }} votes</span>
-                                </div>
-                                <div class="poll-options">
-                                    @foreach ($poll['options'] as $option)
-                                        <button
-                                            class="poll-option"
-                                            type="button"
-                                            data-percent="{{ $option['percent'] }}"
-                                        >
-                                            <span class="poll-option-top">
-                                                <span>{{ $option['label'] }}</span>
-                                                <strong>{{ $option['percent'] }}%</strong>
-                                            </span>
-                                            <span class="poll-meter" aria-hidden="true">
-                                                <span style="width: {{ $option['percent'] }}%"></span>
-                                            </span>
-                                        </button>
-                                    @endforeach
-                                </div>
-                            </article>
-                        @endforeach
-                    </div>
-                </section>
-
-                <section class="community-section country-groups-section" aria-labelledby="country-groups-title">
-                    <div class="community-section-head">
-                        <div>
-                            <span>User-created communities</span>
-                            <h2 id="country-groups-title">Country Groups</h2>
-                        </div>
-                        <button class="view-all community-toast-trigger" type="button" data-toast="Country directory coming soon">VIEW ALL COUNTRIES</button>
-                    </div>
-
-                    <div class="country-groups-layout">
-                        <div class="country-groups-list" role="tablist" aria-label="Country groups">
-                            @foreach ($groups as $group)
-                                <button
-                                    class="country-group-tab{{ $loop->first ? ' is-active' : '' }}"
-                                    id="country-tab-{{ $loop->index }}"
-                                    type="button"
-                                    role="tab"
-                                    aria-selected="{{ $loop->first ? 'true' : 'false' }}"
-                                    aria-controls="country-panel"
-                                    tabindex="{{ $loop->first ? '0' : '-1' }}"
-                                    data-country="{{ $group['country'] }}"
-                                    data-members="{{ $group['members'] }}"
-                                    data-activity="{{ $group['activity'] }}"
-                                    data-messages='@json($group['messages'])'
-                                >
-                                    <strong>{{ $group['country'] }}</strong>
-                                    <span>{{ $group['members'] }} members</span>
-                                </button>
-                            @endforeach
-
-                            <button class="create-group-card" id="openCreateGroup" type="button">
-                                <span>+</span>
-                                Create custom country group
+                            <button class="compose-button" type="button" aria-label="Compose post">
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M12 20h9"></path>
+                                    <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
+                                </svg>
                             </button>
                         </div>
-
-                        <article class="country-chat-panel" id="country-panel" role="tabpanel" aria-live="polite">
-                            <div class="country-chat-head">
-                                <div>
-                                    <span id="countryMembers">{{ $groups[0]['members'] }} members</span>
-                                    <h3 id="countryName">{{ $groups[0]['country'] }}</h3>
-                                    <p id="countryActivity">{{ $groups[0]['activity'] }}</p>
-                                </div>
-                            </div>
-
-                            <div class="country-chat-feed" id="countryChatFeed">
-                                @foreach ($groups[0]['messages'] as $message)
-                                    <article class="chat-message">
-                                        <strong>{{ $message['author'] }}</strong>
-                                        <p>{{ $message['text'] }}</p>
-                                    </article>
-                                @endforeach
-                            </div>
-
-                            <form class="country-reply-form" id="countryReplyForm">
-                                <label class="sr-only" for="countryReplyInput">Reply to country group</label>
-                                <input id="countryReplyInput" type="text" placeholder="Reply to this country group" autocomplete="off">
-                                <button type="submit">Send</button>
-                            </form>
-                        </article>
-                    </div>
-                </section>
+                    </aside>
+                </div>
 
                 <nav class="mobile-bottom-nav" aria-label="Mobile menu">
                     <a href="{{ url('/') }}">
@@ -344,29 +381,5 @@
                 </nav>
             </main>
         </div>
-
-        <div class="create-group-modal" id="createGroupModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="createGroupTitle">
-            <div class="create-group-dialog">
-                <div class="create-group-head">
-                    <div>
-                        <span>Country group</span>
-                        <h2 id="createGroupTitle">Create group</h2>
-                    </div>
-                    <button class="create-group-close" id="closeCreateGroup" type="button" aria-label="Close create group">Close</button>
-                </div>
-
-                <form class="create-group-form" id="createGroupForm">
-                    <label for="createCountryName">Country</label>
-                    <input id="createCountryName" name="country" type="text" placeholder="Puerto Rico" autocomplete="off" required>
-
-                    <label for="createCountryActivity">Group topic</label>
-                    <input id="createCountryActivity" name="activity" type="text" placeholder="Planning the next listening party" autocomplete="off" required>
-
-                    <button type="submit">Create group</button>
-                </form>
-            </div>
-        </div>
-
-        <div class="community-toast" id="communityToast" role="status" aria-live="polite"></div>
     </body>
 </html>
