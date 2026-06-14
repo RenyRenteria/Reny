@@ -19,8 +19,10 @@ class StorePageTest extends TestCase
         $response->assertSee('Panama City');
         $response->assertSee('Buy ticket');
         $response->assertSee('RSVP');
+        $response->assertSee('class="music-shell store-shell"', false);
         $response->assertSee('class="tab is-active"', false);
         $response->assertSee('href="' . url('/store') . '"', false);
+        $response->assertSee('images/photos/concert-poster.png');
 
         $html = $response->getContent();
 

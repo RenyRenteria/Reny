@@ -2650,8 +2650,8 @@ body.has-modal-open {
     --store-surface: #fffaf3;
     --store-wine: #421216;
     font-family: "DM Sans", var(--font-sans);
-    font-weight: 300;
-    padding-top: 2rem;
+    font-weight: 500;
+    padding-top: 3rem;
 }
 
 .store-topline {
@@ -2713,10 +2713,19 @@ body.has-modal-open {
 }
 
 .store-hero {
-    min-height: 28rem;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(17rem, 25rem);
+    align-items: stretch;
+    min-height: 25.5rem;
+    padding: clamp(1.5rem, 3vw, 2.5rem);
+    background:
+        linear-gradient(135deg, rgba(16, 15, 13, 0.98), rgba(66, 18, 22, 0.92)),
+        var(--store-black);
+    gap: clamp(1.25rem, 3vw, 2.5rem);
 }
 
 .store-hero img,
+.store-hero-poster img,
 .store-feature-image img,
 .store-product-visual img,
 .store-event-card img,
@@ -2727,13 +2736,21 @@ body.has-modal-open {
     object-fit: cover;
 }
 
-.store-hero > img {
-    position: absolute;
-    inset: 0;
-    opacity: 0.78;
+.store-hero-poster img {
+    border-radius: inherit;
 }
 
-.store-hero::after,
+.store-hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(115deg, transparent 0 46%, rgba(255, 255, 255, 0.08) 46% 47%, transparent 47%),
+        repeating-linear-gradient(172deg, rgba(255, 255, 255, 0.05) 0 1px, transparent 1px 12px);
+    opacity: 0.34;
+    pointer-events: none;
+}
+
 .store-event-card::after {
     content: "";
     position: absolute;
@@ -2743,13 +2760,30 @@ body.has-modal-open {
 }
 
 .store-hero-copy {
-    position: absolute;
-    right: 0;
-    bottom: 0;
-    left: 0;
+    position: relative;
     z-index: 1;
-    max-width: 40rem;
-    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: end;
+    max-width: 35rem;
+    min-width: 0;
+    padding: 0.25rem 0 0.25rem;
+}
+
+.store-hero-poster {
+    position: relative;
+    z-index: 1;
+    align-self: center;
+    width: 100%;
+    min-height: 17.5rem;
+    max-height: 21rem;
+    aspect-ratio: 17 / 12;
+    margin: 0;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 0.5rem;
+    background: #221612;
+    box-shadow: 0 1.25rem 2.75rem rgba(0, 0, 0, 0.26);
 }
 
 .store-hero-copy span,
@@ -2774,14 +2808,15 @@ body.has-modal-open {
 }
 
 .store-hero h1 {
-    font-size: 4rem;
+    max-width: 31rem;
+    font-size: clamp(3rem, 5.4vw, 5.5rem);
 }
 
 .store-hero p {
     margin: 0.875rem 0 0;
     color: rgba(255, 255, 255, 0.78);
     font-size: 1rem;
-    font-weight: 300;
+    font-weight: 500;
 }
 
 .store-hero-actions,
@@ -2908,7 +2943,7 @@ body.has-modal-open {
 .store-product-button {
     display: grid;
     width: 100%;
-    min-height: 26rem;
+    min-height: 24rem;
     padding: 0;
     overflow: hidden;
     border: 1px solid rgba(153, 115, 50, 0.18);
@@ -2921,7 +2956,8 @@ body.has-modal-open {
 
 .store-product-visual {
     display: block;
-    min-height: 20rem;
+    aspect-ratio: 4 / 5;
+    min-height: 0;
     overflow: hidden;
 }
 
@@ -2972,7 +3008,7 @@ body.has-modal-open {
 
 .store-event-card {
     position: relative;
-    min-height: 27rem;
+    min-height: 24rem;
     overflow: hidden;
     border-radius: 0.5rem;
     background: var(--store-black);
@@ -2983,6 +3019,10 @@ body.has-modal-open {
 .store-event-card img {
     position: absolute;
     inset: 0;
+}
+
+.store-event-card:first-child {
+    min-height: 27rem;
 }
 
 .store-event-copy {
@@ -3267,15 +3307,22 @@ body.has-modal-open {
     }
 
     .store-hero {
-        min-height: 33rem;
-    }
-
-    .store-hero-copy {
+        grid-template-columns: 1fr;
+        min-height: auto;
         padding: 1.25rem;
     }
 
+    .store-hero-copy {
+        padding: 0;
+    }
+
     .store-hero h1 {
-        font-size: 3rem;
+        font-size: clamp(2.75rem, 12vw, 4rem);
+    }
+
+    .store-hero-poster {
+        min-height: 13.5rem;
+        max-height: none;
     }
 
     .store-feature {
@@ -3307,11 +3354,11 @@ body.has-modal-open {
 
 @media (max-width: 38rem) {
     .store-hero {
-        min-height: 29rem;
+        gap: 1rem;
     }
 
     .store-hero h1 {
-        font-size: 2.35rem;
+        font-size: 2.5rem;
     }
 
     .store-hero-actions,
@@ -3347,11 +3394,11 @@ body.has-modal-open {
     }
 
     .store-product-button {
-        min-height: 24rem;
+        min-height: auto;
     }
 
     .store-product-visual {
-        min-height: 18rem;
+        aspect-ratio: 1;
     }
 
     .store-event-card {

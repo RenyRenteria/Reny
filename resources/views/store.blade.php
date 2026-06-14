@@ -89,7 +89,7 @@
             'date' => 'Aug 24, 2026',
             'place' => 'Panama City',
             'price' => 42,
-            'image' => 'performance.jpg',
+            'image' => 'concert-poster.png',
             'action' => 'Buy ticket',
             'mode' => 'buy',
         ],
@@ -128,11 +128,11 @@
 
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;500&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body>
-        <div class="store-shell">
+        <div class="music-shell store-shell">
             <aside class="sidebar" aria-label="Primary navigation">
                 <div>
                     <a class="brand-link" href="{{ url('/') }}" aria-label="Reny Renteria home">
@@ -218,7 +218,6 @@
                 </div>
 
                 <section class="store-hero" aria-labelledby="store-hero-title">
-                    <img src="{{ asset('images/photos/performance.jpg') }}" alt="Reny concert performance poster">
                     <div class="store-hero-copy">
                         <span>Upcoming concert</span>
                         <h1 id="store-hero-title">Reny Live - Studio Night</h1>
@@ -228,6 +227,9 @@
                             <button class="store-button store-button-light" type="button" data-buy="concert">Buy ticket</button>
                         </div>
                     </div>
+                    <figure class="store-hero-poster">
+                        <img src="{{ asset('images/photos/concert-poster.png') }}" alt="Reny Live - Studio Night concert poster">
+                    </figure>
                 </section>
 
                 <section class="store-feature" aria-labelledby="drop-title">
