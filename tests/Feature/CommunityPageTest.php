@@ -16,9 +16,9 @@ class CommunityPageTest extends TestCase
         $response->assertSee('Fan Votes');
         $response->assertSee('Country Clubs');
         $response->assertSee('Clubhouse Chat');
-        $response->assertSee('Create group');
+        $response->assertSee('Get your Royal Pass');
         $response->assertSee('class="tab is-active"', false);
-        $response->assertSee('href="' . url('/community') . '"', false);
+        $response->assertSee('href="'.url('/community').'"', false);
         $response->assertSee('images/reny-renteria-logo.png');
 
         $html = $response->getContent();
@@ -29,6 +29,8 @@ class CommunityPageTest extends TestCase
         $this->assertSame(2, substr_count($html, 'class="post-card'));
         $this->assertSame(1, substr_count($html, 'class="vote-card"'));
         $this->assertSame(3, substr_count($html, 'class="club-card"'));
+        $this->assertStringNotContainsString('Create group', $html);
+        $this->assertStringNotContainsString('Who is going to the first meetup?', $html);
         $this->assertStringNotContainsString('Reny Direct Posts</h1>', $html);
         $this->assertStringNotContainsString('Country Groups', $html);
         $this->assertStringNotContainsString('class="direct-post-card"', $html);
@@ -45,7 +47,7 @@ class CommunityPageTest extends TestCase
         foreach (['/', '/videos', '/photos'] as $path) {
             $this->get($path)
                 ->assertOk()
-                ->assertSee('href="' . url('/community') . '"', false)
+                ->assertSee('href="'.url('/community').'"', false)
                 ->assertDontSee('href="#community"', false);
         }
     }
