@@ -19,14 +19,17 @@ class StorePageTest extends TestCase
         $response->assertSee('Panama City');
         $response->assertSee('Buy ticket');
         $response->assertSee('RSVP');
+        $response->assertSee('reny-store-concert-poster.png');
         $response->assertSee('class="tab is-active"', false);
         $response->assertSee('href="' . url('/store') . '"', false);
 
         $html = $response->getContent();
 
-        $this->assertSame(6, substr_count($html, 'class="store-product-card"'));
+        $this->assertSame(5, substr_count($html, 'class="store-product-card"'));
         $this->assertSame(3, substr_count($html, 'class="store-event-card"'));
         $this->assertLessThan(strpos($html, 'Events'), strpos($html, "Royal's Exclusives"));
+        $this->assertStringNotContainsString('Crown Jacket', $html);
+        $this->assertStringNotContainsString('data-buy="crown"', $html);
         $this->assertStringNotContainsString('Objects', $html);
         $this->assertStringNotContainsString('Crown Collection', $html);
         $this->assertStringNotContainsString('Fast Checkout', $html);
