@@ -6,23 +6,31 @@ use Tests\TestCase;
 
 class CommunityPageTest extends TestCase
 {
-    public function test_community_page_mounts_clean_country_groups_experience(): void
+    public function test_community_page_mounts_approved_mockup_experience(): void
     {
         $response = $this->get('/community');
 
         $response->assertOk();
+        $response->assertSee('Official Feed');
         $response->assertSee('Reny Direct Posts');
-        $response->assertSee('Polls');
-        $response->assertSee('Country Groups');
-        $response->assertSee('Create custom country group');
+        $response->assertSee('Fan Votes');
+        $response->assertSee('Country Clubs');
+        $response->assertSee('Clubhouse Chat');
+        $response->assertSee('Create group');
         $response->assertSee('class="tab is-active"', false);
         $response->assertSee('href="' . url('/community') . '"', false);
 
         $html = $response->getContent();
 
-        $this->assertSame(2, substr_count($html, 'class="direct-post-card"'));
-        $this->assertSame(2, substr_count($html, 'class="poll-card"'));
-        $this->assertSame(4, substr_count($html, 'class="country-group-tab'));
+        $this->assertSame(1, substr_count($html, 'class="community-grid"'));
+        $this->assertSame(1, substr_count($html, 'class="side-column"'));
+        $this->assertSame(2, substr_count($html, 'class="post-card'));
+        $this->assertSame(1, substr_count($html, 'class="vote-card"'));
+        $this->assertSame(3, substr_count($html, 'class="club-card"'));
+        $this->assertStringNotContainsString('Reny Direct Posts</h1>', $html);
+        $this->assertStringNotContainsString('Country Groups', $html);
+        $this->assertStringNotContainsString('class="direct-post-card"', $html);
+        $this->assertStringNotContainsString('class="poll-card"', $html);
         $this->assertStringNotContainsString('Main feed is Reny-only', $html);
         $this->assertStringNotContainsString('Users cannot publish directly here', $html);
         $this->assertStringNotContainsString('<iframe', $html);
