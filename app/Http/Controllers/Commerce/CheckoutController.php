@@ -21,7 +21,7 @@ class CheckoutController extends Controller
     private array $prices = [
         'deluxe' => 2400,
         'singles' => 800,
-        'royal' => 1900,
+        'royal' => 499,
         'merch' => 4800,
         'print' => 8600,
         'concert' => 4200,

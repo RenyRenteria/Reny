@@ -420,7 +420,7 @@ if (storeShell) {
     const prices = {
         deluxe: 24,
         singles: 8,
-        royal: 19,
+        royal: 4.99,
         merch: 48,
         print: 86,
         concert: 42,
@@ -491,9 +491,11 @@ if (storeShell) {
     const money = (value, suffix = '') => {
         const current = currencies[currency];
         const converted = value * current.rate;
+        const hasFractionalAmount = Math.abs(converted - Math.round(converted)) > Number.EPSILON;
+        const decimals = hasFractionalAmount ? Math.max(current.decimals, 2) : current.decimals;
         const amount = converted.toLocaleString('en-US', {
-            maximumFractionDigits: current.decimals,
-            minimumFractionDigits: current.decimals,
+            maximumFractionDigits: decimals,
+            minimumFractionDigits: decimals,
         });
 
         return `${current.symbol}${amount}${suffix}`;
