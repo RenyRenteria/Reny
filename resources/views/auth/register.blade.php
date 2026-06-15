@@ -26,16 +26,50 @@
 
                     <label>
                         <span>Name</span>
-                        <input name="name" type="text" value="{{ old('name') }}" autocomplete="name">
+                        <input name="name" type="text" value="{{ old('name') }}" autocomplete="name" required>
                         @error('name')
                             <small>{{ $message }}</small>
                         @enderror
                     </label>
 
                     <label>
+                        <span>Public username</span>
+                        <input name="username" type="text" value="{{ old('username') }}" autocomplete="username" inputmode="latin" placeholder="renyfan" required>
+                        @error('username')
+                            <small>{{ $message }}</small>
+                        @enderror
+                    </label>
+
+                    <label>
                         <span>Email or phone</span>
-                        <input name="identifier" type="text" value="{{ old('identifier') }}" autocomplete="username" required>
+                        <input name="identifier" type="text" value="{{ old('identifier') }}" autocomplete="email" required>
                         @error('identifier')
+                            <small>{{ $message }}</small>
+                        @enderror
+                    </label>
+
+                    <label>
+                        <span>Country</span>
+                        <select name="country_code" autocomplete="country" required>
+                            <option value="" @selected(old('country_code') === null)>Select country</option>
+                            @foreach ([
+                                'PA' => 'Panama',
+                                'DO' => 'Dominican Republic',
+                                'US' => 'United States',
+                                'PR' => 'Puerto Rico',
+                                'MX' => 'Mexico',
+                                'CO' => 'Colombia',
+                                'ES' => 'Spain',
+                                'AR' => 'Argentina',
+                                'CL' => 'Chile',
+                                'PE' => 'Peru',
+                                'EC' => 'Ecuador',
+                                'CR' => 'Costa Rica',
+                            ] as $code => $country)
+                                <option value="{{ $code }}" @selected(old('country_code') === $code)>{{ $country }}</option>
+                            @endforeach
+                        </select>
+                        @error('country_code')
                             <small>{{ $message }}</small>
                         @enderror
                     </label>
