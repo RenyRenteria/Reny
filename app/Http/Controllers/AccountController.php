@@ -2,27 +2,23 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\PointLedgerEntry;
+use App\Services\PointLedgerService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class AccountController extends Controller
 {
-    public function show(Request $request): View
+    public function show(Request $request, PointLedgerService $points): View
     {
         $user = $request->user()->load('billingProfile');
-        $pointBalance = (int) $user->pointLedgerEntries()
-            ->where('status', 'posted')
-            ->sum('delta');
 
         return view('account.show', [
             'accessState' => $user->accessState()->value,
             'billingProfile' => $user->billingProfile,
             'initials' => $this->initials($user->name),
-            'leaderboard' => $this->leaderboard(),
-            'pointBalance' => $pointBalance,
+            'leaderboard' => $points->leaderboard(5),
+            'pointBalance' => $points->balance($user),
             'recentOrders' => $user->orders()->latest()->take(4)->get(),
             'unlocks' => $user->unlocks()->available()->latest('unlocked_at')->take(4)->get(),
             'upcomingTickets' => $user->tickets()
@@ -46,21 +42,5 @@ class AccountController extends Controller
             ->map(fn (string $part) => Str::of($part)->substr(0, 1)->upper())
             ->take(2)
             ->implode('');
-    }
-
-    /**
-     * @return Collection<int, PointLedgerEntry>
-     */
-    private function leaderboard(): Collection
-    {
-        return PointLedgerEntry::query()
-            ->select('user_id')
-            ->selectRaw('SUM(delta) as points')
-            ->where('status', 'posted')
-            ->with('user:id,name,username')
-            ->groupBy('user_id')
-            ->orderByDesc('points')
-            ->take(5)
-            ->get();
     }
 }
