@@ -8,6 +8,7 @@ use App\Http\Controllers\Commerce\CheckoutController;
 use App\Http\Controllers\Commerce\PaypalWebhookController;
 use App\Http\Controllers\PointsController;
 use App\Http\Controllers\Royal\PremiumContentController;
+use App\Http\Controllers\TicketCheckInController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -42,6 +43,7 @@ Route::middleware('guest')->group(function () {
 Route::middleware('auth')->group(function () {
     Route::get('/account', [AccountController::class, 'show'])->name('account.show');
     Route::get('/points', [PointsController::class, 'index'])->name('points.index');
+    Route::post('/tickets/check-in', [TicketCheckInController::class, 'store'])->name('tickets.check-in');
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
 
     Route::get('/royal/content/{resource}', [PremiumContentController::class, 'show'])
