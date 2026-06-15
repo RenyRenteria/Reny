@@ -5,21 +5,61 @@ namespace App\Services;
 use Illuminate\Http\Client\Response;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\ValidationException;
 
 class PayPalService
 {
     /**
-     * @return array{order_id: string, capture_id: string|null, payload: array<string, mixed>}
+     * @return array{order_id: string, payload: array<string, mixed>}
+     */
+    public function createOrder(int $expectedAmountCents, string $currency): array
+    {
+        $response = $this->paypal()
+            ->withToken($this->accessToken())
+            ->withHeaders(['PayPal-Request-Id' => 'create-'.Str::uuid()])
+            ->post($this->url('/v2/checkout/orders'), [
+                'intent' => 'CAPTURE',
+                'purchase_units' => [
+                    [
+                        'amount' => [
+                            'currency_code' => strtoupper($currency),
+                            'value' => $this->centsToDecimal($expectedAmountCents),
+                        ],
+                    ],
+                ],
+            ]);
+
+        $this->ensureOk($response, 'PayPal order creation failed.');
+
+        $payload = $response->json();
+
+        if (! is_array($payload) || blank(Arr::get($payload, 'id'))) {
+            throw ValidationException::withMessages([
+                'paypal' => 'PayPal did not return an order id.',
+            ]);
+        }
+
+        return [
+            'order_id' => (string) Arr::get($payload, 'id'),
+            'payload' => $payload,
+        ];
+    }
+
+    /**
+     * @return array{order_id: string, capture_id: string|null, payer_id: string|null, payload: array<string, mixed>}
      */
     public function captureOrder(string $paypalOrderId, int $expectedAmountCents, string $currency): array
     {
-        $payload = $this->paypal()
+        $response = $this->paypal()
             ->withToken($this->accessToken())
             ->withHeaders(['PayPal-Request-Id' => "capture-{$paypalOrderId}"])
-            ->post($this->url("/v2/checkout/orders/{$paypalOrderId}/capture"))
-            ->json();
+            ->post($this->url("/v2/checkout/orders/{$paypalOrderId}/capture"));
+
+        $this->ensureOk($response, 'PayPal capture failed.');
+
+        $payload = $response->json();
 
         if (! is_array($payload) || Arr::get($payload, 'status') !== 'COMPLETED') {
             throw ValidationException::withMessages([
@@ -49,6 +89,7 @@ class PayPalService
         return [
             'order_id' => (string) Arr::get($payload, 'id', $paypalOrderId),
             'capture_id' => $completedCaptures->pluck('id')->filter()->first(),
+            'payer_id' => Arr::get($payload, 'payer.payer_id'),
             'payload' => $payload,
         ];
     }
@@ -131,5 +172,10 @@ class PayPalService
     private function decimalToCents(string $value): int
     {
         return (int) round(((float) $value) * 100);
+    }
+
+    private function centsToDecimal(int $value): string
+    {
+        return number_format($value / 100, 2, '.', '');
     }
 }

@@ -48,7 +48,7 @@ class RoyalPassCheckoutTest extends TestCase
         $this->assertDatabaseHas('orders', [
             'user_id' => $user->id,
             'provider' => 'paypal',
-            'provider_order_id' => 'PAYPAL-ORDER-100-merch',
+            'provider_order_id' => 'PAYPAL-ORDER-100-1-merch',
             'product_key' => 'merch',
             'grants_royal_month' => true,
         ]);
@@ -63,14 +63,28 @@ class RoyalPassCheckoutTest extends TestCase
         $this->assertDatabaseHas('access_events', [
             'user_id' => $user->id,
             'event_name' => 'purchase',
-            'resource_key' => 'PAYPAL-ORDER-100-merch',
+            'resource_key' => 'PAYPAL-ORDER-100-1-merch',
         ]);
 
         $this->assertDatabaseHas('access_events', [
             'user_id' => $user->id,
             'event_name' => 'membership_started',
-            'resource_key' => 'PAYPAL-ORDER-100-merch',
+            'resource_key' => 'PAYPAL-ORDER-100-1-merch',
         ]);
+    }
+
+    public function test_checkout_creates_paypal_order_before_capture(): void
+    {
+        $this->fakeCreatedOrder('PAYPAL-CREATED-100');
+
+        $this->postJson('/checkout/paypal/orders', [
+            'identifier' => 'fan@renyrenteria.com',
+            'product_keys' => ['deluxe', 'singles'],
+            'currency' => 'USD',
+        ])
+            ->assertOk()
+            ->assertJsonPath('status', 'created')
+            ->assertJsonPath('paypal_order_id', 'PAYPAL-CREATED-100');
     }
 
     public function test_digital_checkout_creates_library_unlock_visible_in_account(): void
@@ -134,6 +148,34 @@ class RoyalPassCheckoutTest extends TestCase
             ->assertSee('Reny Live - Studio Night');
     }
 
+    public function test_duplicate_products_in_one_paypal_order_get_unique_provider_order_ids(): void
+    {
+        $this->fakeSuccessfulCapture('PAYPAL-DUPLICATE-500', '96.00');
+
+        $response = $this->postJson('/checkout/paypal', [
+            'identifier' => 'duplicate@renyrenteria.com',
+            'product_keys' => ['merch', 'merch'],
+            'currency' => 'USD',
+            'paypal_order_id' => 'PAYPAL-DUPLICATE-500',
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('order_ids.0', 'PAYPAL-DUPLICATE-500-1-merch')
+            ->assertJsonPath('order_ids.1', 'PAYPAL-DUPLICATE-500-2-merch');
+
+        $user = User::where('email', 'duplicate@renyrenteria.com')->firstOrFail();
+
+        $this->assertDatabaseHas('orders', [
+            'user_id' => $user->id,
+            'provider_order_id' => 'PAYPAL-DUPLICATE-500-1-merch',
+        ]);
+        $this->assertDatabaseHas('orders', [
+            'user_id' => $user->id,
+            'provider_order_id' => 'PAYPAL-DUPLICATE-500-2-merch',
+        ]);
+    }
+
     public function test_checkout_requires_paypal_order_capture(): void
     {
         $this->postJson('/checkout/paypal', [
@@ -181,7 +223,7 @@ class RoyalPassCheckoutTest extends TestCase
         $order = Order::create([
             'user_id' => $user->id,
             'provider' => 'paypal',
-            'provider_order_id' => 'PAYPAL-REFUND-200-merch',
+            'provider_order_id' => 'PAYPAL-REFUND-200-1-merch',
             'product_key' => 'merch',
             'amount_cents' => 4800,
             'currency' => 'USD',
@@ -213,7 +255,7 @@ class RoyalPassCheckoutTest extends TestCase
         $this->assertDatabaseHas('access_events', [
             'user_id' => $user->id,
             'event_name' => 'membership_expired',
-            'resource_key' => 'PAYPAL-REFUND-200-merch',
+            'resource_key' => 'PAYPAL-REFUND-200-1-merch',
         ]);
     }
 
@@ -320,8 +362,22 @@ class RoyalPassCheckoutTest extends TestCase
         $this->get('/store')
             ->assertOk()
             ->assertSee('Every completed purchase activates Royal Pass for 1 month')
-            ->assertSee('Complete with PayPal')
+            ->assertSee('Load PayPal checkout')
+            ->assertSee(route('checkout.paypal.orders'))
             ->assertSee(route('checkout.paypal'));
+    }
+
+    private function fakeCreatedOrder(string $orderId): void
+    {
+        Http::fake([
+            'https://paypal.test/v1/oauth2/token' => Http::response([
+                'access_token' => 'paypal-token',
+            ], 200),
+            'https://paypal.test/v2/checkout/orders' => Http::response([
+                'id' => $orderId,
+                'status' => 'CREATED',
+            ], 201),
+        ]);
     }
 
     private function fakeSuccessfulCapture(string $orderId, string $amount): void
@@ -333,6 +389,9 @@ class RoyalPassCheckoutTest extends TestCase
             "https://paypal.test/v2/checkout/orders/{$orderId}/capture" => Http::response([
                 'id' => $orderId,
                 'status' => 'COMPLETED',
+                'payer' => [
+                    'payer_id' => 'PAYER-100',
+                ],
                 'purchase_units' => [
                     [
                         'payments' => [

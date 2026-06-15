@@ -3889,7 +3889,12 @@ body.has-modal-open {
     background: var(--accent-soft);
 }
 
-.store-payments + .store-button {
+.store-paypal-buttons {
+    min-height: 3.25rem;
+    margin-top: 1rem;
+}
+
+#completePurchase {
     width: 100%;
     margin-top: 1rem;
     background: var(--ink);

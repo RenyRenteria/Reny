@@ -445,8 +445,12 @@ if (storeShell) {
     const bagCount = document.getElementById('bagCount');
     const bagList = document.getElementById('bagList');
     const bagTotal = document.getElementById('bagTotal');
+    const paypalButtons = document.getElementById('paypalButtons');
+    const paypalStatus = document.getElementById('paypalStatus');
     const tierLabel = document.getElementById('tierLabel');
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    let paypalButtonsRendered = false;
+    let paypalSdkPromise = null;
 
     document.querySelectorAll('[data-detail]').forEach((button) => {
         products[button.dataset.detail] = {
@@ -506,6 +510,153 @@ if (storeShell) {
         showStoreToast.timeout = window.setTimeout(() => {
             storeToast.classList.remove('is-visible');
         }, 2200);
+    };
+
+    const setPayPalStatus = (message) => {
+        if (paypalStatus) {
+            paypalStatus.textContent = message;
+        }
+    };
+
+    const checkoutError = (message) => Object.assign(new Error(message), { userMessage: message });
+
+    const checkoutPayload = () => {
+        if (!bag.length) {
+            throw checkoutError('Add a product first.');
+        }
+
+        const identifier = document.getElementById('emailField')?.value?.trim();
+
+        if (!identifier) {
+            throw checkoutError('Add email or phone.');
+        }
+
+        return {
+            identifier,
+            product_keys: [...bag],
+            currency: currency.toUpperCase(),
+        };
+    };
+
+    const postCheckoutJson = async (url, body) => {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+            },
+            body: JSON.stringify(body),
+        });
+        const payload = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            const validationMessage = Object.values(payload.errors || {})[0]?.[0];
+
+            throw checkoutError(validationMessage || payload.message || 'Checkout failed.');
+        }
+
+        return payload;
+    };
+
+    const loadPayPalSdk = (clientId) => {
+        if (window.paypal?.Buttons) {
+            return Promise.resolve(window.paypal);
+        }
+
+        if (paypalSdkPromise) {
+            return paypalSdkPromise;
+        }
+
+        paypalSdkPromise = new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.id = 'paypal-sdk';
+            script.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&currency=${encodeURIComponent(currency.toUpperCase())}&intent=capture`;
+            script.async = true;
+            script.onload = () => {
+                if (window.paypal?.Buttons) {
+                    resolve(window.paypal);
+                    return;
+                }
+
+                reject(checkoutError('PayPal checkout could not load.'));
+            };
+            script.onerror = () => reject(checkoutError('PayPal checkout could not load.'));
+            document.head.append(script);
+        });
+
+        return paypalSdkPromise;
+    };
+
+    const completeApprovedCheckout = (payload) => {
+        if (tierLabel && payload.royal_status === 'royal_active') {
+            tierLabel.textContent = 'ROYAL MEMBER';
+        }
+
+        bag = [];
+        renderBag();
+        closeStoreLayer('bagLayer');
+        showStoreToast('PayPal confirmed. Hub updated.');
+
+        if (payload.account_url) {
+            window.location.assign(payload.account_url);
+        }
+    };
+
+    const renderPayPalButtons = async () => {
+        if (!paypalButtons || paypalButtonsRendered) {
+            setPayPalStatus('Use the PayPal button to approve payment.');
+            return;
+        }
+
+        const clientId = paypalButtons.dataset.paypalClientId;
+
+        if (!clientId) {
+            throw checkoutError('PayPal is not configured.');
+        }
+
+        setPayPalStatus('Loading PayPal checkout...');
+        const paypal = await loadPayPalSdk(clientId);
+        paypalButtons.replaceChildren();
+
+        await paypal.Buttons({
+            style: {
+                layout: 'vertical',
+                color: 'gold',
+                shape: 'rect',
+                label: 'paypal',
+            },
+            createOrder: async () => {
+                const payload = checkoutPayload();
+                setPayPalStatus('Creating PayPal order...');
+                const order = await postCheckoutJson(paypalButtons.dataset.createOrderEndpoint, payload);
+                setPayPalStatus('Approve payment in PayPal.');
+
+                return order.paypal_order_id;
+            },
+            onApprove: async (data) => {
+                const payload = checkoutPayload();
+                setPayPalStatus('Capturing approved PayPal payment...');
+                const capture = await postCheckoutJson(paypalButtons.dataset.captureEndpoint, {
+                    ...payload,
+                    paypal_order_id: data.orderID,
+                });
+
+                completeApprovedCheckout(capture);
+            },
+            onCancel: () => {
+                setPayPalStatus('PayPal checkout canceled. No purchase was recorded.');
+                showStoreToast('PayPal checkout canceled.');
+            },
+            onError: (error) => {
+                console.error(error);
+                setPayPalStatus(error.userMessage || 'PayPal checkout failed. No purchase was recorded.');
+                showStoreToast(error.userMessage || 'PayPal checkout failed.');
+            },
+        }).render(paypalButtons);
+
+        paypalButtonsRendered = true;
+        setPayPalStatus('Use the PayPal button to approve payment.');
     };
 
     const updateStorePrices = () => {
@@ -733,56 +884,20 @@ if (storeShell) {
     });
 
     document.getElementById('completePurchase')?.addEventListener('click', async (event) => {
-        if (!bag.length) {
-            showStoreToast('Add a product first.');
-            return;
-        }
-
         const button = event.currentTarget;
-        const identifier = document.getElementById('emailField')?.value?.trim();
-
-        if (!identifier) {
-            showStoreToast('Add email or phone.');
-            return;
-        }
-
         button.disabled = true;
-        button.textContent = 'Processing...';
+        button.textContent = 'Loading PayPal...';
 
         try {
-            const response = await fetch(button.dataset.checkoutEndpoint, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
-                },
-                body: JSON.stringify({
-                    identifier,
-                    product_keys: bag,
-                    currency,
-                }),
-            });
-
-            if (!response.ok) {
-                throw new Error('Checkout failed');
-            }
-
-            const payload = await response.json();
-
-            if (tierLabel && payload.royal_status === 'royal_active') {
-                tierLabel.textContent = 'ROYAL MEMBER';
-            }
-
-            bag = [];
-            renderBag();
-            closeStoreLayer('bagLayer');
-            showStoreToast('Royal Pass activated for 1 month.');
+            checkoutPayload();
+            await renderPayPalButtons();
+            showStoreToast('Use PayPal to approve payment.');
         } catch (error) {
-            showStoreToast('Checkout failed. Try again.');
+            setPayPalStatus(error.userMessage || 'PayPal checkout is unavailable.');
+            showStoreToast(error.userMessage || 'PayPal checkout is unavailable.');
         } finally {
             button.disabled = false;
-            button.textContent = 'Complete with PayPal';
+            button.textContent = 'Load PayPal checkout';
         }
     });
 
