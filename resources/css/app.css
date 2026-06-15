@@ -29,8 +29,17 @@
     box-shadow: var(--shadow);
 }
 
+.auth-panel .brand-link {
+    display: block;
+    width: fit-content;
+}
+
 .auth-panel .brand-logo {
     width: 10rem;
+}
+
+.auth-panel .brand-link-centered {
+    margin-inline: auto;
 }
 
 .auth-kicker {

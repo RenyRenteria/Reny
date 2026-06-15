@@ -41,14 +41,16 @@ class RegisteredUserController extends Controller
                 ->onlyInput('identifier', 'name');
         }
 
-        if ($phone !== '' && User::where('phone', $phone)->exists()) {
+        if ($phone && User::where('phone', $phone)->exists()) {
             return back()
                 ->withErrors(['identifier' => 'This phone number is already registered.'])
                 ->onlyInput('identifier', 'name');
         }
 
+        $name = trim((string) ($validated['name'] ?? ''));
+
         $user = User::create([
-            'name' => $validated['name'] ?: 'Royal Member',
+            'name' => $name !== '' ? $name : 'Royal Member',
             'email' => $email ?: "phone-{$phone}@renyrenteria.local",
             'phone' => $phone ?: null,
             'password' => $validated['password'],
