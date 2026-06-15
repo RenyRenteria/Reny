@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Services\PayPalService;
 use App\Services\RoyalPassService;
+use App\Services\UserHubPurchaseSync;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -26,8 +27,12 @@ class CheckoutController extends Controller
         'listening' => 1800,
     ];
 
-    public function store(Request $request, RoyalPassService $royalPass, PayPalService $payPal): JsonResponse
-    {
+    public function store(
+        Request $request,
+        RoyalPassService $royalPass,
+        PayPalService $payPal,
+        UserHubPurchaseSync $purchaseSync,
+    ): JsonResponse {
         $validated = $request->validate([
             'identifier' => ['required', 'string', 'max:255'],
             'product_keys' => ['required', 'array', 'min:1'],
@@ -44,7 +49,7 @@ class CheckoutController extends Controller
         $user = Auth::user() ?: $royalPass->findOrCreateCustomer($validated['identifier']);
         Auth::login($user);
 
-        $orders = collect($validated['product_keys'])->map(function (string $productKey) use ($currency, $capture, $user, $royalPass) {
+        $orders = collect($validated['product_keys'])->map(function (string $productKey) use ($currency, $capture, $purchaseSync, $user, $royalPass) {
             $order = Order::create([
                 'user_id' => $user->id,
                 'provider' => 'paypal',
@@ -63,6 +68,7 @@ class CheckoutController extends Controller
             ]);
 
             $royalPass->grantMonth($user, $order);
+            $purchaseSync->recordCompletedOrder($user, $order, $capture);
 
             return $order;
         });

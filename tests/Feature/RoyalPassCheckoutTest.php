@@ -53,6 +53,13 @@ class RoyalPassCheckoutTest extends TestCase
             'grants_royal_month' => true,
         ]);
 
+        $this->assertDatabaseHas('billing_profiles', [
+            'user_id' => $user->id,
+            'provider' => 'paypal',
+            'status' => 'active',
+            'payment_method_summary' => 'PayPal',
+        ]);
+
         $this->assertDatabaseHas('access_events', [
             'user_id' => $user->id,
             'event_name' => 'purchase',
@@ -64,6 +71,67 @@ class RoyalPassCheckoutTest extends TestCase
             'event_name' => 'membership_started',
             'resource_key' => 'PAYPAL-ORDER-100-merch',
         ]);
+    }
+
+    public function test_digital_checkout_creates_library_unlock_visible_in_account(): void
+    {
+        $this->fakeSuccessfulCapture('PAYPAL-UNLOCK-300', '24.00');
+
+        $response = $this->postJson('/checkout/paypal', [
+            'identifier' => 'digital@renyrenteria.com',
+            'product_keys' => ['deluxe'],
+            'currency' => 'USD',
+            'paypal_order_id' => 'PAYPAL-UNLOCK-300',
+        ]);
+
+        $response->assertOk();
+
+        $user = User::where('email', 'digital@renyrenteria.com')->firstOrFail();
+
+        $this->assertDatabaseHas('user_unlocks', [
+            'user_id' => $user->id,
+            'product_key' => 'deluxe',
+            'unlock_type' => 'album',
+            'title' => 'Deluxe Digital Album',
+            'status' => 'available',
+        ]);
+
+        $this->actingAs($user)
+            ->get('/account')
+            ->assertOk()
+            ->assertSee('Deluxe Digital Album');
+    }
+
+    public function test_event_checkout_issues_internal_ticket_for_account_events(): void
+    {
+        $this->fakeSuccessfulCapture('PAYPAL-EVENT-400', '42.00');
+
+        $response = $this->postJson('/checkout/paypal', [
+            'identifier' => 'event@renyrenteria.com',
+            'product_keys' => ['concert'],
+            'currency' => 'USD',
+            'paypal_order_id' => 'PAYPAL-EVENT-400',
+        ]);
+
+        $response->assertOk();
+
+        $user = User::where('email', 'event@renyrenteria.com')->firstOrFail();
+
+        $this->assertDatabaseHas('events', [
+            'title' => 'Reny Live - Studio Night',
+            'status' => 'scheduled',
+        ]);
+        $this->assertDatabaseHas('tickets', [
+            'user_id' => $user->id,
+            'holder_name' => $user->name,
+            'status' => 'confirmed',
+            'rsvp_status' => 'confirmed',
+        ]);
+
+        $this->actingAs($user)
+            ->get('/account')
+            ->assertOk()
+            ->assertSee('Reny Live - Studio Night');
     }
 
     public function test_checkout_requires_paypal_order_capture(): void
@@ -146,6 +214,49 @@ class RoyalPassCheckoutTest extends TestCase
             'user_id' => $user->id,
             'event_name' => 'membership_expired',
             'resource_key' => 'PAYPAL-REFUND-200-merch',
+        ]);
+    }
+
+    public function test_refund_revokes_hub_unlocks_for_refunded_order(): void
+    {
+        $this->fakeSuccessfulCapture('PAYPAL-REFUND-UNLOCK', '24.00');
+
+        $this->postJson('/checkout/paypal', [
+            'identifier' => 'refund-unlock@renyrenteria.com',
+            'product_keys' => ['deluxe'],
+            'currency' => 'USD',
+            'paypal_order_id' => 'PAYPAL-REFUND-UNLOCK',
+        ])->assertOk();
+
+        $user = User::where('email', 'refund-unlock@renyrenteria.com')->firstOrFail();
+
+        $this->assertDatabaseHas('user_unlocks', [
+            'user_id' => $user->id,
+            'product_key' => 'deluxe',
+            'status' => 'available',
+        ]);
+
+        $this->fakeSuccessfulWebhookVerification();
+
+        $this->postJson('/paypal/refund', [
+            'event_type' => 'PAYMENT.CAPTURE.REFUNDED',
+            'resource' => [
+                'supplementary_data' => [
+                    'related_ids' => [
+                        'order_id' => 'PAYPAL-REFUND-UNLOCK',
+                    ],
+                ],
+            ],
+        ], $this->paypalWebhookHeaders())->assertOk();
+
+        $this->assertDatabaseHas('user_unlocks', [
+            'user_id' => $user->id,
+            'product_key' => 'deluxe',
+            'status' => 'revoked',
+        ]);
+        $this->assertDatabaseHas('billing_profiles', [
+            'user_id' => $user->id,
+            'status' => 'refunded',
         ]);
     }
 
