@@ -24,6 +24,7 @@ class TicketCodeTest extends TestCase
         $ticket = $issued['ticket']->fresh();
 
         $this->assertNotSame($issued['code'], $ticket->ticket_code_hash);
+        $this->assertStringStartsWith('TKT-'.$ticket->id.'-', $issued['code']);
         $this->assertStringNotContainsString($user->email, $ticket->ticket_code_hash);
         $this->assertSame(substr($issued['code'], -8), $ticket->ticket_code_preview);
         $this->assertSame('Ticket Holder', $ticket->holder_name);
@@ -47,6 +48,26 @@ class TicketCodeTest extends TestCase
 
         $this->assertSame('checked_in', $issued['ticket']->fresh()->status);
         $this->assertNotNull($issued['ticket']->fresh()->checked_in_at);
+    }
+
+    public function test_signed_ticket_code_can_be_regenerated_after_reload(): void
+    {
+        $user = User::factory()->create();
+        $staff = User::factory()->create(['role' => 'admin']);
+        $event = $this->event();
+        $service = app(TicketCodeService::class);
+        $issued = $service->issue($user, $event);
+
+        $regeneratedCode = $service->displayCode($issued['ticket']->fresh());
+
+        $this->assertSame($issued['code'], $regeneratedCode);
+
+        $this->actingAs($staff)
+            ->postJson(route('tickets.check-in'), [
+                'code' => $regeneratedCode,
+            ])
+            ->assertOk()
+            ->assertJsonPath('status', 'checked_in');
     }
 
     public function test_non_staff_cannot_check_in_tickets(): void

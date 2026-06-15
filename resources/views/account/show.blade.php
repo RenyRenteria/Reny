@@ -124,7 +124,7 @@
                                 </div>
                                 <div class="account-row-meta">
                                     <span>{{ str_replace('_', ' ', $ticket->status) }}</span>
-                                    <code>{{ $ticket->ticket_code_preview ?: 'QR' }}</code>
+                                    <code>{{ $ticketDisplayCodes[$ticket->id] ?? $ticket->ticket_code_preview ?? 'QR' }}</code>
                                 </div>
                             </div>
                         @empty
