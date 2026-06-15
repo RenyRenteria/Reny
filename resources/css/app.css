@@ -87,7 +87,8 @@
     text-transform: uppercase;
 }
 
-.auth-form input {
+.auth-form input,
+.auth-form select {
     width: 100%;
     min-height: 2.875rem;
     padding: 0.75rem 0.875rem;
@@ -99,7 +100,8 @@
     font-weight: 700;
 }
 
-.auth-form input:focus {
+.auth-form input:focus,
+.auth-form select:focus {
     border-color: var(--accent);
     outline: 0.1875rem solid rgba(153, 115, 50, 0.16);
 }

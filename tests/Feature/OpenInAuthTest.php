@@ -21,6 +21,8 @@ class OpenInAuthTest extends TestCase
         $this->get('/register')
             ->assertOk()
             ->assertSee('Create account')
+            ->assertSee('Public username')
+            ->assertSee('Country')
             ->assertSee('brand-link-centered', false)
             ->assertDontSee('Open access');
 
@@ -37,7 +39,9 @@ class OpenInAuthTest extends TestCase
     {
         $response = $this->post('/register', [
             'name' => 'Reny Fan',
+            'username' => '@RenyFan',
             'identifier' => '+1 (555) 101-2020',
+            'country_code' => 'pa',
             'password' => 'password',
             'password_confirmation' => 'password',
         ]);
@@ -47,7 +51,9 @@ class OpenInAuthTest extends TestCase
 
         $this->assertDatabaseHas('users', [
             'name' => 'Reny Fan',
+            'username' => 'renyfan',
             'phone' => '15551012020',
+            'country_code' => 'PA',
             'royal_status' => 'open',
         ]);
     }
@@ -60,8 +66,10 @@ class OpenInAuthTest extends TestCase
         ]);
 
         $response = $this->post('/register', [
-            'name' => '',
+            'name' => 'New Fan',
+            'username' => 'newfan',
             'identifier' => 'new@example.com',
+            'country_code' => 'DO',
             'password' => 'password',
             'password_confirmation' => 'password',
         ]);
@@ -70,11 +78,30 @@ class OpenInAuthTest extends TestCase
         $this->assertAuthenticated();
 
         $this->assertDatabaseHas('users', [
-            'name' => 'Royal Member',
+            'name' => 'New Fan',
+            'username' => 'newfan',
             'email' => 'new@example.com',
             'phone' => null,
+            'country_code' => 'DO',
             'royal_status' => 'open',
         ]);
+    }
+
+    public function test_registration_requires_unique_username(): void
+    {
+        User::factory()->create(['username' => 'takenfan']);
+
+        $response = $this->from('/register')->post('/register', [
+            'name' => 'Another Fan',
+            'username' => 'takenfan',
+            'identifier' => 'another@example.com',
+            'country_code' => 'US',
+            'password' => 'password',
+            'password_confirmation' => 'password',
+        ]);
+
+        $response->assertRedirect('/register');
+        $response->assertSessionHasErrors('username');
     }
 
     public function test_user_can_sign_in_with_email_and_sidebar_uses_real_access_state(): void
