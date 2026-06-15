@@ -14,11 +14,10 @@
     <body>
         <main class="auth-shell">
             <section class="auth-panel" aria-labelledby="register-title">
-                <a class="brand-link" href="{{ route('home') }}" aria-label="Reny Renteria home">
+                <a class="brand-link brand-link-centered" href="{{ route('home') }}" aria-label="Reny Renteria home">
                     <img class="brand-logo" src="{{ asset('images/reny-renteria-logo.png') }}" alt="Reny Renteria">
                 </a>
 
-                <p class="auth-kicker">Open access</p>
                 <h1 id="register-title">Create account</h1>
                 <p class="auth-copy">Start Open. Activate Royal Pass when you buy a pass or eligible product.</p>
 

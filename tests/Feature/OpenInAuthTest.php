@@ -21,7 +21,8 @@ class OpenInAuthTest extends TestCase
         $this->get('/register')
             ->assertOk()
             ->assertSee('Create account')
-            ->assertSee('Open access');
+            ->assertSee('brand-link-centered', false)
+            ->assertDontSee('Open access');
 
         $this->get('/forgot-password')
             ->assertOk()
@@ -47,6 +48,31 @@ class OpenInAuthTest extends TestCase
         $this->assertDatabaseHas('users', [
             'name' => 'Reny Fan',
             'phone' => '15551012020',
+            'royal_status' => 'open',
+        ]);
+    }
+
+    public function test_registration_accepts_email_when_existing_users_have_no_phone(): void
+    {
+        User::factory()->create([
+            'email' => 'existing@example.com',
+            'phone' => null,
+        ]);
+
+        $response = $this->post('/register', [
+            'name' => '',
+            'identifier' => 'new@example.com',
+            'password' => 'password',
+            'password_confirmation' => 'password',
+        ]);
+
+        $response->assertRedirect('/account');
+        $this->assertAuthenticated();
+
+        $this->assertDatabaseHas('users', [
+            'name' => 'Royal Member',
+            'email' => 'new@example.com',
+            'phone' => null,
             'royal_status' => 'open',
         ]);
     }
