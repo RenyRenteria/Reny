@@ -55,5 +55,6 @@ Route::get('/session-expired', function () {
     return view('auth.session-expired');
 })->name('session.expired');
 
+Route::post('/checkout/paypal/orders', [CheckoutController::class, 'createOrder'])->name('checkout.paypal.orders');
 Route::post('/checkout/paypal', [CheckoutController::class, 'store'])->name('checkout.paypal');
 Route::post('/paypal/refund', [PaypalWebhookController::class, 'refund'])->name('paypal.refund');

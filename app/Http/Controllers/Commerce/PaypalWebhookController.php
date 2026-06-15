@@ -6,14 +6,19 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Services\PayPalService;
 use App\Services\RoyalPassService;
+use App\Services\UserHubPurchaseSync;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 
 class PaypalWebhookController extends Controller
 {
-    public function refund(Request $request, RoyalPassService $royalPass, PayPalService $payPal): JsonResponse
-    {
+    public function refund(
+        Request $request,
+        RoyalPassService $royalPass,
+        PayPalService $payPal,
+        UserHubPurchaseSync $purchaseSync,
+    ): JsonResponse {
         abort_unless($payPal->verifyWebhook($request), 401);
         abort_unless($request->input('event_type') === 'PAYMENT.CAPTURE.REFUNDED', 422);
 
@@ -28,7 +33,10 @@ class PaypalWebhookController extends Controller
 
         abort_if($orders->isEmpty(), 404);
 
-        $orders->each(fn (Order $order) => $royalPass->revokeGrant($order));
+        $orders->each(function (Order $order) use ($purchaseSync, $royalPass) {
+            $royalPass->revokeGrant($order);
+            $purchaseSync->recordRefund($order->fresh('user'));
+        });
 
         return response()->json([
             'status' => 'refunded',

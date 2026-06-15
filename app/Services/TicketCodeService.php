@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\FanEvent;
+use App\Models\Order;
 use App\Models\Ticket;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -21,6 +22,7 @@ class TicketCodeService
         ?string $holderName = null,
         string $status = 'confirmed',
         string $rsvpStatus = 'confirmed',
+        ?Order $order = null,
     ): array {
         do {
             $code = Str::random(40);
@@ -30,6 +32,7 @@ class TicketCodeService
         $ticket = Ticket::create([
             'user_id' => $user->id,
             'event_id' => $event->id,
+            'order_id' => $order?->id,
             'ticket_code_hash' => $hash,
             'holder_name' => $holderName ?: $user->name,
             'status' => $status,

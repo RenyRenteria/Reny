@@ -367,7 +367,15 @@
                             <button type="button">Apple Pay</button>
                             <button type="button">Local</button>
                         </div>
-                        <button class="store-button" id="completePurchase" type="button" data-checkout-endpoint="{{ route('checkout.paypal') }}">Complete with PayPal</button>
+                        <div
+                            class="store-paypal-buttons"
+                            id="paypalButtons"
+                            data-paypal-client-id="{{ config('services.paypal.client_id') }}"
+                            data-create-order-endpoint="{{ route('checkout.paypal.orders') }}"
+                            data-capture-endpoint="{{ route('checkout.paypal') }}"
+                        ></div>
+                        <p class="store-checkout-note" id="paypalStatus">PayPal approval is required before the Hub is updated.</p>
+                        <button class="store-button" id="completePurchase" type="button">Load PayPal checkout</button>
                     </div>
                 </div>
             </div>

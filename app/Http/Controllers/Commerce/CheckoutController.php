@@ -6,9 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Services\PayPalService;
 use App\Services\RoyalPassService;
+use App\Services\UserHubPurchaseSync;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class CheckoutController extends Controller
@@ -26,45 +28,45 @@ class CheckoutController extends Controller
         'listening' => 1800,
     ];
 
-    public function store(Request $request, RoyalPassService $royalPass, PayPalService $payPal): JsonResponse
-    {
-        $validated = $request->validate([
-            'identifier' => ['required', 'string', 'max:255'],
-            'product_keys' => ['required', 'array', 'min:1'],
-            'product_keys.*' => ['required', 'string', Rule::in(array_keys($this->prices))],
-            'currency' => ['nullable', 'string', 'size:3'],
-            'paypal_order_id' => ['required', 'string', 'max:255'],
-        ]);
+    public function store(
+        Request $request,
+        RoyalPassService $royalPass,
+        PayPalService $payPal,
+        UserHubPurchaseSync $purchaseSync,
+    ): JsonResponse {
+        $validated = $this->validateCheckout($request, requirePaypalOrder: true);
 
-        $currency = strtoupper($validated['currency'] ?? 'USD');
-        $expectedTotal = collect($validated['product_keys'])
-            ->sum(fn (string $productKey) => $this->prices[$productKey]);
+        $currency = $this->currency($validated);
+        $expectedTotal = $this->expectedTotal($validated['product_keys']);
         $capture = $payPal->captureOrder($validated['paypal_order_id'], $expectedTotal, $currency);
 
         $user = Auth::user() ?: $royalPass->findOrCreateCustomer($validated['identifier']);
         Auth::login($user);
 
-        $orders = collect($validated['product_keys'])->map(function (string $productKey) use ($currency, $capture, $user, $royalPass) {
-            $order = Order::create([
-                'user_id' => $user->id,
-                'provider' => 'paypal',
-                'provider_order_id' => $capture['order_id'].'-'.$productKey,
-                'product_key' => $productKey,
-                'amount_cents' => $this->prices[$productKey],
-                'currency' => $currency,
-                'status' => 'completed',
-                'grants_royal_month' => true,
-            ]);
+        $orders = DB::transaction(function () use ($capture, $currency, $purchaseSync, $royalPass, $user, $validated) {
+            return collect($validated['product_keys'])->map(function (string $productKey, int $index) use ($currency, $capture, $purchaseSync, $user, $royalPass) {
+                $order = Order::create([
+                    'user_id' => $user->id,
+                    'provider' => 'paypal',
+                    'provider_order_id' => $this->providerOrderId($capture['order_id'], $productKey, $index),
+                    'product_key' => $productKey,
+                    'amount_cents' => $this->prices[$productKey],
+                    'currency' => $currency,
+                    'status' => 'completed',
+                    'grants_royal_month' => true,
+                ]);
 
-            $royalPass->log($user, 'purchase', 'order', $order->provider_order_id, [
-                'product_key' => $productKey,
-                'provider' => 'paypal',
-                'paypal_capture_id' => $capture['capture_id'],
-            ]);
+                $royalPass->log($user, 'purchase', 'order', $order->provider_order_id, [
+                    'product_key' => $productKey,
+                    'provider' => 'paypal',
+                    'paypal_capture_id' => $capture['capture_id'],
+                ]);
 
-            $royalPass->grantMonth($user, $order);
+                $royalPass->grantMonth($user, $order);
+                $purchaseSync->recordCompletedOrder($user, $order, $capture);
 
-            return $order;
+                return $order;
+            });
         });
 
         $request->session()->regenerate();
@@ -74,6 +76,56 @@ class CheckoutController extends Controller
             'royal_status' => $user->fresh()->accessState()->value,
             'royal_ends_at' => $user->fresh()->royal_ends_at?->toIso8601String(),
             'order_ids' => $orders->pluck('provider_order_id')->values(),
+            'account_url' => route('account.show'),
         ]);
+    }
+
+    public function createOrder(Request $request, PayPalService $payPal): JsonResponse
+    {
+        $validated = $this->validateCheckout($request);
+        $order = $payPal->createOrder(
+            $this->expectedTotal($validated['product_keys']),
+            $this->currency($validated)
+        );
+
+        return response()->json([
+            'status' => 'created',
+            'paypal_order_id' => $order['order_id'],
+        ]);
+    }
+
+    /**
+     * @return array{identifier: string, product_keys: array<int, string>, currency?: string, paypal_order_id?: string}
+     */
+    private function validateCheckout(Request $request, bool $requirePaypalOrder = false): array
+    {
+        return $request->validate([
+            'identifier' => ['required', 'string', 'max:255'],
+            'product_keys' => ['required', 'array', 'min:1'],
+            'product_keys.*' => ['required', 'string', Rule::in(array_keys($this->prices))],
+            'currency' => ['nullable', 'string', 'size:3'],
+            'paypal_order_id' => [$requirePaypalOrder ? 'required' : 'sometimes', 'string', 'max:255'],
+        ]);
+    }
+
+    /**
+     * @param  array<int, string>  $productKeys
+     */
+    private function expectedTotal(array $productKeys): int
+    {
+        return collect($productKeys)->sum(fn (string $productKey) => $this->prices[$productKey]);
+    }
+
+    /**
+     * @param  array{currency?: string}  $validated
+     */
+    private function currency(array $validated): string
+    {
+        return strtoupper($validated['currency'] ?? 'USD');
+    }
+
+    private function providerOrderId(string $paypalOrderId, string $productKey, int $index): string
+    {
+        return $paypalOrderId.'-'.($index + 1).'-'.$productKey;
     }
 }

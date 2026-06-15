@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable([
     'user_id',
     'event_id',
+    'order_id',
     'ticket_code_hash',
     'ticket_code_preview',
     'holder_name',
@@ -32,6 +33,11 @@ class Ticket extends Model
     public function event(): BelongsTo
     {
         return $this->belongsTo(FanEvent::class, 'event_id');
+    }
+
+    public function order(): BelongsTo
+    {
+        return $this->belongsTo(Order::class);
     }
 
     public function user(): BelongsTo
