@@ -13,6 +13,7 @@ class StorePageTest extends TestCase
         $response->assertOk();
         $response->assertSee('Upcoming concert');
         $response->assertSee("Royal's Exclusives");
+        $response->assertSee('$4.99/mo');
         $response->assertSee('Events');
         $response->assertSee('Reny Live - Studio Night');
         $response->assertSee('Aug 24, 2026');
