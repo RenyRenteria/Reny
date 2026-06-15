@@ -8,10 +8,27 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'phone', 'password', 'role', 'royal_status', 'royal_ends_at'])]
+#[Fillable([
+    'name',
+    'username',
+    'email',
+    'phone',
+    'avatar_path',
+    'country_code',
+    'locale',
+    'timezone',
+    'preferred_currency',
+    'bio',
+    'password',
+    'role',
+    'royal_status',
+    'royal_ends_at',
+])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -30,6 +47,31 @@ class User extends Authenticatable
             'password' => 'hashed',
             'royal_ends_at' => 'datetime',
         ];
+    }
+
+    public function billingProfile(): HasOne
+    {
+        return $this->hasOne(BillingProfile::class);
+    }
+
+    public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class);
+    }
+
+    public function pointLedgerEntries(): HasMany
+    {
+        return $this->hasMany(PointLedgerEntry::class);
+    }
+
+    public function tickets(): HasMany
+    {
+        return $this->hasMany(Ticket::class);
+    }
+
+    public function unlocks(): HasMany
+    {
+        return $this->hasMany(UserUnlock::class);
     }
 
     public function accessState(): AccessState
