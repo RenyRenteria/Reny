@@ -67,7 +67,7 @@ class AccountDashboardTest extends TestCase
             'status' => 'available',
             'unlocked_at' => now(),
         ]);
-        Ticket::create([
+        $ticket = Ticket::create([
             'user_id' => $user->id,
             'event_id' => $event->id,
             'ticket_code_hash' => hash('sha256', 'dash-ticket'),
@@ -96,6 +96,7 @@ class AccountDashboardTest extends TestCase
             ->assertSee('Reny Member')
             ->assertSee('@renyfan')
             ->assertSee('Active Royal Member')
+            ->assertSee('TKT-'.$ticket->id.'-', false)
             ->assertSeeInOrder([
                 'Upcoming Events',
                 'Royal Listening Session',
