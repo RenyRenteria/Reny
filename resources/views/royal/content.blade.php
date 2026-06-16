@@ -8,7 +8,7 @@
 
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body>
+    <body data-analytics-screen="royal_content">
         <main class="auth-shell">
             <section class="auth-panel" aria-labelledby="royal-content-title">
                 <a class="brand-link" href="{{ route('home') }}" aria-label="Reny Renteria home">

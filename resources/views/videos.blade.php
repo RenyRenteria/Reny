@@ -76,7 +76,7 @@
 
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body>
+    <body data-analytics-screen="videos">
         <div class="videos-shell">
             <aside class="sidebar" aria-label="Primary navigation">
                 <div>
