@@ -450,6 +450,110 @@
     gap: 0.75rem;
 }
 
+.admin-form-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: end;
+    gap: 0.875rem;
+}
+
+.admin-form-grid label {
+    display: grid;
+    gap: 0.4rem;
+}
+
+.admin-form-grid label > span,
+.admin-empty-state,
+.admin-media-row small {
+    color: var(--muted);
+    font-size: 0.75rem;
+    font-weight: 900;
+}
+
+.admin-form-grid label > span {
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.admin-form-grid input,
+.admin-form-grid select {
+    width: 100%;
+    min-height: 2.75rem;
+    padding: 0.7rem 0.75rem;
+    border: 1px solid var(--line);
+    border-radius: 0.375rem;
+    background: #ffffff;
+    color: var(--ink);
+    font: inherit;
+    font-size: 0.875rem;
+    font-weight: 800;
+}
+
+.admin-checkbox {
+    display: flex !important;
+    min-height: 2.75rem;
+    align-items: center;
+    padding: 0.7rem 0.75rem;
+    border: 1px solid var(--line);
+    border-radius: 0.375rem;
+    background: #ffffff;
+    gap: 0.5rem;
+}
+
+.admin-checkbox input {
+    width: 1rem;
+    min-height: 1rem;
+}
+
+.admin-file-field,
+.admin-media-list {
+    grid-column: 1 / -1;
+}
+
+.admin-media-list {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.admin-media-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.875rem;
+    border: 1px solid var(--line);
+    border-radius: 0.5rem;
+    background: var(--panel-bright);
+    gap: 1rem;
+}
+
+.admin-media-row span {
+    color: var(--accent);
+    font-size: 0.6875rem;
+    font-weight: 950;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.admin-media-row strong {
+    display: block;
+    margin-top: 0.25rem;
+    color: var(--ink);
+    font-size: 0.975rem;
+    font-weight: 950;
+}
+
+.admin-media-row small {
+    display: block;
+    margin-top: 0.2rem;
+}
+
+.admin-empty-state {
+    padding: 1rem;
+    border: 1px dashed var(--line);
+    border-radius: 0.5rem;
+    background: rgba(255, 255, 255, 0.56);
+}
+
 .admin-button {
     display: inline-flex;
     min-height: 2.75rem;
@@ -949,8 +1053,19 @@
 
     .admin-actions,
     .admin-actions form,
-    .admin-button {
+    .admin-button,
+    .admin-form-grid,
+    .admin-media-row {
         width: 100%;
+    }
+
+    .admin-form-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .admin-media-row {
+        align-items: stretch;
+        flex-direction: column;
     }
 }
 

@@ -4,11 +4,13 @@ use App\Http\Controllers\AccountController;
 use App\Http\Controllers\Admin\AdminLoginController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\EditorialActionController;
+use App\Http\Controllers\Admin\MediaLibraryController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Commerce\CheckoutController;
 use App\Http\Controllers\Commerce\PaypalWebhookController;
+use App\Http\Controllers\MuxWebhookController;
 use App\Http\Controllers\PointsController;
 use App\Http\Controllers\Royal\PremiumContentController;
 use App\Http\Controllers\TicketCheckInController;
@@ -41,6 +43,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::middleware(['admin.access', 'admin.session'])->group(function () {
         Route::get('/', AdminDashboardController::class)->name('dashboard');
         Route::post('/logout', [AdminLoginController::class, 'destroy'])->name('logout');
+        Route::get('/media', [MediaLibraryController::class, 'index'])->name('media.index');
+        Route::post('/media', [MediaLibraryController::class, 'store'])->name('media.store');
+        Route::post('/media/mux/direct-uploads', [MediaLibraryController::class, 'createMuxDirectUpload'])->name('media.mux.direct-uploads.store');
         Route::post('/editorial/drafts', [EditorialActionController::class, 'saveDraft'])->name('editorial.drafts.store');
         Route::post('/editorial/publish', [EditorialActionController::class, 'publish'])
             ->middleware('admin.publish')
@@ -75,3 +80,4 @@ Route::get('/session-expired', function () {
 Route::post('/checkout/paypal/orders', [CheckoutController::class, 'createOrder'])->name('checkout.paypal.orders');
 Route::post('/checkout/paypal', [CheckoutController::class, 'store'])->name('checkout.paypal');
 Route::post('/paypal/refund', [PaypalWebhookController::class, 'refund'])->name('paypal.refund');
+Route::post('/mux/webhook', MuxWebhookController::class)->name('mux.webhook');

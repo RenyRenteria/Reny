@@ -42,4 +42,15 @@ return [
         'webhook_id' => env('PAYPAL_WEBHOOK_ID'),
     ],
 
+    'mux' => [
+        'base_url' => env('MUX_BASE_URL', 'https://api.mux.com'),
+        'token_id' => env('MUX_TOKEN_ID'),
+        'token_secret' => env('MUX_TOKEN_SECRET'),
+        'webhook_secret' => env('MUX_WEBHOOK_SECRET'),
+        'webhook_tolerance_seconds' => env('MUX_WEBHOOK_TOLERANCE_SECONDS', 300),
+        'cors_origin' => env('MUX_CORS_ORIGIN'),
+        'playback_policy' => env('MUX_PLAYBACK_POLICY', 'public'),
+        'video_quality' => env('MUX_VIDEO_QUALITY', 'basic'),
+    ],
+
 ];

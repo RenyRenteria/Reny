@@ -95,6 +95,11 @@ class User extends Authenticatable
         return $this->hasMany(EditorialContent::class, 'created_by_id');
     }
 
+    public function mediaAssets(): HasMany
+    {
+        return $this->hasMany(MediaAsset::class, 'uploaded_by_id');
+    }
+
     public function unlocks(): HasMany
     {
         return $this->hasMany(UserUnlock::class);
