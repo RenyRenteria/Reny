@@ -62,9 +62,11 @@ class AnalyticsInstrumentationTest extends TestCase
             'community_poll_voted',
             'auth_login_started',
             'auth_register_started',
+            'auth_logout_started',
             'auth_password_recovery_started',
             'account_navigation_clicked',
             'account_viewed',
+            'reactivation_attempted',
             'store_product_added',
             'store_checkout_started',
             'store_payment_method_selected',
@@ -88,6 +90,8 @@ class AnalyticsInstrumentationTest extends TestCase
 
         $this->assertStringContainsString('window.renyAnalytics.events', $taxonomy);
         $this->assertStringContainsString('screen', $taxonomy);
+        $this->assertStringContainsString('access_state', $taxonomy);
+        $this->assertStringContainsString('source_route', $taxonomy);
         $this->assertStringContainsString('item_type', $taxonomy);
         $this->assertStringContainsString('item_id', $taxonomy);
         $this->assertStringContainsString('result', $taxonomy);

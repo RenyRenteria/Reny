@@ -8,4 +8,6 @@ enum AccessState: string
     case RoyalActive = 'royal_active';
     case RoyalGrace = 'royal_grace';
     case RoyalExpired = 'royal_expired';
+    case PaymentFailed = 'payment_failed';
+    case Refunded = 'refunded';
 }

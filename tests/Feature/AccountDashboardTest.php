@@ -132,4 +132,51 @@ class AccountDashboardTest extends TestCase
             ->assertSee('No points yet')
             ->assertSee('Manual request');
     }
+
+    public function test_account_dashboard_renders_required_access_state_matrix(): void
+    {
+        $states = [
+            'open' => [
+                User::factory()->create(['name' => 'Open Matrix Fan']),
+                'Open Account',
+                'Get your Royal Pass',
+                'data-access-state="open"',
+            ],
+            'royal_active' => [
+                User::factory()->royal()->create(['name' => 'Active Matrix Fan']),
+                'Active Royal Member',
+                'Access active until',
+                'data-access-state="royal_active"',
+            ],
+            'royal_expired' => [
+                User::factory()->expiredRoyal()->create(['name' => 'Expired Matrix Fan']),
+                'Royal Expired',
+                'Reactivate Royal Pass',
+                'data-access-state="royal_expired"',
+            ],
+            'refunded' => [
+                User::factory()->refundedRoyal()->create(['name' => 'Refunded Matrix Fan']),
+                'Royal Refunded',
+                'Buy Royal Pass again',
+                'data-access-state="refunded"',
+            ],
+            'payment_failed' => [
+                User::factory()->paymentFailedRoyal()->create(['name' => 'Payment Matrix Fan']),
+                'Payment Action Needed',
+                'Update payment',
+                'data-access-state="payment_failed"',
+            ],
+        ];
+
+        foreach ($states as [$user, $label, $action, $stateAttribute]) {
+            $this->actingAs($user)
+                ->get('/account')
+                ->assertOk()
+                ->assertSee($user->name)
+                ->assertSee($label)
+                ->assertSee($action)
+                ->assertSee($stateAttribute, false)
+                ->assertSee('data-source-route="/account"', false);
+        }
+    }
 }

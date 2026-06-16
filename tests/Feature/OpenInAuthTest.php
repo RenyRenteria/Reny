@@ -136,7 +136,56 @@ class OpenInAuthTest extends TestCase
             ->get('/account')
             ->assertOk()
             ->assertSee('Expired Member')
-            ->assertSee('Open mode')
-            ->assertSee('Get your Royal Pass');
+            ->assertSee('Royal Expired')
+            ->assertSee('Reactivate Royal Pass');
+    }
+
+    public function test_login_preserves_return_url_for_eligible_royal_user(): void
+    {
+        $user = User::factory()->royal()->create([
+            'email' => 'eligible-return@example.com',
+            'password' => Hash::make('password'),
+        ]);
+
+        $this->get('/royal/content/vip-mix')
+            ->assertRedirect('/login');
+
+        $this->get('/login')
+            ->assertOk()
+            ->assertSee('data-source-route="/royal/content/vip-mix"', false);
+
+        $this->post('/login', [
+            'identifier' => 'eligible-return@example.com',
+            'password' => 'password',
+        ])->assertRedirect('/royal/content/vip-mix');
+
+        $this->actingAs($user)
+            ->get('/royal/content/vip-mix')
+            ->assertOk()
+            ->assertSee('secure_stream_url:royal-only-vip-mix');
+    }
+
+    public function test_login_return_url_sends_ineligible_user_to_state_paywall_without_loop(): void
+    {
+        $user = User::factory()->paymentFailedRoyal()->create([
+            'email' => 'payment-return@example.com',
+            'password' => Hash::make('password'),
+        ]);
+
+        $this->get('/royal/content/vip-mix')
+            ->assertRedirect('/login');
+
+        $this->post('/login', [
+            'identifier' => 'payment-return@example.com',
+            'password' => 'password',
+        ])->assertRedirect('/royal/content/vip-mix');
+
+        $this->actingAs($user)
+            ->get('/royal/content/vip-mix')
+            ->assertForbidden()
+            ->assertSee('Update payment to continue')
+            ->assertSee('data-access-state="payment_failed"', false)
+            ->assertDontSee('secure_stream_url')
+            ->assertDontSee('royal-only-vip-mix');
     }
 }

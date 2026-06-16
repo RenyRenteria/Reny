@@ -318,6 +318,7 @@ class PublicCmsContentTest extends TestCase
             User::factory()->expiredRoyal()->create(),
             User::factory()->cancelledRoyal()->create(),
             User::factory()->onHoldRoyal()->create(),
+            User::factory()->paymentFailedRoyal()->create(),
             User::factory()->refundedRoyal()->create(),
         ] as $nonRoyalUser) {
             $this->assertFalse($nonRoyalUser->hasRoyalAccess());
@@ -385,6 +386,33 @@ class PublicCmsContentTest extends TestCase
             ->assertDontSee('Royal Vault Premiere')
             ->assertDontSee('SECRET_ROYAL_ID')
             ->assertDontSee('private/premium/master-video.mp4');
+    }
+
+    public function test_direct_protected_content_paywall_does_not_render_premium_body_for_ineligible_users(): void
+    {
+        $content = $this->publishedContent(ContentType::Exclusive, [
+            'title' => 'Royal Vault Letter',
+            'body' => 'FULL_ROYAL_BODY_SHOULD_NOT_RENDER',
+            'visibility' => VisibilityAudience::Royal->value,
+            'metadata' => [
+                'asset_path' => 'private/premium/royal-letter.pdf',
+            ],
+        ]);
+
+        foreach ([
+            User::factory()->create(),
+            User::factory()->expiredRoyal()->create(),
+            User::factory()->refundedRoyal()->create(),
+            User::factory()->paymentFailedRoyal()->create(),
+        ] as $user) {
+            $this->actingAs($user)
+                ->get(route('public.content.show', $content))
+                ->assertForbidden()
+                ->assertSee('data-analytics-screen="permission_denied"', false)
+                ->assertDontSee('Royal Vault Letter')
+                ->assertDontSee('FULL_ROYAL_BODY_SHOULD_NOT_RENDER')
+                ->assertDontSee('private/premium/royal-letter.pdf');
+        }
     }
 
     public function test_archived_content_stays_out_of_public_lists_without_breaking_direct_references(): void

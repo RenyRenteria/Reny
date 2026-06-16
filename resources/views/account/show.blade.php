@@ -1,3 +1,7 @@
+@php
+    $userTimezone = $user->timezone ?: 'America/Panama';
+@endphp
+
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
@@ -11,7 +15,7 @@
         <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body data-analytics-screen="account">
+    <body data-analytics-screen="account" data-access-state="{{ $accessStateView['state'] }}" data-source-route="{{ $accessStateView['source_route'] }}">
         <div class="music-shell">
             <aside class="sidebar" aria-label="Primary navigation">
                 <div>
@@ -98,12 +102,17 @@
 
                     <div class="account-membership">
                         @if ($user->hasRoyalAccess())
-                            <span class="account-badge">Active Royal Member</span>
-                            <p>Access active until {{ $user->royal_ends_at?->timezone($user->timezone)->format('M j, Y') ?? 'the current period ends' }}.</p>
+                            <span class="account-badge {{ $accessStateView['badge_class'] }}">{{ $accessStateView['label'] }}</span>
+                            <p>Access active until {{ $user->royal_ends_at?->timezone($userTimezone)->format('M j, Y') ?? 'the current period ends' }}.</p>
                         @else
-                            <span class="account-badge account-badge-open">Open Account</span>
-                            <p>Open mode: reactivate Royal Pass to unlock premium music, community actions and member drops.</p>
-                            <a class="account-action" href="{{ route('store') }}">Get your Royal Pass</a>
+                            <span class="account-badge {{ $accessStateView['badge_class'] }}">{{ $accessStateView['label'] }}</span>
+                            <p>{{ $accessStateView['account_copy'] }}</p>
+                            <a
+                                class="account-action reactivation-action"
+                                href="{{ $accessStateView['primary_url'] }}"
+                                data-reactivation-action="{{ $accessStateView['primary_action'] }}"
+                                data-access-state="{{ $accessStateView['state'] }}"
+                            >{{ $accessStateView['primary_label'] }}</a>
                         @endif
                     </div>
                 </section>
@@ -174,7 +183,7 @@
                                 </div>
                                 <div>
                                     <dt>Renews</dt>
-                                    <dd>{{ $billingProfile->current_period_ends_at?->timezone($user->timezone)->format('M j, Y') ?? 'Not scheduled' }}</dd>
+                                    <dd>{{ $billingProfile->current_period_ends_at?->timezone($userTimezone)->format('M j, Y') ?? 'Not scheduled' }}</dd>
                                 </div>
                             </dl>
                         @else
@@ -256,7 +265,7 @@
                     </article>
                 </section>
 
-                <form method="POST" action="{{ route('logout') }}" class="account-logout">
+                <form method="POST" action="{{ route('logout') }}" class="account-logout" data-access-state="{{ $accessStateView['state'] }}">
                     @csrf
                     <button class="auth-secondary-button" type="submit">Log out</button>
                 </form>

@@ -87,6 +87,14 @@ class UserFactory extends Factory
         ]);
     }
 
+    public function paymentFailedRoyal(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'royal_status' => 'payment_failed',
+            'royal_ends_at' => now()->addMonth(),
+        ]);
+    }
+
     public function refundedRoyal(): static
     {
         return $this->state(fn (array $attributes) => [

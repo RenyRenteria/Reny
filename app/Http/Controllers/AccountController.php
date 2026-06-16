@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Services\PointLedgerService;
 use App\Services\TicketCodeService;
+use App\Support\AccessStatePresenter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
@@ -25,6 +26,7 @@ class AccountController extends Controller
 
         return view('account.show', [
             'accessState' => $user->accessState()->value,
+            'accessStateView' => AccessStatePresenter::for($user, AccessStatePresenter::sourceFromRequest($request)),
             'billingProfile' => $user->billingProfile,
             'initials' => $this->initials($user->name),
             'leaderboard' => $points->leaderboard(5),

@@ -15,7 +15,8 @@ class EntitlementGateTest extends TestCase
         $this->get('/')
             ->assertOk()
             ->assertSee('VIP Mix')
-            ->assertSee('Get your Royal Pass')
+            ->assertSee('Sign in')
+            ->assertSee('Create account')
             ->assertDontSee('Royal-only audio stream');
     }
 
@@ -39,6 +40,7 @@ class EntitlementGateTest extends TestCase
         $this->actingAs($openUser)
             ->get('/royal/content/vip-mix')
             ->assertForbidden()
+            ->assertSee('Royal Pass required')
             ->assertDontSee('secure_stream_url');
 
         $royalUser = User::factory()->royal()->create();
@@ -47,6 +49,28 @@ class EntitlementGateTest extends TestCase
             ->get('/royal/content/vip-mix')
             ->assertOk()
             ->assertSee('secure_stream_url:royal-only-vip-mix');
+    }
+
+    public function test_royal_content_paywall_differs_by_ineligible_state_without_premium_payload(): void
+    {
+        $states = [
+            [User::factory()->create(), 'Royal Pass required', 'Get your Royal Pass', 'open'],
+            [User::factory()->expiredRoyal()->create(), 'Reactivate Royal Pass', 'Reactivate Royal Pass', 'royal_expired'],
+            [User::factory()->refundedRoyal()->create(), 'Royal Pass was refunded', 'Buy Royal Pass again', 'refunded'],
+            [User::factory()->paymentFailedRoyal()->create(), 'Update payment to continue', 'Update payment', 'payment_failed'],
+        ];
+
+        foreach ($states as [$user, $title, $action, $state]) {
+            $this->actingAs($user)
+                ->get('/royal/content/vip-mix')
+                ->assertForbidden()
+                ->assertSee($title)
+                ->assertSee($action)
+                ->assertSee('data-access-state="'.$state.'"', false)
+                ->assertSee('data-source-route="/royal/content/vip-mix"', false)
+                ->assertDontSee('secure_stream_url')
+                ->assertDontSee('royal-only-vip-mix');
+        }
     }
 
     public function test_open_community_keeps_previews_but_blocks_interactions(): void

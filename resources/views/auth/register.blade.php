@@ -11,7 +11,7 @@
         <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body data-analytics-screen="auth_register">
+    <body data-analytics-screen="auth_register" data-access-state="guest" data-source-route="{{ $sourceRoute ?? '' }}">
         <main class="auth-shell">
             <section class="auth-panel" aria-labelledby="register-title">
                 <a class="brand-link brand-link-centered" href="{{ route('home') }}" aria-label="Reny Renteria home">

@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\AccessStatePresenter;
 use App\Support\EntitlementMatrix;
 use Closure;
 use Illuminate\Http\Request;
@@ -14,8 +15,15 @@ class EnsureRoyalAccess
      */
     public function handle(Request $request, Closure $next): Response
     {
+        if (! $request->user()) {
+            return redirect()->guest(route('login'));
+        }
+
         if (! EntitlementMatrix::canUseRoyalFeature($request->user())) {
-            abort(403, 'Royal Pass is required.');
+            return response()->view('auth.permission-denied', [
+                'section' => 'royal',
+                'stateView' => AccessStatePresenter::for($request->user(), AccessStatePresenter::sourceFromRequest($request)),
+            ], 403);
         }
 
         return $next($request);

@@ -16,7 +16,8 @@ class CommunityPageTest extends TestCase
         $response->assertSee('Fan Votes');
         $response->assertSee('Country Clubs');
         $response->assertSee('Clubhouse Chat');
-        $response->assertSee('Get your Royal Pass');
+        $response->assertSee('Sign in');
+        $response->assertSee('Create account');
         $response->assertSee('class="tab is-active"', false);
         $response->assertSee('href="'.url('/community').'"', false);
         $response->assertSee('images/reny-renteria-logo.png');

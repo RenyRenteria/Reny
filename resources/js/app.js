@@ -13,6 +13,14 @@ const currentAnalyticsScreen = () => document.body?.dataset.analyticsScreen
     || document.querySelector('main[id]')?.id
     || normalizeAnalyticsKey(window.location.pathname || 'home');
 
+const currentAccessState = () => document.body?.dataset.accessState
+    || document.querySelector('[data-access-state]')?.dataset.accessState
+    || 'guest';
+
+const currentSourceRoute = () => document.body?.dataset.sourceRoute
+    || document.querySelector('[data-source-route]')?.dataset.sourceRoute
+    || window.location.pathname;
+
 const analyticsDebugEnabled = () => {
     try {
         const params = new URLSearchParams(window.location.search);
@@ -62,6 +70,8 @@ const trackEvent = (name, payload = {}) => {
         payload: compactAnalyticsPayload({
             screen: currentAnalyticsScreen(),
             path: window.location.pathname,
+            access_state: currentAccessState(),
+            source_route: currentSourceRoute(),
             result: 'clicked',
             ...payload,
         }),
@@ -138,11 +148,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    document.querySelectorAll('.access-gate').forEach((gate) => {
+    document.querySelectorAll('.access-gate, .permission-gate').forEach((gate) => {
         trackEvent('permission_denied', {
             section: gate.dataset.section || currentAnalyticsScreen(),
             item_type: 'access_gate',
             item_id: gate.dataset.section || currentAnalyticsScreen(),
+            access_state: gate.dataset.accessState || currentAccessState(),
+            source_route: gate.dataset.sourceRoute || currentSourceRoute(),
             result: 'blocked',
         });
     });
@@ -713,12 +725,37 @@ document.querySelectorAll('.member-card-link, .account-action').forEach((link) =
     });
 });
 
-document.querySelectorAll('.access-gate-button').forEach((link) => {
+document.querySelectorAll('.access-gate-button, .permission-gate-action').forEach((link) => {
     link.addEventListener('click', () => {
         trackElementEvent(link, 'paywall_cta_clicked', {
             item_type: 'access_gate',
-            section: link.closest('.access-gate')?.dataset.section || currentAnalyticsScreen(),
+            section: link.closest('.access-gate, .permission-gate')?.dataset.section || currentAnalyticsScreen(),
+            access_state: link.dataset.accessState || currentAccessState(),
+            source_route: currentSourceRoute(),
             result: 'clicked',
+        });
+    });
+});
+
+document.querySelectorAll('.reactivation-action').forEach((link) => {
+    link.addEventListener('click', () => {
+        trackElementEvent(link, 'reactivation_attempted', {
+            item_type: 'account_state_action',
+            item_id: link.dataset.reactivationAction || normalizeAnalyticsKey(analyticsText(link)),
+            access_state: link.dataset.accessState || currentAccessState(),
+            source_route: currentSourceRoute(),
+            result: 'started',
+        });
+    });
+});
+
+document.querySelectorAll('.account-logout').forEach((form) => {
+    form.addEventListener('submit', () => {
+        trackEvent('auth_logout_started', {
+            item_type: 'auth_form',
+            item_id: 'logout',
+            access_state: form.dataset.accessState || currentAccessState(),
+            result: 'submitted',
         });
     });
 });

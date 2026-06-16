@@ -15,6 +15,8 @@ Every event should include:
 
 - `screen`: stable page or surface key.
 - `path`: browser path.
+- `access_state`: `guest`, `open`, `royal_active`, `royal_grace`, `royal_expired`, `payment_failed`, or `refunded`.
+- `source_route`: current or return path without query string or user identifiers.
 - `result`: `viewed`, `clicked`, `started`, `opened`, `blocked`, `failed`, `succeeded`, or another explicit outcome.
 
 Interaction events should also include:
@@ -68,9 +70,11 @@ Auth and account:
 
 - `auth_login_started`
 - `auth_register_started`
+- `auth_logout_started`
 - `auth_password_recovery_started`
 - `account_navigation_clicked`
 - `account_viewed`
+- `reactivation_attempted`
 
 Store and checkout:
 

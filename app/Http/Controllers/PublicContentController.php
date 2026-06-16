@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\EditorialStatus;
 use App\Models\EditorialContent;
 use App\Services\PublicCmsContentService;
+use App\Support\AccessStatePresenter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -65,10 +66,13 @@ class PublicContentController extends Controller
 
         if (! $content->isVisibleTo($request->user())) {
             if (! $request->user()) {
-                return redirect()->route('login');
+                return redirect()->guest(route('login'));
             }
 
-            abort(403, 'This content is not available for your access level.');
+            return response()->view('auth.permission-denied', [
+                'section' => 'content',
+                'stateView' => AccessStatePresenter::for($request->user(), AccessStatePresenter::sourceFromRequest($request)),
+            ], 403);
         }
 
         return view('public.content', [
