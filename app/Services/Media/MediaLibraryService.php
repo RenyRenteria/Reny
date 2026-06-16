@@ -27,6 +27,11 @@ class MediaLibraryService
         try {
             return DB::transaction(function () use ($actor, $attributes, $files, &$storedPaths): Collection {
                 $type = MediaAssetType::from($attributes['type']);
+
+                if ($type === MediaAssetType::ShortVideo) {
+                    throw new MediaUploadException('Short video uploads must use Mux direct upload.');
+                }
+
                 $isPublic = (bool) ($attributes['is_public'] ?? false);
                 $disk = $isPublic ? config('media.public_disk', 'public') : config('media.private_disk', 'local');
                 $directory = 'media/'.$type->value.'/'.now()->format('Y/m');

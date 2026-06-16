@@ -19,6 +19,17 @@ enum MediaAssetType: string
         return array_column(self::cases(), 'value');
     }
 
+    /**
+     * @return array<int, self>
+     */
+    public static function appServerCases(): array
+    {
+        return array_values(array_filter(
+            self::cases(),
+            fn (self $type): bool => $type !== self::ShortVideo
+        ));
+    }
+
     public function requiresAltTextWhenPublic(): bool
     {
         return in_array($this, [self::Image, self::Thumbnail], true);

@@ -25,7 +25,7 @@ class MediaLibraryController extends Controller
                 ->latest()
                 ->limit(24)
                 ->get(),
-            'types' => MediaAssetType::cases(),
+            'types' => MediaAssetType::appServerCases(),
             'limits' => config('media.types'),
         ]);
     }
@@ -203,12 +203,14 @@ class MediaLibraryController extends Controller
         $batchBytes = 0;
         $isPublic = $this->booleanValue($data['is_public'] ?? false);
 
-        if ($type->requiresAltTextWhenPublic() && $isPublic && blank($data['alt_text'] ?? null)) {
-            $validator->errors()->add('alt_text', 'Alt text is required for public images.');
+        if ($type === MediaAssetType::ShortVideo) {
+            $validator->errors()->add('type', 'Short video uploads must use Mux direct upload.');
+
+            return;
         }
 
-        if ($type === MediaAssetType::ShortVideo && blank($data['duration_seconds'] ?? null)) {
-            $validator->errors()->add('duration_seconds', 'Duration is required for short video uploads.');
+        if ($type->requiresAltTextWhenPublic() && $isPublic && blank($data['alt_text'] ?? null)) {
+            $validator->errors()->add('alt_text', 'Alt text is required for public images.');
         }
 
         foreach ($files as $index => $file) {

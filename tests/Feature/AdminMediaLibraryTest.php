@@ -130,6 +130,28 @@ class AdminMediaLibraryTest extends TestCase
         $this->assertDatabaseCount('media_assets', count($uploads));
     }
 
+    public function test_app_server_upload_rejects_short_video_and_form_excludes_it(): void
+    {
+        Storage::fake('public');
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+
+        $this->actingAsAdmin($admin);
+
+        $this->get(route('admin.media.index'))
+            ->assertOk()
+            ->assertDontSee('<option value="short_video"', false);
+
+        $this->post(route('admin.media.store'), [
+            'type' => MediaAssetType::ShortVideo->value,
+            'duration_seconds' => 60,
+            'file' => UploadedFile::fake()->create('clip.mp4', 64, 'video/mp4'),
+        ], ['Accept' => 'application/json'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('type');
+
+        $this->assertDatabaseCount('media_assets', 0);
+    }
+
     public function test_upload_validates_extension_mime_and_batch_limit(): void
     {
         Storage::fake('public');
@@ -384,6 +406,75 @@ class AdminMediaLibraryTest extends TestCase
         $this->assertSame('video.asset.ready', $asset->metadata['mux_last_event_type']);
     }
 
+    public function test_mux_webhook_error_and_cancelled_events_mark_asset_failed(): void
+    {
+        config(['services.mux.webhook_secret' => 'test-webhook-secret']);
+
+        $cases = [
+            'video.asset.errored' => [
+                'asset' => [
+                    'mux_upload_id' => 'mux-upload-asset-error',
+                    'mux_asset_id' => 'mux-asset-error',
+                ],
+                'data' => [
+                    'id' => 'mux-asset-error',
+                    'status' => 'errored',
+                    'errors' => [
+                        'messages' => ['Transcode failed.'],
+                    ],
+                ],
+                'mux_status' => 'errored',
+                'mux_error' => 'Transcode failed.',
+            ],
+            'video.upload.errored' => [
+                'asset' => [
+                    'mux_upload_id' => 'mux-upload-error',
+                ],
+                'data' => [
+                    'id' => 'mux-upload-error',
+                    'status' => 'errored',
+                    'error' => [
+                        'message' => 'Upload failed before processing.',
+                    ],
+                ],
+                'mux_status' => 'errored',
+                'mux_error' => 'Upload failed before processing.',
+            ],
+            'video.upload.cancelled' => [
+                'asset' => [
+                    'mux_upload_id' => 'mux-upload-cancelled',
+                ],
+                'data' => [
+                    'id' => 'mux-upload-cancelled',
+                    'status' => 'cancelled',
+                    'error' => 'Upload cancelled by uploader.',
+                ],
+                'mux_status' => 'cancelled',
+                'mux_error' => 'Upload cancelled by uploader.',
+            ],
+        ];
+
+        foreach ($cases as $eventType => $case) {
+            $asset = $this->createMuxAsset($case['asset']);
+            $payload = [
+                'id' => 'event-'.str_replace('.', '-', $eventType),
+                'type' => $eventType,
+                'data' => $case['data'],
+            ];
+
+            $this->postSignedMuxWebhook($payload)
+                ->assertOk()
+                ->assertJsonPath('media_asset_id', $asset->id);
+
+            $asset = $asset->fresh();
+
+            $this->assertSame(MediaProcessingStatus::Failed, $asset->processing_status);
+            $this->assertSame($case['mux_status'], $asset->mux_status);
+            $this->assertSame($case['mux_error'], $asset->mux_error);
+            $this->assertSame($eventType, $asset->metadata['mux_last_event_type']);
+        }
+    }
+
     public function test_mux_webhook_rejects_invalid_signature(): void
     {
         config(['services.mux.webhook_secret' => 'test-webhook-secret']);
@@ -413,6 +504,22 @@ class AdminMediaLibraryTest extends TestCase
         ], $body)->assertUnauthorized();
 
         $this->assertSame(MediaProcessingStatus::Processing, $asset->fresh()->processing_status);
+    }
+
+    private function createMuxAsset(array $overrides = []): MediaAsset
+    {
+        $uploadId = $overrides['mux_upload_id'] ?? 'mux-upload-123';
+
+        return MediaAsset::create(array_merge([
+            'type' => MediaAssetType::ShortVideo->value,
+            'title' => 'Waiting video',
+            'disk' => 'mux',
+            'path' => 'mux://uploads/'.$uploadId,
+            'original_filename' => 'waiting-video.mp4',
+            'extension' => 'mp4',
+            'size_bytes' => 1024,
+            'processing_status' => MediaProcessingStatus::Processing->value,
+        ], $overrides));
     }
 
     private function actingAsAdmin(User $user): void
