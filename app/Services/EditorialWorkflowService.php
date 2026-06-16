@@ -10,6 +10,7 @@ use App\Models\ContentReleaseWindow;
 use App\Models\EditorialAuditLog;
 use App\Models\EditorialContent;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -29,6 +30,30 @@ class EditorialWorkflowService
 
             $this->syncReleaseWindows($content, $attributes['release_windows'] ?? []);
             $this->recordAudit($content, $actor, EditorialAuditAction::Created, $attributes);
+
+            if ($content->needs_approval) {
+                $this->recordAudit($content, $actor, EditorialAuditAction::ApprovalRequested);
+            }
+
+            return $content->fresh(['releaseWindows', 'auditLogs']);
+        });
+    }
+
+    public function updateDraft(User $actor, EditorialContent $content, array $attributes): EditorialContent
+    {
+        return DB::transaction(function () use ($actor, $content, $attributes): EditorialContent {
+            $content->fill($this->basePayload($attributes, $content));
+            $content->forceFill([
+                'status' => EditorialStatus::Draft->value,
+                'needs_approval' => ! $actor->canPublishContent(),
+                'updated_by_id' => $actor->id,
+            ])->save();
+
+            if (array_key_exists('release_windows', $attributes)) {
+                $this->syncReleaseWindows($content, $attributes['release_windows'] ?? []);
+            }
+
+            $this->recordAudit($content, $actor, EditorialAuditAction::Updated, $attributes);
 
             if ($content->needs_approval) {
                 $this->recordAudit($content, $actor, EditorialAuditAction::ApprovalRequested);
@@ -101,6 +126,8 @@ class EditorialWorkflowService
         array $releaseWindows = []
     ): EditorialContent {
         return DB::transaction(function () use ($actor, $content, $scheduledAt, $releaseWindows): EditorialContent {
+            $scheduledAt = $this->normalizeScheduledAt($scheduledAt);
+
             $content->forceFill([
                 'status' => EditorialStatus::Scheduled->value,
                 'needs_approval' => false,
@@ -142,6 +169,9 @@ class EditorialWorkflowService
         $type = $this->enumValue($attributes['type'] ?? $existingContent?->type ?? ContentType::Post->value);
         $title = $attributes['title'] ?? $existingContent?->title ?? 'Untitled content';
         $slug = $attributes['slug'] ?? $existingContent?->slug ?? $title;
+        $scheduledAt = array_key_exists('scheduled_at', $attributes)
+            ? $this->normalizeScheduledAt($attributes['scheduled_at'])
+            : $existingContent?->scheduled_at;
 
         return [
             'type' => $type,
@@ -151,7 +181,7 @@ class EditorialWorkflowService
             'body' => $attributes['body'] ?? $existingContent?->body,
             'visibility' => $this->enumValue($attributes['visibility'] ?? $existingContent?->visibility ?? VisibilityAudience::Open->value),
             'purchase_key' => $attributes['purchase_key'] ?? $existingContent?->purchase_key,
-            'scheduled_at' => $attributes['scheduled_at'] ?? $existingContent?->scheduled_at,
+            'scheduled_at' => $scheduledAt,
             'metadata' => $attributes['metadata'] ?? $existingContent?->metadata ?? [],
         ];
     }
@@ -163,8 +193,8 @@ class EditorialWorkflowService
         collect($releaseWindows)
             ->map(fn (array $window): array => [
                 'audience' => $this->enumValue($window['audience']),
-                'starts_at' => $window['starts_at'] ?? null,
-                'ends_at' => $window['ends_at'] ?? null,
+                'starts_at' => $this->normalizeScheduledAt($window['starts_at'] ?? null),
+                'ends_at' => $this->normalizeScheduledAt($window['ends_at'] ?? null),
                 'country_codes' => $window['country_codes'] ?? null,
             ])
             ->each(fn (array $window): ContentReleaseWindow => $content->releaseWindows()->create($window));
@@ -215,5 +245,19 @@ class EditorialWorkflowService
     private function enumValue(mixed $value): string
     {
         return $value instanceof \BackedEnum ? $value->value : (string) $value;
+    }
+
+    private function normalizeScheduledAt(mixed $value): ?CarbonInterface
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if ($value instanceof CarbonInterface) {
+            return CarbonImmutable::instance($value)->timezone(config('app.timezone', 'UTC'));
+        }
+
+        return CarbonImmutable::parse((string) $value, config('admin.publishing_timezone', 'America/Panama'))
+            ->timezone(config('app.timezone', 'UTC'));
     }
 }

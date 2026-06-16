@@ -21,8 +21,8 @@
                 <nav class="admin-nav" aria-label="CMS sections">
                     <a class="is-active" href="{{ route('admin.dashboard') }}">Overview</a>
                     <a href="{{ route('admin.media.index') }}">Media</a>
-                    <span>Content</span>
-                    <span>Schedule</span>
+                    <a href="{{ route('admin.content.index') }}">Content</a>
+                    <a href="{{ route('admin.content.index', ['status' => 'scheduled']) }}">Schedule</a>
                 </nav>
 
                 <form method="POST" action="{{ route('admin.logout') }}">

@@ -4,6 +4,7 @@ use App\Http\Controllers\AccountController;
 use App\Http\Controllers\Admin\AdminLoginController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\EditorialActionController;
+use App\Http\Controllers\Admin\EditorialContentController;
 use App\Http\Controllers\Admin\MediaLibraryController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
@@ -43,6 +44,12 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::middleware(['admin.access', 'admin.session'])->group(function () {
         Route::get('/', AdminDashboardController::class)->name('dashboard');
         Route::post('/logout', [AdminLoginController::class, 'destroy'])->name('logout');
+        Route::get('/content', [EditorialContentController::class, 'index'])->name('content.index');
+        Route::get('/content/create', [EditorialContentController::class, 'create'])->name('content.create');
+        Route::post('/content', [EditorialContentController::class, 'store'])->name('content.store');
+        Route::get('/content/{content}/edit', [EditorialContentController::class, 'edit'])->name('content.edit');
+        Route::match(['put', 'patch'], '/content/{content}', [EditorialContentController::class, 'update'])->name('content.update');
+        Route::get('/content/{content}/preview', [EditorialContentController::class, 'preview'])->name('content.preview');
         Route::get('/media', [MediaLibraryController::class, 'index'])->name('media.index');
         Route::post('/media', [MediaLibraryController::class, 'store'])->name('media.store');
         Route::post('/media/mux/direct-uploads', [MediaLibraryController::class, 'createMuxDirectUpload'])->name('media.mux.direct-uploads.store');
