@@ -29,11 +29,13 @@ class AdminMediaLibraryTest extends TestCase
             'type' => MediaAssetType::Image->value,
             'title' => 'Cover art',
             'alt_text' => 'Reny cover art portrait',
+            'is_public' => true,
             'file' => UploadedFile::fake()->image('cover.jpg')->size(512),
         ], ['Accept' => 'application/json']);
 
         $response
             ->assertCreated()
+            ->assertJsonPath('assets.0.is_public', true)
             ->assertJsonPath('assets.0.type', MediaAssetType::Image->value)
             ->assertJsonPath('assets.0.processing_status', MediaProcessingStatus::Ready->value);
 
@@ -53,6 +55,7 @@ class AdminMediaLibraryTest extends TestCase
 
         $this->post(route('admin.media.store'), [
             'type' => MediaAssetType::Image->value,
+            'is_public' => true,
             'file' => UploadedFile::fake()->image('cover.jpg')->size(512),
         ], ['Accept' => 'application/json'])
             ->assertUnprocessable()
@@ -61,8 +64,38 @@ class AdminMediaLibraryTest extends TestCase
         $this->assertDatabaseCount('media_assets', 0);
     }
 
+    public function test_admin_can_upload_private_image_without_alt_text_to_private_disk(): void
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+
+        $this->actingAsAdmin($admin);
+
+        $response = $this->post(route('admin.media.store'), [
+            'type' => MediaAssetType::Image->value,
+            'title' => 'Private cover',
+            'is_public' => false,
+            'file' => UploadedFile::fake()->image('private-cover.jpg')->size(512),
+        ], ['Accept' => 'application/json']);
+
+        $response
+            ->assertCreated()
+            ->assertJsonPath('assets.0.is_public', false)
+            ->assertJsonPath('assets.0.url', null);
+
+        $asset = MediaAsset::query()->firstOrFail();
+
+        $this->assertFalse($asset->is_public);
+        $this->assertSame('local', $asset->disk);
+        $this->assertNull($asset->alt_text);
+        Storage::disk('local')->assertExists($asset->path);
+        Storage::disk('public')->assertMissing($asset->path);
+    }
+
     public function test_approved_app_server_media_types_can_be_uploaded(): void
     {
+        Storage::fake('local');
         Storage::fake('public');
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
 
@@ -136,6 +169,7 @@ class AdminMediaLibraryTest extends TestCase
         $this->post(route('admin.media.store'), [
             'type' => MediaAssetType::Image->value,
             'alt_text' => 'Image description',
+            'is_public' => true,
             'file' => UploadedFile::fake()->image('cover.jpg')->size(512),
         ], ['Accept' => 'application/json'])
             ->assertStatus(503)
@@ -196,6 +230,7 @@ class AdminMediaLibraryTest extends TestCase
             'mime_type' => 'video/mp4',
             'size_bytes' => 1024,
             'duration_seconds' => 600,
+            'is_public' => true,
         ]);
 
         $response
@@ -207,12 +242,60 @@ class AdminMediaLibraryTest extends TestCase
         $asset = MediaAsset::query()->firstOrFail();
 
         $this->assertSame('mux', $asset->disk);
+        $this->assertTrue($asset->is_public);
         $this->assertSame('mux-upload-123', $asset->mux_upload_id);
         $this->assertStringNotContainsString('test-token-secret', json_encode($asset->toArray()));
 
         Http::assertSent(fn ($request): bool => $request->url() === 'https://api.mux.com/video/v1/uploads'
             && $request['new_asset_settings']['passthrough'] === $asset->uuid
             && $request['new_asset_settings']['playback_policies'] === ['public']);
+    }
+
+    public function test_admin_can_create_private_mux_direct_upload_with_signed_playback_policy(): void
+    {
+        config([
+            'services.mux.token_id' => 'test-token-id',
+            'services.mux.token_secret' => 'test-token-secret',
+            'services.mux.cors_origin' => 'https://renyrenteria.com',
+        ]);
+
+        Http::fake([
+            'https://api.mux.com/video/v1/uploads' => Http::response([
+                'data' => [
+                    'id' => 'mux-upload-private',
+                    'url' => 'https://upload.mux.com/private-direct-upload',
+                    'status' => 'waiting',
+                ],
+            ], 201),
+        ]);
+
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+
+        $this->actingAsAdmin($admin);
+
+        $response = $this->postJson(route('admin.media.mux.direct-uploads.store'), [
+            'title' => 'Private behind the scenes',
+            'original_filename' => 'private-behind-the-scenes.mp4',
+            'mime_type' => 'video/mp4',
+            'size_bytes' => 1024,
+            'duration_seconds' => 600,
+            'is_public' => false,
+        ]);
+
+        $response
+            ->assertCreated()
+            ->assertJsonPath('asset.is_public', false)
+            ->assertJsonPath('asset.mux.upload_id', 'mux-upload-private');
+
+        $asset = MediaAsset::query()->firstOrFail();
+
+        $this->assertFalse($asset->is_public);
+        $this->assertSame('mux', $asset->disk);
+        $this->assertSame('mux-upload-private', $asset->mux_upload_id);
+
+        Http::assertSent(fn ($request): bool => $request->url() === 'https://api.mux.com/video/v1/uploads'
+            && $request['new_asset_settings']['passthrough'] === $asset->uuid
+            && $request['new_asset_settings']['playback_policies'] === ['signed']);
     }
 
     public function test_mux_direct_upload_failure_leaves_no_media_record(): void

@@ -6,10 +6,11 @@ use Illuminate\Support\Facades\Http;
 
 class MuxVideoService
 {
-    public function createDirectUpload(string $passthrough): array
+    public function createDirectUpload(string $passthrough, bool $isPublic): array
     {
         $tokenId = config('services.mux.token_id');
         $tokenSecret = config('services.mux.token_secret');
+        $playbackPolicy = $isPublic ? config('services.mux.playback_policy', 'public') : 'signed';
 
         if (blank($tokenId) || blank($tokenSecret)) {
             throw new MediaUploadException('Mux credentials are not configured.');
@@ -21,7 +22,7 @@ class MuxVideoService
             ->post(rtrim((string) config('services.mux.base_url'), '/').'/video/v1/uploads', [
                 'cors_origin' => config('services.mux.cors_origin') ?: config('app.url'),
                 'new_asset_settings' => [
-                    'playback_policies' => [config('services.mux.playback_policy', 'public')],
+                    'playback_policies' => [$playbackPolicy],
                     'video_quality' => config('services.mux.video_quality', 'basic'),
                     'passthrough' => $passthrough,
                 ],

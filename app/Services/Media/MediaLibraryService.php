@@ -27,7 +27,7 @@ class MediaLibraryService
         try {
             return DB::transaction(function () use ($actor, $attributes, $files, &$storedPaths): Collection {
                 $type = MediaAssetType::from($attributes['type']);
-                $isPublic = (bool) ($attributes['is_public'] ?? true);
+                $isPublic = (bool) ($attributes['is_public'] ?? false);
                 $disk = $isPublic ? config('media.public_disk', 'public') : config('media.private_disk', 'local');
                 $directory = 'media/'.$type->value.'/'.now()->format('Y/m');
 
@@ -83,7 +83,8 @@ class MediaLibraryService
     public function createMuxDirectUpload(User $actor, array $attributes, MuxVideoService $mux): array
     {
         $uuid = (string) Str::uuid();
-        $upload = $mux->createDirectUpload($uuid);
+        $isPublic = (bool) ($attributes['is_public'] ?? false);
+        $upload = $mux->createDirectUpload($uuid, $isPublic);
 
         $asset = MediaAsset::create([
             'uuid' => $uuid,
@@ -95,7 +96,7 @@ class MediaLibraryService
             'mime_type' => $attributes['mime_type'] ?? null,
             'extension' => strtolower(pathinfo($attributes['original_filename'], PATHINFO_EXTENSION)),
             'size_bytes' => $attributes['size_bytes'] ?? 0,
-            'is_public' => (bool) ($attributes['is_public'] ?? true),
+            'is_public' => $isPublic,
             'duration_seconds' => $attributes['duration_seconds'] ?? null,
             'processing_status' => MediaProcessingStatus::Pending->value,
             'mux_upload_id' => $upload['id'],

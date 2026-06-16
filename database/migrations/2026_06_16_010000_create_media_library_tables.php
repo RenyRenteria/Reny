@@ -24,7 +24,7 @@ return new class extends Migration
             $table->string('extension', 24)->nullable();
             $table->unsignedBigInteger('size_bytes')->default(0);
             $table->string('checksum', 96)->nullable();
-            $table->boolean('is_public')->default(true)->index();
+            $table->boolean('is_public')->default(false)->index();
             $table->string('alt_text', 180)->nullable();
             $table->unsignedInteger('duration_seconds')->nullable();
             $table->unsignedInteger('width')->nullable();

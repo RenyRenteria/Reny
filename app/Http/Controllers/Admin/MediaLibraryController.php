@@ -116,7 +116,7 @@ class MediaLibraryController extends Controller
                 'type' => $type->value,
                 'title' => $validated['title'] ?? null,
                 'alt_text' => $validated['alt_text'] ?? null,
-                'is_public' => $this->booleanValue($validated['is_public'] ?? true),
+                'is_public' => $this->booleanValue($validated['is_public'] ?? false),
                 'duration_seconds' => isset($validated['duration_seconds']) ? (int) $validated['duration_seconds'] : null,
                 'metadata' => $validated['metadata'] ?? [],
             ],
@@ -162,7 +162,7 @@ class MediaLibraryController extends Controller
             'mime_type' => $validated['mime_type'],
             'size_bytes' => isset($validated['size_bytes']) ? (int) $validated['size_bytes'] : 0,
             'duration_seconds' => (int) $validated['duration_seconds'],
-            'is_public' => $this->booleanValue($validated['is_public'] ?? true),
+            'is_public' => $this->booleanValue($validated['is_public'] ?? false),
             'metadata' => $validated['metadata'] ?? [],
         ];
     }
@@ -201,7 +201,7 @@ class MediaLibraryController extends Controller
 
         $limits = config("media.types.{$type->value}", []);
         $batchBytes = 0;
-        $isPublic = $this->booleanValue($data['is_public'] ?? true);
+        $isPublic = $this->booleanValue($data['is_public'] ?? false);
 
         if ($type->requiresAltTextWhenPublic() && $isPublic && blank($data['alt_text'] ?? null)) {
             $validator->errors()->add('alt_text', 'Alt text is required for public images.');

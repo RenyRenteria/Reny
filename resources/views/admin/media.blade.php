@@ -90,6 +90,7 @@
                         </label>
 
                         <label class="admin-checkbox">
+                            <input name="is_public" type="hidden" value="0">
                             <input name="is_public" type="checkbox" value="1" checked>
                             <span>Public asset</span>
                         </label>
@@ -140,6 +141,7 @@
                         </label>
 
                         <label class="admin-checkbox">
+                            <input name="is_public" type="hidden" value="0">
                             <input name="is_public" type="checkbox" value="1" checked>
                             <span>Public playback</span>
                         </label>
