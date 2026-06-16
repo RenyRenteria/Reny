@@ -61,6 +61,8 @@ php artisan optimize:clear
 php artisan optimize
 ```
 
+`php artisan storage:link` is required anywhere public app-server media URLs are served, including QA smoke environments. Without the `public/storage` symlink, public media records can be created successfully while their URLs return `403` or `404`.
+
 After the first deploy, configure a queue worker in Forge:
 
 ```bash

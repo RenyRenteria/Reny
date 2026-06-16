@@ -73,6 +73,13 @@ class EditorialContent extends Model
         return $this->belongsToMany(Taxonomy::class, 'editorial_content_taxonomy')->withTimestamps();
     }
 
+    public function mediaAssets(): BelongsToMany
+    {
+        return $this->belongsToMany(MediaAsset::class, 'content_media_assets')
+            ->withPivot(['role', 'sort_order', 'metadata'])
+            ->withTimestamps();
+    }
+
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by_id');
