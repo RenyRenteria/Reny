@@ -138,12 +138,16 @@ class PublicCmsContentService
                 ->get();
 
             if ($contents->isEmpty()) {
+                Cache::forget($this->cacheKey($page, $user));
+
                 return [];
             }
 
             $payload = $transform($contents);
 
             if ($this->payloadIsEmpty($payload)) {
+                Cache::forget($this->cacheKey($page, $user));
+
                 return [];
             }
 

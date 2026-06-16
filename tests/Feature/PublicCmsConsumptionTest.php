@@ -63,6 +63,7 @@ class PublicCmsConsumptionTest extends TestCase
         $this->get('/community')
             ->assertOk()
             ->assertSee('Member-only studio note');
+        $this->assertIsArray(Cache::get('public_cms.snapshots.community.guest'));
 
         $this->get(route('content.show', ['type' => ContentType::Post->value, 'slug' => $content->slug]))
             ->assertOk()
@@ -71,6 +72,16 @@ class PublicCmsConsumptionTest extends TestCase
         $content->forceFill([
             'visibility' => VisibilityAudience::Member->value,
         ])->save();
+
+        $this->get('/community')
+            ->assertOk()
+            ->assertDontSee('Member-only studio note');
+        $this->assertNull(Cache::get('public_cms.snapshots.community.guest'));
+
+        Schema::partialMock()
+            ->shouldReceive('hasTable')
+            ->with('editorial_contents')
+            ->andReturn(false);
 
         $this->get('/community')
             ->assertOk()
