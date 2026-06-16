@@ -6,7 +6,7 @@
         <title>{{ $content->title }} | Reny Renteria</title>
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body>
+    <body data-analytics-screen="public_content">
         <main class="public-content-shell">
             <a class="brand-link" href="{{ url('/') }}" aria-label="Reny Renteria home">
                 <img class="brand-logo" src="{{ asset('images/reny-renteria-logo.png') }}" alt="Reny Renteria">

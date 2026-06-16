@@ -1,3 +1,153 @@
+const normalizeAnalyticsKey = (value) => String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/&[a-z0-9#]+;/g, '')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '') || 'unknown';
+
+const compactAnalyticsPayload = (payload) => Object.fromEntries(
+    Object.entries(payload).filter(([, value]) => value !== undefined && value !== null && value !== ''),
+);
+
+const currentAnalyticsScreen = () => document.body?.dataset.analyticsScreen
+    || document.querySelector('main[id]')?.id
+    || normalizeAnalyticsKey(window.location.pathname || 'home');
+
+const analyticsDebugEnabled = () => {
+    try {
+        const params = new URLSearchParams(window.location.search);
+        const requested = params.get('analytics_debug');
+
+        if (['1', 'true', 'yes', 'on'].includes(String(requested).toLowerCase())) {
+            window.localStorage?.setItem('reny_analytics_debug', '1');
+        } else if (['0', 'false', 'no', 'off'].includes(String(requested).toLowerCase())) {
+            window.localStorage?.removeItem('reny_analytics_debug');
+        }
+
+        return window.renyAnalyticsDebug === true
+            || window.localStorage?.getItem('reny_analytics_debug') === '1';
+    } catch {
+        return window.renyAnalyticsDebug === true;
+    }
+};
+
+const dispatchAnalyticsEvent = (event) => {
+    if (Array.isArray(window.dataLayer)) {
+        window.dataLayer.push({ event: event.name, ...event.payload });
+    }
+
+    if (typeof window.gtag === 'function') {
+        window.gtag('event', event.name, event.payload);
+    }
+
+    if (typeof window.plausible === 'function') {
+        window.plausible(event.name, { props: event.payload });
+    }
+
+    if (typeof window.posthog?.capture === 'function') {
+        window.posthog.capture(event.name, event.payload);
+    }
+
+    if (typeof window.mixpanel?.track === 'function') {
+        window.mixpanel.track(event.name, event.payload);
+    }
+};
+
+const analyticsApi = window.renyAnalytics || {};
+analyticsApi.events = Array.isArray(analyticsApi.events) ? analyticsApi.events : [];
+
+const trackEvent = (name, payload = {}) => {
+    const event = {
+        name,
+        payload: compactAnalyticsPayload({
+            screen: currentAnalyticsScreen(),
+            path: window.location.pathname,
+            result: 'clicked',
+            ...payload,
+        }),
+        timestamp: new Date().toISOString(),
+    };
+
+    analyticsApi.events.push(event);
+    dispatchAnalyticsEvent(event);
+
+    if (analyticsDebugEnabled()) {
+        console.info('[analytics]', event.name, event.payload);
+    }
+
+    return event;
+};
+
+analyticsApi.track = trackEvent;
+window.renyAnalytics = analyticsApi;
+
+const analyticsText = (node) => String(node?.textContent || '').replace(/\s+/g, ' ').trim();
+
+const elementAnalyticsLabel = (element) => element.dataset.analyticsLabel
+    || element.dataset.youtubeTitle
+    || element.dataset.photoTitle
+    || element.dataset.buyName
+    || element.dataset.name
+    || element.dataset.rsvp
+    || element.getAttribute('aria-label')
+    || element.closest('[data-title]')?.dataset.title
+    || analyticsText(element.closest('article')?.querySelector('h4, h3, h2, strong'))
+    || analyticsText(element);
+
+const elementAnalyticsPayload = (element, overrides = {}) => {
+    const label = elementAnalyticsLabel(element);
+
+    return compactAnalyticsPayload({
+        item_id: element.dataset.analyticsId
+            || element.dataset.youtubeId
+            || element.dataset.detail
+            || element.dataset.buy
+            || element.dataset.rsvp
+            || normalizeAnalyticsKey(label),
+        item_type: element.dataset.analyticsType
+            || element.dataset.buyType
+            || element.dataset.photoType
+            || overrides.item_type,
+        item_label: label,
+        ...overrides,
+    });
+};
+
+const trackElementEvent = (element, name, payload = {}) => trackEvent(
+    name,
+    elementAnalyticsPayload(element, payload),
+);
+
+const sectionAnalyticsKey = (element) => normalizeAnalyticsKey(
+    analyticsText(element.closest('.content-section, section')?.querySelector('h1, h2, h3'))
+    || elementAnalyticsLabel(element),
+);
+
+document.addEventListener('DOMContentLoaded', () => {
+    trackEvent('page_view', {
+        title: document.title,
+        referrer: document.referrer || null,
+        result: 'viewed',
+    });
+
+    if (currentAnalyticsScreen().startsWith('account')) {
+        trackEvent('account_viewed', {
+            item_type: 'account',
+            item_id: currentAnalyticsScreen(),
+            result: 'viewed',
+        });
+    }
+
+    document.querySelectorAll('.access-gate').forEach((gate) => {
+        trackEvent('permission_denied', {
+            section: gate.dataset.section || currentAnalyticsScreen(),
+            item_type: 'access_gate',
+            item_id: gate.dataset.section || currentAnalyticsScreen(),
+            result: 'blocked',
+        });
+    });
+}, { once: true });
+
 const panelIds = new Set(['music', 'community']);
 
 function activateTab(tabId) {
@@ -36,8 +186,18 @@ document.querySelectorAll('.video-load-button').forEach((button) => {
         const youtubeId = button.dataset.youtubeId;
 
         if (!youtubeId) {
+            trackElementEvent(button, 'video_play_failed', {
+                item_type: 'video',
+                reason: 'missing_youtube_id',
+                result: 'failed',
+            });
             return;
         }
+
+        trackElementEvent(button, 'video_play_clicked', {
+            item_type: 'video',
+            result: 'clicked',
+        });
 
         const iframe = document.createElement('iframe');
         iframe.src = `https://www.youtube.com/embed/${youtubeId}?autoplay=1`;
@@ -46,7 +206,46 @@ document.querySelectorAll('.video-load-button').forEach((button) => {
         iframe.allowFullscreen = true;
 
         button.replaceWith(iframe);
+        trackElementEvent(button, 'video_play_started', {
+            item_type: 'video',
+            result: 'started',
+        });
     }, { once: true });
+});
+
+document.querySelectorAll('.youtube-pill, .playlist-link').forEach((link) => {
+    link.addEventListener('click', () => {
+        const url = new URL(link.href, window.location.href);
+
+        trackElementEvent(link, 'video_external_opened', {
+            item_type: link.classList.contains('playlist-link') ? 'playlist' : 'video',
+            item_id: url.searchParams.get('v') || normalizeAnalyticsKey(link.href),
+            destination: url.hostname,
+            result: 'external_opened',
+        });
+    });
+});
+
+document.querySelectorAll('.view-all').forEach((button) => {
+    button.addEventListener('click', () => {
+        const screen = currentAnalyticsScreen();
+        const eventName = screen === 'videos' ? 'video_view_all_clicked' : 'music_view_all_clicked';
+
+        trackElementEvent(button, eventName, {
+            item_type: 'section',
+            item_id: sectionAnalyticsKey(button),
+            result: 'clicked',
+        });
+    });
+});
+
+document.querySelectorAll('.play-button, .mini-play').forEach((button) => {
+    button.addEventListener('click', () => {
+        trackElementEvent(button, 'music_play_clicked', {
+            item_type: button.classList.contains('mini-play') ? 'single' : 'album',
+            result: 'clicked',
+        });
+    });
 });
 
 const photoTiles = document.querySelectorAll('.photo-tile');
@@ -86,6 +285,12 @@ const openPhotoLightbox = (tile) => {
     photoLightbox.classList.add('is-open');
     photoLightbox.setAttribute('aria-hidden', 'false');
     photoLightboxClose?.focus();
+
+    trackElementEvent(tile, 'photo_opened', {
+        item_type: 'photo',
+        item_id: normalizeAnalyticsKey(tile.dataset.photoTitle),
+        result: 'opened',
+    });
 };
 
 photoTiles.forEach((tile) => {
@@ -135,6 +340,10 @@ const showCommunityToast = (message) => {
 
 document.querySelectorAll('.community-toast-trigger').forEach((button) => {
     button.addEventListener('click', () => {
+        trackElementEvent(button, 'community_action_clicked', {
+            item_type: 'community_action',
+            result: 'clicked',
+        });
         showCommunityToast(button.dataset.toast || 'Coming soon');
     });
 });
@@ -151,6 +360,11 @@ document.querySelectorAll('.reaction-button').forEach((button) => {
         if (countNode) {
             countNode.textContent = String(nextCount);
         }
+
+        trackElementEvent(button, 'community_like_clicked', {
+            item_type: 'reaction',
+            result: button.classList.contains('is-reacted') ? 'liked' : 'unliked',
+        });
     });
 });
 
@@ -202,6 +416,12 @@ document.querySelectorAll('[data-poll]').forEach((poll) => {
                     meter.style.width = `${value}%`;
                 }
             });
+
+            trackElementEvent(option, 'community_poll_voted', {
+                item_type: 'poll_option',
+                item_id: normalizeAnalyticsKey(analyticsText(option)),
+                result: 'voted',
+            });
         });
     });
 });
@@ -248,6 +468,12 @@ const selectCountryGroup = (tab) => {
 
     JSON.parse(tab.dataset.messages || '[]').forEach((message) => {
         countryChatFeed.append(renderChatMessage(message));
+    });
+
+    trackElementEvent(tab, 'community_club_opened', {
+        item_type: 'country_club',
+        item_id: normalizeAnalyticsKey(tab.dataset.country),
+        result: 'opened',
     });
 };
 
@@ -302,6 +528,12 @@ document.getElementById('countryReplyForm')?.addEventListener('submit', (event) 
     countryChatFeed.append(renderChatMessage({ author: 'You', text }, true));
     countryChatFeed.scrollTop = countryChatFeed.scrollHeight;
     input.value = '';
+
+    trackEvent('community_reply_submitted', {
+        item_type: 'country_club_reply',
+        item_id: normalizeAnalyticsKey(countryName?.textContent),
+        result: 'submitted',
+    });
 });
 
 const createGroupModal = document.getElementById('createGroupModal');
@@ -337,6 +569,11 @@ const openCreateGroupModal = () => {
     createGroupModal.setAttribute('aria-hidden', 'false');
     document.body.classList.add('has-modal-open');
     createCountryName?.focus();
+
+    trackEvent('community_create_club_started', {
+        item_type: 'country_club',
+        result: 'started',
+    });
 };
 
 openCreateGroup?.addEventListener('click', openCreateGroupModal);
@@ -412,6 +649,78 @@ createGroupForm?.addEventListener('submit', (event) => {
     closeCreateGroupModal();
     selectCountryGroup(tab);
     tab.focus();
+
+    trackElementEvent(tab, 'community_club_created', {
+        item_type: 'country_club',
+        item_id: normalizeAnalyticsKey(country),
+        result: 'created',
+    });
+});
+
+document.querySelectorAll('.community-content .media-cta').forEach((button) => {
+    button.addEventListener('click', () => {
+        trackElementEvent(button, 'community_note_opened', {
+            item_type: 'reny_note',
+            result: 'opened',
+        });
+    });
+});
+
+document.querySelectorAll('.community-content .share').forEach((button) => {
+    button.addEventListener('click', () => {
+        trackElementEvent(button, 'community_share_clicked', {
+            item_type: 'post',
+            result: 'clicked',
+        });
+    });
+});
+
+document.querySelectorAll('.vote-card .soft-button').forEach((button) => {
+    button.addEventListener('click', () => {
+        trackElementEvent(button, 'community_poll_voted', {
+            item_type: 'poll',
+            result: 'clicked',
+        });
+    });
+});
+
+document.querySelectorAll('.auth-form').forEach((form) => {
+    form.addEventListener('submit', () => {
+        const action = new URL(form.action, window.location.href).pathname;
+        const eventName = action.includes('register')
+            ? 'auth_register_started'
+            : action.includes('forgot-password')
+                ? 'auth_password_recovery_started'
+                : 'auth_login_started';
+
+        trackEvent(eventName, {
+            item_type: 'auth_form',
+            item_id: normalizeAnalyticsKey(action),
+            result: 'submitted',
+        });
+    });
+});
+
+document.querySelectorAll('.member-card-link, .account-action').forEach((link) => {
+    link.addEventListener('click', () => {
+        const action = link.href.includes('/login') ? 'auth_login_started' : 'account_navigation_clicked';
+
+        trackElementEvent(link, action, {
+            item_type: 'account_link',
+            destination: new URL(link.href, window.location.href).pathname,
+            result: 'clicked',
+        });
+    });
+});
+
+document.querySelectorAll('.access-gate-button').forEach((link) => {
+    link.addEventListener('click', () => {
+        trackElementEvent(link, 'paywall_cta_clicked', {
+            item_type: 'access_gate',
+            section: link.closest('.access-gate')?.dataset.section || currentAnalyticsScreen(),
+            result: 'clicked',
+        });
+    });
 });
 
 const storeShell = document.querySelector('.store-shell');
@@ -641,6 +950,13 @@ if (storeShell) {
         const clientId = paypalButtons.dataset.paypalClientId;
 
         if (!clientId) {
+            trackEvent('store_payment_failed', {
+                item_type: 'payment_method',
+                item_id: 'paypal',
+                method: 'paypal',
+                reason: 'paypal_not_configured',
+                result: 'failed',
+            });
             throw checkoutError('PayPal is not configured.');
         }
 
@@ -658,6 +974,13 @@ if (storeShell) {
             createOrder: async () => {
                 const payload = checkoutPayload();
                 setPayPalStatus('Creating PayPal order...');
+                trackEvent('store_checkout_started', {
+                    item_type: 'checkout',
+                    item_count: payload.product_keys.length,
+                    method: 'paypal',
+                    currency: payload.currency,
+                    result: 'started',
+                });
                 const order = await postCheckoutJson(paypalButtons.dataset.createOrderEndpoint, payload);
                 setPayPalStatus('Approve payment in PayPal.');
 
@@ -672,15 +995,36 @@ if (storeShell) {
                 });
 
                 completeApprovedCheckout(capture);
+                trackEvent('store_payment_succeeded', {
+                    item_type: 'payment_method',
+                    item_id: 'paypal',
+                    method: 'paypal',
+                    paypal_order_id: data.orderID,
+                    result: 'succeeded',
+                });
             },
             onCancel: () => {
                 setPayPalStatus('PayPal checkout canceled. No purchase was recorded.');
                 showStoreToast('PayPal checkout canceled.');
+                trackEvent('store_payment_failed', {
+                    item_type: 'payment_method',
+                    item_id: 'paypal',
+                    method: 'paypal',
+                    reason: 'canceled',
+                    result: 'canceled',
+                });
             },
             onError: (error) => {
                 console.error(error);
                 setPayPalStatus(error.userMessage || 'PayPal checkout failed. No purchase was recorded.');
                 showStoreToast(error.userMessage || 'PayPal checkout failed.');
+                trackEvent('store_payment_failed', {
+                    item_type: 'payment_method',
+                    item_id: 'paypal',
+                    method: 'paypal',
+                    reason: error.userMessage || error.message || 'paypal_error',
+                    result: 'failed',
+                });
             },
         }).render(paypalButtons);
 
@@ -798,6 +1142,12 @@ if (storeShell) {
         bag.push(key);
         renderBag();
         showStoreToast(`${products[key].name} added.`);
+        trackEvent('store_product_added', {
+            item_type: products[key].type || 'product',
+            item_id: key,
+            item_label: products[key].name,
+            result: 'added',
+        });
     };
 
     const openProductDetail = (key) => {
@@ -852,6 +1202,11 @@ if (storeShell) {
             });
             updateStorePrices();
             renderBag();
+            trackElementEvent(button, 'store_currency_selected', {
+                item_type: 'currency',
+                item_id: currency,
+                result: 'selected',
+            });
         });
     });
 
@@ -869,11 +1224,24 @@ if (storeShell) {
                 const categories = (card.dataset.category || '').split(' ');
                 card.hidden = filter !== 'all' && !categories.includes(filter);
             });
+
+            trackElementEvent(button, 'store_filter_selected', {
+                item_type: 'product_filter',
+                item_id: filter,
+                result: 'selected',
+            });
         });
     });
 
     document.querySelectorAll('[data-detail]').forEach((button) => {
-        button.addEventListener('click', () => openProductDetail(button.dataset.detail));
+        button.addEventListener('click', () => {
+            trackElementEvent(button, 'store_product_opened', {
+                item_type: button.dataset.type || 'product',
+                item_id: button.dataset.detail,
+                result: 'opened',
+            });
+            openProductDetail(button.dataset.detail);
+        });
     });
 
     document.querySelectorAll('[data-buy]').forEach((button) => {
@@ -885,7 +1253,15 @@ if (storeShell) {
 
     document.querySelectorAll('[data-rsvp]').forEach((button) => {
         button.addEventListener('click', () => {
+            trackElementEvent(button, 'store_rsvp_started', {
+                item_type: 'event',
+                result: 'started',
+            });
             showStoreToast(`${button.dataset.rsvp} RSVP saved.`);
+            trackElementEvent(button, 'store_rsvp_confirmed', {
+                item_type: 'event',
+                result: 'confirmed',
+            });
         });
     });
 
@@ -902,12 +1278,23 @@ if (storeShell) {
     document.getElementById('openBag')?.addEventListener('click', () => {
         renderBag();
         openStoreLayer('bagLayer');
+        trackEvent('store_checkout_started', {
+            item_type: 'checkout',
+            item_count: bag.length,
+            result: bag.length ? 'opened' : 'empty',
+        });
     });
 
     document.querySelectorAll('.store-payments button').forEach((button) => {
         button.addEventListener('click', () => {
             document.querySelectorAll('.store-payments button').forEach((node) => {
                 node.classList.toggle('is-active', node === button);
+            });
+            trackElementEvent(button, 'store_payment_method_selected', {
+                item_type: 'payment_method',
+                item_id: normalizeAnalyticsKey(analyticsText(button)),
+                method: normalizeAnalyticsKey(analyticsText(button)),
+                result: 'selected',
             });
         });
     });
@@ -918,12 +1305,26 @@ if (storeShell) {
         button.textContent = 'Loading PayPal...';
 
         try {
-            checkoutPayload();
+            const payload = checkoutPayload();
+            trackEvent('store_checkout_started', {
+                item_type: 'checkout',
+                item_count: payload.product_keys.length,
+                method: 'paypal',
+                currency: payload.currency,
+                result: 'started',
+            });
             await renderPayPalButtons();
             showStoreToast('Use PayPal to approve payment.');
         } catch (error) {
             setPayPalStatus(error.userMessage || 'PayPal checkout is unavailable.');
             showStoreToast(error.userMessage || 'PayPal checkout is unavailable.');
+            trackEvent('store_payment_failed', {
+                item_type: 'payment_method',
+                item_id: 'paypal',
+                method: 'paypal',
+                reason: error.userMessage || error.message || 'checkout_unavailable',
+                result: 'failed',
+            });
         } finally {
             button.disabled = false;
             button.textContent = 'Load PayPal checkout';

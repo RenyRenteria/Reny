@@ -140,7 +140,7 @@
         <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;500&display=swap" rel="stylesheet">
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body>
+    <body data-analytics-screen="store">
         <div class="store-shell">
             <aside class="sidebar" aria-label="Primary navigation">
                 <div>
