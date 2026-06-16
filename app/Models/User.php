@@ -35,6 +35,27 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
+    public const ROLE_FAN = 'fan';
+
+    public const ROLE_ADMIN = 'admin';
+
+    public const ROLE_ARTIST_ADMIN = 'artist_admin';
+
+    public const ROLE_EDITOR = 'editor';
+
+    public const ROLE_MODERATOR = 'moderator';
+
+    public const ADMIN_ROLES = [
+        self::ROLE_ADMIN,
+        self::ROLE_ARTIST_ADMIN,
+        self::ROLE_EDITOR,
+    ];
+
+    public const PUBLISHING_ROLES = [
+        self::ROLE_ADMIN,
+        self::ROLE_ARTIST_ADMIN,
+    ];
+
     /**
      * Get the attributes that should be cast.
      *
@@ -98,6 +119,21 @@ class User extends Authenticatable
 
     public function isStaff(): bool
     {
-        return in_array($this->role, ['admin', 'editor', 'moderator'], true);
+        return in_array($this->role, [
+            self::ROLE_ADMIN,
+            self::ROLE_ARTIST_ADMIN,
+            self::ROLE_EDITOR,
+            self::ROLE_MODERATOR,
+        ], true);
+    }
+
+    public function canAccessAdmin(): bool
+    {
+        return in_array($this->role, self::ADMIN_ROLES, true);
+    }
+
+    public function canPublishContent(): bool
+    {
+        return in_array($this->role, self::PUBLISHING_ROLES, true);
     }
 }

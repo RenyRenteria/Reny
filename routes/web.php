@@ -1,6 +1,9 @@
 <?php
 
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\Admin\AdminLoginController;
+use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admin\EditorialActionController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
@@ -30,6 +33,20 @@ Route::get('/community', function () {
 Route::get('/store', function () {
     return view('store');
 })->name('store');
+
+Route::prefix('admin')->name('admin.')->group(function () {
+    Route::get('/login', [AdminLoginController::class, 'create'])->name('login');
+    Route::post('/login', [AdminLoginController::class, 'store'])->name('login.store');
+
+    Route::middleware(['admin.access', 'admin.session'])->group(function () {
+        Route::get('/', AdminDashboardController::class)->name('dashboard');
+        Route::post('/logout', [AdminLoginController::class, 'destroy'])->name('logout');
+        Route::post('/editorial/drafts', [EditorialActionController::class, 'saveDraft'])->name('editorial.drafts.store');
+        Route::post('/editorial/publish', [EditorialActionController::class, 'publish'])
+            ->middleware('admin.publish')
+            ->name('editorial.publish');
+    });
+});
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');
