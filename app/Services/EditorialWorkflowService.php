@@ -28,13 +28,44 @@ class EditorialWorkflowService
             ]);
 
             $this->syncReleaseWindows($content, $attributes['release_windows'] ?? []);
+            $this->syncMediaAssets($content, $attributes['media_assets'] ?? []);
             $this->recordAudit($content, $actor, EditorialAuditAction::Created, $attributes);
 
             if ($content->needs_approval) {
                 $this->recordAudit($content, $actor, EditorialAuditAction::ApprovalRequested);
             }
 
-            return $content->fresh(['releaseWindows', 'auditLogs']);
+            return $content->fresh(['releaseWindows', 'mediaAssets', 'auditLogs']);
+        });
+    }
+
+    public function updateDraft(User $actor, EditorialContent $content, array $attributes): EditorialContent
+    {
+        return DB::transaction(function () use ($actor, $content, $attributes): EditorialContent {
+            $content->fill($this->basePayload($attributes, $content));
+            $content->forceFill([
+                'status' => $content->status === EditorialStatus::Published
+                    ? EditorialStatus::Published->value
+                    : EditorialStatus::Draft->value,
+                'needs_approval' => ! $actor->canPublishContent(),
+                'updated_by_id' => $actor->id,
+            ])->save();
+
+            if (array_key_exists('release_windows', $attributes)) {
+                $this->syncReleaseWindows($content, $attributes['release_windows'] ?? []);
+            }
+
+            if (array_key_exists('media_assets', $attributes)) {
+                $this->syncMediaAssets($content, $attributes['media_assets'] ?? []);
+            }
+
+            $this->recordAudit($content, $actor, EditorialAuditAction::Updated, $attributes);
+
+            if ($content->needs_approval) {
+                $this->recordAudit($content, $actor, EditorialAuditAction::ApprovalRequested);
+            }
+
+            return $content->fresh(['releaseWindows', 'mediaAssets', 'auditLogs']);
         });
     }
 
@@ -59,6 +90,10 @@ class EditorialWorkflowService
 
             if (array_key_exists('release_windows', $attributes)) {
                 $this->syncReleaseWindows($content, $attributes['release_windows'] ?? []);
+            }
+
+            if (array_key_exists('media_assets', $attributes)) {
+                $this->syncMediaAssets($content, $attributes['media_assets'] ?? []);
             }
 
             if ($wasWaitingForApproval) {
@@ -87,6 +122,7 @@ class EditorialWorkflowService
             ]);
 
             $this->syncReleaseWindows($content, $attributes['release_windows'] ?? []);
+            $this->syncMediaAssets($content, $attributes['media_assets'] ?? []);
             $this->recordAudit($content, $actor, EditorialAuditAction::Created, $attributes);
             $this->recordAudit($content, $actor, EditorialAuditAction::Published, $attributes);
 
@@ -98,9 +134,14 @@ class EditorialWorkflowService
         User $actor,
         EditorialContent $content,
         CarbonInterface|string $scheduledAt,
-        array $releaseWindows = []
+        array $releaseWindows = [],
+        array $attributes = []
     ): EditorialContent {
-        return DB::transaction(function () use ($actor, $content, $scheduledAt, $releaseWindows): EditorialContent {
+        return DB::transaction(function () use ($actor, $content, $scheduledAt, $releaseWindows, $attributes): EditorialContent {
+            if ($attributes !== []) {
+                $content->fill($this->basePayload($attributes, $content));
+            }
+
             $content->forceFill([
                 'status' => EditorialStatus::Scheduled->value,
                 'needs_approval' => false,
@@ -113,11 +154,38 @@ class EditorialWorkflowService
                 $this->syncReleaseWindows($content, $releaseWindows);
             }
 
+            if (array_key_exists('media_assets', $attributes)) {
+                $this->syncMediaAssets($content, $attributes['media_assets'] ?? []);
+            }
+
             $this->recordAudit($content, $actor, EditorialAuditAction::Scheduled, [
                 'scheduled_at' => $scheduledAt instanceof CarbonInterface ? $scheduledAt->toISOString() : $scheduledAt,
             ]);
 
             return $content->fresh(['releaseWindows', 'auditLogs']);
+        });
+    }
+
+    public function scheduleNew(User $actor, array $attributes, CarbonInterface|string $scheduledAt): EditorialContent
+    {
+        return DB::transaction(function () use ($actor, $attributes, $scheduledAt): EditorialContent {
+            $content = EditorialContent::create([
+                ...$this->basePayload([...$attributes, 'scheduled_at' => $scheduledAt]),
+                'status' => EditorialStatus::Scheduled->value,
+                'needs_approval' => false,
+                'created_by_id' => $actor->id,
+                'updated_by_id' => $actor->id,
+                'scheduled_by_id' => $actor->id,
+            ]);
+
+            $this->syncReleaseWindows($content, $attributes['release_windows'] ?? []);
+            $this->syncMediaAssets($content, $attributes['media_assets'] ?? []);
+            $this->recordAudit($content, $actor, EditorialAuditAction::Created, $attributes);
+            $this->recordAudit($content, $actor, EditorialAuditAction::Scheduled, [
+                'scheduled_at' => $scheduledAt instanceof CarbonInterface ? $scheduledAt->toISOString() : $scheduledAt,
+            ]);
+
+            return $content->fresh(['releaseWindows', 'mediaAssets', 'auditLogs']);
         });
     }
 
@@ -168,6 +236,23 @@ class EditorialWorkflowService
                 'country_codes' => $window['country_codes'] ?? null,
             ])
             ->each(fn (array $window): ContentReleaseWindow => $content->releaseWindows()->create($window));
+    }
+
+    private function syncMediaAssets(EditorialContent $content, array $mediaAssets): void
+    {
+        $content->mediaAssets()->detach();
+
+        collect($mediaAssets)
+            ->mapWithKeys(fn (array $asset): array => [
+                (int) $asset['id'] => [
+                    'role' => $asset['role'] ?? 'primary',
+                    'sort_order' => $asset['sort_order'] ?? 0,
+                    'metadata' => isset($asset['metadata']) ? json_encode($asset['metadata']) : null,
+                ],
+            ])
+            ->each(function (array $pivot, int $assetId) use ($content): void {
+                $content->mediaAssets()->attach($assetId, $pivot);
+            });
     }
 
     private function recordAudit(

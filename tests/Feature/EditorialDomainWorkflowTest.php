@@ -5,9 +5,12 @@ namespace Tests\Feature;
 use App\Enums\ContentType;
 use App\Enums\EditorialAuditAction;
 use App\Enums\EditorialStatus;
+use App\Enums\MediaAssetType;
+use App\Enums\MediaProcessingStatus;
 use App\Enums\TaxonomyType;
 use App\Enums\VisibilityAudience;
 use App\Models\EditorialContent;
+use App\Models\MediaAsset;
 use App\Models\Taxonomy;
 use App\Models\User;
 use App\Models\UserUnlock;
@@ -22,16 +25,14 @@ class EditorialDomainWorkflowTest extends TestCase
     public function test_each_content_type_can_be_created_as_draft(): void
     {
         $editor = User::factory()->create(['role' => User::ROLE_EDITOR]);
+        $asset = $this->readyAsset();
 
         $this->actingAsAdmin($editor);
 
-        foreach (ContentType::values() as $type) {
-            $this->postJson(route('admin.editorial.drafts.store'), [
-                'type' => $type,
-                'title' => "Draft {$type}",
-            ])
+        foreach (ContentType::cases() as $type) {
+            $this->postJson(route('admin.editorial.drafts.store'), $this->payloadFor($type, $asset))
                 ->assertOk()
-                ->assertJsonPath('type', $type)
+                ->assertJsonPath('type', $type->value)
                 ->assertJsonPath('status', EditorialStatus::Draft->value)
                 ->assertJsonPath('needs_approval', true);
         }
@@ -164,6 +165,122 @@ class EditorialDomainWorkflowTest extends TestCase
         $this->assertTrue($content->auditLogs()
             ->where('action', EditorialAuditAction::ApprovalRequested->value)
             ->exists());
+    }
+
+    private function readyAsset(): MediaAsset
+    {
+        return MediaAsset::create([
+            'type' => MediaAssetType::Image->value,
+            'title' => 'Reusable editorial asset',
+            'disk' => 'public',
+            'path' => 'media/editorial.jpg',
+            'original_filename' => 'editorial.jpg',
+            'mime_type' => 'image/jpeg',
+            'extension' => 'jpg',
+            'size_bytes' => 1024,
+            'is_public' => true,
+            'alt_text' => 'Reusable editorial asset',
+            'processing_status' => MediaProcessingStatus::Ready->value,
+        ]);
+    }
+
+    private function payloadFor(ContentType $type, MediaAsset $asset): array
+    {
+        $base = [
+            'type' => $type->value,
+            'title' => "Draft {$type->value}",
+            'summary' => 'Draft prepared for editorial workflow.',
+            'visibility' => VisibilityAudience::Royal->value,
+            'media_asset_ids' => [$asset->id],
+        ];
+
+        return match ($type) {
+            ContentType::Song => [
+                ...$base,
+                'metadata' => [
+                    'duration_seconds' => 180,
+                    'release_date' => '2026-07-01',
+                ],
+            ],
+            ContentType::MusicalAlbum => [
+                ...$base,
+                'metadata' => [
+                    'track_count' => 8,
+                    'release_cycle' => 'campaign',
+                ],
+            ],
+            ContentType::DeluxeAlbum => [
+                ...$base,
+                'purchase_key' => 'deluxe-draft',
+                'metadata' => [
+                    'package_title' => 'Deluxe draft',
+                    'package_notes' => 'Draft notes',
+                ],
+            ],
+            ContentType::Video => [
+                ...$base,
+                'metadata' => [
+                    'video_url' => 'https://www.youtube.com/watch?v=abc12345678',
+                    'category' => 'music',
+                ],
+            ],
+            ContentType::Photo => [
+                ...$base,
+                'metadata' => [
+                    'caption' => 'Photo caption',
+                ],
+            ],
+            ContentType::Gallery => [
+                ...$base,
+                'metadata' => [
+                    'gallery_theme' => 'Gallery theme',
+                ],
+            ],
+            ContentType::Post => [
+                ...$base,
+                'body' => 'Post body.',
+            ],
+            ContentType::Poll => [
+                ...$base,
+                'metadata' => [
+                    'question' => 'Poll question',
+                    'options' => ['First', 'Second'],
+                    'eligibility' => 'royal',
+                ],
+            ],
+            ContentType::Product => [
+                ...$base,
+                'purchase_key' => 'product-draft',
+                'metadata' => [
+                    'product_type' => 'digital',
+                    'price' => 9,
+                ],
+            ],
+            ContentType::Event => [
+                ...$base,
+                'metadata' => [
+                    'event_type' => 'listening session',
+                    'event_starts_at' => '2026-08-01T20:00',
+                    'venue' => 'Panama City',
+                    'inventory' => 100,
+                ],
+            ],
+            ContentType::Drop => [
+                ...$base,
+                'metadata' => [
+                    'drop_window' => '2026-08-15T09:00',
+                    'inventory' => 250,
+                    'bundle_notes' => 'Drop notes',
+                ],
+            ],
+            ContentType::Exclusive => [
+                ...$base,
+                'metadata' => [
+                    'access_note' => 'Royal-only',
+                    'unlocked_by' => 'Royal Pass',
+                ],
+            ],
+        };
     }
 
     private function actingAsAdmin(User $user): void

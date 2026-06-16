@@ -4,6 +4,7 @@ use App\Http\Controllers\AccountController;
 use App\Http\Controllers\Admin\AdminLoginController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\EditorialActionController;
+use App\Http\Controllers\Admin\EditorialContentController;
 use App\Http\Controllers\Admin\MediaLibraryController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
@@ -46,10 +47,17 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/media', [MediaLibraryController::class, 'index'])->name('media.index');
         Route::post('/media', [MediaLibraryController::class, 'store'])->name('media.store');
         Route::post('/media/mux/direct-uploads', [MediaLibraryController::class, 'createMuxDirectUpload'])->name('media.mux.direct-uploads.store');
+        Route::get('/editorial', [EditorialContentController::class, 'index'])->name('editorial.index');
+        Route::get('/editorial/{content}/edit', [EditorialContentController::class, 'edit'])->name('editorial.edit');
+        Route::get('/editorial/{content}/preview', [EditorialContentController::class, 'preview'])->name('editorial.preview');
         Route::post('/editorial/drafts', [EditorialActionController::class, 'saveDraft'])->name('editorial.drafts.store');
         Route::post('/editorial/publish', [EditorialActionController::class, 'publish'])
             ->middleware('admin.publish')
             ->name('editorial.publish');
+        Route::post('/editorial/schedule', [EditorialActionController::class, 'schedule'])
+            ->middleware('admin.publish')
+            ->name('editorial.schedule');
+        Route::post('/editorial/{content}', [EditorialActionController::class, 'updateDraft'])->name('editorial.update');
     });
 });
 
