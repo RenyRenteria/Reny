@@ -55,11 +55,43 @@ class UserFactory extends Factory
         ]);
     }
 
+    public function royalGrace(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'royal_status' => 'royal_grace',
+            'royal_ends_at' => now()->addWeek(),
+        ]);
+    }
+
     public function expiredRoyal(): static
     {
         return $this->state(fn (array $attributes) => [
             'royal_status' => 'royal_expired',
             'royal_ends_at' => now()->subDay(),
+        ]);
+    }
+
+    public function cancelledRoyal(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'royal_status' => 'cancelled',
+            'royal_ends_at' => now()->addMonth(),
+        ]);
+    }
+
+    public function onHoldRoyal(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'royal_status' => 'on_hold',
+            'royal_ends_at' => now()->addMonth(),
+        ]);
+    }
+
+    public function refundedRoyal(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'royal_status' => 'refunded',
+            'royal_ends_at' => now()->addMonth(),
         ]);
     }
 }

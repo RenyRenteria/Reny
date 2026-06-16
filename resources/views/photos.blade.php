@@ -97,6 +97,10 @@
             'size' => 'standard',
         ],
     ];
+
+    if (! empty($publicCms['photos'] ?? [])) {
+        $photos = $publicCms['photos'];
+    }
 @endphp
 
 <!DOCTYPE html>
@@ -181,6 +185,9 @@
 
                 <section class="photo-masonry" aria-label="Photos gallery">
                     @foreach ($photos as $photo)
+                        @php
+                            $photoSrc = $photo['image_url'] ?? asset('images/photos/' . $photo['image']);
+                        @endphp
                         <button
                             class="photo-tile is-{{ $photo['size'] }}"
                             type="button"
@@ -188,10 +195,10 @@
                             data-photo-type="{{ $photo['type'] }}"
                             data-photo-tone="{{ $photo['tone'] }}"
                             data-photo-caption="{{ $photo['caption'] }}"
-                            data-photo-src="{{ asset('images/photos/' . $photo['image']) }}"
+                            data-photo-src="{{ $photoSrc }}"
                         >
                             <img
-                                src="{{ asset('images/photos/' . $photo['image']) }}"
+                                src="{{ $photoSrc }}"
                                 alt="{{ $photo['title'] }}"
                                 loading="lazy"
                                 decoding="async"

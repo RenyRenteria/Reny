@@ -13,29 +13,18 @@ use App\Http\Controllers\Commerce\CheckoutController;
 use App\Http\Controllers\Commerce\PaypalWebhookController;
 use App\Http\Controllers\MuxWebhookController;
 use App\Http\Controllers\PointsController;
+use App\Http\Controllers\PublicContentController;
 use App\Http\Controllers\Royal\PremiumContentController;
 use App\Http\Controllers\TicketCheckInController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-})->name('home');
-
-Route::get('/videos', function () {
-    return view('videos');
-});
-
-Route::get('/photos', function () {
-    return view('photos');
-});
-
-Route::get('/community', function () {
-    return view('community');
-});
-
-Route::get('/store', function () {
-    return view('store');
-})->name('store');
+Route::get('/', [PublicContentController::class, 'home'])->name('home');
+Route::get('/videos', [PublicContentController::class, 'videos']);
+Route::get('/photos', [PublicContentController::class, 'photos']);
+Route::get('/community', [PublicContentController::class, 'community']);
+Route::get('/store', [PublicContentController::class, 'store'])->name('store');
+Route::get('/api/public-content/{page}', [PublicContentController::class, 'payload'])->name('public-content.payload');
+Route::get('/content/{content}', [PublicContentController::class, 'show'])->name('public.content.show');
 
 Route::prefix('admin')->name('admin.')->group(function () {
     Route::get('/login', [AdminLoginController::class, 'create'])->name('login');

@@ -488,6 +488,33 @@ if (storeShell) {
         summary: 'Intimate listening room preview for the next deluxe release.',
     };
 
+    document.querySelectorAll('[data-price][data-price-value]').forEach((node) => {
+        const value = Number.parseFloat(node.dataset.priceValue || '');
+
+        if (Number.isFinite(value)) {
+            prices[node.dataset.price] = value;
+        }
+    });
+
+    document.querySelectorAll('[data-buy]').forEach((button) => {
+        const key = button.dataset.buy;
+
+        if (!key || products[key]) {
+            return;
+        }
+
+        products[key] = {
+            name: button.dataset.buyName || key,
+            type: button.dataset.buyType || 'Event',
+            priceKey: key,
+            availability: 'Available',
+            points: '+0 pts',
+            pass: 'No Royal Pass required',
+            access: 'Ticket unlocks in profile',
+            summary: button.dataset.buySummary || 'Event checkout',
+        };
+    });
+
     const money = (value, suffix = '') => {
         const current = currencies[currency];
         const converted = value * current.rate;
