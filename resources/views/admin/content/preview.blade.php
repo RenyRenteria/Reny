@@ -3,7 +3,7 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <meta name="robots" content="noindex,nofollow">
+        <meta name="robots" content="noindex,nofollow,noarchive">
 
         <title>Preview | {{ $content->title }}</title>
 
@@ -79,7 +79,7 @@
                             <div>
                                 <span>Schedule</span>
                                 <strong>
-                                    {{ $content->scheduled_at ? $content->scheduled_at->copy()->timezone($timezone)->format('M j, Y g:i A') : 'None' }}
+                                    {{ $content->scheduled_at ? $content->scheduled_at->copy()->timezone($timezone)->format('M j, Y g:i A').' Panama' : 'None' }}
                                 </strong>
                             </div>
                             <div>
@@ -116,6 +116,33 @@
                     @else
                         <div class="admin-empty-state">No metadata.</div>
                     @endif
+                </section>
+
+                <section class="admin-panel" aria-labelledby="release-windows-title">
+                    <div class="admin-section-head">
+                        <div>
+                            <p class="admin-kicker">Scheduling</p>
+                            <h2 id="release-windows-title">Release windows</h2>
+                        </div>
+                    </div>
+
+                    <div class="admin-media-list">
+                        @forelse ($content->releaseWindows as $window)
+                            <article class="admin-media-row">
+                                <div>
+                                    <span>{{ $window->audience->value }}</span>
+                                    <strong>
+                                        {{ $window->starts_at?->copy()->timezone($timezone)->format('M j, Y g:i A') ?? 'Always open' }}
+                                    </strong>
+                                    <small>
+                                        Ends {{ $window->ends_at?->copy()->timezone($timezone)->format('M j, Y g:i A') ?? 'without end date' }}
+                                    </small>
+                                </div>
+                            </article>
+                        @empty
+                            <div class="admin-empty-state">No release windows.</div>
+                        @endforelse
+                    </div>
                 </section>
 
                 <section class="admin-panel" aria-labelledby="attached-title">

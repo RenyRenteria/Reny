@@ -124,8 +124,8 @@ class AdminEditorialFormsTest extends TestCase
 
         $this->get(route('admin.content.preview', $content))
             ->assertOk()
-            ->assertHeader('X-Robots-Tag', 'noindex, nofollow')
-            ->assertSee('noindex,nofollow', false)
+            ->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive')
+            ->assertSee('noindex,nofollow,noarchive', false)
             ->assertSee('Private preview candidate');
     }
 

@@ -79,8 +79,8 @@ class EditorialContentController extends Controller
             'content' => $content,
             'timezone' => config('admin.publishing_timezone', 'America/Panama'),
         ])
-            ->header('X-Robots-Tag', 'noindex, nofollow')
-            ->header('Cache-Control', 'private, no-store');
+            ->header('X-Robots-Tag', 'noindex, nofollow, noarchive')
+            ->header('Cache-Control', 'no-store, private');
     }
 
     private function persist(
