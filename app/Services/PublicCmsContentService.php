@@ -19,6 +19,8 @@ class PublicCmsContentService
 
     private const VERSION_KEY = 'public-cms:last-published:version';
 
+    private const USER_VERSION_PREFIX = 'public-cms:last-published:user-version:';
+
     /**
      * @return array<string, mixed>
      */
@@ -162,11 +164,9 @@ class PublicCmsContentService
     public static function forgetCachedUserPayloads(User $user): void
     {
         $cache = self::cacheStore();
-        $version = self::cacheVersion($cache);
+        $version = self::userCacheVersion($cache, $user);
 
-        foreach (self::PAGES as $page) {
-            $cache->forget("public-cms:last-published:v{$version}:{$page}:user:{$user->id}");
-        }
+        $cache->forever(self::userVersionKey($user), $version + 1);
     }
 
     public static function bumpCacheVersion(): bool
@@ -243,7 +243,11 @@ class PublicCmsContentService
             return "public-cms:last-published:v{$version}:{$page}:guest";
         }
 
-        return "public-cms:last-published:v{$version}:{$page}:user:{$user->id}";
+        $viewer = $user->fresh() ?? $user;
+        $userVersion = self::userCacheVersion($this->cache(), $viewer);
+        $access = $this->accessFingerprint($viewer);
+
+        return "public-cms:last-published:v{$version}:{$page}:user:{$viewer->id}:uv{$userVersion}:access:{$access}";
     }
 
     private static function cacheStore(): Repository
@@ -254,6 +258,37 @@ class PublicCmsContentService
     private static function cacheVersion(Repository $cache): int
     {
         return (int) $cache->get(self::VERSION_KEY, 1);
+    }
+
+    private static function userCacheVersion(Repository $cache, User $user): int
+    {
+        return (int) $cache->get(self::userVersionKey($user), 1);
+    }
+
+    private static function userVersionKey(User $user): string
+    {
+        return self::USER_VERSION_PREFIX.$user->id;
+    }
+
+    private function accessFingerprint(User $user): string
+    {
+        $availableUnlocks = $user->unlocks()
+            ->available()
+            ->orderBy('id')
+            ->get(['id', 'product_key', 'source_type', 'source_id', 'updated_at'])
+            ->map(fn ($unlock): string => implode(':', [
+                $unlock->id,
+                $unlock->product_key ?? '',
+                $unlock->source_type ?? '',
+                $unlock->source_id ?? '',
+                $unlock->updated_at?->getTimestamp() ?? '',
+            ]))
+            ->implode('|');
+
+        return sha1(implode('|', [
+            'royal:'.($user->hasRoyalAccess() || $user->isStaff() ? '1' : '0'),
+            'unlocks:'.$availableUnlocks,
+        ]));
     }
 
     /**
