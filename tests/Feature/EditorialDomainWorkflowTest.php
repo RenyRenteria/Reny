@@ -60,7 +60,7 @@ class EditorialDomainWorkflowTest extends TestCase
 
         $content->releaseWindows()->create([
             'audience' => VisibilityAudience::Open->value,
-            'starts_at' => $tomorrow,
+            'starts_at' => now()->subMinute(),
         ]);
 
         $this->assertFalse($content->fresh('releaseWindows')->isVisibleTo(null, now()));

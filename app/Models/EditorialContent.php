@@ -112,10 +112,17 @@ class EditorialContent extends Model
             ->where(function (Builder $query) use ($at): void {
                 $query
                     ->where(function (Builder $query) use ($at): void {
-                        $query->whereNull('scheduled_at')->orWhere('scheduled_at', '<=', $at);
+                        $query
+                            ->where('status', EditorialStatus::Published->value)
+                            ->where(function (Builder $query) use ($at): void {
+                                $query->whereNull('scheduled_at')->orWhere('scheduled_at', '<=', $at);
+                            });
                     })
-                    ->orWhereHas('releaseWindows', function (Builder $query) use ($at): void {
-                        $query->activeAt($at);
+                    ->orWhere(function (Builder $query) use ($at): void {
+                        $query
+                            ->where('status', EditorialStatus::Scheduled->value)
+                            ->whereNotNull('scheduled_at')
+                            ->where('scheduled_at', '<=', $at);
                     });
             })
             ->where(function (Builder $query) use ($user, $at): void {
