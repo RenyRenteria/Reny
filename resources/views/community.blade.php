@@ -101,6 +101,90 @@
                             </div>
                         </div>
 
+                        @if (! empty($communityPosts) || ! empty($communityPolls))
+                            @foreach (($communityPosts ?? []) as $post)
+                                <article class="post-card">
+                                    <div class="post-head">
+                                        <div class="post-icon">
+                                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                                <path d="M12 2v20"></path>
+                                                <path d="M8 7v5a4 4 0 0 0 8 0V7"></path>
+                                                <path d="M6 12a6 6 0 0 0 12 0"></path>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <h2>{{ $post['title'] }}</h2>
+                                            <div class="post-time">{{ $post['time'] }}</div>
+                                        </div>
+                                    </div>
+
+                                    <p class="post-copy">{{ $post['body'] }}</p>
+
+                                    @if (! empty($post['image_url']))
+                                        <div class="media-frame">
+                                            <img src="{{ $post['image_url'] }}" alt="{{ $post['title'] }}">
+                                            <a class="media-cta" href="{{ $post['url'] }}">
+                                                View Reny note
+                                                <span aria-hidden="true">→</span>
+                                            </a>
+                                        </div>
+                                    @endif
+
+                                    <div class="post-actions">
+                                        <div class="post-metrics">
+                                            <span class="metric heart">
+                                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                                    <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8Z"></path>
+                                                </svg>
+                                                0
+                                            </span>
+                                            <span class="metric">
+                                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                                    <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z"></path>
+                                                </svg>
+                                                0 replies
+                                            </span>
+                                        </div>
+                                    </div>
+                                </article>
+                            @endforeach
+
+                            @foreach (($communityPolls ?? []) as $poll)
+                                <section class="vote-card" aria-labelledby="fan-votes-title-{{ $loop->index }}">
+                                    <div class="section-kicker">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                                            <rect x="4" y="4" width="16" height="16" rx="2"></rect>
+                                            <path d="M8 9h8"></path>
+                                            <path d="M8 13h5"></path>
+                                            <path d="M8 17h8"></path>
+                                        </svg>
+                                        <span id="fan-votes-title-{{ $loop->index }}">Fan Votes</span>
+                                    </div>
+
+                                    <h3>{{ $poll['question'] }}</h3>
+
+                                    <div class="poll">
+                                        @foreach ($poll['options'] as $option)
+                                            <div class="poll-row">
+                                                <div class="poll-label"><span>{{ $option['label'] }}</span><span>{{ $option['percent'] }}%</span></div>
+                                                <div class="poll-track"><span class="poll-fill" style="width: {{ $option['percent'] }}%"></span></div>
+                                            </div>
+                                        @endforeach
+                                    </div>
+
+                                    <div class="vote-footer">
+                                        <span>{{ $poll['results_visibility'] === 'public' ? 'Results visible' : 'Private results' }}</span>
+                                        <x-access-gate
+                                            section="community"
+                                            title="Voting requires Royal Pass"
+                                            preview="Poll results stay visible in Open mode."
+                                        >
+                                            <button class="soft-button" type="button">Vote</button>
+                                        </x-access-gate>
+                                    </div>
+                                </section>
+                            @endforeach
+                        @else
                         <article class="post-card">
                             <div class="post-head">
                                 <div class="post-icon">
@@ -246,6 +330,7 @@
                                 </span>
                             </div>
                         </article>
+                        @endif
                     </section>
 
                     <aside class="side-column" aria-label="Community sidebar">

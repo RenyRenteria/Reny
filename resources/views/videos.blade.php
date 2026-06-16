@@ -1,5 +1,5 @@
 @php
-    $musicVideos = [
+    $musicVideos ??= [
         ['id' => 'Ue8orNrHw9s', 'title' => 'I Swear', 'meta' => 'Official Music Video'],
         ['id' => 'mfaOU7LFheE', 'title' => 'Ag&uuml;ita de Coco', 'meta' => 'Video Oficial'],
         ['id' => 'GUISQgRCY44', 'title' => 'Want a man', 'meta' => 'Official Music Video'],
@@ -8,12 +8,12 @@
         ['id' => 'M5rPAEwICrA', 'title' => 'Lay on my shoulder', 'meta' => 'Music Video'],
     ];
 
-    $series = [
+    $series ??= [
         ['id' => 'Ij8QJWR1LP0', 'title' => 'Raspao a Dolar', 'meta' => 'Conversaciones, cultura pop y temas de actualidad con formato de episodio.'],
         ['id' => 'USfTD9rZ3o8', 'title' => 'Studio Sessions', 'meta' => 'Recording sessions, studio clips, rehearsals, and in-progress music moments.'],
     ];
 
-    $performances = [
+    $performances ??= [
         ['id' => '6PSCI5m43wk', 'title' => 'Places', 'meta' => 'Live en Tu Ma&ntilde;ana'],
         ['id' => 'PrOrIS-6NvE', 'title' => 'Ag&uuml;ita de Coco', 'meta' => 'En vivo en Tu Ma&ntilde;ana'],
         ['id' => 'q_pDpnIijWY', 'title' => 'Stamina', 'meta' => 'Live at Miss Universe Panama 2024'],
@@ -22,14 +22,14 @@
         ['id' => '0Xvjl-s4PwI', 'title' => 'In Your Heart', 'meta' => 'Live Performance Music Video'],
     ];
 
-    $behindTheScenes = [
+    $behindTheScenes ??= [
         ['id' => 'USfTD9rZ3o8', 'title' => 'Wave', 'meta' => 'Studio Recording Session'],
         ['id' => 'pBmyvcI8vtQ', 'title' => 'Places', 'meta' => 'Studio Clip'],
         ['id' => 'cXo8awFAt4s', 'title' => 'Places', 'meta' => 'Dance Rehearsal with Ching'],
         ['id' => '7ujK5dYKF7Q', 'title' => 'Make It Louder', 'meta' => 'Studio Recording Session'],
     ];
 
-    $vlogs = [
+    $vlogs ??= [
         ['id' => 'fA7CVtk0uNw', 'title' => 'Visitando Mas23', 'meta' => 'Panama vlog short'],
         ['id' => 'yz6mBW-BshM', 'title' => 'IA o arte real?', 'meta' => 'Craftmanship by Christian Javier'],
         ['id' => 'fcGJ7aZ39Hw', 'title' => 'New merch out now', 'meta' => '5D Stage update'],

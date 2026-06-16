@@ -1,5 +1,5 @@
 @php
-    $products = [
+    $products ??= [
         [
             'key' => 'deluxe',
             'name' => 'Deluxe Digital Album',
@@ -68,7 +68,7 @@
         ],
     ];
 
-    $events = [
+    $events ??= [
         [
             'key' => 'concert',
             'name' => 'Reny Live - Studio Night',
@@ -103,6 +103,11 @@
             'mode' => 'buy',
         ],
     ];
+
+    $heroEvent ??= $events[0] ?? null;
+    $storePrices ??= collect([...$products, ...$events])
+        ->mapWithKeys(fn ($item) => [$item['key'] => (float) $item['price']])
+        ->all();
 @endphp
 
 <!DOCTYPE html>
@@ -117,6 +122,7 @@
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;500&display=swap" rel="stylesheet">
+        <script type="application/json" id="storePricesPayload">@json($storePrices)</script>
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body>
@@ -199,18 +205,36 @@
                     <button class="store-bag-button" id="openBag" type="button">Bag <span id="bagCount">0</span></button>
                 </div>
 
-                <section class="store-hero" aria-labelledby="store-hero-title">
-                    <img src="{{ asset('images/photos/reny-store-concert-poster.png') }}" alt="Reny Live Studio Night concert poster">
-                    <div class="store-hero-copy">
-                        <span>Upcoming concert</span>
-                        <h1 id="store-hero-title">Reny Live - Studio Night</h1>
-                        <p>Aug 24, 2026 - Panama City</p>
-                        <div class="store-hero-actions">
-                            <strong data-price="concert">$42</strong>
-                            <button class="store-button store-button-light" type="button" data-buy="concert">Buy ticket</button>
+                @if ($heroEvent)
+                    @php
+                        $heroImageUrl = $heroEvent['image_url'] ?? asset('images/photos/' . $heroEvent['image']);
+                    @endphp
+                    <section class="store-hero" aria-labelledby="store-hero-title">
+                        <img src="{{ $heroImageUrl }}" alt="{{ $heroEvent['name'] }} poster">
+                        <div class="store-hero-copy">
+                            <span>Upcoming concert</span>
+                            <h1 id="store-hero-title">{{ $heroEvent['name'] }}</h1>
+                            <p>{{ $heroEvent['date'] }} - {{ $heroEvent['place'] }}</p>
+                            <div class="store-hero-actions">
+                                <strong data-price="{{ $heroEvent['key'] }}">${{ $heroEvent['price'] }}</strong>
+                                @if ($heroEvent['mode'] === 'buy')
+                                    <button
+                                        class="store-button store-button-light"
+                                        type="button"
+                                        data-buy="{{ $heroEvent['key'] }}"
+                                        data-event-name="{{ $heroEvent['name'] }}"
+                                        data-event-type="{{ $heroEvent['kicker'] }}"
+                                        data-event-availability="{{ $heroEvent['place'] }}"
+                                        data-event-summary="{{ $heroEvent['date'] }} - {{ $heroEvent['place'] }}"
+                                        data-event-image="{{ $heroImageUrl }}"
+                                    >{{ $heroEvent['action'] }}</button>
+                                @else
+                                    <button class="store-button store-button-light" type="button" data-rsvp="{{ $heroEvent['name'] }}">{{ $heroEvent['action'] }}</button>
+                                @endif
+                            </div>
                         </div>
-                    </div>
-                </section>
+                    </section>
+                @endif
 
                 <section class="store-market" aria-labelledby="market-title">
                     <div class="store-section-head">
@@ -225,6 +249,9 @@
 
                     <div class="store-product-grid">
                         @foreach ($products as $product)
+                            @php
+                                $productImageUrl = $product['image_url'] ?? asset('images/photos/' . $product['image']);
+                            @endphp
                             <article class="store-product-card" data-category="{{ $product['category'] }}">
                                 <button
                                     class="store-product-button"
@@ -238,10 +265,10 @@
                                     data-pass="{{ $product['pass'] }}"
                                     data-access="{{ $product['access'] }}"
                                     data-summary="{{ $product['summary'] }}"
-                                    data-image="{{ asset('images/photos/' . $product['image']) }}"
+                                    data-image="{{ $productImageUrl }}"
                                 >
                                     <span class="store-product-visual">
-                                        <img src="{{ asset('images/photos/' . $product['image']) }}" alt="{{ $product['name'] }}" loading="lazy" decoding="async">
+                                        <img src="{{ $productImageUrl }}" alt="{{ $product['name'] }}" loading="lazy" decoding="async">
                                     </span>
                                     <span class="store-product-meta">
                                         <span>{{ $product['type'] }}</span>
@@ -261,8 +288,11 @@
 
                     <div class="store-event-grid">
                         @foreach ($events as $event)
+                            @php
+                                $eventImageUrl = $event['image_url'] ?? asset('images/photos/' . $event['image']);
+                            @endphp
                             <article class="store-event-card">
-                                <img src="{{ asset('images/photos/' . $event['image']) }}" alt="{{ $event['name'] }} poster" loading="lazy" decoding="async">
+                                <img src="{{ $eventImageUrl }}" alt="{{ $event['name'] }} poster" loading="lazy" decoding="async">
                                 <div class="store-event-copy">
                                     <span>{{ $event['kicker'] }}</span>
                                     <h3>{{ $event['name'] }}</h3>
@@ -271,7 +301,16 @@
                                         <strong>{{ $event['place'] }}</strong>
                                     </div>
                                     @if ($event['mode'] === 'buy')
-                                        <button class="store-button store-button-light" type="button" data-buy="{{ $event['key'] }}">{{ $event['action'] }} <span data-price="{{ $event['key'] }}">${{ $event['price'] }}</span></button>
+                                        <button
+                                            class="store-button store-button-light"
+                                            type="button"
+                                            data-buy="{{ $event['key'] }}"
+                                            data-event-name="{{ $event['name'] }}"
+                                            data-event-type="{{ $event['kicker'] }}"
+                                            data-event-availability="{{ $event['place'] }}"
+                                            data-event-summary="{{ $event['date'] }} - {{ $event['place'] }}"
+                                            data-event-image="{{ $eventImageUrl }}"
+                                        >{{ $event['action'] }} <span data-price="{{ $event['key'] }}">${{ $event['price'] }}</span></button>
                                     @else
                                         <button class="store-button store-button-light" type="button" data-rsvp="{{ $event['name'] }}">{{ $event['action'] }}</button>
                                     @endif

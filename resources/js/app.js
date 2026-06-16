@@ -427,6 +427,11 @@ if (storeShell) {
         listening: 18,
         making: 0,
     };
+    const storePricesPayload = document.getElementById('storePricesPayload');
+
+    if (storePricesPayload?.textContent) {
+        Object.assign(prices, JSON.parse(storePricesPayload.textContent));
+    }
 
     const currencies = {
         usd: { symbol: '$', rate: 1, decimals: 0 },
@@ -466,27 +471,45 @@ if (storeShell) {
         };
     });
 
-    products.concert = {
-        name: 'Reny Live - Studio Night',
-        type: 'Physical event',
-        priceKey: 'concert',
-        availability: '96 seats',
-        points: '+420 pts',
-        pass: 'No Royal Pass required',
-        access: 'Ticket unlocks in profile',
-        summary: 'Upcoming live concert ticket with instant receipt, profile update, and event access.',
-    };
+    document.querySelectorAll('[data-buy][data-event-name]').forEach((button) => {
+        products[button.dataset.buy] = {
+            name: button.dataset.eventName,
+            type: button.dataset.eventType || 'Event',
+            priceKey: button.dataset.buy,
+            availability: button.dataset.eventAvailability || 'Scheduled',
+            points: '+0 pts',
+            pass: 'No Royal Pass required',
+            access: 'Ticket unlocks in profile',
+            summary: button.dataset.eventSummary || 'Scheduled event',
+            image: button.dataset.eventImage,
+        };
+    });
 
-    products.listening = {
-        name: 'Deluxe Preview Session',
-        type: 'Physical event',
-        priceKey: 'listening',
-        availability: '40 seats',
-        points: '+180 pts',
-        pass: 'Royal Pass early access',
-        access: 'Ticket unlocks in profile',
-        summary: 'Intimate listening room preview for the next deluxe release.',
-    };
+    if (!products.concert) {
+        products.concert = {
+            name: 'Reny Live - Studio Night',
+            type: 'Physical event',
+            priceKey: 'concert',
+            availability: '96 seats',
+            points: '+420 pts',
+            pass: 'No Royal Pass required',
+            access: 'Ticket unlocks in profile',
+            summary: 'Upcoming live concert ticket with instant receipt, profile update, and event access.',
+        };
+    }
+
+    if (!products.listening) {
+        products.listening = {
+            name: 'Deluxe Preview Session',
+            type: 'Physical event',
+            priceKey: 'listening',
+            availability: '40 seats',
+            points: '+180 pts',
+            pass: 'Royal Pass early access',
+            access: 'Ticket unlocks in profile',
+            summary: 'Intimate listening room preview for the next deluxe release.',
+        };
+    }
 
     const money = (value, suffix = '') => {
         const current = currencies[currency];

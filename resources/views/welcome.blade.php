@@ -1,3 +1,25 @@
+@php
+    $albums ??= [
+        ['title' => 'Reny Sessions', 'tracks' => '12 tracks', 'cover_class' => 'cover-a', 'cover_label' => 'Reny'],
+        ['title' => 'Bano #1', 'tracks' => '10 tracks', 'cover_class' => 'cover-b', 'cover_label' => 'Bano'],
+        ['title' => 'First Album', 'tracks' => '8 tracks', 'cover_class' => 'cover-c', 'cover_label' => 'First'],
+        ['title' => 'Live Cuts', 'tracks' => '6 tracks', 'cover_class' => 'cover-d', 'cover_label' => 'Live'],
+    ];
+
+    $singles ??= [
+        ['title' => 'Biggest Launch', 'summary' => 'Reny Renteria'],
+        ['title' => 'Comeback Album', 'summary' => 'Reny Renteria'],
+        ['title' => 'First Drop', 'summary' => 'Reny Renteria'],
+        [
+            'title' => 'VIP Mix',
+            'summary' => 'Royal-only audio stream',
+            'gated' => true,
+            'gate_title' => 'VIP Mix',
+            'gate_preview' => 'Open users can see the drop; full playback requires Royal Pass.',
+        ],
+    ];
+@endphp
+
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
@@ -107,34 +129,19 @@
                         </div>
 
                         <div class="albums">
-                            <article class="album">
-                                <div class="cover cover-a" data-title="Reny">
-                                    <button class="play-button" type="button" aria-label="Play Reny Sessions"><span></span></button>
-                                </div>
-                                <h4>Reny Sessions</h4>
-                                <p>12 tracks</p>
-                            </article>
-                            <article class="album">
-                                <div class="cover cover-b" data-title="Bano">
-                                    <button class="play-button" type="button" aria-label="Play Bano #1"><span></span></button>
-                                </div>
-                                <h4>Bano #1</h4>
-                                <p>10 tracks</p>
-                            </article>
-                            <article class="album">
-                                <div class="cover cover-c" data-title="First">
-                                    <button class="play-button" type="button" aria-label="Play First Album"><span></span></button>
-                                </div>
-                                <h4>First Album</h4>
-                                <p>8 tracks</p>
-                            </article>
-                            <article class="album">
-                                <div class="cover cover-d" data-title="Live">
-                                    <button class="play-button" type="button" aria-label="Play Live Cuts"><span></span></button>
-                                </div>
-                                <h4>Live Cuts</h4>
-                                <p>6 tracks</p>
-                            </article>
+                            @foreach ($albums as $album)
+                                <article class="album">
+                                    <div
+                                        class="cover {{ $album['cover_class'] ?? 'cover-a' }}"
+                                        data-title="{{ $album['cover_label'] ?? $album['title'] }}"
+                                        @if (! empty($album['cover_url'])) style="background-image: url('{{ $album['cover_url'] }}')" @endif
+                                    >
+                                        <button class="play-button" type="button" aria-label="Play {{ $album['title'] }}"><span></span></button>
+                                    </div>
+                                    <h4>{{ $album['title'] }}</h4>
+                                    <p>{{ $album['tracks'] }}</p>
+                                </article>
+                            @endforeach
                         </div>
                     </section>
 
@@ -145,44 +152,19 @@
                         </div>
 
                         <div class="singles">
-                            <article class="single">
-                                <div class="single-art" aria-hidden="true"></div>
-                                <div>
-                                    <strong>Biggest Launch</strong>
-                                    <span>Reny Renteria</span>
-                                </div>
-                                <button class="mini-play" type="button" aria-label="Play Biggest Launch"><span></span></button>
-                            </article>
-                            <article class="single">
-                                <div class="single-art" aria-hidden="true"></div>
-                                <div>
-                                    <strong>Comeback Album</strong>
-                                    <span>Reny Renteria</span>
-                                </div>
-                                <button class="mini-play" type="button" aria-label="Play Comeback Album"><span></span></button>
-                            </article>
-                            <article class="single">
-                                <div class="single-art" aria-hidden="true"></div>
-                                <div>
-                                    <strong>First Drop</strong>
-                                    <span>Reny Renteria</span>
-                                </div>
-                                <button class="mini-play" type="button" aria-label="Play First Drop"><span></span></button>
-                            </article>
-                            <x-access-gate
-                                section="music"
-                                title="VIP Mix"
-                                preview="Open users can see the drop; full playback requires Royal Pass."
-                            >
-                                <article class="single">
-                                    <div class="single-art" aria-hidden="true"></div>
-                                    <div>
-                                        <strong>VIP Mix</strong>
-                                        <span>Royal-only audio stream</span>
-                                    </div>
-                                    <button class="mini-play" type="button" aria-label="Play VIP Mix"><span></span></button>
-                                </article>
-                            </x-access-gate>
+                            @foreach ($singles as $single)
+                                @if (! empty($single['gated']))
+                                    <x-access-gate
+                                        section="music"
+                                        title="{{ $single['gate_title'] ?? $single['title'] }}"
+                                        preview="{{ $single['gate_preview'] ?? 'Open users can see the drop; full playback requires Royal Pass.' }}"
+                                    >
+                                        @include('partials.single-card', ['single' => $single])
+                                    </x-access-gate>
+                                @else
+                                    @include('partials.single-card', ['single' => $single])
+                                @endif
+                            @endforeach
                         </div>
                     </section>
                 </section>
