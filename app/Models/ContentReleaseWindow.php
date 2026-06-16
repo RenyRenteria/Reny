@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Casts\UtcDateTime;
 use App\Enums\VisibilityAudience;
+use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -22,8 +24,8 @@ class ContentReleaseWindow extends Model
     {
         return [
             'audience' => VisibilityAudience::class,
-            'starts_at' => 'datetime',
-            'ends_at' => 'datetime',
+            'starts_at' => UtcDateTime::class,
+            'ends_at' => UtcDateTime::class,
             'country_codes' => 'array',
         ];
     }
@@ -35,7 +37,7 @@ class ContentReleaseWindow extends Model
 
     public function isActiveFor(?User $user = null, ?CarbonInterface $at = null): bool
     {
-        $at ??= now();
+        $at = self::utcDateTime($at ?? now());
 
         if ($this->starts_at !== null && $this->starts_at->gt($at)) {
             return false;
@@ -54,6 +56,8 @@ class ContentReleaseWindow extends Model
 
     public function scopeActiveAt(Builder $query, CarbonInterface $at): Builder
     {
+        $at = self::utcDateTime($at);
+
         return $query
             ->where(function (Builder $query) use ($at): void {
                 $query->whereNull('starts_at')->orWhere('starts_at', '<=', $at);
@@ -78,5 +82,10 @@ class ContentReleaseWindow extends Model
         $allowedCountries = array_map('strtoupper', $countryCodes);
 
         return in_array(strtoupper($user->country_code), $allowedCountries, true);
+    }
+
+    private static function utcDateTime(CarbonInterface $value): CarbonInterface
+    {
+        return CarbonImmutable::instance($value)->setTimezone('UTC');
     }
 }

@@ -2,9 +2,11 @@
 
 namespace App\Models;
 
+use App\Casts\UtcDateTime;
 use App\Enums\ContentType;
 use App\Enums\EditorialStatus;
 use App\Enums\VisibilityAudience;
+use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Database\Factories\EditorialContentFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -50,7 +52,7 @@ class EditorialContent extends Model
             'status' => EditorialStatus::class,
             'visibility' => VisibilityAudience::class,
             'needs_approval' => 'boolean',
-            'scheduled_at' => 'datetime',
+            'scheduled_at' => UtcDateTime::class,
             'approved_at' => 'datetime',
             'published_at' => 'datetime',
             'archived_at' => 'datetime',
@@ -112,7 +114,7 @@ class EditorialContent extends Model
 
     public function scopeVisibleFor(Builder $query, ?User $user = null, ?CarbonInterface $at = null): Builder
     {
-        $at ??= now();
+        $at = self::utcDateTime($at ?? now());
 
         return $query
             ->whereIn('status', [EditorialStatus::Published->value, EditorialStatus::Scheduled->value])
@@ -153,7 +155,7 @@ class EditorialContent extends Model
 
     public function isVisibleTo(?User $user = null, ?CarbonInterface $at = null): bool
     {
-        $at ??= now();
+        $at = self::utcDateTime($at ?? now());
 
         if (in_array($this->status, [EditorialStatus::Draft, EditorialStatus::Archived], true)) {
             return false;
@@ -256,5 +258,10 @@ class EditorialContent extends Model
                         });
                 });
         });
+    }
+
+    private static function utcDateTime(CarbonInterface $value): CarbonInterface
+    {
+        return CarbonImmutable::instance($value)->setTimezone('UTC');
     }
 }
