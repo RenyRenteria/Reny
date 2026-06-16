@@ -45,6 +45,8 @@
                     </div>
                 </header>
 
+                @include('admin.partials.section-tabs', ['activeSection' => \App\Support\AdminCmsSections::sectionForType($content->type)])
+
                 <section class="admin-panel" aria-labelledby="preview-title">
                     <div class="admin-section-head">
                         <div>

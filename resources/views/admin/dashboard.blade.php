@@ -44,6 +44,8 @@
                     </div>
                 </header>
 
+                @include('admin.partials.section-tabs')
+
                 @if (session('status'))
                     <div class="auth-status">{{ session('status') }}</div>
                 @endif
@@ -63,6 +65,25 @@
                     </article>
                 </section>
 
+                <section class="admin-panel" aria-labelledby="sections-title">
+                    <div class="admin-section-head">
+                        <div>
+                            <p class="admin-kicker">Real content map</p>
+                            <h2 id="sections-title">CMS sections</h2>
+                        </div>
+                    </div>
+
+                    <div class="admin-section-stat-grid">
+                        @foreach ($sectionStats as $section)
+                            <article style="--section-accent: {{ $section['accent'] }}">
+                                <span>{{ $section['label'] }}</span>
+                                <strong>{{ $section['total'] }}</strong>
+                                <small>{{ $section['caption'] }}</small>
+                            </article>
+                        @endforeach
+                    </div>
+                </section>
+
                 <section class="admin-panel" aria-labelledby="queue-title">
                     <div class="admin-section-head">
                         <div>
@@ -73,7 +94,8 @@
 
                     <div class="admin-queue">
                         @foreach ($queueItems as $item)
-                            <article class="admin-queue-item">
+                            @php($sectionTab = isset($item['section']) ? \App\Support\AdminCmsSections::tabs()[$item['section']] ?? null : null)
+                            <article class="admin-queue-item admin-queue-item-section" style="--section-accent: {{ $sectionTab['accent'] ?? '#997332' }}">
                                 <div>
                                     <span>{{ $item['type'] }}</span>
                                     <strong>{{ $item['title'] }}</strong>

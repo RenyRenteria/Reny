@@ -44,6 +44,8 @@
                     </div>
                 </header>
 
+                @include('admin.partials.section-tabs')
+
                 @if (session('status'))
                     <div class="auth-status">{{ session('status') }}</div>
                 @endif

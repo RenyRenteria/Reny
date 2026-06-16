@@ -24,6 +24,7 @@
     while ($pollOptions->count() < 4) {
         $pollOptions->push('');
     }
+    $activeSection = \App\Support\AdminCmsSections::sectionForType($selectedType);
 @endphp
 
 <!DOCTYPE html>
@@ -71,6 +72,8 @@
                         <span>{{ str_replace('_', ' ', auth()->user()->role) }}</span>
                     </div>
                 </header>
+
+                @include('admin.partials.section-tabs', ['activeSection' => $activeSection])
 
                 @if (session('status'))
                     <div class="auth-status">{{ session('status') }}</div>

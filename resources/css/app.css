@@ -4942,3 +4942,219 @@ body.has-modal-open {
     font-size: 1rem;
     line-height: 1.7;
 }
+
+/* Admin CMS design-system layer */
+.admin-shell {
+    background:
+        linear-gradient(180deg, rgba(251, 246, 239, 0.96), rgba(246, 240, 231, 0.98)),
+        var(--paper);
+}
+
+.admin-sidebar {
+    background: #111111;
+}
+
+.admin-nav a,
+.admin-nav span {
+    border-radius: 0.5rem;
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+.admin-nav .is-active {
+    border-color: rgba(255, 255, 255, 0.22);
+    background: #ffffff;
+    color: #111111;
+}
+
+.admin-main {
+    padding: 1.5rem;
+    gap: 1rem;
+}
+
+.admin-topbar {
+    min-height: 6.25rem;
+    padding: 1rem 1rem 1.125rem;
+    border: 1px solid var(--line);
+    border-radius: 0.5rem;
+    background: var(--panel-bright);
+    box-shadow: 0 1rem 2.5rem rgba(17, 17, 17, 0.06);
+}
+
+.admin-topbar h1 {
+    font-size: 2.375rem;
+    line-height: 1;
+}
+
+.admin-kicker {
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+.admin-section-tabs {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
+.admin-section-tabs a {
+    display: grid;
+    min-height: 5.25rem;
+    align-content: space-between;
+    padding: 0.875rem;
+    border: 1px solid color-mix(in srgb, var(--section-accent) 24%, var(--line));
+    border-top: 0.25rem solid var(--section-accent);
+    border-radius: 0.5rem;
+    background: var(--panel-bright);
+    color: var(--ink);
+    box-shadow: 0 0.75rem 1.75rem rgba(17, 17, 17, 0.05);
+}
+
+.admin-section-tabs a.is-active {
+    background: color-mix(in srgb, var(--section-accent) 10%, #ffffff);
+    box-shadow: inset 0 0 0 0.0625rem color-mix(in srgb, var(--section-accent) 42%, transparent);
+}
+
+.admin-section-tabs span {
+    color: var(--section-accent);
+    font-size: 0.875rem;
+    font-weight: 950;
+}
+
+.admin-section-tabs strong {
+    color: var(--soft-ink);
+    font-size: 0.75rem;
+    font-weight: 800;
+    line-height: 1.35;
+}
+
+.admin-panel,
+.admin-metric,
+.admin-user,
+.admin-queue-item,
+.admin-media-row,
+.admin-fieldset,
+.admin-preview-body,
+.admin-preview-meta div,
+.admin-definition-grid div {
+    border-radius: 0.5rem;
+    box-shadow: none;
+}
+
+.admin-panel {
+    background: rgba(255, 253, 249, 0.86);
+}
+
+.admin-section-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
+.admin-section-stat-grid article {
+    display: grid;
+    min-height: 7rem;
+    align-content: center;
+    padding: 1rem;
+    border: 1px solid color-mix(in srgb, var(--section-accent) 24%, var(--line));
+    border-left: 0.25rem solid var(--section-accent);
+    border-radius: 0.5rem;
+    background: #ffffff;
+    gap: 0.25rem;
+}
+
+.admin-section-stat-grid span,
+.admin-type-link-section small {
+    color: var(--section-accent);
+    font-size: 0.75rem;
+    font-weight: 950;
+}
+
+.admin-section-stat-grid strong {
+    color: var(--ink);
+    font-size: 2rem;
+    font-weight: 950;
+    line-height: 1;
+}
+
+.admin-section-stat-grid small {
+    color: var(--muted);
+    font-size: 0.75rem;
+    font-weight: 800;
+    line-height: 1.35;
+}
+
+.admin-type-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.admin-type-link-section {
+    display: grid;
+    min-height: 4.75rem;
+    align-content: space-between;
+    justify-content: stretch;
+    border-color: color-mix(in srgb, var(--section-accent) 20%, var(--line));
+    border-left: 0.25rem solid var(--section-accent);
+    background: #ffffff;
+    text-align: left;
+}
+
+.admin-type-link-section span {
+    color: var(--ink);
+    font-size: 0.8125rem;
+    font-weight: 950;
+}
+
+.admin-queue-item-section {
+    border-left: 0.25rem solid var(--section-accent);
+}
+
+.admin-badges span {
+    border-radius: 0.5rem;
+}
+
+.admin-button,
+.auth-button,
+.auth-secondary-button {
+    border-radius: 0.5rem;
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+.admin-form-grid input,
+.admin-form-grid select,
+.admin-form-grid textarea,
+.admin-window-row input,
+.admin-window-row select,
+.auth-form input,
+.auth-form select {
+    border-radius: 0.5rem;
+}
+
+@media (max-width: 64rem) {
+    .admin-section-tabs,
+    .admin-section-stat-grid,
+    .admin-type-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 48rem) {
+    .admin-main {
+        padding: 1rem;
+    }
+
+    .admin-topbar {
+        min-height: auto;
+    }
+
+    .admin-topbar h1 {
+        font-size: 2rem;
+    }
+
+    .admin-section-tabs,
+    .admin-section-stat-grid,
+    .admin-type-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
