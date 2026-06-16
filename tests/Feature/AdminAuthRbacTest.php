@@ -13,7 +13,7 @@ class AdminAuthRbacTest extends TestCase
 
     public function test_public_user_cannot_access_admin_shell(): void
     {
-        $this->get('/admin')
+        $this->get(route('admin.dashboard'))
             ->assertRedirect(route('admin.login'));
     }
 
@@ -22,8 +22,22 @@ class AdminAuthRbacTest extends TestCase
         $fan = User::factory()->create(['role' => 'fan']);
 
         $this->actingAs($fan)
-            ->get('/admin')
+            ->get(route('admin.dashboard'))
             ->assertForbidden();
+    }
+
+    public function test_admin_shell_uses_private_path_and_not_legacy_admin_path(): void
+    {
+        $privatePath = '/7YDX5h38a6Q2sfrsW2pRv9CoU59RA5YWD2R7K3AuMA';
+
+        $this->assertSame($privatePath, parse_url(route('admin.dashboard'), PHP_URL_PATH));
+        $this->assertSame($privatePath.'/login', parse_url(route('admin.login'), PHP_URL_PATH));
+
+        $this->get($privatePath)
+            ->assertRedirect(route('admin.login'));
+
+        $this->get('/admin')
+            ->assertNotFound();
     }
 
     public function test_admin_can_sign_in_with_email_and_reach_shell(): void

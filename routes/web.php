@@ -26,7 +26,7 @@ Route::get('/store', [PublicContentController::class, 'store'])->name('store');
 Route::get('/api/public-content/{page}', [PublicContentController::class, 'payload'])->name('public-content.payload');
 Route::get('/content/{content}', [PublicContentController::class, 'show'])->name('public.content.show');
 
-Route::prefix('admin')->name('admin.')->group(function () {
+Route::prefix(config('admin.path', 'admin'))->name('admin.')->group(function () {
     Route::get('/login', [AdminLoginController::class, 'create'])->name('login');
     Route::post('/login', [AdminLoginController::class, 'store'])->name('login.store');
 
