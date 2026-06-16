@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\ContentType;
 use App\Enums\EditorialStatus;
 use App\Enums\VisibilityAudience;
+use App\Services\PublicCmsContentService;
 use Carbon\CarbonInterface;
 use Database\Factories\EditorialContentFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -42,6 +43,12 @@ class EditorialContent extends Model
 {
     /** @use HasFactory<EditorialContentFactory> */
     use HasFactory;
+
+    protected static function booted(): void
+    {
+        static::saved(fn (): bool => PublicCmsContentService::bumpCacheVersion());
+        static::deleted(fn (): bool => PublicCmsContentService::bumpCacheVersion());
+    }
 
     protected function casts(): array
     {

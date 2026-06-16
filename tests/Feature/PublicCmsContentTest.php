@@ -136,6 +136,10 @@ class PublicCmsContentTest extends TestCase
 
         $this->get('/community')->assertOk()->assertDontSee('Gate Switch Post');
         $this->get(route('public.content.show', $content))->assertRedirect(route('login'));
+
+        Schema::drop('editorial_contents');
+
+        $this->get('/community')->assertOk()->assertDontSee('Gate Switch Post');
     }
 
     public function test_member_and_royal_backend_gates_are_distinct(): void

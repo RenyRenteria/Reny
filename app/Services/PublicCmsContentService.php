@@ -17,6 +17,8 @@ class PublicCmsContentService
 {
     private const PAGES = ['music', 'videos', 'photos', 'store', 'community'];
 
+    private const VERSION_KEY = 'public-cms:last-published:version';
+
     /**
      * @return array<string, mixed>
      */
@@ -159,11 +161,20 @@ class PublicCmsContentService
 
     public static function forgetCachedUserPayloads(User $user): void
     {
-        $cache = Cache::store(config('public_cms.cache_store', config('cache.default')));
+        $cache = self::cacheStore();
+        $version = self::cacheVersion($cache);
 
         foreach (self::PAGES as $page) {
-            $cache->forget("public-cms:last-published:{$page}:user:{$user->id}");
+            $cache->forget("public-cms:last-published:v{$version}:{$page}:user:{$user->id}");
         }
+    }
+
+    public static function bumpCacheVersion(): bool
+    {
+        $cache = self::cacheStore();
+        $version = self::cacheVersion($cache);
+
+        return $cache->forever(self::VERSION_KEY, $version + 1);
     }
 
     /**
@@ -221,16 +232,28 @@ class PublicCmsContentService
 
     private function cache(): Repository
     {
-        return Cache::store(config('public_cms.cache_store', config('cache.default')));
+        return self::cacheStore();
     }
 
     private function cacheKey(string $page, ?User $user): string
     {
+        $version = self::cacheVersion($this->cache());
+
         if ($user === null) {
-            return "public-cms:last-published:{$page}:guest";
+            return "public-cms:last-published:v{$version}:{$page}:guest";
         }
 
-        return "public-cms:last-published:{$page}:user:{$user->id}";
+        return "public-cms:last-published:v{$version}:{$page}:user:{$user->id}";
+    }
+
+    private static function cacheStore(): Repository
+    {
+        return Cache::store(config('public_cms.cache_store', config('cache.default')));
+    }
+
+    private static function cacheVersion(Repository $cache): int
+    {
+        return (int) $cache->get(self::VERSION_KEY, 1);
     }
 
     /**
