@@ -1,3 +1,9 @@
+@php
+    $cmsFeatured = $publicCms['featured'] ?? null;
+    $cmsAlbums = $publicCms['albums'] ?? [];
+    $cmsSingles = $publicCms['singles'] ?? [];
+@endphp
+
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
@@ -84,14 +90,22 @@
                 <section class="tab-panel is-active" id="music" data-tab-panel="music">
                     <section class="hero" aria-label="Featured album">
                         <div class="hero-content">
-                            <p class="eyebrow">First<br>Album</p>
-                            <h1>Biggest<br>Launch</h1>
-                            <h2>Comeback Album!</h2>
-                            <p class="hero-copy">
-                                A cinematic release package for Reny Renteria, built around a lead album,
-                                featured tracks, fan updates, and premium music drops.
-                            </p>
-                            <p class="hero-link">Visit us today at<br>renyrenteria.com</p>
+                            @if ($cmsFeatured)
+                                <p class="eyebrow">{{ $cmsFeatured['eyebrow'] }}</p>
+                                <h1>{{ $cmsFeatured['title'] }}</h1>
+                                <h2>{{ $cmsFeatured['subtitle'] }}</h2>
+                                <p class="hero-copy">{{ $cmsFeatured['copy'] }}</p>
+                                <p class="hero-link">Published from<br>CMS</p>
+                            @else
+                                <p class="eyebrow">First<br>Album</p>
+                                <h1>Biggest<br>Launch</h1>
+                                <h2>Comeback Album!</h2>
+                                <p class="hero-copy">
+                                    A cinematic release package for Reny Renteria, built around a lead album,
+                                    featured tracks, fan updates, and premium music drops.
+                                </p>
+                                <p class="hero-link">Visit us today at<br>renyrenteria.com</p>
+                            @endif
                         </div>
 
                         <div class="artist-card" aria-hidden="true">
@@ -107,34 +121,50 @@
                         </div>
 
                         <div class="albums">
-                            <article class="album">
-                                <div class="cover cover-a" data-title="Reny">
-                                    <button class="play-button" type="button" aria-label="Play Reny Sessions"><span></span></button>
-                                </div>
-                                <h4>Reny Sessions</h4>
-                                <p>12 tracks</p>
-                            </article>
-                            <article class="album">
-                                <div class="cover cover-b" data-title="Bano">
-                                    <button class="play-button" type="button" aria-label="Play Bano #1"><span></span></button>
-                                </div>
-                                <h4>Bano #1</h4>
-                                <p>10 tracks</p>
-                            </article>
-                            <article class="album">
-                                <div class="cover cover-c" data-title="First">
-                                    <button class="play-button" type="button" aria-label="Play First Album"><span></span></button>
-                                </div>
-                                <h4>First Album</h4>
-                                <p>8 tracks</p>
-                            </article>
-                            <article class="album">
-                                <div class="cover cover-d" data-title="Live">
-                                    <button class="play-button" type="button" aria-label="Play Live Cuts"><span></span></button>
-                                </div>
-                                <h4>Live Cuts</h4>
-                                <p>6 tracks</p>
-                            </article>
+                            @if ($cmsAlbums)
+                                @foreach ($cmsAlbums as $album)
+                                    <article class="album">
+                                        <div
+                                            class="cover {{ $album['cover_class'] ?? 'cover-a' }}"
+                                            data-title="{{ $album['title'] }}"
+                                            @if (! empty($album['image_url'])) style="background-image: url('{{ $album['image_url'] }}'); background-size: cover; background-position: center;" @endif
+                                        >
+                                            <button class="play-button" type="button" aria-label="Open {{ $album['title'] }}"><span></span></button>
+                                        </div>
+                                        <h4>{{ $album['title'] }}</h4>
+                                        <p>{{ $album['meta'] }}</p>
+                                    </article>
+                                @endforeach
+                            @else
+                                <article class="album">
+                                    <div class="cover cover-a" data-title="Reny">
+                                        <button class="play-button" type="button" aria-label="Play Reny Sessions"><span></span></button>
+                                    </div>
+                                    <h4>Reny Sessions</h4>
+                                    <p>12 tracks</p>
+                                </article>
+                                <article class="album">
+                                    <div class="cover cover-b" data-title="Bano">
+                                        <button class="play-button" type="button" aria-label="Play Bano #1"><span></span></button>
+                                    </div>
+                                    <h4>Bano #1</h4>
+                                    <p>10 tracks</p>
+                                </article>
+                                <article class="album">
+                                    <div class="cover cover-c" data-title="First">
+                                        <button class="play-button" type="button" aria-label="Play First Album"><span></span></button>
+                                    </div>
+                                    <h4>First Album</h4>
+                                    <p>8 tracks</p>
+                                </article>
+                                <article class="album">
+                                    <div class="cover cover-d" data-title="Live">
+                                        <button class="play-button" type="button" aria-label="Play Live Cuts"><span></span></button>
+                                    </div>
+                                    <h4>Live Cuts</h4>
+                                    <p>6 tracks</p>
+                                </article>
+                            @endif
                         </div>
                     </section>
 
@@ -145,44 +175,57 @@
                         </div>
 
                         <div class="singles">
-                            <article class="single">
-                                <div class="single-art" aria-hidden="true"></div>
-                                <div>
-                                    <strong>Biggest Launch</strong>
-                                    <span>Reny Renteria</span>
-                                </div>
-                                <button class="mini-play" type="button" aria-label="Play Biggest Launch"><span></span></button>
-                            </article>
-                            <article class="single">
-                                <div class="single-art" aria-hidden="true"></div>
-                                <div>
-                                    <strong>Comeback Album</strong>
-                                    <span>Reny Renteria</span>
-                                </div>
-                                <button class="mini-play" type="button" aria-label="Play Comeback Album"><span></span></button>
-                            </article>
-                            <article class="single">
-                                <div class="single-art" aria-hidden="true"></div>
-                                <div>
-                                    <strong>First Drop</strong>
-                                    <span>Reny Renteria</span>
-                                </div>
-                                <button class="mini-play" type="button" aria-label="Play First Drop"><span></span></button>
-                            </article>
-                            <x-access-gate
-                                section="music"
-                                title="VIP Mix"
-                                preview="Open users can see the drop; full playback requires Royal Pass."
-                            >
+                            @if ($cmsSingles)
+                                @foreach ($cmsSingles as $single)
+                                    <article class="single">
+                                        <div class="single-art" aria-hidden="true"></div>
+                                        <div>
+                                            <strong>{{ $single['title'] }}</strong>
+                                            <span>{{ $single['artist'] }}</span>
+                                        </div>
+                                        <button class="mini-play" type="button" aria-label="Open {{ $single['title'] }}"><span></span></button>
+                                    </article>
+                                @endforeach
+                            @else
                                 <article class="single">
                                     <div class="single-art" aria-hidden="true"></div>
                                     <div>
-                                        <strong>VIP Mix</strong>
-                                        <span>Royal-only audio stream</span>
+                                        <strong>Biggest Launch</strong>
+                                        <span>Reny Renteria</span>
                                     </div>
-                                    <button class="mini-play" type="button" aria-label="Play VIP Mix"><span></span></button>
+                                    <button class="mini-play" type="button" aria-label="Play Biggest Launch"><span></span></button>
                                 </article>
-                            </x-access-gate>
+                                <article class="single">
+                                    <div class="single-art" aria-hidden="true"></div>
+                                    <div>
+                                        <strong>Comeback Album</strong>
+                                        <span>Reny Renteria</span>
+                                    </div>
+                                    <button class="mini-play" type="button" aria-label="Play Comeback Album"><span></span></button>
+                                </article>
+                                <article class="single">
+                                    <div class="single-art" aria-hidden="true"></div>
+                                    <div>
+                                        <strong>First Drop</strong>
+                                        <span>Reny Renteria</span>
+                                    </div>
+                                    <button class="mini-play" type="button" aria-label="Play First Drop"><span></span></button>
+                                </article>
+                                <x-access-gate
+                                    section="music"
+                                    title="VIP Mix"
+                                    preview="Open users can see the drop; full playback requires Royal Pass."
+                                >
+                                    <article class="single">
+                                        <div class="single-art" aria-hidden="true"></div>
+                                        <div>
+                                            <strong>VIP Mix</strong>
+                                            <span>Royal-only audio stream</span>
+                                        </div>
+                                        <button class="mini-play" type="button" aria-label="Play VIP Mix"><span></span></button>
+                                    </article>
+                                </x-access-gate>
+                            @endif
                         </div>
                     </section>
                 </section>

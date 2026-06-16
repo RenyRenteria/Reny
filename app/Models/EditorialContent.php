@@ -186,7 +186,8 @@ class EditorialContent extends Model
 
         return match ($audience) {
             VisibilityAudience::Open => true,
-            VisibilityAudience::Member, VisibilityAudience::Royal => $user?->hasRoyalAccess() ?? false,
+            VisibilityAudience::Member => $user !== null,
+            VisibilityAudience::Royal => (bool) ($user?->hasRoyalAccess() || $user?->isStaff()),
             VisibilityAudience::Purchased => $this->hasPurchasedAccess($user),
         };
     }
@@ -220,12 +221,19 @@ class EditorialContent extends Model
     {
         $audiences = [VisibilityAudience::Open->value];
 
-        if ($user?->hasRoyalAccess()) {
+        if ($user !== null) {
             $audiences[] = VisibilityAudience::Member->value;
+        }
+
+        if ($user?->hasRoyalAccess()) {
             $audiences[] = VisibilityAudience::Royal->value;
         }
 
-        return $audiences;
+        if ($user?->isStaff()) {
+            $audiences[] = VisibilityAudience::Royal->value;
+        }
+
+        return array_values(array_unique($audiences));
     }
 
     private static function applyAudienceConstraint(Builder $query, string $column, ?User $user): void

@@ -103,6 +103,27 @@
             'mode' => 'buy',
         ],
     ];
+
+    if (! empty($publicCms['products'] ?? [])) {
+        $products = $publicCms['products'];
+    }
+
+    if (! empty($publicCms['events'] ?? [])) {
+        $events = $publicCms['events'];
+    }
+
+    $heroEvent = $events[0] ?? [
+        'key' => 'concert',
+        'name' => 'Reny Live - Studio Night',
+        'date' => 'Aug 24, 2026',
+        'place' => 'Panama City',
+        'price' => 42,
+        'image' => 'reny-store-concert-poster.png',
+        'image_url' => null,
+        'action' => 'Buy ticket',
+    ];
+
+    $heroImage = $heroEvent['image_url'] ?? asset('images/photos/' . $heroEvent['image']);
 @endphp
 
 <!DOCTYPE html>
@@ -200,14 +221,21 @@
                 </div>
 
                 <section class="store-hero" aria-labelledby="store-hero-title">
-                    <img src="{{ asset('images/photos/reny-store-concert-poster.png') }}" alt="Reny Live Studio Night concert poster">
+                    <img src="{{ $heroImage }}" alt="{{ $heroEvent['name'] }} poster">
                     <div class="store-hero-copy">
                         <span>Upcoming concert</span>
-                        <h1 id="store-hero-title">Reny Live - Studio Night</h1>
-                        <p>Aug 24, 2026 - Panama City</p>
+                        <h1 id="store-hero-title">{{ $heroEvent['name'] }}</h1>
+                        <p>{{ $heroEvent['date'] }} - {{ $heroEvent['place'] }}</p>
                         <div class="store-hero-actions">
-                            <strong data-price="concert">$42</strong>
-                            <button class="store-button store-button-light" type="button" data-buy="concert">Buy ticket</button>
+                            <strong data-price="{{ $heroEvent['key'] }}" data-price-value="{{ $heroEvent['price'] }}">${{ $heroEvent['price'] }}</strong>
+                            <button
+                                class="store-button store-button-light"
+                                type="button"
+                                data-buy="{{ $heroEvent['key'] }}"
+                                data-buy-name="{{ $heroEvent['name'] }}"
+                                data-buy-type="{{ $heroEvent['kicker'] ?? 'Event' }}"
+                                data-buy-summary="{{ $heroEvent['date'] }} - {{ $heroEvent['place'] }}"
+                            >{{ $heroEvent['action'] }}</button>
                         </div>
                     </div>
                 </section>
@@ -225,6 +253,9 @@
 
                     <div class="store-product-grid">
                         @foreach ($products as $product)
+                            @php
+                                $productImage = $product['image_url'] ?? asset('images/photos/' . $product['image']);
+                            @endphp
                             <article class="store-product-card" data-category="{{ $product['category'] }}">
                                 <button
                                     class="store-product-button"
@@ -238,15 +269,15 @@
                                     data-pass="{{ $product['pass'] }}"
                                     data-access="{{ $product['access'] }}"
                                     data-summary="{{ $product['summary'] }}"
-                                    data-image="{{ asset('images/photos/' . $product['image']) }}"
+                                    data-image="{{ $productImage }}"
                                 >
                                     <span class="store-product-visual">
-                                        <img src="{{ asset('images/photos/' . $product['image']) }}" alt="{{ $product['name'] }}" loading="lazy" decoding="async">
+                                        <img src="{{ $productImage }}" alt="{{ $product['name'] }}" loading="lazy" decoding="async">
                                     </span>
                                     <span class="store-product-meta">
                                         <span>{{ $product['type'] }}</span>
                                         <strong>{{ $product['name'] }}</strong>
-                                        <em data-price="{{ $product['key'] }}">${{ $product['price'] }}{{ $product['suffix'] ?? '' }}</em>
+                                        <em data-price="{{ $product['key'] }}" data-price-value="{{ $product['price'] }}">${{ $product['price'] }}{{ $product['suffix'] ?? '' }}</em>
                                     </span>
                                 </button>
                             </article>
@@ -261,8 +292,11 @@
 
                     <div class="store-event-grid">
                         @foreach ($events as $event)
+                            @php
+                                $eventImage = $event['image_url'] ?? asset('images/photos/' . $event['image']);
+                            @endphp
                             <article class="store-event-card">
-                                <img src="{{ asset('images/photos/' . $event['image']) }}" alt="{{ $event['name'] }} poster" loading="lazy" decoding="async">
+                                <img src="{{ $eventImage }}" alt="{{ $event['name'] }} poster" loading="lazy" decoding="async">
                                 <div class="store-event-copy">
                                     <span>{{ $event['kicker'] }}</span>
                                     <h3>{{ $event['name'] }}</h3>
@@ -271,7 +305,14 @@
                                         <strong>{{ $event['place'] }}</strong>
                                     </div>
                                     @if ($event['mode'] === 'buy')
-                                        <button class="store-button store-button-light" type="button" data-buy="{{ $event['key'] }}">{{ $event['action'] }} <span data-price="{{ $event['key'] }}">${{ $event['price'] }}</span></button>
+                                        <button
+                                            class="store-button store-button-light"
+                                            type="button"
+                                            data-buy="{{ $event['key'] }}"
+                                            data-buy-name="{{ $event['name'] }}"
+                                            data-buy-type="{{ $event['kicker'] }}"
+                                            data-buy-summary="{{ $event['date'] }} - {{ $event['place'] }}"
+                                        >{{ $event['action'] }} <span data-price="{{ $event['key'] }}" data-price-value="{{ $event['price'] }}">${{ $event['price'] }}</span></button>
                                     @else
                                         <button class="store-button store-button-light" type="button" data-rsvp="{{ $event['name'] }}">{{ $event['action'] }}</button>
                                     @endif
