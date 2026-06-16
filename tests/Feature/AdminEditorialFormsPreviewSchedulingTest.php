@@ -10,7 +10,6 @@ use App\Enums\VisibilityAudience;
 use App\Models\EditorialContent;
 use App\Models\MediaAsset;
 use App\Models\User;
-use App\Support\EditorialContentForms;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -26,11 +25,11 @@ class AdminEditorialFormsPreviewSchedulingTest extends TestCase
 
         $response = $this->get(route('admin.editorial.index'))
             ->assertOk()
-            ->assertSee('Content forms')
-            ->assertSee('Choose a form');
+            ->assertSee('Content workspace')
+            ->assertSee('Create content');
 
-        foreach (app(EditorialContentForms::class)->definitions() as $definition) {
-            $response->assertSee($definition['label']);
+        foreach (ContentType::cases() as $type) {
+            $response->assertSee(str_replace('_', ' ', $type->value));
         }
     }
 
@@ -96,46 +95,60 @@ class AdminEditorialFormsPreviewSchedulingTest extends TestCase
 
     public function test_scheduling_uses_panama_timezone(): void
     {
-        config(['app.timezone' => 'America/Panama']);
+        $previousPhpTimezone = date_default_timezone_get();
+        $previousAppTimezone = config('app.timezone');
 
-        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
-        $asset = $this->readyAsset();
+        date_default_timezone_set('UTC');
+        config(['app.timezone' => 'UTC']);
 
-        $this->actingAsAdmin($admin);
+        try {
+            $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+            $asset = $this->readyAsset();
 
-        $this->postJson(route('admin.editorial.schedule'), [
-            ...$this->payloadFor(ContentType::Post, $asset),
-            'scheduled_at' => '2026-07-01T09:30',
-            'release_windows' => [
-                [
-                    'audience' => VisibilityAudience::Member->value,
-                    'starts_at' => '2026-07-01T09:30',
+            $this->actingAsAdmin($admin);
+
+            $this->postJson(route('admin.editorial.schedule'), [
+                ...$this->payloadFor(ContentType::Post, $asset),
+                'scheduled_at' => '2026-07-01T09:30',
+                'release_windows' => [
+                    [
+                        'audience' => VisibilityAudience::Member->value,
+                        'starts_at' => '2026-07-01T09:30',
+                    ],
+                    [
+                        'audience' => VisibilityAudience::Open->value,
+                        'starts_at' => '2026-07-08T09:30',
+                    ],
                 ],
-                [
-                    'audience' => VisibilityAudience::Open->value,
-                    'starts_at' => '2026-07-08T09:30',
-                ],
-            ],
-        ])
-            ->assertOk()
-            ->assertJsonPath('status', EditorialStatus::Scheduled->value);
+            ])
+                ->assertOk()
+                ->assertJsonPath('status', EditorialStatus::Scheduled->value);
 
-        $content = EditorialContent::query()->firstOrFail();
+            $content = EditorialContent::query()->firstOrFail();
 
-        $this->assertSame(
-            '2026-07-01 09:30:00',
-            $content->scheduled_at->timezone('America/Panama')->format('Y-m-d H:i:s')
-        );
-        $this->assertSame(User::ROLE_ADMIN, $content->scheduledBy->role);
-        $this->assertCount(2, $content->releaseWindows);
-        $this->assertSame(
-            '2026-07-01 09:30:00',
-            $content->releaseWindows
-                ->first(fn ($window): bool => $window->audience === VisibilityAudience::Member)
-                ->starts_at
-                ->timezone('America/Panama')
-                ->format('Y-m-d H:i:s')
-        );
+            $this->assertSame(
+                '2026-07-01 09:30:00',
+                $content->scheduled_at->timezone('America/Panama')->format('Y-m-d H:i:s')
+            );
+            $this->assertSame(User::ROLE_ADMIN, $content->scheduledBy->role);
+            $this->assertCount(2, $content->releaseWindows);
+            $this->assertSame(
+                '2026-07-01 09:30:00',
+                $content->releaseWindows
+                    ->first(fn ($window): bool => $window->audience === VisibilityAudience::Member)
+                    ->starts_at
+                    ->timezone('America/Panama')
+                    ->format('Y-m-d H:i:s')
+            );
+
+            $this->get(route('admin.editorial.preview', $content))
+                ->assertOk()
+                ->assertSee('Jul 1, 2026 9:30 AM Panama')
+                ->assertSee('Jul 8, 2026 9:30 AM');
+        } finally {
+            date_default_timezone_set($previousPhpTimezone);
+            config(['app.timezone' => $previousAppTimezone]);
+        }
     }
 
     public function test_per_type_validation_blocks_incomplete_payloads(): void

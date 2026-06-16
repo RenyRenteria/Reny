@@ -19,6 +19,8 @@ class EditorialActionController extends Controller
 {
     private const SCHEDULING_TIMEZONE = 'America/Panama';
 
+    private const STORAGE_TIMEZONE = 'UTC';
+
     public function __construct(private readonly EditorialContentForms $forms) {}
 
     public function saveDraft(Request $request, EditorialWorkflowService $workflow): JsonResponse|RedirectResponse
@@ -185,7 +187,7 @@ class EditorialActionController extends Controller
             $payload['scheduled_at'] = CarbonImmutable::parse(
                 $payload['scheduled_at'],
                 self::SCHEDULING_TIMEZONE
-            );
+            )->setTimezone(self::STORAGE_TIMEZONE);
         }
 
         $payload['release_windows'] = collect($payload['release_windows'] ?? [])
@@ -193,7 +195,8 @@ class EditorialActionController extends Controller
             ->map(function (array $window): array {
                 foreach (['starts_at', 'ends_at'] as $key) {
                     if (filled($window[$key] ?? null)) {
-                        $window[$key] = CarbonImmutable::parse($window[$key], self::SCHEDULING_TIMEZONE);
+                        $window[$key] = CarbonImmutable::parse($window[$key], self::SCHEDULING_TIMEZONE)
+                            ->setTimezone(self::STORAGE_TIMEZONE);
                     }
                 }
 

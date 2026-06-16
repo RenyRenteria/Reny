@@ -518,6 +518,10 @@
     font-weight: 950;
 }
 
+.admin-form-grid select[multiple] {
+    min-height: 10rem;
+}
+
 .admin-checkbox {
     display: flex !important;
     min-height: 2.75rem;
@@ -535,8 +539,188 @@
 }
 
 .admin-file-field,
-.admin-media-list {
+.admin-media-list,
+.admin-field-wide {
     grid-column: 1 / -1;
+}
+
+.admin-form-grid-wide {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.admin-content-form {
+    display: grid;
+    gap: 1rem;
+}
+
+.admin-fieldset {
+    min-width: 0;
+    margin: 0;
+    padding: 1rem;
+    border: 1px solid var(--line);
+    border-radius: 0.5rem;
+    background: rgba(255, 255, 255, 0.56);
+}
+
+.admin-fieldset[hidden] {
+    display: none;
+}
+
+.admin-fieldset legend {
+    padding: 0 0.375rem;
+    color: var(--accent);
+    font-size: 0.75rem;
+    font-weight: 950;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.admin-type-grid,
+.admin-filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.625rem;
+}
+
+.admin-type-link,
+.admin-filter-row a,
+.admin-button-ghost {
+    display: inline-flex;
+    min-height: 2.5rem;
+    align-items: center;
+    justify-content: center;
+    padding: 0.625rem 0.75rem;
+    border: 1px solid var(--line);
+    border-radius: 0.375rem;
+    background: #ffffff;
+    color: var(--soft-ink);
+    font-size: 0.75rem;
+    font-weight: 950;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.admin-filter-row .is-active {
+    border-color: rgba(240, 20, 55, 0.34);
+    background: var(--rose);
+    color: var(--red);
+}
+
+.admin-row-note {
+    display: block;
+    margin-top: 0.25rem;
+    color: var(--muted);
+    font-size: 0.75rem;
+    font-weight: 800;
+}
+
+.admin-row-actions {
+    display: grid;
+    justify-items: end;
+    gap: 0.75rem;
+}
+
+.admin-window-grid {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.admin-window-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 0.7fr;
+    gap: 0.75rem;
+}
+
+.admin-window-row label {
+    display: grid;
+    gap: 0.4rem;
+}
+
+.admin-window-row label > span {
+    color: var(--muted);
+    font-size: 0.75rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.admin-window-row input,
+.admin-window-row select {
+    width: 100%;
+    min-height: 2.75rem;
+    padding: 0.7rem 0.75rem;
+    border: 1px solid var(--line);
+    border-radius: 0.375rem;
+    background: #ffffff;
+    color: var(--ink);
+    font: inherit;
+    font-size: 0.875rem;
+    font-weight: 800;
+}
+
+.admin-sticky-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    padding: 0.75rem;
+    border: 1px solid var(--line);
+    border-radius: 0.5rem;
+    background: rgba(255, 253, 249, 0.96);
+    box-shadow: var(--shadow);
+    gap: 0.75rem;
+}
+
+.admin-preview-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(14rem, 18rem);
+    gap: 1rem;
+}
+
+.admin-preview-body {
+    min-height: 14rem;
+    padding: 1rem;
+    border: 1px solid var(--line);
+    border-radius: 0.5rem;
+    background: #ffffff;
+    color: var(--soft-ink);
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.6;
+}
+
+.admin-preview-meta,
+.admin-definition-grid {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.admin-preview-meta div,
+.admin-definition-grid div {
+    min-width: 0;
+    padding: 0.875rem;
+    border: 1px solid var(--line);
+    border-radius: 0.5rem;
+    background: var(--panel-bright);
+}
+
+.admin-preview-meta span,
+.admin-definition-grid dt {
+    display: block;
+    color: var(--muted);
+    font-size: 0.6875rem;
+    font-weight: 950;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.admin-preview-meta strong,
+.admin-definition-grid dd {
+    display: block;
+    margin: 0.25rem 0 0;
+    overflow-wrap: anywhere;
+    color: var(--ink);
+    font-size: 0.875rem;
+    font-weight: 900;
 }
 
 .admin-media-list {
@@ -611,6 +795,12 @@
 .admin-button-danger {
     background: var(--red);
     color: #ffffff;
+}
+
+.admin-button-ghost {
+    border-color: var(--line);
+    background: #ffffff;
+    color: var(--soft-ink);
 }
 
 .admin-button-secondary {
@@ -1263,7 +1453,10 @@
         width: 100%;
     }
 
-    .admin-form-grid {
+    .admin-form-grid,
+    .admin-form-grid-wide,
+    .admin-window-row,
+    .admin-preview-grid {
         grid-template-columns: minmax(0, 1fr);
     }
 
@@ -1276,6 +1469,12 @@
     .admin-preview-toolbar {
         align-items: stretch;
         flex-direction: column;
+    }
+
+    .admin-row-actions,
+    .admin-sticky-actions {
+        justify-items: stretch;
+        justify-content: stretch;
     }
 }
 
