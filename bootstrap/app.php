@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Middleware\EnsureAdminAccess;
+use App\Http\Middleware\EnsureAdminCanPublish;
+use App\Http\Middleware\EnsureAdminSessionIsFresh;
 use App\Http\Middleware\EnsureRoyalAccess;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -13,6 +16,9 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
+            'admin.access' => EnsureAdminAccess::class,
+            'admin.publish' => EnsureAdminCanPublish::class,
+            'admin.session' => EnsureAdminSessionIsFresh::class,
             'royal' => EnsureRoyalAccess::class,
         ]);
 
