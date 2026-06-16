@@ -124,12 +124,56 @@ class AccountDashboardTest extends TestCase
             ->get('/account')
             ->assertOk()
             ->assertSee('New Fan')
-            ->assertSee('Open Account')
+            ->assertSee('Registered Account')
+            ->assertSee('Account state')
             ->assertSee('Get your Royal Pass')
             ->assertSee('No upcoming events')
             ->assertSee('No purchases yet')
             ->assertSee('No billing profile')
             ->assertSee('No points yet')
             ->assertSee('Manual request');
+    }
+
+    public function test_account_dashboard_shows_refunded_and_payment_failed_states(): void
+    {
+        $refunded = User::factory()->refundedRoyal()->create([
+            'name' => 'Refunded Member',
+        ]);
+        BillingProfile::create([
+            'user_id' => $refunded->id,
+            'provider' => 'paypal',
+            'status' => 'refunded',
+            'payment_method_summary' => 'PayPal',
+            'last_synced_at' => now(),
+        ]);
+
+        $this->actingAs($refunded)
+            ->get('/account')
+            ->assertOk()
+            ->assertSee('Refunded Member')
+            ->assertSee('Refunded')
+            ->assertSee('Reactivate Royal Pass')
+            ->assertSee('data-access-state="refunded"', false);
+
+        $failed = User::factory()->paymentFailedRoyal()->create([
+            'name' => 'Payment Failed Member',
+        ]);
+        BillingProfile::create([
+            'user_id' => $failed->id,
+            'provider' => 'paypal',
+            'status' => 'past_due',
+            'payment_method_summary' => 'PayPal',
+            'failed_payment_at' => now()->subDay(),
+            'last_synced_at' => now(),
+        ]);
+
+        $this->actingAs($failed)
+            ->get('/account')
+            ->assertOk()
+            ->assertSee('Payment Failed Member')
+            ->assertSee('Payment Failed')
+            ->assertSee('past due')
+            ->assertSee('Reactivate Royal Pass')
+            ->assertSee('data-access-state="payment_failed"', false);
     }
 }

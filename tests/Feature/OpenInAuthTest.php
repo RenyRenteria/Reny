@@ -136,7 +136,27 @@ class OpenInAuthTest extends TestCase
             ->get('/account')
             ->assertOk()
             ->assertSee('Expired Member')
-            ->assertSee('Open mode')
-            ->assertSee('Get your Royal Pass');
+            ->assertSee('Royal Expired')
+            ->assertSee('Reactivate Royal Pass');
+    }
+
+    public function test_protected_route_preserves_intended_redirect_after_login(): void
+    {
+        $user = User::factory()->royal()->create([
+            'email' => 'redirect-member@example.com',
+            'password' => Hash::make('password'),
+        ]);
+
+        $this->get('/royal/content/vip-mix')->assertRedirect('/login');
+
+        $this->post('/login', [
+            'identifier' => 'redirect-member@example.com',
+            'password' => 'password',
+        ])->assertRedirect('/royal/content/vip-mix');
+
+        $this->actingAs($user)
+            ->get('/royal/content/vip-mix')
+            ->assertOk()
+            ->assertSee('secure_stream_url:royal-only-vip-mix');
     }
 }

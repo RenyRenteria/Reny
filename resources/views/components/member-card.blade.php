@@ -1,18 +1,13 @@
 @php
     $user = auth()->user();
-    $state = $user?->accessState()->value ?? 'open';
-    $label = match ($state) {
-        'royal_active', 'royal_grace' => 'ROYAL MEMBER',
-        'royal_expired' => 'ROYAL EXPIRED',
-        default => 'OPEN ACCESS',
-    };
+    $state = \App\Support\AccountStateView::for($user);
 @endphp
 
-<div class="member-card" data-access-state="{{ $state }}">
+<div class="member-card" data-access-state="{{ $state['state'] }}">
     <div class="member-avatar" aria-hidden="true"></div>
     <div>
         <strong>{{ $user?->name ?? 'Guest' }}</strong>
-        <span id="tierLabel">{{ $label }}</span>
+        <span id="tierLabel">{{ $state['member_label'] }}</span>
         @guest
             <a class="member-card-link" href="{{ route('login') }}">Sign in</a>
         @else

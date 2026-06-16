@@ -71,7 +71,7 @@ class RoyalPassService
         }
 
         $order->user->forceFill([
-            'royal_status' => 'royal_expired',
+            'royal_status' => 'refunded',
             'royal_ends_at' => now(),
         ])->save();
 

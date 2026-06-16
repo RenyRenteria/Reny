@@ -1,3 +1,8 @@
+@php
+    $accountState = \App\Support\AccountStateView::for($user);
+    $accountTimezone = $user->timezone ?: config('app.timezone');
+@endphp
+
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
@@ -11,7 +16,7 @@
         <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body data-analytics-screen="account">
+    <body data-analytics-screen="account" data-access-state="{{ $accountState['state'] }}">
         <div class="music-shell">
             <aside class="sidebar" aria-label="Primary navigation">
                 <div>
@@ -97,13 +102,31 @@
                     </div>
 
                     <div class="account-membership">
-                        @if ($user->hasRoyalAccess())
-                            <span class="account-badge">Active Royal Member</span>
-                            <p>Access active until {{ $user->royal_ends_at?->timezone($user->timezone)->format('M j, Y') ?? 'the current period ends' }}.</p>
-                        @else
-                            <span class="account-badge account-badge-open">Open Account</span>
-                            <p>Open mode: reactivate Royal Pass to unlock premium music, community actions and member drops.</p>
-                            <a class="account-action" href="{{ route('store') }}">Get your Royal Pass</a>
+                        <span class="account-badge {{ $accountState['badge_class'] }}">{{ $accountState['badge'] }}</span>
+                        <p>{{ $accountState['description'] }}</p>
+
+                        <dl class="account-state-details">
+                            <div>
+                                <dt>Account state</dt>
+                                <dd>{{ $accountState['status_label'] }}</dd>
+                            </div>
+                            <div>
+                                <dt>Billing status</dt>
+                                <dd>{{ $billingProfile?->status ? str_replace('_', ' ', $billingProfile->status) : 'None' }}</dd>
+                            </div>
+                            <div>
+                                <dt>Pass date</dt>
+                                <dd>{{ $user->royal_ends_at?->timezone($accountTimezone)->format('M j, Y') ?? 'Not active' }}</dd>
+                            </div>
+                        </dl>
+
+                        @if ($accountState['action_label'] && $accountState['action_url'])
+                            <a
+                                class="account-action"
+                                href="{{ $accountState['action_url'] }}"
+                                data-analytics-id="{{ $accountState['analytics_id'] }}"
+                                data-analytics-type="account_state_cta"
+                            >{{ $accountState['action_label'] }}</a>
                         @endif
                     </div>
                 </section>

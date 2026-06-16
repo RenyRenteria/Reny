@@ -107,6 +107,18 @@ class User extends Authenticatable
 
     public function accessState(): AccessState
     {
+        if ($this->royal_status === AccessState::Refunded->value) {
+            return AccessState::Refunded;
+        }
+
+        if (in_array($this->royal_status, [AccessState::PaymentFailed->value, 'on_hold'], true)) {
+            return AccessState::PaymentFailed;
+        }
+
+        if ($this->royal_status === AccessState::Cancelled->value) {
+            return AccessState::Cancelled;
+        }
+
         if ($this->royal_status === AccessState::RoyalActive->value && $this->royal_ends_at?->isFuture()) {
             return AccessState::RoyalActive;
         }

@@ -236,7 +236,9 @@ class PublicCmsContentTest extends TestCase
 
         $this->actingAs($member)
             ->get(route('public.content.show', $royalContent))
-            ->assertForbidden();
+            ->assertForbidden()
+            ->assertSee('Royal Pass required')
+            ->assertDontSee('Active Royal users can read this.');
 
         $this->actingAs($royal)
             ->get(route('public.content.show', $royalContent))
@@ -256,7 +258,9 @@ class PublicCmsContentTest extends TestCase
 
         $this->actingAs($expiredRoyal)
             ->get(route('public.content.show', $content))
-            ->assertForbidden();
+            ->assertForbidden()
+            ->assertSee('Purchase required')
+            ->assertDontSee('Unlocked after purchase.');
 
         UserUnlock::create([
             'user_id' => $expiredRoyal->id,

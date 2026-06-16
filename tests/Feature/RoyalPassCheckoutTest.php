@@ -272,9 +272,10 @@ class RoyalPassCheckoutTest extends TestCase
             ->assertOk()
             ->assertJsonPath('status', 'refunded')
             ->assertJsonPath('refunded_orders', 1)
-            ->assertJsonPath('royal_status', 'royal_expired');
+            ->assertJsonPath('royal_status', 'refunded');
 
         $this->assertSame('refunded', $order->fresh()->status);
+        $this->assertSame('refunded', $user->fresh()->royal_status);
         $this->assertFalse($user->fresh()->hasRoyalAccess());
 
         $this->assertDatabaseHas('access_events', [
