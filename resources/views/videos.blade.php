@@ -34,6 +34,36 @@
         ['id' => 'yz6mBW-BshM', 'title' => 'IA o arte real?', 'meta' => 'Craftmanship by Christian Javier'],
         ['id' => 'fcGJ7aZ39Hw', 'title' => 'New merch out now', 'meta' => '5D Stage update'],
     ];
+
+    $featuredVideo = [
+        'id' => 'Ue8orNrHw9s',
+        'title' => 'Reny Renteria - I Swear (Official Music Video)',
+        'meta' => 'Featured YouTube premiere',
+    ];
+
+    if (! empty($publicCms['music_videos'] ?? [])) {
+        $musicVideos = $publicCms['music_videos'];
+    }
+
+    if (! empty($publicCms['series'] ?? [])) {
+        $series = $publicCms['series'];
+    }
+
+    if (! empty($publicCms['performances'] ?? [])) {
+        $performances = $publicCms['performances'];
+    }
+
+    if (! empty($publicCms['behind_the_scenes'] ?? [])) {
+        $behindTheScenes = $publicCms['behind_the_scenes'];
+    }
+
+    if (! empty($publicCms['vlogs'] ?? [])) {
+        $vlogs = $publicCms['vlogs'];
+    }
+
+    if (! empty($publicCms['featured_video'] ?? null)) {
+        $featuredVideo = $publicCms['featured_video'];
+    }
 @endphp
 
 <!DOCTYPE html>
@@ -131,18 +161,18 @@
                     <div class="featured-video">
                         <div class="video-frame">
                             <iframe
-                                src="https://www.youtube.com/embed/Ue8orNrHw9s"
-                                title="Reny Renteria - I Swear (Official Music Video)"
+                                src="https://www.youtube.com/embed/{{ $featuredVideo['id'] }}"
+                                title="{{ $featuredVideo['title'] }}"
                                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                                 allowfullscreen>
                             </iframe>
                         </div>
                         <div class="featured-meta">
                             <div>
-                                <strong>Reny Renteria - I Swear (Official Music Video)</strong>
-                                <span>Featured YouTube premiere</span>
+                                <strong>{{ $featuredVideo['title'] }}</strong>
+                                <span>{{ $featuredVideo['meta'] }}</span>
                             </div>
-                            <a class="youtube-pill" href="https://www.youtube.com/watch?v=Ue8orNrHw9s" target="_blank" rel="noreferrer">Open YouTube</a>
+                            <a class="youtube-pill" href="https://www.youtube.com/watch?v={{ $featuredVideo['id'] }}" target="_blank" rel="noreferrer">Open YouTube</a>
                         </div>
                     </div>
                 </section>

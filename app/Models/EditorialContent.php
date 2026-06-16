@@ -6,6 +6,7 @@ use App\Casts\UtcDateTime;
 use App\Enums\ContentType;
 use App\Enums\EditorialStatus;
 use App\Enums\VisibilityAudience;
+use App\Services\PublicCmsContentService;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Database\Factories\EditorialContentFactory;
@@ -44,6 +45,12 @@ class EditorialContent extends Model
 {
     /** @use HasFactory<EditorialContentFactory> */
     use HasFactory;
+
+    protected static function booted(): void
+    {
+        static::saved(fn (): bool => PublicCmsContentService::bumpCacheVersion());
+        static::deleted(fn (): bool => PublicCmsContentService::bumpCacheVersion());
+    }
 
     protected function casts(): array
     {
@@ -188,7 +195,8 @@ class EditorialContent extends Model
 
         return match ($audience) {
             VisibilityAudience::Open => true,
-            VisibilityAudience::Member, VisibilityAudience::Royal => $user?->hasRoyalAccess() ?? false,
+            VisibilityAudience::Member => $user !== null,
+            VisibilityAudience::Royal => (bool) ($user?->hasRoyalAccess() || $user?->isStaff()),
             VisibilityAudience::Purchased => $this->hasPurchasedAccess($user),
         };
     }
@@ -222,12 +230,19 @@ class EditorialContent extends Model
     {
         $audiences = [VisibilityAudience::Open->value];
 
-        if ($user?->hasRoyalAccess()) {
+        if ($user !== null) {
             $audiences[] = VisibilityAudience::Member->value;
+        }
+
+        if ($user?->hasRoyalAccess()) {
             $audiences[] = VisibilityAudience::Royal->value;
         }
 
-        return $audiences;
+        if ($user?->isStaff()) {
+            $audiences[] = VisibilityAudience::Royal->value;
+        }
+
+        return array_values(array_unique($audiences));
     }
 
     private static function applyAudienceConstraint(Builder $query, string $column, ?User $user): void

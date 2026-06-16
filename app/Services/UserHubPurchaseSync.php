@@ -62,6 +62,8 @@ class UserHubPurchaseSync
             $event = $this->event($product);
             $this->tickets->issue($user, $event, $user->name, order: $order);
         }
+
+        PublicCmsContentService::forgetCachedUserPayloads($user);
     }
 
     public function recordRefund(Order $order): void
@@ -87,6 +89,8 @@ class UserHubPurchaseSync
                 'status' => 'refunded',
                 'last_synced_at' => now(),
             ]);
+
+            PublicCmsContentService::forgetCachedUserPayloads($order->user);
         }
     }
 

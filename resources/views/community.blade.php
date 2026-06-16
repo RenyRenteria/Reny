@@ -1,3 +1,8 @@
+@php
+    $cmsPosts = $publicCms['posts'] ?? [];
+    $cmsPoll = $publicCms['poll'] ?? null;
+@endphp
+
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
@@ -99,10 +104,61 @@
                                 </span>
                                 Reny Direct Posts
                             </div>
-                        </div>
+	                        </div>
 
-                        <article class="post-card">
-                            <div class="post-head">
+                            @if ($cmsPosts)
+                                @foreach (array_slice($cmsPosts, 0, 2) as $post)
+                                    <article class="post-card">
+                                        <div class="post-head">
+                                            <div class="post-icon">
+                                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                                    <path d="M12 2v20"></path>
+                                                    <path d="M8 7v5a4 4 0 0 0 8 0V7"></path>
+                                                    <path d="M6 12a6 6 0 0 0 12 0"></path>
+                                                </svg>
+                                            </div>
+                                            <div>
+                                                <h2>{{ $post['title'] }}</h2>
+                                                <div class="post-time">{{ $post['time'] }}</div>
+                                            </div>
+                                        </div>
+
+                                        <p class="post-copy">{{ $post['body'] }}</p>
+
+                                        @if (! empty($post['image_url']))
+                                            <div class="media-frame">
+                                                <img src="{{ $post['image_url'] }}" alt="{{ $post['title'] }}">
+                                                <a class="media-cta" href="{{ $post['url'] }}">
+                                                    {{ $post['cta'] }}
+                                                    <span aria-hidden="true">→</span>
+                                                </a>
+                                            </div>
+                                        @endif
+
+                                        <div class="post-actions">
+                                            <div class="post-metrics">
+                                                <span class="metric heart">
+                                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                                        <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8Z"></path>
+                                                    </svg>
+                                                    CMS
+                                                </span>
+                                            </div>
+                                            <span class="share">
+                                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                                    <circle cx="18" cy="5" r="3"></circle>
+                                                    <circle cx="6" cy="12" r="3"></circle>
+                                                    <circle cx="18" cy="19" r="3"></circle>
+                                                    <path d="m8.6 13.5 6.8 4"></path>
+                                                    <path d="m15.4 6.5-6.8 4"></path>
+                                                </svg>
+                                            </span>
+                                        </div>
+                                    </article>
+                                @endforeach
+                            @else
+	                        <article class="post-card">
+	                            <div class="post-head">
                                 <div class="post-icon">
                                     <svg viewBox="0 0 24 24" aria-hidden="true">
                                         <path d="M12 2v20"></path>
@@ -152,11 +208,12 @@
                                         <path d="m8.6 13.5 6.8 4"></path>
                                         <path d="m15.4 6.5-6.8 4"></path>
                                     </svg>
-                                </span>
-                            </div>
-                        </article>
+	                                </span>
+	                            </div>
+	                        </article>
+                            @endif
 
-                        <section class="vote-card" aria-labelledby="fan-votes-title">
+	                        <section class="vote-card" aria-labelledby="fan-votes-title">
                             <div class="section-kicker">
                                 <svg viewBox="0 0 24 24" aria-hidden="true">
                                     <rect x="4" y="4" width="16" height="16" rx="2"></rect>
@@ -167,25 +224,34 @@
                                 <span id="fan-votes-title">Fan Votes</span>
                             </div>
 
-                            <h3>Which drop should go first?</h3>
+	                            <h3>{{ $cmsPoll['question'] ?? 'Which drop should go first?' }}</h3>
 
-                            <div class="poll">
-                                <div class="poll-row">
-                                    <div class="poll-label"><span>Studio photos</span><span>42%</span></div>
-                                    <div class="poll-track"><span class="poll-fill" style="width: 42%"></span></div>
-                                </div>
-                                <div class="poll-row">
-                                    <div class="poll-label"><span>Performance stills</span><span>34%</span></div>
-                                    <div class="poll-track"><span class="poll-fill" style="width: 34%"></span></div>
-                                </div>
-                                <div class="poll-row">
-                                    <div class="poll-label"><span>Travel archive</span><span>24%</span></div>
-                                    <div class="poll-track"><span class="poll-fill" style="width: 24%"></span></div>
-                                </div>
-                            </div>
+	                            <div class="poll">
+                                    @if ($cmsPoll)
+                                        @foreach ($cmsPoll['options'] as $option)
+                                            <div class="poll-row">
+                                                <div class="poll-label"><span>{{ $option['label'] }}</span><span>{{ $option['percent'] }}%</span></div>
+                                                <div class="poll-track"><span class="poll-fill" style="width: {{ $option['percent'] }}%"></span></div>
+                                            </div>
+                                        @endforeach
+                                    @else
+                                        <div class="poll-row">
+                                            <div class="poll-label"><span>Studio photos</span><span>42%</span></div>
+                                            <div class="poll-track"><span class="poll-fill" style="width: 42%"></span></div>
+                                        </div>
+                                        <div class="poll-row">
+                                            <div class="poll-label"><span>Performance stills</span><span>34%</span></div>
+                                            <div class="poll-track"><span class="poll-fill" style="width: 34%"></span></div>
+                                        </div>
+                                        <div class="poll-row">
+                                            <div class="poll-label"><span>Travel archive</span><span>24%</span></div>
+                                            <div class="poll-track"><span class="poll-fill" style="width: 24%"></span></div>
+                                        </div>
+                                    @endif
+	                            </div>
 
-                                <div class="vote-footer">
-                                    <span>1248 total votes</span>
+	                                <div class="vote-footer">
+	                                    <span>{{ $cmsPoll['votes'] ?? '1248 total votes' }}</span>
                                     <x-access-gate
                                         section="community"
                                         title="Voting requires Royal Pass"
@@ -193,10 +259,11 @@
                                     >
                                         <button class="soft-button" type="button">Vote</button>
                                     </x-access-gate>
-                                </div>
-                        </section>
+	                                </div>
+	                        </section>
 
-                        <article class="post-card photo-post">
+                            @if (! $cmsPosts)
+	                        <article class="post-card photo-post">
                             <div class="post-head">
                                 <div class="post-icon">
                                     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -244,9 +311,10 @@
                                         <path d="m15.4 6.5-6.8 4"></path>
                                     </svg>
                                 </span>
-                            </div>
-                        </article>
-                    </section>
+	                            </div>
+	                        </article>
+                            @endif
+	                    </section>
 
                     <aside class="side-column" aria-label="Community sidebar">
                         <div class="side-head">
