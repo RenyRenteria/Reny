@@ -90,6 +90,11 @@ class User extends Authenticatable
         return $this->hasMany(Ticket::class);
     }
 
+    public function editorialContents(): HasMany
+    {
+        return $this->hasMany(EditorialContent::class, 'created_by_id');
+    }
+
     public function unlocks(): HasMany
     {
         return $this->hasMany(UserUnlock::class);
