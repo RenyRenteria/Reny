@@ -8,10 +8,14 @@ use App\Enums\MediaProcessingStatus;
 use App\Models\EditorialContent;
 use App\Models\MediaAsset;
 use App\Models\User;
+use App\Services\Media\MediaLibraryService;
+use App\Services\Media\MediaUploadException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Mockery;
+use RuntimeException;
 use Tests\TestCase;
 
 class AdminMediaLibraryTest extends TestCase
@@ -196,6 +200,48 @@ class AdminMediaLibraryTest extends TestCase
         ], ['Accept' => 'application/json'])
             ->assertStatus(503)
             ->assertJsonPath('message', 'Upload failed because app-server storage is unavailable.');
+
+        $this->assertDatabaseCount('media_assets', 0);
+    }
+
+    public function test_partial_batch_upload_failure_deletes_stored_files_without_corrupt_record(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $disk = Mockery::mock();
+
+        $disk->shouldReceive('putFileAs')
+            ->once()
+            ->andReturn('media/image/2026/06/first.jpg');
+
+        $disk->shouldReceive('putFileAs')
+            ->once()
+            ->andThrow(new RuntimeException('disk quota exceeded'));
+
+        $disk->shouldReceive('delete')
+            ->once()
+            ->with('media/image/2026/06/first.jpg')
+            ->andReturn(true);
+
+        Storage::shouldReceive('disk')
+            ->with('public')
+            ->times(3)
+            ->andReturn($disk);
+
+        try {
+            app(MediaLibraryService::class)->storeUploads($admin, [
+                'type' => MediaAssetType::Image->value,
+                'title' => 'Batch upload',
+                'alt_text' => 'Batch image alt text',
+                'is_public' => true,
+            ], [
+                UploadedFile::fake()->image('first.jpg')->size(512),
+                UploadedFile::fake()->image('second.jpg')->size(512),
+            ]);
+
+            $this->fail('Expected partial upload failure to throw.');
+        } catch (MediaUploadException $exception) {
+            $this->assertSame('Upload failed because app-server storage is unavailable.', $exception->getMessage());
+        }
 
         $this->assertDatabaseCount('media_assets', 0);
     }
