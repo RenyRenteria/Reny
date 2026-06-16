@@ -119,6 +119,74 @@ class PublicCmsContentTest extends TestCase
             ->assertSee('Cached CMS Photo');
     }
 
+    public function test_cache_fallback_does_not_reuse_royal_payload_after_user_loses_royal_access(): void
+    {
+        $this->publishedVideo('Open CMS Video', VisibilityAudience::Open);
+        $this->publishedVideo('Royal CMS Video', VisibilityAudience::Royal);
+
+        $royal = User::factory()->royal()->create();
+
+        $this->actingAs($royal)
+            ->getJson(route('public-content.payload', 'videos'))
+            ->assertOk()
+            ->assertJsonPath('_cms_source', 'cms')
+            ->assertSee('Open CMS Video')
+            ->assertSee('Royal CMS Video');
+
+        $royal->forceFill([
+            'royal_status' => 'royal_expired',
+            'royal_ends_at' => now()->subMinute(),
+        ])->save();
+
+        $this->assertFalse($royal->fresh()->hasRoyalAccess());
+
+        Schema::drop('editorial_contents');
+
+        $this->actingAs($royal->fresh())
+            ->getJson(route('public-content.payload', 'videos'))
+            ->assertOk()
+            ->assertJsonPath('_cms_source', 'static')
+            ->assertDontSee('Royal CMS Video');
+    }
+
+    public function test_cache_fallback_does_not_reuse_purchased_payload_after_unlock_is_revoked(): void
+    {
+        $purchased = $this->publishedVideo('Purchased CMS Video', VisibilityAudience::Purchased, 'deluxe-drop-001');
+        $user = User::factory()->expiredRoyal()->create();
+
+        $unlock = UserUnlock::create([
+            'user_id' => $user->id,
+            'unlock_type' => 'content',
+            'product_key' => 'deluxe-drop-001',
+            'title' => $purchased->title,
+            'source_type' => 'editorial_content',
+            'source_id' => (string) $purchased->id,
+            'status' => 'available',
+            'unlocked_at' => now(),
+        ]);
+
+        $this->actingAs($user)
+            ->getJson(route('public-content.payload', 'videos'))
+            ->assertOk()
+            ->assertJsonPath('_cms_source', 'cms')
+            ->assertSee('Purchased CMS Video');
+
+        $unlock->update([
+            'status' => 'revoked',
+            'revoked_at' => now(),
+        ]);
+
+        $this->assertFalse($purchased->fresh()->isVisibleTo($user->fresh()));
+
+        Schema::drop('editorial_contents');
+
+        $this->actingAs($user->fresh())
+            ->getJson(route('public-content.payload', 'videos'))
+            ->assertOk()
+            ->assertJsonPath('_cms_source', 'static')
+            ->assertDontSee('Purchased CMS Video');
+    }
+
     public function test_changing_open_content_to_member_blocks_public_ui_and_backend_access(): void
     {
         $content = $this->publishedContent(ContentType::Post, [

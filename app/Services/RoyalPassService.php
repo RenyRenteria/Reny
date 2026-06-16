@@ -54,6 +54,8 @@ class RoyalPassService
             'royal_ends_at' => $endsAt->toIso8601String(),
         ]);
 
+        PublicCmsContentService::forgetCachedUserPayloads($user);
+
         return $user;
     }
 
@@ -77,6 +79,8 @@ class RoyalPassService
             'reason' => 'refund',
             'product_key' => $order->product_key,
         ]);
+
+        PublicCmsContentService::forgetCachedUserPayloads($order->user);
     }
 
     /**
