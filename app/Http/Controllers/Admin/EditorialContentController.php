@@ -12,6 +12,7 @@ use App\Models\EditorialContent;
 use App\Models\MediaAsset;
 use App\Models\Taxonomy;
 use App\Services\EditorialWorkflowService;
+use App\Support\AdminCmsSections;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -26,12 +27,17 @@ class EditorialContentController extends Controller
     public function index(Request $request): View
     {
         $status = $request->query('status');
+        $activeSection = AdminCmsSections::normalize($request->query('section'));
 
         $contents = EditorialContent::query()
             ->with(['createdBy', 'mediaAssets', 'releaseWindows'])
             ->when(
                 in_array($status, EditorialStatus::values(), true),
                 fn ($query) => $query->where('status', $status)
+            )
+            ->when(
+                $activeSection !== null,
+                fn ($query) => $query->whereIn('type', AdminCmsSections::typesFor($activeSection))
             )
             ->latest()
             ->limit(50)
@@ -42,6 +48,7 @@ class EditorialContentController extends Controller
             'contentTypes' => ContentType::cases(),
             'statuses' => EditorialStatus::cases(),
             'activeStatus' => in_array($status, EditorialStatus::values(), true) ? $status : null,
+            'activeSection' => $activeSection,
             'timezone' => config('admin.publishing_timezone', 'America/Panama'),
         ]);
     }

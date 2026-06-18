@@ -33,6 +33,38 @@ class AdminEditorialFormsPreviewSchedulingTest extends TestCase
         }
     }
 
+    public function test_admin_content_queue_filters_by_design_system_section(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+
+        EditorialContent::factory()->create([
+            'type' => ContentType::Song->value,
+            'title' => 'Music queue item',
+        ]);
+        EditorialContent::factory()->create([
+            'type' => ContentType::Video->value,
+            'title' => 'Video queue item',
+        ]);
+        EditorialContent::factory()->create([
+            'type' => ContentType::Event->value,
+            'title' => 'Events queue item',
+        ]);
+        EditorialContent::factory()->create([
+            'type' => ContentType::Post->value,
+            'title' => 'Community queue item',
+        ]);
+
+        $this->actingAsAdmin($admin);
+
+        $this->get(route('admin.content.index', ['section' => 'music']))
+            ->assertOk()
+            ->assertSee('Musica')
+            ->assertSee('Music queue item')
+            ->assertDontSee('Video queue item')
+            ->assertDontSee('Events queue item')
+            ->assertDontSee('Community queue item');
+    }
+
     public function test_editor_can_prepare_one_piece_of_each_content_type(): void
     {
         $editor = User::factory()->create(['role' => User::ROLE_EDITOR]);

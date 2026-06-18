@@ -44,6 +44,8 @@
                     </div>
                 </header>
 
+                @include('admin.partials.section-tabs', ['activeSection' => $activeSection])
+
                 @if (session('status'))
                     <div class="auth-status">{{ session('status') }}</div>
                 @endif
@@ -58,8 +60,10 @@
 
                     <div class="admin-type-grid">
                         @foreach ($contentTypes as $type)
-                            <a class="admin-type-link" href="{{ route('admin.content.create', ['type' => $type->value]) }}">
-                                {{ str_replace('_', ' ', $type->value) }}
+                            @php($typeTab = \App\Support\AdminCmsSections::tabForType($type))
+                            <a class="admin-type-link admin-type-link-section" href="{{ route('admin.content.create', ['type' => $type->value]) }}" style="--section-accent: {{ $typeTab['accent'] ?? '#997332' }}">
+                                <span>{{ str_replace('_', ' ', $type->value) }}</span>
+                                <small>{{ $typeTab['label'] ?? 'CMS' }}</small>
                             </a>
                         @endforeach
                     </div>
@@ -74,9 +78,9 @@
                     </div>
 
                     <div class="admin-filter-row">
-                        <a @class(['is-active' => $activeStatus === null]) href="{{ route('admin.content.index') }}">All</a>
+                        <a @class(['is-active' => $activeStatus === null]) href="{{ route('admin.content.index', array_filter(['section' => $activeSection])) }}">All</a>
                         @foreach ($statuses as $status)
-                            <a @class(['is-active' => $activeStatus === $status->value]) href="{{ route('admin.content.index', ['status' => $status->value]) }}">
+                            <a @class(['is-active' => $activeStatus === $status->value]) href="{{ route('admin.content.index', array_filter(['section' => $activeSection, 'status' => $status->value])) }}">
                                 {{ $status->value }}
                             </a>
                         @endforeach
@@ -84,7 +88,8 @@
 
                     <div class="admin-queue">
                         @forelse ($contents as $content)
-                            <article class="admin-queue-item">
+                            @php($contentTab = \App\Support\AdminCmsSections::tabForType($content->type))
+                            <article class="admin-queue-item admin-queue-item-section" style="--section-accent: {{ $contentTab['accent'] ?? '#997332' }}">
                                 <div>
                                     <span>{{ str_replace('_', ' ', $content->type->value) }}</span>
                                     <strong>{{ $content->title }}</strong>
