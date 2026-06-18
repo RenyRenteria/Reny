@@ -132,6 +132,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (currentAnalyticsScreen().startsWith('account')) {
         trackEvent('account_viewed', {
+            access_state: document.body?.dataset.accessState,
             item_type: 'account',
             item_id: currentAnalyticsScreen(),
             result: 'viewed',
