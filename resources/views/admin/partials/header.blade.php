@@ -45,8 +45,8 @@
         [
             'label' => 'STATS',
             'href' => route('admin.dashboard'),
-            'section' => 'dashboard',
-            'nav' => 'dashboard',
+            'section' => 'stats',
+            'nav' => 'stats',
         ],
     ];
 
