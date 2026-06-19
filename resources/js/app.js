@@ -1149,10 +1149,18 @@ if (storeShell) {
     const bagCount = document.getElementById('bagCount');
     const bagList = document.getElementById('bagList');
     const bagTotal = document.getElementById('bagTotal');
+    const emailField = document.getElementById('emailField');
+    const phoneField = document.getElementById('phoneField');
+    const localPaymentPanel = document.getElementById('localPaymentPanel');
+    const localReferenceField = document.getElementById('localReferenceField');
+    const localReceiptField = document.getElementById('localReceiptField');
     const paypalButtons = document.getElementById('paypalButtons');
-    const paypalStatus = document.getElementById('paypalStatus');
+    const paymentStatus = document.getElementById('paymentStatus');
+    const completePurchaseButton = document.getElementById('completePurchase');
+    const paymentButtons = [...document.querySelectorAll('.store-payments button[data-payment-method]')];
     const tierLabel = document.getElementById('tierLabel');
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    let activePaymentMethod = 'paypal';
     let paypalButtonsRendered = false;
     let paypalSdkPromise = null;
 
@@ -1245,29 +1253,112 @@ if (storeShell) {
         }, 2200);
     };
 
-    const setPayPalStatus = (message) => {
-        if (paypalStatus) {
-            paypalStatus.textContent = message;
+    const setPaymentStatus = (message) => {
+        if (paymentStatus) {
+            paymentStatus.textContent = message;
         }
     };
 
-    const checkoutError = (message) => Object.assign(new Error(message), { userMessage: message });
+    const checkoutError = (message, checkoutState = 'validation_failed', reason = null) => Object.assign(new Error(message), {
+        checkoutState,
+        reason: reason || normalizeAnalyticsKey(message),
+        userMessage: message,
+    });
 
-    const checkoutPayload = () => {
-        if (!bag.length) {
-            throw checkoutError('Add a product first.');
+    const trackPaymentState = (method, checkoutState, details = {}) => {
+        const eventName = checkoutState === 'payment_success'
+            ? 'store_payment_succeeded'
+            : checkoutState === 'payment_started'
+                ? 'store_checkout_started'
+                : 'store_payment_failed';
+
+        trackEvent(eventName, {
+            item_type: checkoutState === 'payment_started' ? 'checkout' : 'payment_method',
+            item_id: method,
+            method,
+            checkout_state: checkoutState,
+            result: checkoutState,
+            ...details,
+        });
+    };
+
+    const phoneDigits = (value) => (value || '').replace(/\D+/g, '');
+
+    const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+
+    const isValidPhone = (value) => phoneDigits(value).length >= 7;
+
+    const contactPayload = ({ requireBoth = false } = {}) => {
+        const email = emailField?.value?.trim() || '';
+        const phone = phoneField?.value?.trim() || '';
+
+        if (requireBoth) {
+            if (!isValidEmail(email)) {
+                throw checkoutError('Add a valid receipt email.', 'validation_failed', 'invalid_email');
+            }
+
+            if (!isValidPhone(phone)) {
+                throw checkoutError('Add a valid phone number.', 'validation_failed', 'invalid_phone');
+            }
+
+            return {
+                identifier: email,
+                email,
+                phone: phoneDigits(phone),
+            };
         }
 
-        const identifier = document.getElementById('emailField')?.value?.trim();
+        if (email) {
+            if (!isValidEmail(email)) {
+                throw checkoutError('Add a valid receipt email.', 'validation_failed', 'invalid_email');
+            }
 
-        if (!identifier) {
-            throw checkoutError('Add email or phone.');
+            return { identifier: email, email, phone: phone ? phoneDigits(phone) : '' };
+        }
+
+        if (phone) {
+            if (!isValidPhone(phone)) {
+                throw checkoutError('Add a valid phone number.', 'validation_failed', 'invalid_phone');
+            }
+
+            return { identifier: phone, email: '', phone: phoneDigits(phone) };
+        }
+
+        throw checkoutError('Add a valid email or phone.', 'validation_failed', 'missing_contact');
+    };
+
+    const checkoutPayload = ({ requireBothContacts = false } = {}) => {
+        if (!bag.length) {
+            throw checkoutError('Add a product first.', 'validation_failed', 'empty_cart');
+        }
+
+        const contact = contactPayload({ requireBoth: requireBothContacts });
+
+        return {
+            identifier: contact.identifier,
+            product_keys: [...bag],
+            currency: currency.toUpperCase(),
+        };
+    };
+
+    const normalizeLocalReference = (value) => (value || '').trim().toUpperCase().replace(/\s+/g, '-');
+
+    const localCheckoutPayload = () => {
+        const payload = checkoutPayload({ requireBothContacts: true });
+        const reference = normalizeLocalReference(localReferenceField?.value || '');
+
+        if (!/^(?=.{8,40}$)(?=.*[A-Z])(?=.*\d)[A-Z0-9-]+$/.test(reference)) {
+            throw checkoutError('Add a bank reference with at least 8 letters/numbers and one digit.', 'validation_failed', 'invalid_reference');
+        }
+
+        if (!localReceiptField?.files?.length) {
+            throw checkoutError('Attach a receipt image or PDF.', 'validation_failed', 'missing_receipt');
         }
 
         return {
-            identifier,
-            product_keys: [...bag],
-            currency: currency.toUpperCase(),
+            ...payload,
+            local_reference: reference,
+            receipt_name: localReceiptField.files[0].name,
         };
     };
 
@@ -1285,8 +1376,9 @@ if (storeShell) {
 
         if (!response.ok) {
             const validationMessage = Object.values(payload.errors || {})[0]?.[0];
+            const checkoutState = response.status === 422 ? 'validation_failed' : 'payment_failed';
 
-            throw checkoutError(validationMessage || payload.message || 'Checkout failed.');
+            throw checkoutError(validationMessage || payload.message || 'Checkout failed.', checkoutState, payload.message || 'checkout_request_failed');
         }
 
         return payload;
@@ -1312,9 +1404,9 @@ if (storeShell) {
                     return;
                 }
 
-                reject(checkoutError('PayPal checkout could not load.'));
+                reject(checkoutError('PayPal checkout could not load.', 'unavailable', 'paypal_sdk_unavailable'));
             };
-            script.onerror = () => reject(checkoutError('PayPal checkout could not load.'));
+            script.onerror = () => reject(checkoutError('PayPal checkout could not load.', 'unavailable', 'paypal_sdk_unavailable'));
             document.head.append(script);
         });
 
@@ -1338,24 +1430,20 @@ if (storeShell) {
 
     const renderPayPalButtons = async () => {
         if (!paypalButtons || paypalButtonsRendered) {
-            setPayPalStatus('Use the PayPal button to approve payment.');
+            setPaymentStatus('Use the PayPal button to approve payment.');
             return;
         }
 
         const clientId = paypalButtons.dataset.paypalClientId;
 
         if (!clientId) {
-            trackEvent('store_payment_failed', {
-                item_type: 'payment_method',
-                item_id: 'paypal',
-                method: 'paypal',
+            trackPaymentState('paypal', 'unavailable', {
                 reason: 'paypal_not_configured',
-                result: 'failed',
             });
-            throw checkoutError('PayPal is not configured.');
+            throw checkoutError('PayPal is not configured.', 'unavailable', 'paypal_not_configured');
         }
 
-        setPayPalStatus('Loading PayPal checkout...');
+        setPaymentStatus('Loading PayPal checkout...');
         const paypal = await loadPayPalSdk(clientId);
         paypalButtons.replaceChildren();
 
@@ -1368,63 +1456,48 @@ if (storeShell) {
             },
             createOrder: async () => {
                 const payload = checkoutPayload();
-                setPayPalStatus('Creating PayPal order...');
-                trackEvent('store_checkout_started', {
-                    item_type: 'checkout',
+                setPaymentStatus('Creating PayPal order...');
+                trackPaymentState('paypal', 'payment_started', {
                     item_count: payload.product_keys.length,
-                    method: 'paypal',
                     currency: payload.currency,
-                    result: 'started',
                 });
                 const order = await postCheckoutJson(paypalButtons.dataset.createOrderEndpoint, payload);
-                setPayPalStatus('Approve payment in PayPal.');
+                setPaymentStatus('Approve payment in PayPal.');
 
                 return order.paypal_order_id;
             },
             onApprove: async (data) => {
                 const payload = checkoutPayload();
-                setPayPalStatus('Capturing approved PayPal payment...');
+                setPaymentStatus('Capturing approved PayPal payment...');
                 const capture = await postCheckoutJson(paypalButtons.dataset.captureEndpoint, {
                     ...payload,
                     paypal_order_id: data.orderID,
                 });
 
                 completeApprovedCheckout(capture);
-                trackEvent('store_payment_succeeded', {
-                    item_type: 'payment_method',
-                    item_id: 'paypal',
-                    method: 'paypal',
+                trackPaymentState('paypal', 'payment_success', {
                     paypal_order_id: data.orderID,
-                    result: 'succeeded',
                 });
             },
             onCancel: () => {
-                setPayPalStatus('PayPal checkout canceled. No purchase was recorded.');
+                setPaymentStatus('PayPal checkout canceled. No purchase was recorded.');
                 showStoreToast('PayPal checkout canceled.');
-                trackEvent('store_payment_failed', {
-                    item_type: 'payment_method',
-                    item_id: 'paypal',
-                    method: 'paypal',
+                trackPaymentState('paypal', 'payment_failed', {
                     reason: 'canceled',
-                    result: 'canceled',
                 });
             },
             onError: (error) => {
                 console.error(error);
-                setPayPalStatus(error.userMessage || 'PayPal checkout failed. No purchase was recorded.');
+                setPaymentStatus(error.userMessage || 'PayPal checkout failed. No purchase was recorded.');
                 showStoreToast(error.userMessage || 'PayPal checkout failed.');
-                trackEvent('store_payment_failed', {
-                    item_type: 'payment_method',
-                    item_id: 'paypal',
-                    method: 'paypal',
+                trackPaymentState('paypal', error.checkoutState || 'payment_failed', {
                     reason: error.userMessage || error.message || 'paypal_error',
-                    result: 'failed',
                 });
             },
         }).render(paypalButtons);
 
         paypalButtonsRendered = true;
-        setPayPalStatus('Use the PayPal button to approve payment.');
+        setPaymentStatus('Use the PayPal button to approve payment.');
     };
 
     const updateStorePrices = () => {
@@ -1484,6 +1557,110 @@ if (storeShell) {
         focusedBeforeStoreModal?.focus();
     };
 
+    const paymentMethodLabel = (method) => ({
+        apple_pay: 'Apple Pay',
+        card: 'Card',
+        local: 'Local',
+        paypal: 'PayPal',
+    }[method] || method);
+
+    const unavailableReason = (method) => paymentButtons.find((button) => button.dataset.paymentMethod === method)?.dataset.unavailableReason
+        || `${method}_provider_not_configured`;
+
+    const refreshCheckoutControls = () => {
+        const hasItems = bag.length > 0;
+
+        paymentButtons.forEach((button) => {
+            button.disabled = !hasItems;
+        });
+
+        if (paypalButtons) {
+            paypalButtons.hidden = activePaymentMethod !== 'paypal' || !hasItems;
+        }
+
+        if (localPaymentPanel) {
+            localPaymentPanel.hidden = activePaymentMethod !== 'local' || !hasItems;
+        }
+
+        if (!completePurchaseButton) {
+            return;
+        }
+
+        if (!hasItems) {
+            completePurchaseButton.disabled = true;
+            completePurchaseButton.textContent = 'Add item to checkout';
+            setPaymentStatus('Add a product before choosing payment.');
+            return;
+        }
+
+        if (activePaymentMethod === 'paypal') {
+            completePurchaseButton.disabled = false;
+            completePurchaseButton.textContent = 'Load PayPal checkout';
+            setPaymentStatus('PayPal approval is required before the Hub is updated.');
+            return;
+        }
+
+        if (activePaymentMethod === 'local') {
+            completePurchaseButton.disabled = false;
+            completePurchaseButton.textContent = 'Check local payment';
+            setPaymentStatus('Local transfer needs email, phone, reference, and receipt. Provider connection is still required before purchase completion.');
+            return;
+        }
+
+        completePurchaseButton.disabled = true;
+        completePurchaseButton.textContent = `${paymentMethodLabel(activePaymentMethod)} unavailable`;
+        setPaymentStatus(`${paymentMethodLabel(activePaymentMethod)} checkout needs a real provider before purchases can complete.`);
+    };
+
+    const selectPaymentMethod = (method, { track = true } = {}) => {
+        activePaymentMethod = method;
+
+        paymentButtons.forEach((button) => {
+            const active = button.dataset.paymentMethod === method;
+            button.classList.toggle('is-active', active);
+            button.setAttribute('aria-checked', active ? 'true' : 'false');
+        });
+
+        refreshCheckoutControls();
+
+        if (!track) {
+            return;
+        }
+
+        trackEvent('store_payment_method_selected', {
+            item_type: 'payment_method',
+            item_id: method,
+            method,
+            checkout_state: method === 'paypal' ? 'selected' : 'unavailable',
+            result: 'selected',
+        });
+
+        if (method !== 'paypal') {
+            trackPaymentState(method, 'unavailable', {
+                reason: unavailableReason(method),
+            });
+        }
+    };
+
+    const handleLocalCheckout = () => {
+        try {
+            localCheckoutPayload();
+        } catch (error) {
+            setPaymentStatus(error.userMessage || 'Local payment details are incomplete.');
+            showStoreToast(error.userMessage || 'Local payment details are incomplete.');
+            trackPaymentState('local', 'validation_failed', {
+                reason: error.reason || error.message || 'local_validation_failed',
+            });
+            return;
+        }
+
+        setPaymentStatus('Local payment details are valid, but no local provider is connected yet. No purchase was recorded.');
+        showStoreToast('Local payment provider is not connected yet.');
+        trackPaymentState('local', 'unavailable', {
+            reason: unavailableReason('local'),
+        });
+    };
+
     const renderBag = () => {
         if (!bagCount || !bagList || !bagTotal) {
             return;
@@ -1498,6 +1675,7 @@ if (storeShell) {
             empty.innerHTML = `<span>Bag is empty</span><strong>${money(0)}</strong>`;
             bagList.append(empty);
             bagTotal.textContent = money(0);
+            refreshCheckoutControls();
             return;
         }
 
@@ -1527,6 +1705,7 @@ if (storeShell) {
         });
 
         bagTotal.textContent = money(total);
+        refreshCheckoutControls();
     };
 
     const addToBag = (key) => {
@@ -1680,49 +1859,48 @@ if (storeShell) {
         });
     });
 
-    document.querySelectorAll('.store-payments button').forEach((button) => {
+    paymentButtons.forEach((button) => {
         button.addEventListener('click', () => {
-            document.querySelectorAll('.store-payments button').forEach((node) => {
-                node.classList.toggle('is-active', node === button);
-            });
-            trackElementEvent(button, 'store_payment_method_selected', {
-                item_type: 'payment_method',
-                item_id: normalizeAnalyticsKey(analyticsText(button)),
-                method: normalizeAnalyticsKey(analyticsText(button)),
-                result: 'selected',
-            });
+            selectPaymentMethod(button.dataset.paymentMethod || 'paypal');
         });
     });
 
-    document.getElementById('completePurchase')?.addEventListener('click', async (event) => {
+    completePurchaseButton?.addEventListener('click', async (event) => {
         const button = event.currentTarget;
+
+        if (activePaymentMethod === 'local') {
+            handleLocalCheckout();
+            return;
+        }
+
+        if (activePaymentMethod !== 'paypal') {
+            setPaymentStatus(`${paymentMethodLabel(activePaymentMethod)} checkout needs a real provider before purchases can complete.`);
+            showStoreToast(`${paymentMethodLabel(activePaymentMethod)} is not available yet.`);
+            trackPaymentState(activePaymentMethod, 'unavailable', {
+                reason: unavailableReason(activePaymentMethod),
+            });
+            return;
+        }
+
         button.disabled = true;
         button.textContent = 'Loading PayPal...';
 
         try {
             const payload = checkoutPayload();
-            trackEvent('store_checkout_started', {
-                item_type: 'checkout',
+            trackPaymentState('paypal', 'payment_started', {
                 item_count: payload.product_keys.length,
-                method: 'paypal',
                 currency: payload.currency,
-                result: 'started',
             });
             await renderPayPalButtons();
             showStoreToast('Use PayPal to approve payment.');
         } catch (error) {
-            setPayPalStatus(error.userMessage || 'PayPal checkout is unavailable.');
+            setPaymentStatus(error.userMessage || 'PayPal checkout is unavailable.');
             showStoreToast(error.userMessage || 'PayPal checkout is unavailable.');
-            trackEvent('store_payment_failed', {
-                item_type: 'payment_method',
-                item_id: 'paypal',
-                method: 'paypal',
+            trackPaymentState('paypal', error.checkoutState || 'payment_failed', {
                 reason: error.userMessage || error.message || 'checkout_unavailable',
-                result: 'failed',
             });
         } finally {
-            button.disabled = false;
-            button.textContent = 'Load PayPal checkout';
+            refreshCheckoutControls();
         }
     });
 
@@ -1749,6 +1927,7 @@ if (storeShell) {
         }
     });
 
+    selectPaymentMethod('paypal', { track: false });
     updateStorePrices();
     renderBag();
 }

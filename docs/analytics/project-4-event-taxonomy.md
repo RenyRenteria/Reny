@@ -28,6 +28,11 @@ Error or blocked events should include:
 - `reason`: failure or blocking reason when available.
 - `section`: gated section when relevant.
 
+Checkout payment events should also include:
+
+- `method`: `paypal`, `card`, `apple_pay`, or `local`.
+- `checkout_state`: `unavailable`, `validation_failed`, `payment_started`, `payment_success`, or `payment_failed`.
+
 ## Baseline Events
 
 Core:

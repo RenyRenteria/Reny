@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class CheckoutController extends Controller
 {
@@ -99,13 +100,26 @@ class CheckoutController extends Controller
      */
     private function validateCheckout(Request $request, bool $requirePaypalOrder = false): array
     {
-        return $request->validate([
+        $validated = $request->validate([
             'identifier' => ['required', 'string', 'max:255'],
             'product_keys' => ['required', 'array', 'min:1'],
             'product_keys.*' => ['required', 'string', Rule::in(array_keys($this->prices))],
             'currency' => ['nullable', 'string', 'size:3'],
             'paypal_order_id' => [$requirePaypalOrder ? 'required' : 'sometimes', 'string', 'max:255'],
         ]);
+
+        $identifier = trim($validated['identifier']);
+        $phoneDigits = preg_replace('/\D+/', '', $identifier) ?? '';
+
+        if (! filter_var($identifier, FILTER_VALIDATE_EMAIL) && strlen($phoneDigits) < 7) {
+            throw ValidationException::withMessages([
+                'identifier' => 'Use a valid email or phone number.',
+            ]);
+        }
+
+        $validated['identifier'] = $identifier;
+
+        return $validated;
     }
 
     /**
