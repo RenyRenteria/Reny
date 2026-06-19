@@ -59,9 +59,9 @@ class AdminAuthRbacTest extends TestCase
 
         $this->get(route('admin.dashboard'))
             ->assertOk()
-            ->assertSee('Admin workspace')
-            ->assertSee('Publishing')
-            ->assertSee('Allowed');
+            ->assertSee('Dashboard editorial')
+            ->assertSee('Nuevo contenido')
+            ->assertSee('Contenido de tu Sitio');
     }
 
     public function test_admin_login_rejects_non_admin_accounts(): void

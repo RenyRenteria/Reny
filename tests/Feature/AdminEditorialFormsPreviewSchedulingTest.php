@@ -25,8 +25,8 @@ class AdminEditorialFormsPreviewSchedulingTest extends TestCase
 
         $response = $this->get(route('admin.editorial.index'))
             ->assertOk()
-            ->assertSee('Content workspace')
-            ->assertSee('Create content');
+            ->assertSee('Contenido de tu Sitio')
+            ->assertSee('Crear contenido');
 
         foreach (ContentType::cases() as $type) {
             $response->assertSee(str_replace('_', ' ', $type->value));
