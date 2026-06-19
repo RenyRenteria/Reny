@@ -12,23 +12,45 @@ use Illuminate\Validation\ValidationException;
 class PayPalService
 {
     /**
+     * @param  array<int, array{name: string, unit_amount_cents: int, quantity: int}>  $items
      * @return array{order_id: string, payload: array<string, mixed>}
      */
-    public function createOrder(int $expectedAmountCents, string $currency): array
+    public function createOrder(int $expectedAmountCents, string $currency, array $items = []): array
     {
+        $currency = strtoupper($currency);
+        $purchaseUnit = [
+            'amount' => [
+                'currency_code' => $currency,
+                'value' => $this->centsToDecimal($expectedAmountCents),
+            ],
+        ];
+
+        if ($items !== []) {
+            $purchaseUnit['amount']['breakdown'] = [
+                'item_total' => [
+                    'currency_code' => $currency,
+                    'value' => $this->centsToDecimal($expectedAmountCents),
+                ],
+            ];
+            $purchaseUnit['items'] = collect($items)
+                ->map(fn (array $item): array => [
+                    'name' => Str::limit($item['name'], 127, ''),
+                    'quantity' => (string) max(1, $item['quantity']),
+                    'unit_amount' => [
+                        'currency_code' => $currency,
+                        'value' => $this->centsToDecimal($item['unit_amount_cents']),
+                    ],
+                ])
+                ->values()
+                ->all();
+        }
+
         $response = $this->paypal()
             ->withToken($this->accessToken())
             ->withHeaders(['PayPal-Request-Id' => 'create-'.Str::uuid()])
             ->post($this->url('/v2/checkout/orders'), [
                 'intent' => 'CAPTURE',
-                'purchase_units' => [
-                    [
-                        'amount' => [
-                            'currency_code' => strtoupper($currency),
-                            'value' => $this->centsToDecimal($expectedAmountCents),
-                        ],
-                    ],
-                ],
+                'purchase_units' => [$purchaseUnit],
             ]);
 
         $this->ensureOk($response, 'PayPal order creation failed.');
