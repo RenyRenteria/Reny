@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\EditorialActionController;
 use App\Http\Controllers\Admin\EditorialContentController;
 use App\Http\Controllers\Admin\MediaLibraryController;
+use App\Http\Controllers\Admin\SiteEditorController;
 use App\Http\Controllers\AnalyticsEventController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
@@ -62,9 +63,10 @@ Route::prefix(config('admin.path', 'admin'))->name('admin.')->group(function () 
         Route::get('/', DashboardController::class)->name('dashboard');
         Route::post('/logout', [AdminLoginController::class, 'destroy'])->name('logout');
 
-        Route::get('/site-editor', [AdminLoginController::class, 'create'])->name('site-editor.index');
-        Route::get('/site-editor/{page}/preview', [AdminLoginController::class, 'create'])->name('site-editor.preview');
-        Route::get('/site-editor/{page}', [AdminLoginController::class, 'create'])->name('site-editor.show');
+        Route::get('/site-editor', [SiteEditorController::class, 'index'])->middleware('admin.cms')->name('site-editor.index');
+        Route::get('/site-editor/{page}/preview', [SiteEditorController::class, 'preview'])->middleware('admin.cms')->name('site-editor.preview');
+        Route::get('/site-editor/{page}', [SiteEditorController::class, 'show'])->middleware('admin.cms')->name('site-editor.show');
+        Route::post('/site-editor/music/banner', [SiteEditorController::class, 'updateMusicBanner'])->middleware('admin.cms')->name('site-editor.music-banner.update');
         Route::get('/content', [AdminLoginController::class, 'create'])->name('content.index');
         Route::get('/content/create', [AdminLoginController::class, 'create'])->name('content.create');
         Route::post('/content', [EditorialContentController::class, 'store'])->middleware('admin.cms')->name('content.store');

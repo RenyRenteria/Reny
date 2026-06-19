@@ -114,6 +114,34 @@ class AdminCmsParkedMutationTest extends TestCase
         $this->assertDatabaseCount('media_assets', 0);
     }
 
+    public function test_music_banner_route_stays_on_enter_without_changing_site_settings(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+
+        $this->actingAsParkedAdmin($admin);
+
+        $this->post(route('admin.site-editor.music-banner.update'), [
+            'action' => 'publish',
+            'eyebrow_line_1' => 'Draft',
+            'eyebrow_line_2' => 'Banner',
+            'title_line_1' => 'Parked',
+            'title_line_2' => 'Music',
+            'subtitle' => 'Should not save',
+            'description' => 'This should not persist while the CMS is parked.',
+            'footer_line_1' => 'Visit us today at',
+            'footer_line_2' => 'renyrenteria.com',
+            'badge' => 'RR',
+            'destination_url' => 'https://renyrenteria.com',
+            'sticker_line_1' => 'THE FIRST ALBUM',
+            'sticker_line_2' => 'BANO #1',
+            'status' => 'published',
+        ])
+            ->assertOk()
+            ->assertSee('Enter');
+
+        $this->assertDatabaseCount('site_page_settings', 0);
+    }
+
     private function contentPayload(): array
     {
         return [
