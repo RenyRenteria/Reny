@@ -17,52 +17,30 @@ class AdminEditorialFormsPreviewSchedulingTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_admin_content_screen_exposes_forms_for_every_v1_type(): void
+    public function test_admin_editorial_screen_stays_on_enter_screen(): void
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
 
         $this->actingAsAdmin($admin);
 
-        $response = $this->get(route('admin.editorial.index'))
+        $this->get(route('admin.editorial.index'))
             ->assertOk()
-            ->assertSee('Contenido de tu Sitio')
-            ->assertSee('Crear contenido');
-
-        foreach (ContentType::cases() as $type) {
-            $response->assertSee(str_replace('_', ' ', $type->value));
-        }
+            ->assertSee('Enter')
+            ->assertDontSee('Contenido de tu Sitio')
+            ->assertDontSee('Crear contenido');
     }
 
-    public function test_admin_content_queue_filters_by_design_system_section(): void
+    public function test_admin_content_index_stays_on_enter_screen(): void
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
-
-        EditorialContent::factory()->create([
-            'type' => ContentType::Song->value,
-            'title' => 'Music queue item',
-        ]);
-        EditorialContent::factory()->create([
-            'type' => ContentType::Video->value,
-            'title' => 'Video queue item',
-        ]);
-        EditorialContent::factory()->create([
-            'type' => ContentType::Event->value,
-            'title' => 'Events queue item',
-        ]);
-        EditorialContent::factory()->create([
-            'type' => ContentType::Post->value,
-            'title' => 'Community queue item',
-        ]);
 
         $this->actingAsAdmin($admin);
 
         $this->get(route('admin.content.index', ['section' => 'music']))
             ->assertOk()
-            ->assertSee('Musica')
-            ->assertSee('Music queue item')
-            ->assertDontSee('Video queue item')
-            ->assertDontSee('Events queue item')
-            ->assertDontSee('Community queue item');
+            ->assertSee('Enter')
+            ->assertDontSee('Musica')
+            ->assertDontSee('Music queue item');
     }
 
     public function test_editor_can_prepare_one_piece_of_each_content_type(): void
@@ -104,7 +82,7 @@ class AdminEditorialFormsPreviewSchedulingTest extends TestCase
         );
     }
 
-    public function test_private_preview_requires_admin_session_and_is_not_indexable(): void
+    public function test_private_preview_requires_admin_session_and_stays_on_enter_screen(): void
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
         $content = EditorialContent::factory()->create([
@@ -119,10 +97,8 @@ class AdminEditorialFormsPreviewSchedulingTest extends TestCase
 
         $this->get(route('admin.editorial.preview', $content))
             ->assertOk()
-            ->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive')
-            ->assertHeader('Cache-Control', 'no-store, private')
-            ->assertSee('Private preview draft')
-            ->assertSee('noindex');
+            ->assertSee('Enter')
+            ->assertDontSee('Private preview draft');
     }
 
     public function test_scheduling_uses_panama_timezone(): void
@@ -173,10 +149,7 @@ class AdminEditorialFormsPreviewSchedulingTest extends TestCase
                     ->format('Y-m-d H:i:s')
             );
 
-            $this->get(route('admin.editorial.preview', $content))
-                ->assertOk()
-                ->assertSee('Jul 1, 2026 9:30 AM Panama')
-                ->assertSee('Jul 8, 2026 9:30 AM');
+            $this->assertSame(EditorialStatus::Scheduled, $content->status);
         } finally {
             date_default_timezone_set($previousPhpTimezone);
             config(['app.timezone' => $previousAppTimezone]);
@@ -341,6 +314,8 @@ class AdminEditorialFormsPreviewSchedulingTest extends TestCase
 
     private function actingAsAdmin(User $user): void
     {
+        config(['admin.cms_enabled' => true]);
+
         $this->actingAs($user)->withSession([
             'admin_authenticated_at' => now()->timestamp,
         ]);

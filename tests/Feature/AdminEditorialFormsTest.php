@@ -109,7 +109,7 @@ class AdminEditorialFormsTest extends TestCase
         $this->assertTrue(EditorialContent::visibleFor(null, $visibleAt->addSecond())->whereKey($content)->exists());
     }
 
-    public function test_private_preview_requires_admin_session_and_sets_noindex(): void
+    public function test_private_preview_requires_admin_session_and_stays_on_enter_screen(): void
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
         $content = EditorialContent::factory()->create([
@@ -124,9 +124,8 @@ class AdminEditorialFormsTest extends TestCase
 
         $this->get(route('admin.content.preview', $content))
             ->assertOk()
-            ->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive')
-            ->assertSee('noindex,nofollow,noarchive', false)
-            ->assertSee('Private preview candidate');
+            ->assertSee('Enter')
+            ->assertDontSee('Private preview candidate');
     }
 
     public function test_form_save_can_attach_reusable_media_and_taxonomy(): void
@@ -281,6 +280,8 @@ class AdminEditorialFormsTest extends TestCase
 
     private function actingAsAdmin(User $user): void
     {
+        config(['admin.cms_enabled' => true]);
+
         $this->actingAs($user)->withSession([
             'admin_authenticated_at' => now()->timestamp,
         ]);

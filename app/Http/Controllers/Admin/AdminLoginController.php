@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -13,12 +12,8 @@ use Illuminate\View\View;
 
 class AdminLoginController extends Controller
 {
-    public function create(Request $request): RedirectResponse|View
+    public function create(): View
     {
-        if ($request->user()?->canAccessAdmin() && $this->hasFreshAdminSession($request)) {
-            return redirect()->route('admin.dashboard');
-        }
-
         return view('admin.auth.login');
     }
 
@@ -49,7 +44,7 @@ class AdminLoginController extends Controller
         $request->session()->regenerate();
         $request->session()->put('admin_authenticated_at', now()->timestamp);
 
-        return redirect()->intended(route('admin.dashboard'));
+        return redirect()->route('admin.login');
     }
 
     public function destroy(Request $request): RedirectResponse
@@ -60,20 +55,5 @@ class AdminLoginController extends Controller
         $request->session()->regenerateToken();
 
         return redirect()->route('admin.login');
-    }
-
-    private function hasFreshAdminSession(Request $request): bool
-    {
-        $authenticatedAt = $request->session()->get('admin_authenticated_at');
-
-        if (! is_numeric($authenticatedAt)) {
-            return false;
-        }
-
-        $lifetime = max(1, (int) config('admin.session_lifetime_minutes', 120));
-
-        return CarbonImmutable::createFromTimestamp((int) $authenticatedAt)
-            ->addMinutes($lifetime)
-            ->isFuture();
     }
 }

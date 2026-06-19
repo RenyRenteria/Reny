@@ -134,7 +134,7 @@ class AdminMediaLibraryTest extends TestCase
         $this->assertDatabaseCount('media_assets', count($uploads));
     }
 
-    public function test_app_server_upload_rejects_short_video_and_form_excludes_it(): void
+    public function test_app_server_upload_rejects_short_video_and_media_screen_stays_on_enter(): void
     {
         Storage::fake('public');
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
@@ -143,6 +143,7 @@ class AdminMediaLibraryTest extends TestCase
 
         $this->get(route('admin.media.index'))
             ->assertOk()
+            ->assertSee('Enter')
             ->assertDontSee('<option value="short_video"', false);
 
         $this->post(route('admin.media.store'), [
@@ -570,6 +571,8 @@ class AdminMediaLibraryTest extends TestCase
 
     private function actingAsAdmin(User $user): void
     {
+        config(['admin.cms_enabled' => true]);
+
         $this->actingAs($user)->withSession([
             'admin_authenticated_at' => now()->timestamp,
         ]);
