@@ -63,9 +63,9 @@
                     <h2 id="filters-title">Content queue</h2>
                 </div>
                 <div class="admin-status-filter-row">
-                    <a @class(['is-active' => $activeStatus === null]) href="{{ route('admin.content.index') }}">All</a>
+                    <a @class(['is-active' => $activeStatus === null]) href="{{ route('admin.content.index', array_filter(['section' => $activeSection])) }}">All</a>
                     @foreach ($statuses as $status)
-                        <a @class(['is-active' => $activeStatus === $status->value]) href="{{ route('admin.content.index', ['status' => $status->value]) }}">
+                        <a @class(['is-active' => $activeStatus === $status->value]) href="{{ route('admin.content.index', array_filter(['section' => $activeSection, 'status' => $status->value])) }}">
                             {{ $status->value }}
                         </a>
                     @endforeach

@@ -39,6 +39,9 @@ class EntitlementGateTest extends TestCase
         $this->actingAs($openUser)
             ->get('/royal/content/vip-mix')
             ->assertForbidden()
+            ->assertSee('Royal Pass required')
+            ->assertSee('Registered')
+            ->assertSee('Get your Royal Pass')
             ->assertDontSee('secure_stream_url');
 
         $royalUser = User::factory()->royal()->create();
@@ -47,6 +50,24 @@ class EntitlementGateTest extends TestCase
             ->get('/royal/content/vip-mix')
             ->assertOk()
             ->assertSee('secure_stream_url:royal-only-vip-mix');
+    }
+
+    public function test_non_royal_paid_states_get_reactivation_ui_without_payload(): void
+    {
+        $states = [
+            [User::factory()->expiredRoyal()->create(), 'Royal Expired'],
+            [User::factory()->paymentFailedRoyal()->create(), 'Payment Failed'],
+            [User::factory()->refundedRoyal()->create(), 'Refunded'],
+        ];
+
+        foreach ($states as [$user, $label]) {
+            $this->actingAs($user)
+                ->get('/royal/content/vip-mix')
+                ->assertForbidden()
+                ->assertSee($label)
+                ->assertSee('Reactivate Royal Pass')
+                ->assertDontSee('secure_stream_url');
+        }
     }
 
     public function test_open_community_keeps_previews_but_blocks_interactions(): void

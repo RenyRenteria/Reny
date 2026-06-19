@@ -86,7 +86,7 @@
 
                         <p>Tabs publicos</p>
 
-                        <a class="{{ $navClass('contenido') }}" href="{{ route('admin.content.index') }}" data-admin-nav="contenido">
+                        <a class="{{ $navClass('contenido') }}" href="{{ route('admin.content.index', ['section' => 'music']) }}" data-admin-nav="contenido">
                             <span class="admin-nav-icon" aria-hidden="true">♫</span>
                             <span>Musica / Content</span>
                         </a>
@@ -167,19 +167,19 @@
 
             <main class="admin-cms-main">
                 <nav class="ds-public-tabs" aria-label="Tabs publicos del producto">
-                    <a class="ds-main-tab" href="{{ route('admin.content.index') }}" data-admin-nav="contenido" style="--tab-accent: var(--music-accent); --tab-soft: var(--music-soft);">
+                    <a class="ds-main-tab" href="{{ route('admin.content.index', ['section' => 'music']) }}" data-admin-nav="contenido" style="--tab-accent: var(--music-accent); --tab-soft: var(--music-soft);">
                         <span>Musica</span>
                         <span class="ds-tab-dot" aria-hidden="true"></span>
                     </a>
-                    <a class="ds-main-tab" href="{{ route('admin.media.index') }}" data-admin-nav="biblioteca" style="--tab-accent: var(--video-accent); --tab-soft: var(--video-soft);">
+                    <a class="ds-main-tab" href="{{ route('admin.content.index', ['section' => 'video']) }}" data-admin-nav="biblioteca" style="--tab-accent: var(--video-accent); --tab-soft: var(--video-soft);">
                         <span>Video</span>
                         <span class="ds-tab-dot" aria-hidden="true"></span>
                     </a>
-                    <a class="ds-main-tab" href="{{ $sectionRoute('eventos') }}" data-admin-nav="eventos" style="--tab-accent: var(--events-accent); --tab-soft: var(--events-soft);">
+                    <a class="ds-main-tab" href="{{ route('admin.content.index', ['section' => 'events']) }}" data-admin-nav="eventos" style="--tab-accent: var(--events-accent); --tab-soft: var(--events-soft);">
                         <span>Events</span>
                         <span class="ds-tab-dot" aria-hidden="true"></span>
                     </a>
-                    <a class="ds-main-tab" href="{{ $sectionRoute('comunidad') }}" data-admin-nav="comunidad" style="--tab-accent: var(--community-accent); --tab-soft: var(--community-soft);">
+                    <a class="ds-main-tab" href="{{ route('admin.content.index', ['section' => 'community']) }}" data-admin-nav="comunidad" style="--tab-accent: var(--community-accent); --tab-soft: var(--community-soft);">
                         <span>Community</span>
                         <span class="ds-tab-dot" aria-hidden="true"></span>
                     </a>

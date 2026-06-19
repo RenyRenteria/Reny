@@ -2,10 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class AnalyticsInstrumentationTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_public_pages_expose_analytics_screen_metadata(): void
     {
         $screens = [
@@ -65,6 +69,7 @@ class AnalyticsInstrumentationTest extends TestCase
             'auth_password_recovery_started',
             'account_navigation_clicked',
             'account_viewed',
+            'access_state',
             'store_product_added',
             'store_checkout_started',
             'store_payment_method_selected',
@@ -91,5 +96,22 @@ class AnalyticsInstrumentationTest extends TestCase
         $this->assertStringContainsString('item_type', $taxonomy);
         $this->assertStringContainsString('item_id', $taxonomy);
         $this->assertStringContainsString('result', $taxonomy);
+    }
+
+    public function test_account_and_denied_pages_expose_access_state_metadata(): void
+    {
+        $user = User::factory()->paymentFailedRoyal()->create();
+
+        $this->actingAs($user)
+            ->get('/account')
+            ->assertOk()
+            ->assertSee('data-analytics-screen="account"', false)
+            ->assertSee('data-access-state="payment_failed"', false);
+
+        $this->actingAs($user)
+            ->get('/royal/content/vip-mix')
+            ->assertForbidden()
+            ->assertSee('data-analytics-screen="permission_denied"', false)
+            ->assertSee('data-access-state="payment_failed"', false);
     }
 }

@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Enums\EditorialStatus;
+use App\Enums\VisibilityAudience;
 use App\Models\EditorialContent;
 use App\Services\PublicCmsContentService;
+use App\Support\AccountStateView;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -68,7 +70,16 @@ class PublicContentController extends Controller
                 return redirect()->route('login');
             }
 
-            abort(403, 'This content is not available for your access level.');
+            return response()->view('auth.permission-denied', [
+                'message' => $content->visibility === VisibilityAudience::Purchased
+                    ? 'This item requires a completed purchase before the full content can render.'
+                    : 'This item checks access before it renders protected content.',
+                'section' => $content->visibility->value,
+                'state' => AccountStateView::for($request->user()),
+                'title' => $content->visibility === VisibilityAudience::Purchased
+                    ? 'Purchase required'
+                    : 'Royal Pass required',
+            ], 403);
         }
 
         return view('public.content', [
