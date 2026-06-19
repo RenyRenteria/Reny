@@ -2318,10 +2318,13 @@ if (storeShell) {
 }
 
 const adminSectionThemes = {
+    banners: 'music',
     dashboard: 'neutral',
     contenido: 'music',
     editor: 'music',
     biblioteca: 'video',
+    media: 'video',
+    photos: 'events',
     productos: 'royal',
     royalpass: 'royal',
     usuarios: 'community',

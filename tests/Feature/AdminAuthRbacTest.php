@@ -40,7 +40,7 @@ class AdminAuthRbacTest extends TestCase
             ->assertNotFound();
     }
 
-    public function test_admin_can_sign_in_with_email_and_stays_on_enter_screen(): void
+    public function test_admin_can_sign_in_with_email_and_open_cms_dashboard(): void
     {
         $admin = User::factory()->create([
             'email' => 'admin@example.com',
@@ -52,23 +52,24 @@ class AdminAuthRbacTest extends TestCase
             'email' => 'admin@example.com',
             'password' => 'password',
         ])
-            ->assertRedirect(route('admin.login'))
+            ->assertRedirect(route('admin.dashboard'))
             ->assertSessionHas('admin_authenticated_at');
 
         $this->assertAuthenticatedAs($admin);
 
         $this->get(route('admin.login'))
             ->assertOk()
-            ->assertSee('Enter')
-            ->assertDontSee('Open admin')
-            ->assertDontSee('Dashboard editorial')
-            ->assertDontSee('Nuevo contenido')
-            ->assertDontSee('Contenido de tu Sitio');
+            ->assertSee('Enter');
 
         $this->get(route('admin.dashboard'))
             ->assertOk()
-            ->assertSee('Enter')
-            ->assertDontSee('Dashboard editorial');
+            ->assertSee('Dashboard editorial')
+            ->assertSee('Banners')
+            ->assertSee('Music')
+            ->assertSee('Videos')
+            ->assertSee('Photos')
+            ->assertSee('Community')
+            ->assertSee('Store');
     }
 
     public function test_admin_login_rejects_non_admin_accounts(): void
@@ -173,6 +174,6 @@ class AdminAuthRbacTest extends TestCase
         $this->post(route('admin.login.store'), [
             'email' => $user->email,
             'password' => 'password',
-        ])->assertRedirect(route('admin.login'));
+        ])->assertRedirect(route('admin.dashboard'));
     }
 }

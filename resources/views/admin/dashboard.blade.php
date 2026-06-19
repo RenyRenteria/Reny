@@ -124,6 +124,68 @@
         </div>
     </section>
 
+    <section id="sec-banners" class="admin-dashboard-section" data-admin-section-panel="banners">
+        <div class="page-hero admin-hero-row">
+            <div>
+                <p class="admin-kicker">Website principal</p>
+                <h1>Banners</h1>
+                <p>Gestiona los banners principales del website publico con el mismo look de RenyRenteria.com.</p>
+            </div>
+            <a class="admin-button admin-button-primary" href="{{ route('admin.site-editor.show', ['page' => 'home']) }}">
+                <span>Editar portada</span>
+            </a>
+        </div>
+
+        <div class="admin-two-column">
+            <article class="admin-panel">
+                <div class="admin-section-head">
+                    <div>
+                        <p class="admin-kicker">Hero activo</p>
+                        <h2>Biggest Launch</h2>
+                    </div>
+                    <span class="admin-status-pill admin-status-info">Home</span>
+                </div>
+
+                <div class="admin-preview-tile admin-banner-preview">
+                    <div>RR</div>
+                    <h3>Biggest Launch</h3>
+                    <p>Comeback Album!</p>
+                    <footer>
+                        <span>Visible</span>
+                        <small>Publico</small>
+                    </footer>
+                </div>
+            </article>
+
+            <article class="admin-panel">
+                <div class="admin-section-head">
+                    <div>
+                        <p class="admin-kicker">Siguientes bloques</p>
+                        <h2>Portada y secciones destacadas</h2>
+                    </div>
+                </div>
+
+                <div class="admin-list">
+                    <div class="admin-list-row">
+                        <span>1</span>
+                        <strong>Hero principal del home</strong>
+                        <em>Conectado al Site Editor</em>
+                    </div>
+                    <div class="admin-list-row">
+                        <span>2</span>
+                        <strong>Banner de videos</strong>
+                        <em>Fase siguiente</em>
+                    </div>
+                    <div class="admin-list-row">
+                        <span>3</span>
+                        <strong>Banner de store</strong>
+                        <em>Fase siguiente</em>
+                    </div>
+                </div>
+            </article>
+        </div>
+    </section>
+
     <section id="sec-contenido" class="admin-dashboard-section" data-admin-section-panel="contenido">
         <div class="admin-page-heading">
             <div>

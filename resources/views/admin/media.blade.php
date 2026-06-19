@@ -1,7 +1,7 @@
 @extends('admin.layout')
 
 @section('title', 'Biblioteca de medios')
-@section('admin_section', 'biblioteca')
+@section('admin_section', 'media')
 @section('admin_theme', 'video')
 
 @section('content')

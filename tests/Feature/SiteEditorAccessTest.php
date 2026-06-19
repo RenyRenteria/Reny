@@ -26,7 +26,7 @@ class SiteEditorAccessTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_admin_site_editor_routes_stay_on_enter_screen(): void
+    public function test_admin_site_editor_routes_render_editor_screen(): void
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
 
@@ -34,13 +34,12 @@ class SiteEditorAccessTest extends TestCase
 
         $this->get(route('admin.site-editor.show', ['page' => 'store']))
             ->assertOk()
-            ->assertSee('Enter')
-            ->assertDontSee('Reny Site Editor')
-            ->assertDontSee('Preview publico')
-            ->assertDontSee('CMS conectado');
+            ->assertSee('Reny Site Editor')
+            ->assertSee('Preview publico')
+            ->assertSee('Banners');
     }
 
-    public function test_site_editor_preview_stays_on_enter_screen(): void
+    public function test_site_editor_preview_renders_public_guest_preview(): void
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
 
@@ -48,20 +47,19 @@ class SiteEditorAccessTest extends TestCase
 
         $this->get(route('admin.site-editor.preview', ['page' => 'home']))
             ->assertOk()
-            ->assertSee('Enter')
-            ->assertDontSee('Guest')
-            ->assertDontSee('Sign in');
+            ->assertSee('Guest')
+            ->assertSee('Sign in')
+            ->assertSee('MUSIC');
     }
 
-    public function test_unknown_site_editor_page_stays_on_enter_screen(): void
+    public function test_unknown_site_editor_page_returns_not_found(): void
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
 
         $this->actingAsAdmin($admin);
 
         $this->get(route('admin.site-editor.show', ['page' => 'not-real']))
-            ->assertOk()
-            ->assertSee('Enter');
+            ->assertNotFound();
     }
 
     private function actingAsAdmin(User $user): void

@@ -7,7 +7,10 @@
         ? route('admin.dashboard')
         : route('admin.dashboard').'#'.$section;
     $isActive = fn (string $section): bool => $adminSection === $section;
-    $navClass = fn (string $section): string => $isActive($section) ? 'sidebar-btn is-active' : 'sidebar-btn';
+    $navClass = fn (string $section): string => $isActive($section) ? 'tab sidebar-btn is-active' : 'tab sidebar-btn';
+    $publicTabClass = fn (array|string $sections): string => in_array($adminSection, (array) $sections, true)
+        ? 'ds-main-tab is-selected'
+        : 'ds-main-tab';
 @endphp
 
 <!DOCTYPE html>
@@ -21,7 +24,7 @@
 
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="admin-cms-body" data-theme="{{ $adminTheme }}" data-admin-current-section="{{ $adminSection }}">
@@ -40,86 +43,90 @@
             <button type="button" class="admin-toast-close" data-admin-close-toast aria-label="Cerrar notificacion">×</button>
         </div>
 
-        <header class="admin-cms-header">
-            <div class="admin-brand-wrap">
-                <button type="button" class="admin-icon-button admin-mobile-menu" data-admin-sidebar-toggle aria-label="Abrir menu">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                </button>
+        <div class="admin-public-shell music-shell">
+            <aside id="sidebar" class="sidebar admin-cms-sidebar" aria-label="Admin navigation">
+                <div>
+                    <a class="brand-link" href="{{ route('admin.dashboard') }}" aria-label="Reny Renteria CMS">
+                        <img
+                            class="brand-logo"
+                            src="{{ asset('images/reny-renteria-logo.png') }}"
+                            alt="Reny Renteria"
+                        >
+                    </a>
 
-                <a class="admin-cms-brand" href="{{ route('admin.dashboard') }}" aria-label="Reny Renteria CMS">
-                    <span class="admin-brand-mark">RR</span>
-                    <span>
-                        <strong>RenyRenteria.com</strong>
-                        <small>CMS editorial</small>
-                    </span>
-                </a>
-            </div>
-
-            <div class="admin-header-actions">
-                <a class="admin-site-link" href="{{ route('home') }}" target="_blank" rel="noreferrer">
-                    <span>Ver sitio web</span>
-                    <span aria-hidden="true">↗</span>
-                </a>
-
-                @if ($user)
-                    <div class="admin-user-pill">
-                        <span class="admin-user-avatar">{{ mb_strtoupper(mb_substr($user->name, 0, 1)) }}</span>
-                        <span>
-                            <strong>{{ $user->name }}</strong>
-                            <small>{{ $roleLabel }}</small>
-                        </span>
-                    </div>
-                @endif
-            </div>
-        </header>
-
-        <div class="admin-cms-frame">
-            <aside id="sidebar" class="admin-cms-sidebar" aria-label="Admin navigation">
-                <div class="admin-sidebar-scroll">
-                    <nav class="admin-side-nav" aria-label="CMS sections">
-                        <a class="{{ $navClass('dashboard') }}" href="{{ route('admin.dashboard') }}" data-admin-nav="dashboard">
-                            <span class="admin-nav-icon" aria-hidden="true">▦</span>
-                            <span>Resumen Principal</span>
-                        </a>
-
-                        <p>Tabs publicos</p>
-
-                        <a class="{{ $navClass('site-editor') }}" href="{{ route('admin.site-editor.index') }}" data-admin-nav="site-editor">
-                            <span class="admin-nav-icon" aria-hidden="true">▣</span>
-                            <span>Reny Site Editor</span>
+                    <nav class="tabs admin-side-nav" aria-label="CMS sections">
+                        <a class="{{ $navClass('banners') }}" href="{{ $sectionRoute('banners') }}" data-admin-nav="banners">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                                <rect x="3" y="5" width="18" height="14" rx="2"></rect>
+                                <path d="M7 9h10"></path>
+                                <path d="M7 13h6"></path>
+                            </svg>
+                            <span>Banners</span>
                         </a>
                         <a class="{{ $navClass('contenido') }}" href="{{ route('admin.content.index', ['section' => 'music']) }}" data-admin-nav="contenido">
-                            <span class="admin-nav-icon" aria-hidden="true">♫</span>
-                            <span>Musica / Content</span>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                                <path d="M9 18V5l10-2v13"></path>
+                                <circle cx="7" cy="18" r="3"></circle>
+                                <circle cx="17" cy="16" r="3"></circle>
+                            </svg>
+                            <span>Music</span>
+                        </a>
+                        <a class="{{ $navClass('biblioteca') }}" href="{{ route('admin.content.index', ['section' => 'video']) }}" data-admin-nav="biblioteca">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                                <path d="m22 8-6 4 6 4V8Z"></path>
+                                <rect x="2" y="6" width="14" height="12" rx="2"></rect>
+                            </svg>
+                            <span>Videos</span>
+                        </a>
+                        <a class="{{ $navClass('photos') }}" href="{{ route('admin.content.index', ['section' => 'photos']) }}" data-admin-nav="photos">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                                <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                                <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                                <path d="m21 15-5-5L5 21"></path>
+                            </svg>
+                            <span>Photos</span>
+                        </a>
+                        <a class="{{ $navClass('comunidad') }}" href="{{ route('admin.content.index', ['section' => 'community']) }}" data-admin-nav="comunidad">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                                <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z"></path>
+                            </svg>
+                            <span>Community</span>
+                        </a>
+                        <a class="{{ $navClass('productos') }}" href="{{ route('admin.content.index', ['section' => 'store']) }}" data-admin-nav="productos">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                                <path d="M4 10h16"></path>
+                                <path d="M5 10l1.5-5h11L19 10"></path>
+                                <path d="M6 10v9h12v-9"></path>
+                                <path d="M9 19v-5h6v5"></path>
+                            </svg>
+                            <span>Store</span>
+                        </a>
+
+                        <p>CMS</p>
+
+                        <a class="{{ $navClass('dashboard') }}" href="{{ route('admin.dashboard') }}" data-admin-nav="dashboard">
+                            <span class="admin-nav-icon" aria-hidden="true">RR</span>
+                            <span>Resumen</span>
+                        </a>
+                        <a class="{{ $navClass('site-editor') }}" href="{{ route('admin.site-editor.index') }}" data-admin-nav="site-editor">
+                            <span class="admin-nav-icon" aria-hidden="true">▣</span>
+                            <span>Site Editor</span>
                         </a>
                         <a class="{{ $navClass('editor') }}" href="{{ route('admin.content.create') }}" data-admin-nav="editor">
-                            <span class="admin-nav-icon" aria-hidden="true">✎</span>
-                            <span>Nuevo Contenido</span>
+                            <span class="admin-nav-icon" aria-hidden="true">+</span>
+                            <span>Nuevo Content</span>
                         </a>
-                        <a class="{{ $navClass('biblioteca') }}" href="{{ route('admin.media.index') }}" data-admin-nav="biblioteca">
+                        <a class="{{ $navClass('media') }}" href="{{ route('admin.media.index') }}" data-admin-nav="media">
                             <span class="admin-nav-icon" aria-hidden="true">▧</span>
-                            <span>Video / Biblioteca</span>
+                            <span>Media Library</span>
                         </a>
-                        <a class="{{ $navClass('productos') }}" href="{{ $sectionRoute('productos') }}" data-admin-nav="productos">
-                            <span class="admin-nav-icon" aria-hidden="true">□</span>
-                            <span>Productos y Drops</span>
-                        </a>
-
-                        <p>Comunidad y Miembros</p>
-
                         <a class="{{ $navClass('royalpass') }}" href="{{ $sectionRoute('royalpass') }}" data-admin-nav="royalpass">
                             <span class="admin-nav-icon" aria-hidden="true">♛</span>
-                            <span>Miembros Royal <small>PRO</small></span>
+                            <span>Royal Pass <small>PRO</small></span>
                         </a>
                         <a class="{{ $navClass('usuarios') }}" href="{{ $sectionRoute('usuarios') }}" data-admin-nav="usuarios">
                             <span class="admin-nav-icon" aria-hidden="true">◎</span>
-                            <span>Gente / Usuarios</span>
-                        </a>
-                        <a class="{{ $navClass('comunidad') }}" href="{{ $sectionRoute('comunidad') }}" data-admin-nav="comunidad">
-                            <span class="admin-nav-icon" aria-hidden="true">☷</span>
-                            <span>Community</span>
+                            <span>Usuarios</span>
                         </a>
                         <a class="{{ $navClass('eventos') }}" href="{{ $sectionRoute('eventos') }}" data-admin-nav="eventos">
                             <span class="admin-nav-icon" aria-hidden="true">◴</span>
@@ -127,64 +134,90 @@
                         </a>
                         <a class="{{ $navClass('puntos') }}" href="{{ $sectionRoute('puntos') }}" data-admin-nav="puntos">
                             <span class="admin-nav-icon" aria-hidden="true">◇</span>
-                            <span>Puntos y Ranking</span>
+                            <span>Puntos</span>
                         </a>
-
-                        <p>Negocios y Control</p>
-
                         <a class="{{ $navClass('pagos') }}" href="{{ $sectionRoute('pagos') }}" data-admin-nav="pagos">
                             <span class="admin-nav-icon" aria-hidden="true">$</span>
-                            <span>Pagos y Devoluciones</span>
+                            <span>Pagos</span>
                         </a>
                         <a class="{{ $navClass('notificaciones') }}" href="{{ $sectionRoute('notificaciones') }}" data-admin-nav="notificaciones">
                             <span class="admin-nav-icon" aria-hidden="true">✉</span>
-                            <span>Anuncios y Mensajes</span>
+                            <span>Anuncios</span>
                         </a>
                         <a class="{{ $navClass('equipo') }}" href="{{ $sectionRoute('equipo') }}" data-admin-nav="equipo">
                             <span class="admin-nav-icon" aria-hidden="true">◌</span>
-                            <span>Equipo y Permisos</span>
+                            <span>Equipo</span>
                         </a>
                         <a class="{{ $navClass('historial') }}" href="{{ $sectionRoute('historial') }}" data-admin-nav="historial">
                             <span class="admin-nav-icon" aria-hidden="true">◷</span>
-                            <span>Historial de Cambios</span>
+                            <span>Historial</span>
                         </a>
                         <a class="{{ $navClass('ajustes') }}" href="{{ $sectionRoute('ajustes') }}" data-admin-nav="ajustes">
                             <span class="admin-nav-icon" aria-hidden="true">⚙</span>
-                            <span>Ajustes del Sitio</span>
+                            <span>Ajustes</span>
                         </a>
                     </nav>
                 </div>
 
-                <div class="admin-sidebar-footer">
-                    <p>© 2026 Reny Renteria CMS</p>
-                    <span><i></i> Servidores Activos</span>
-                    @if ($user)
-                        <form method="POST" action="{{ route('admin.logout') }}">
-                            @csrf
-                            <button class="admin-button admin-button-secondary" type="submit">Log out</button>
-                        </form>
-                    @endif
+                <div class="member-card admin-member-card" data-access-state="royal_active">
+                    <div class="member-avatar" aria-hidden="true"></div>
+                    <div>
+                        <strong>{{ $user?->name ?? 'Admin' }}</strong>
+                        <span>{{ $roleLabel }}</span>
+                        <a class="member-card-link" href="{{ route('home') }}" target="_blank" rel="noreferrer">Ver sitio</a>
+                    </div>
                 </div>
+
+                @if ($user)
+                    <form class="admin-logout-form" method="POST" action="{{ route('admin.logout') }}">
+                        @csrf
+                        <button class="admin-button admin-button-secondary" type="submit">Log out</button>
+                    </form>
+                @endif
             </aside>
 
             <button id="sidebarOverlay" type="button" class="admin-sidebar-overlay" data-admin-sidebar-toggle aria-label="Cerrar menu"></button>
 
-            <main class="admin-cms-main">
+            <main class="main-content admin-cms-main">
+                <header class="mobile-header admin-mobile-header">
+                    <button type="button" class="admin-icon-button admin-mobile-menu" data-admin-sidebar-toggle aria-label="Abrir menu">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </button>
+
+                    <a class="brand-link" href="{{ route('admin.dashboard') }}" aria-label="Reny Renteria CMS">
+                        <img
+                            class="brand-logo"
+                            src="{{ asset('images/reny-renteria-logo.png') }}"
+                            alt="Reny Renteria"
+                        >
+                    </a>
+                </header>
+
                 <nav class="ds-public-tabs" aria-label="Tabs publicos del producto">
-                    <a class="ds-main-tab" href="{{ route('admin.content.index', ['section' => 'music']) }}" data-admin-nav="contenido" style="--tab-accent: var(--music-accent); --tab-soft: var(--music-soft);">
-                        <span>Musica</span>
+                    <a class="{{ $publicTabClass('banners') }}" href="{{ $sectionRoute('banners') }}" data-admin-nav="banners" style="--tab-accent: var(--red); --tab-soft: var(--rose);">
+                        <span>Banners</span>
                         <span class="ds-tab-dot" aria-hidden="true"></span>
                     </a>
-                    <a class="ds-main-tab" href="{{ route('admin.content.index', ['section' => 'video']) }}" data-admin-nav="biblioteca" style="--tab-accent: var(--video-accent); --tab-soft: var(--video-soft);">
-                        <span>Video</span>
+                    <a class="{{ $publicTabClass('contenido') }}" href="{{ route('admin.content.index', ['section' => 'music']) }}" data-admin-nav="contenido" style="--tab-accent: var(--red); --tab-soft: var(--rose);">
+                        <span>Music</span>
                         <span class="ds-tab-dot" aria-hidden="true"></span>
                     </a>
-                    <a class="ds-main-tab" href="{{ route('admin.content.index', ['section' => 'events']) }}" data-admin-nav="eventos" style="--tab-accent: var(--events-accent); --tab-soft: var(--events-soft);">
-                        <span>Events</span>
+                    <a class="{{ $publicTabClass('biblioteca') }}" href="{{ route('admin.content.index', ['section' => 'video']) }}" data-admin-nav="biblioteca" style="--tab-accent: var(--purple); --tab-soft: #eee8ff;">
+                        <span>Videos</span>
                         <span class="ds-tab-dot" aria-hidden="true"></span>
                     </a>
-                    <a class="ds-main-tab" href="{{ route('admin.content.index', ['section' => 'community']) }}" data-admin-nav="comunidad" style="--tab-accent: var(--community-accent); --tab-soft: var(--community-soft);">
+                    <a class="{{ $publicTabClass('photos') }}" href="{{ route('admin.content.index', ['section' => 'photos']) }}" data-admin-nav="photos" style="--tab-accent: var(--accent); --tab-soft: var(--accent-soft);">
+                        <span>Photos</span>
+                        <span class="ds-tab-dot" aria-hidden="true"></span>
+                    </a>
+                    <a class="{{ $publicTabClass('comunidad') }}" href="{{ route('admin.content.index', ['section' => 'community']) }}" data-admin-nav="comunidad" style="--tab-accent: var(--accent-dark); --tab-soft: var(--accent-soft);">
                         <span>Community</span>
+                        <span class="ds-tab-dot" aria-hidden="true"></span>
+                    </a>
+                    <a class="{{ $publicTabClass('productos') }}" href="{{ route('admin.content.index', ['section' => 'store']) }}" data-admin-nav="productos" style="--tab-accent: var(--red); --tab-soft: var(--rose);">
+                        <span>Store</span>
                         <span class="ds-tab-dot" aria-hidden="true"></span>
                     </a>
                 </nav>

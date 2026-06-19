@@ -30,7 +30,7 @@ class AdminEditorialFormsPreviewSchedulingTest extends TestCase
             ->assertDontSee('Crear contenido');
     }
 
-    public function test_admin_content_index_stays_on_enter_screen(): void
+    public function test_admin_content_index_renders_public_style_cms_tabs(): void
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
 
@@ -38,9 +38,13 @@ class AdminEditorialFormsPreviewSchedulingTest extends TestCase
 
         $this->get(route('admin.content.index', ['section' => 'music']))
             ->assertOk()
-            ->assertSee('Enter')
-            ->assertDontSee('Musica')
-            ->assertDontSee('Music queue item');
+            ->assertSee('Contenido de tu Sitio')
+            ->assertSee('Banners')
+            ->assertSee('Music')
+            ->assertSee('Videos')
+            ->assertSee('Photos')
+            ->assertSee('Community')
+            ->assertSee('Store');
     }
 
     public function test_editor_can_prepare_one_piece_of_each_content_type(): void

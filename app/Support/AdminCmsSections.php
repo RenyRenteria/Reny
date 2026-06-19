@@ -29,13 +29,30 @@ class AdminCmsSections
                 'accent' => '#2764d8',
                 'types' => [
                     ContentType::Video->value,
+                ],
+            ],
+            'photos' => [
+                'label' => 'Photos',
+                'caption' => 'Photos, galleries and visual stories',
+                'accent' => '#997332',
+                'types' => [
                     ContentType::Photo->value,
                     ContentType::Gallery->value,
                 ],
             ],
+            'store' => [
+                'label' => 'Store',
+                'caption' => 'Tickets, drops and store moments',
+                'accent' => '#a96519',
+                'types' => [
+                    ContentType::Event->value,
+                    ContentType::Drop->value,
+                    ContentType::Product->value,
+                ],
+            ],
             'events' => [
                 'label' => 'Events',
-                'caption' => 'Tickets, drops and store moments',
+                'caption' => 'Legacy events tab alias',
                 'accent' => '#a96519',
                 'types' => [
                     ContentType::Event->value,

@@ -21,13 +21,26 @@
                 : $content->created_at->format('j M Y, g:i A'),
         ];
     });
+    $adminSectionForContent = match ($activeSection) {
+        'video' => 'biblioteca',
+        'photos' => 'photos',
+        'community' => 'comunidad',
+        'store', 'events' => 'productos',
+        default => 'contenido',
+    };
+    $adminThemeForContent = match ($activeSection) {
+        'video' => 'video',
+        'photos', 'store', 'events' => 'events',
+        'community' => 'community',
+        default => 'music',
+    };
 @endphp
 
 @extends('admin.layout')
 
 @section('title', 'Contenido CMS')
-@section('admin_section', 'contenido')
-@section('admin_theme', 'music')
+@section('admin_section', $adminSectionForContent)
+@section('admin_theme', $adminThemeForContent)
 
 @section('content')
     <section class="admin-dashboard-section is-active">

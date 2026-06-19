@@ -109,7 +109,7 @@ class AdminEditorialFormsTest extends TestCase
         $this->assertTrue(EditorialContent::visibleFor(null, $visibleAt->addSecond())->whereKey($content)->exists());
     }
 
-    public function test_private_preview_requires_admin_session_and_stays_on_enter_screen(): void
+    public function test_private_preview_requires_admin_session_and_renders_content_preview(): void
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
         $content = EditorialContent::factory()->create([
@@ -124,8 +124,8 @@ class AdminEditorialFormsTest extends TestCase
 
         $this->get(route('admin.content.preview', $content))
             ->assertOk()
-            ->assertSee('Enter')
-            ->assertDontSee('Private preview candidate');
+            ->assertSee('Private preview candidate')
+            ->assertSee('Preview body.');
     }
 
     public function test_form_save_can_attach_reusable_media_and_taxonomy(): void
