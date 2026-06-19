@@ -116,7 +116,8 @@ class SiteEditorAccessTest extends TestCase
             ->assertDontSee('Admin Viewer')
             ->assertDontSee('Account')
             ->assertSee('Public single')
-            ->assertDontSee('Royal only single');
+            ->assertSee('Royal only single')
+            ->assertSee('Login required');
     }
 
     public function test_unknown_site_editor_page_returns_not_found(): void

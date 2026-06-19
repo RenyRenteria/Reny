@@ -15,6 +15,14 @@ use Symfony\Component\HttpFoundation\Response;
 
 class PublicContentController extends Controller
 {
+    private const VIDEO_CATEGORIES = [
+        'music_videos',
+        'series',
+        'performances',
+        'behind_the_scenes',
+        'vlogs',
+    ];
+
     public function home(Request $request, PublicCmsContentService $cms): View
     {
         return view('welcome', [
@@ -24,8 +32,11 @@ class PublicContentController extends Controller
 
     public function videos(Request $request, PublicCmsContentService $cms): View
     {
+        $category = str((string) $request->query('category'))->lower()->slug('_')->toString();
+
         return view('videos', [
             'publicCms' => $cms->videos($request->user()),
+            'selectedVideoCategory' => in_array($category, self::VIDEO_CATEGORIES, true) ? $category : null,
         ]);
     }
 

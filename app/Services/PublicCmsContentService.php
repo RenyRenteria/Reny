@@ -472,7 +472,7 @@ class PublicCmsContentService
      */
     private function videoPayload(EditorialContent $content): array
     {
-        $youtubeId = $this->youtubeId((string) $this->metadata($content, 'youtube_url', '')) ?? 'Ue8orNrHw9s';
+        $youtubeId = $this->youtubeId((string) $this->metadata($content, 'youtube_url', ''));
         $category = str((string) $this->metadata($content, 'category', 'music-video'))->lower()->slug('_')->toString();
         $group = match ($category) {
             'playlist', 'series', 'series_playlist', 'music_playlist' => 'series',
@@ -486,7 +486,9 @@ class PublicCmsContentService
             'id' => $youtubeId,
             'title' => e($content->title),
             'meta' => e($content->summary ?: (string) $this->metadata($content, 'playlist', 'CMS video')),
+            'external_url' => $youtubeId ? "https://www.youtube.com/watch?v={$youtubeId}" : null,
             'group' => $group,
+            'play_state' => $youtubeId ? 'ready' : 'unavailable',
             'url' => route('public.content.show', $content),
         ];
     }
