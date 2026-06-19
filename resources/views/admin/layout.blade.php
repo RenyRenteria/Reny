@@ -2,7 +2,6 @@
     $adminSection = trim($__env->yieldContent('admin_section', 'dashboard'));
     $adminTheme = trim($__env->yieldContent('admin_theme', 'neutral'));
     $user = auth()->user();
-    $roleLabel = $user ? str_replace('_', ' ', $user->role) : 'admin';
     $sectionRoute = fn (string $section): string => $section === 'dashboard'
         ? route('admin.dashboard')
         : route('admin.dashboard').'#'.$section;
@@ -21,7 +20,7 @@
 
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="admin-cms-body" data-theme="{{ $adminTheme }}" data-admin-current-section="{{ $adminSection }}">
@@ -40,40 +39,7 @@
             <button type="button" class="admin-toast-close" data-admin-close-toast aria-label="Cerrar notificacion">×</button>
         </div>
 
-        <header class="admin-cms-header">
-            <div class="admin-brand-wrap">
-                <button type="button" class="admin-icon-button admin-mobile-menu" data-admin-sidebar-toggle aria-label="Abrir menu">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                </button>
-
-                <a class="admin-cms-brand" href="{{ route('admin.dashboard') }}" aria-label="Reny Renteria CMS">
-                    <span class="admin-brand-mark">RR</span>
-                    <span>
-                        <strong>RenyRenteria.com</strong>
-                        <small>CMS editorial</small>
-                    </span>
-                </a>
-            </div>
-
-            <div class="admin-header-actions">
-                <a class="admin-site-link" href="{{ route('home') }}" target="_blank" rel="noreferrer">
-                    <span>Ver sitio web</span>
-                    <span aria-hidden="true">↗</span>
-                </a>
-
-                @if ($user)
-                    <div class="admin-user-pill">
-                        <span class="admin-user-avatar">{{ mb_strtoupper(mb_substr($user->name, 0, 1)) }}</span>
-                        <span>
-                            <strong>{{ $user->name }}</strong>
-                            <small>{{ $roleLabel }}</small>
-                        </span>
-                    </div>
-                @endif
-            </div>
-        </header>
+        @include('admin.partials.header', ['showSidebarToggle' => true, 'adminSection' => $adminSection])
 
         <div class="admin-cms-frame">
             <aside id="sidebar" class="admin-cms-sidebar" aria-label="Admin navigation">
@@ -170,25 +136,6 @@
             <button id="sidebarOverlay" type="button" class="admin-sidebar-overlay" data-admin-sidebar-toggle aria-label="Cerrar menu"></button>
 
             <main class="admin-cms-main">
-                <nav class="ds-public-tabs" aria-label="Tabs publicos del producto">
-                    <a class="ds-main-tab" href="{{ route('admin.content.index', ['section' => 'music']) }}" data-admin-nav="contenido" style="--tab-accent: var(--music-accent); --tab-soft: var(--music-soft);">
-                        <span>Musica</span>
-                        <span class="ds-tab-dot" aria-hidden="true"></span>
-                    </a>
-                    <a class="ds-main-tab" href="{{ route('admin.content.index', ['section' => 'video']) }}" data-admin-nav="biblioteca" style="--tab-accent: var(--video-accent); --tab-soft: var(--video-soft);">
-                        <span>Video</span>
-                        <span class="ds-tab-dot" aria-hidden="true"></span>
-                    </a>
-                    <a class="ds-main-tab" href="{{ route('admin.content.index', ['section' => 'events']) }}" data-admin-nav="eventos" style="--tab-accent: var(--events-accent); --tab-soft: var(--events-soft);">
-                        <span>Events</span>
-                        <span class="ds-tab-dot" aria-hidden="true"></span>
-                    </a>
-                    <a class="ds-main-tab" href="{{ route('admin.content.index', ['section' => 'community']) }}" data-admin-nav="comunidad" style="--tab-accent: var(--community-accent); --tab-soft: var(--community-soft);">
-                        <span>Community</span>
-                        <span class="ds-tab-dot" aria-hidden="true"></span>
-                    </a>
-                </nav>
-
                 @if (session('status'))
                     <div class="auth-status">{{ session('status') }}</div>
                 @endif
