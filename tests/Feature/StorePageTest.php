@@ -9,14 +9,25 @@ class StorePageTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_store_page_mounts_shop_with_events_and_royal_exclusives(): void
+    public function test_store_page_mounts_clean_shop_with_paypal_checkout(): void
     {
         $response = $this->get('/store');
 
         $response->assertOk();
-        $response->assertSee('Upcoming concert');
-        $response->assertSee("Royal's Exclusives", false);
+        $response->assertSee('Official store');
+        $response->assertSee('Reny Shop');
+        $response->assertSee('Shop');
         $response->assertSee('$4.99/mo');
+        $response->assertSee('Reference prices update here. Checkout is charged in USD.');
+        $response->assertSee('Selected currency is a reference. PayPal checkout is charged in USD.');
+        $response->assertSee('data-filter="membership"', false);
+        $response->assertSee('data-filter="music"', false);
+        $response->assertSee('data-filter="merch"', false);
+        $response->assertSee('aria-pressed="true"', false);
+        $response->assertSee('Buy album');
+        $response->assertSee('Buy music');
+        $response->assertSee('Join membership');
+        $response->assertSee('Add to bag');
         $response->assertSee('Events');
         $response->assertSee('Reny Live - Studio Night');
         $response->assertSee('Aug 24, 2026');
@@ -27,23 +38,29 @@ class StorePageTest extends TestCase
         $response->assertSee('class="tab is-active"', false);
         $response->assertSee('href="'.url('/store').'"', false);
         $response->assertSee('data-payment-method="paypal"', false);
-        $response->assertSee('data-payment-method="card"', false);
-        $response->assertSee('data-payment-method="apple_pay"', false);
-        $response->assertSee('data-payment-method="local"', false);
-        $response->assertSee('data-unavailable-reason="card_provider_not_configured"', false);
-        $response->assertSee('data-unavailable-reason="apple_pay_provider_not_configured"', false);
-        $response->assertDontSee('data-unavailable-reason="local_provider_not_configured"', false);
+        $response->assertSee('role="radio"', false);
+        $response->assertDontSee('data-payment-method="card"', false);
+        $response->assertDontSee('data-payment-method="apple_pay"', false);
+        $response->assertDontSee('data-payment-method="local"', false);
         $response->assertSee('data-rsvp="making"', false);
         $response->assertSee('data-rsvp-endpoint="'.route('store.rsvp').'"', false);
         $response->assertSee('Free RSVP confirms a reservation on this account.');
-        $response->assertSee('id="localReferenceField"', false);
-        $response->assertSee('id="localReceiptField"', false);
+        $response->assertDontSee('fan@renyrenteria.com', false);
+        $response->assertDontSee('id="localReferenceField"', false);
+        $response->assertDontSee('id="localReceiptField"', false);
 
         $html = $response->getContent();
 
         $this->assertSame(5, substr_count($html, 'class="store-product-card"'));
         $this->assertSame(3, substr_count($html, 'class="store-event-card"'));
-        $this->assertLessThan(strpos($html, 'Events'), strpos($html, "Royal's Exclusives"));
+        $this->assertLessThan(strpos($html, 'Events'), strpos($html, 'Reny Shop'));
+        $this->assertLessThan(strpos($html, 'Events'), strpos($html, 'id="market-title"'));
+        $this->assertStringContainsString('data-category="membership"', $html);
+        $this->assertStringContainsString('data-category="music"', $html);
+        $this->assertStringContainsString('data-category="merch"', $html);
+        $this->assertStringNotContainsString('Upcoming concert', $html);
+        $this->assertStringNotContainsString('role="tab"', $html);
+        $this->assertStringNotContainsString('aria-selected', $html);
         $this->assertStringNotContainsString('Crown Jacket', $html);
         $this->assertStringNotContainsString('data-buy="crown"', $html);
         $this->assertStringNotContainsString('data-buy="making"', $html);

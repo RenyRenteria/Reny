@@ -517,16 +517,17 @@ class PublicCmsContentService
         $price = ((int) $this->metadata($content, 'price_cents', 0)) / 100;
         $kind = (string) $this->metadata($content, 'product_kind', $this->metadata($content, 'drop_kind', 'digital'));
         $isDrop = $content->type === ContentType::Drop;
+        $category = match (true) {
+            $kind === 'subscription' => 'membership',
+            $isDrop, $kind === 'physical', $kind === 'merch' => 'merch',
+            default => 'music',
+        };
 
         return [
             'key' => $content->purchase_key ?: $this->metadata($content, 'sku', $content->slug),
             'name' => $content->title,
             'type' => $isDrop ? 'Art Drop' : str($kind)->headline()->toString(),
-            'category' => match (true) {
-                $isDrop => trim('drops '.$kind),
-                $kind === 'physical' => 'physical merch',
-                default => $kind,
-            },
+            'category' => $category,
             'price' => $price,
             'suffix' => $kind === 'subscription' ? '/mo' : '',
             'availability' => $this->availability($content),
@@ -536,6 +537,11 @@ class PublicCmsContentService
             'image' => $this->metadata($content, 'fallback_image', 'cover.jpg'),
             'image_url' => $this->mediaUrl($content, ['image_asset_id', 'cover_asset_id']),
             'summary' => $content->summary ?: $content->body ?: '',
+            'cta' => match ($category) {
+                'membership' => 'Join membership',
+                'music' => 'Buy music',
+                default => 'Add to bag',
+            },
         ];
     }
 

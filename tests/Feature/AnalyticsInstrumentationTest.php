@@ -99,8 +99,9 @@ class AnalyticsInstrumentationTest extends TestCase
             'payment_started',
             'payment_success',
             'payment_failed',
-            'invalid_reference',
-            'missing_receipt',
+            'paypal_not_configured',
+            'paypal_sdk_unavailable',
+            'missing_contact',
         ] as $checkoutState) {
             $this->assertStringContainsString($checkoutState, $script);
         }

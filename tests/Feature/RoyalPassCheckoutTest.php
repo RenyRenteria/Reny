@@ -1066,12 +1066,13 @@ class RoyalPassCheckoutTest extends TestCase
         $this->get('/store')
             ->assertOk()
             ->assertSee('Every completed purchase activates Royal Pass for 1 month')
+            ->assertSee('PayPal checkout is charged in USD')
             ->assertSee('Load PayPal checkout')
-            ->assertSee('Submit a bank/Yappy receipt')
             ->assertSee(route('checkout.paypal.orders'))
             ->assertSee(route('checkout.paypal.orders.cancel'))
             ->assertSee(route('checkout.paypal'))
-            ->assertSee(route('checkout.local'));
+            ->assertDontSee('Submit a bank/Yappy receipt')
+            ->assertDontSee(route('checkout.local'));
     }
 
     public function test_store_exposes_cms_digital_and_art_drop_purchase_keys(): void
@@ -1103,7 +1104,8 @@ class RoyalPassCheckoutTest extends TestCase
             ->assertSee('CMS Art Drop')
             ->assertSee('data-detail="cms-digital-pack"', false)
             ->assertSee('data-detail="cms-art-drop"', false)
-            ->assertSee('data-category="drops content"', false);
+            ->assertSee('data-category="music"', false)
+            ->assertSee('data-category="merch"', false);
     }
 
     private function fakeCreatedOrder(string $orderId): void
