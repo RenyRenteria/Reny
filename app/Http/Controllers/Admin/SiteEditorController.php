@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\EditorialContent;
+use App\Models\User;
 use App\Services\PublicCmsContentService;
 use App\Support\SiteEditorPageRegistry;
 use Illuminate\Http\RedirectResponse;
@@ -31,10 +32,38 @@ class SiteEditorController extends Controller
             'pages' => $this->registry->pages(),
             'pageConfig' => $pageConfig,
             'publicUrl' => url($pageConfig['public_path']),
-            'publicPayload' => $this->publicPayload($cms, $request, $page),
+            'previewUrl' => route('admin.site-editor.preview', ['page' => $page]),
+            'publicPayload' => $this->publicPayload($cms, $page),
             'blocks' => $this->blocksFor($pageConfig['blocks']),
             'timezone' => config('admin.publishing_timezone', 'America/Panama'),
         ]);
+    }
+
+    public function preview(Request $request, PublicCmsContentService $cms, string $page): View
+    {
+        $pageConfig = $this->registry->page($page);
+
+        abort_unless($pageConfig !== null, 404);
+
+        $request->attributes->set('site_editor_guest_preview', true);
+
+        return match ($page) {
+            'home', 'music' => view('welcome', [
+                'publicCms' => $this->publicPayload($cms, $page),
+            ]),
+            'videos' => view('videos', [
+                'publicCms' => $this->publicPayload($cms, $page),
+            ]),
+            'photos' => view('photos', [
+                'publicCms' => $this->publicPayload($cms, $page),
+            ]),
+            'store' => view('store', [
+                'publicCms' => $this->publicPayload($cms, $page),
+            ]),
+            'community' => view('community', [
+                'publicCms' => $this->publicPayload($cms, $page),
+            ]),
+        };
     }
 
     /**
@@ -118,12 +147,12 @@ class SiteEditorController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function publicPayload(PublicCmsContentService $cms, Request $request, string $page): array
+    private function publicPayload(PublicCmsContentService $cms, string $page, ?User $user = null): array
     {
         if (in_array($page, ['home', 'music'], true)) {
-            return $cms->music($request->user());
+            return $cms->music($user);
         }
 
-        return $cms->payload($page, $request->user());
+        return $cms->payload($page, $user);
     }
 }

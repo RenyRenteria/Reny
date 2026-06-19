@@ -35,6 +35,7 @@ Route::prefix(config('admin.path', 'admin'))->name('admin.')->group(function () 
         Route::get('/', AdminDashboardController::class)->name('dashboard');
         Route::post('/logout', [AdminLoginController::class, 'destroy'])->name('logout');
         Route::get('/site-editor', [SiteEditorController::class, 'index'])->name('site-editor.index');
+        Route::get('/site-editor/{page}/preview', [SiteEditorController::class, 'preview'])->name('site-editor.preview');
         Route::get('/site-editor/{page}', [SiteEditorController::class, 'show'])->name('site-editor.show');
         Route::get('/content', [EditorialContentController::class, 'index'])->name('content.index');
         Route::get('/content/create', [EditorialContentController::class, 'create'])->name('content.create');

@@ -29,6 +29,7 @@
             </div>
             <div class="admin-actions">
                 <a class="admin-button admin-button-ghost" href="{{ $publicUrl }}" target="_blank" rel="noreferrer">Abrir website</a>
+                <a class="admin-button admin-button-soft" href="{{ $previewUrl }}" target="_blank" rel="noreferrer">Abrir preview guest</a>
                 <a class="admin-button admin-button-primary" href="{{ route('admin.content.create') }}">Nuevo bloque</a>
             </div>
         </div>
@@ -48,9 +49,10 @@
                     <div>
                         <p class="admin-kicker">Preview publico</p>
                         <h2 id="site-editor-preview-title">{{ $pageConfig['label'] }}</h2>
-                        <span>{{ $pageConfig['summary'] }}</span>
+                        <span>{{ $pageConfig['summary'] }} Se renderiza como guest, sin permisos de admin.</span>
                     </div>
                     <div class="admin-badges">
+                        <span class="admin-status-pill admin-status-info">guest</span>
                         <span @class([
                             'admin-status-pill',
                             'admin-status-success' => ! $payloadFallback,
@@ -65,7 +67,8 @@
                 <div class="site-editor-browser-frame">
                     <iframe
                         title="Preview publico de {{ $pageConfig['label'] }}"
-                        src="{{ $publicUrl }}"
+                        src="{{ $previewUrl }}"
+                        data-preview-audience="guest"
                         loading="lazy"
                     ></iframe>
                 </div>

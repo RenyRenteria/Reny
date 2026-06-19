@@ -40,6 +40,9 @@ class SiteEditorAccessTest extends TestCase
             ->assertOk()
             ->assertSee('Reny Site Editor')
             ->assertSee('Preview publico')
+            ->assertSee('guest')
+            ->assertSee(route('admin.site-editor.preview', ['page' => 'store']), false)
+            ->assertSee('data-preview-audience="guest"', false)
             ->assertSee('CMS conectado')
             ->assertSee('Falta modelo CMS')
             ->assertSee('/store')
@@ -83,6 +86,37 @@ class SiteEditorAccessTest extends TestCase
             ->assertSee('1 publicados')
             ->assertSee('1 borradores')
             ->assertSee('Agregar video');
+    }
+
+    public function test_public_preview_renders_as_guest_even_with_admin_session(): void
+    {
+        $admin = User::factory()->create([
+            'name' => 'Admin Viewer',
+            'role' => User::ROLE_ADMIN,
+        ]);
+
+        EditorialContent::factory()->published()->create([
+            'type' => ContentType::Song->value,
+            'title' => 'Public single',
+            'visibility' => VisibilityAudience::Open->value,
+        ]);
+
+        EditorialContent::factory()->published()->create([
+            'type' => ContentType::Song->value,
+            'title' => 'Royal only single',
+            'visibility' => VisibilityAudience::Royal->value,
+        ]);
+
+        $this->actingAsAdmin($admin);
+
+        $this->get(route('admin.site-editor.preview', ['page' => 'home']))
+            ->assertOk()
+            ->assertSee('Guest')
+            ->assertSee('Sign in')
+            ->assertDontSee('Admin Viewer')
+            ->assertDontSee('Account')
+            ->assertSee('Public single')
+            ->assertDontSee('Royal only single');
     }
 
     public function test_unknown_site_editor_page_returns_not_found(): void
