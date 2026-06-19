@@ -1,5 +1,6 @@
 @php
-    $user = auth()->user();
+    $isGuestPreview = (bool) request()->attributes->get('site_editor_guest_preview', false);
+    $user = $isGuestPreview ? null : auth()->user();
     $state = \App\Support\AccountStateView::for($user);
 @endphp
 
@@ -8,10 +9,10 @@
     <div>
         <strong>{{ $user?->name ?? 'Guest' }}</strong>
         <span id="tierLabel">{{ $state['member_label'] }}</span>
-        @guest
+        @if ($user === null)
             <a class="member-card-link" href="{{ route('login') }}">Sign in</a>
         @else
             <a class="member-card-link" href="{{ route('account.show') }}">Account</a>
-        @endguest
+        @endif
     </div>
 </div>

@@ -6,7 +6,9 @@
 ])
 
 @php
-    $canAccess = \App\Support\EntitlementMatrix::canUseRoyalFeature(auth()->user());
+    $isGuestPreview = (bool) request()->attributes->get('site_editor_guest_preview', false);
+    $viewer = $isGuestPreview ? null : auth()->user();
+    $canAccess = \App\Support\EntitlementMatrix::canUseRoyalFeature($viewer);
 @endphp
 
 @if ($canAccess)

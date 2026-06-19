@@ -86,6 +86,10 @@
 
                         <p>Tabs publicos</p>
 
+                        <a class="{{ $navClass('site-editor') }}" href="{{ route('admin.site-editor.index') }}" data-admin-nav="site-editor">
+                            <span class="admin-nav-icon" aria-hidden="true">▣</span>
+                            <span>Reny Site Editor</span>
+                        </a>
                         <a class="{{ $navClass('contenido') }}" href="{{ route('admin.content.index', ['section' => 'music']) }}" data-admin-nav="contenido">
                             <span class="admin-nav-icon" aria-hidden="true">♫</span>
                             <span>Musica / Content</span>
