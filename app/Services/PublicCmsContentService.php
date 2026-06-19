@@ -3,6 +3,9 @@
 namespace App\Services;
 
 use App\Enums\ContentType;
+use App\Enums\EditorialStatus;
+use App\Enums\MediaAssetType;
+use App\Enums\VisibilityAudience;
 use App\Models\EditorialContent;
 use App\Models\MediaAsset;
 use App\Models\User;
@@ -22,36 +25,137 @@ class PublicCmsContentService
     private const USER_VERSION_PREFIX = 'public-cms:last-published:user-version:';
 
     /**
+     * @var array<int, ContentType>
+     */
+    private const MUSIC_ALBUM_TYPES = [
+        ContentType::MusicalAlbum,
+        ContentType::DeluxeAlbum,
+    ];
+
+    /**
+     * @var array<int, ContentType>
+     */
+    private const MUSIC_SINGLE_TYPES = [
+        ContentType::Song,
+        ContentType::Exclusive,
+    ];
+
+    /**
      * @return array<string, mixed>
      */
     public function music(?User $user): array
     {
         return $this->page('music', $user, function () use ($user): array {
-            $contents = $this->visibleContents($user, [
-                ContentType::Song,
-                ContentType::MusicalAlbum,
-                ContentType::DeluxeAlbum,
-                ContentType::Exclusive,
-            ])->get();
-
-            $albums = $contents
-                ->whereIn('type', [ContentType::MusicalAlbum, ContentType::DeluxeAlbum])
+            $albums = $this->listableMusicContents('albums')
+                ->limit(4)
+                ->get()
                 ->values()
-                ->map(fn (EditorialContent $content, int $index): array => $this->albumPayload($content, $index))
+                ->map(fn (EditorialContent $content, int $index): array => $this->albumPayload($content, $index, $user))
                 ->all();
 
-            $singles = $contents
-                ->whereIn('type', [ContentType::Song, ContentType::Exclusive])
+            $singles = $this->listableMusicContents('singles')
+                ->limit(8)
+                ->get()
                 ->values()
-                ->map(fn (EditorialContent $content): array => $this->singlePayload($content))
+                ->map(fn (EditorialContent $content): array => $this->singlePayload($content, $user))
                 ->all();
 
             return [
                 'albums' => $albums,
                 'singles' => $singles,
-                'featured' => $this->featuredMusicPayload($contents->first()),
+                'featured' => $this->featuredMusicPayload(
+                    $this->listableMusicContents('all')->first()
+                ),
             ];
         });
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function musicCollection(?User $user, string $section): array
+    {
+        abort_unless(in_array($section, ['albums', 'singles'], true), 404);
+
+        return $this->page("music-{$section}", $user, function () use ($user, $section): array {
+            $items = $this->listableMusicContents($section)
+                ->limit(48)
+                ->get()
+                ->values()
+                ->map(fn (EditorialContent $content, int $index): array => $section === 'albums'
+                    ? $this->albumPayload($content, $index, $user)
+                    : $this->singlePayload($content, $user))
+                ->all();
+
+            return [
+                'section' => $section,
+                'items' => $items,
+            ];
+        });
+    }
+
+    /**
+     * @return array{status:int,payload:array<string,mixed>}
+     */
+    public function musicPlayback(EditorialContent $content, ?User $user): array
+    {
+        $content->loadMissing([
+            'mediaAssets' => fn ($query) => $query->orderBy('content_media_assets.sort_order'),
+            'releaseWindows',
+        ]);
+
+        if (! $this->isMusicContent($content) || ! $this->isPubliclyListable($content)) {
+            return [
+                'status' => 404,
+                'payload' => [
+                    'state' => 'playback_error',
+                    'message' => 'This music item is not available.',
+                ],
+            ];
+        }
+
+        $access = $this->musicAccessPayload($content, $user);
+
+        if ($access['state'] !== 'ready') {
+            return [
+                'status' => $access['state'] === 'login_required' ? 401 : 403,
+                'payload' => [
+                    ...$access,
+                    'title' => $content->title,
+                    'detail_url' => route('public.content.show', $content),
+                ],
+            ];
+        }
+
+        $audioUrl = $this->audioUrl($content);
+        $basePayload = $this->musicBasePayload($content, $user);
+
+        if ($audioUrl === null) {
+            return [
+                'status' => 422,
+                'payload' => [
+                    ...$basePayload,
+                    'state' => 'playback_error',
+                    'access_label' => 'Audio unavailable',
+                    'message' => in_array($content->type, self::MUSIC_SINGLE_TYPES, true)
+                        ? 'This single is published, but its audio source is not connected yet.'
+                        : 'This album is published, but a playable audio source is not connected yet.',
+                    'cta_label' => 'Open details',
+                    'cta_url' => route('public.content.show', $content),
+                ],
+            ];
+        }
+
+        return [
+            'status' => 200,
+            'payload' => [
+                ...$basePayload,
+                'state' => 'ready',
+                'access_label' => 'Ready to play',
+                'message' => 'Playback is ready.',
+                'audio_url' => $audioUrl,
+            ],
+        ];
     }
 
     /**
@@ -312,28 +416,31 @@ class PublicCmsContentService
     /**
      * @return array<string, mixed>
      */
-    private function albumPayload(EditorialContent $content, int $index): array
+    private function albumPayload(EditorialContent $content, int $index, ?User $user = null): array
     {
         return [
+            ...$this->musicBasePayload($content, $user),
             'title' => $content->title,
             'meta' => $this->metadata($content, 'track_count')
                 ? $this->metadata($content, 'track_count').' tracks'
                 : $this->lineCount((string) $this->metadata($content, 'tracklist')).' tracks',
             'cover_class' => ['cover-a', 'cover-b', 'cover-c', 'cover-d'][$index % 4],
             'image_url' => $this->mediaUrl($content, ['cover_asset_id', 'image_asset_id']),
-            'url' => route('public.content.show', $content),
+            'kind' => 'album',
         ];
     }
 
     /**
      * @return array<string, mixed>
      */
-    private function singlePayload(EditorialContent $content): array
+    private function singlePayload(EditorialContent $content, ?User $user = null): array
     {
         return [
+            ...$this->musicBasePayload($content, $user),
             'title' => $content->title,
             'artist' => $this->metadata($content, 'artist', 'Reny Renteria'),
-            'url' => route('public.content.show', $content),
+            'image_url' => $this->mediaUrl($content, ['cover_asset_id', 'image_asset_id']),
+            'kind' => 'single',
         ];
     }
 
@@ -499,6 +606,181 @@ class PublicCmsContentService
         }
 
         return $asset?->publicUrl();
+    }
+
+    private function audioUrl(EditorialContent $content): ?string
+    {
+        foreach (['audio_url', 'preview_audio_url', 'external_audio_url', 'stream_url', 'preview_url'] as $key) {
+            $value = trim((string) $this->metadata($content, $key, ''));
+
+            if ($value !== '') {
+                return $value;
+            }
+        }
+
+        $assetId = $this->metadata($content, 'audio_asset_id');
+        $asset = $content->mediaAssets
+            ->when($assetId, fn (Collection $assets): Collection => $assets->where('id', (int) $assetId))
+            ->first(fn (MediaAsset $asset): bool => $asset->type === MediaAssetType::Audio);
+
+        return $asset?->publicUrl();
+    }
+
+    private function listableMusicContents(string $section): Builder
+    {
+        $types = match ($section) {
+            'albums' => self::MUSIC_ALBUM_TYPES,
+            'singles' => self::MUSIC_SINGLE_TYPES,
+            default => [...self::MUSIC_ALBUM_TYPES, ...self::MUSIC_SINGLE_TYPES],
+        };
+
+        return EditorialContent::query()
+            ->with([
+                'mediaAssets' => fn ($query) => $query->orderBy('content_media_assets.sort_order'),
+                'releaseWindows',
+            ])
+            ->whereIn('type', array_map(fn (ContentType $type): string => $type->value, $types))
+            ->where(fn (Builder $query): Builder => $this->applyPublishedNowConstraint($query))
+            ->orderByRaw('COALESCE(published_at, scheduled_at, created_at) DESC');
+    }
+
+    private function applyPublishedNowConstraint(Builder $query): Builder
+    {
+        $now = now();
+
+        return $query
+            ->whereIn('status', [EditorialStatus::Published->value, EditorialStatus::Scheduled->value])
+            ->where(function (Builder $query) use ($now): void {
+                $query
+                    ->where(function (Builder $query) use ($now): void {
+                        $query
+                            ->where('status', EditorialStatus::Published->value)
+                            ->where(function (Builder $query) use ($now): void {
+                                $query->whereNull('scheduled_at')->orWhere('scheduled_at', '<=', $now);
+                            });
+                    })
+                    ->orWhere(function (Builder $query) use ($now): void {
+                        $query
+                            ->where('status', EditorialStatus::Scheduled->value)
+                            ->whereNotNull('scheduled_at')
+                            ->where('scheduled_at', '<=', $now);
+                    });
+            });
+    }
+
+    private function isMusicContent(EditorialContent $content): bool
+    {
+        return in_array($content->type, [...self::MUSIC_ALBUM_TYPES, ...self::MUSIC_SINGLE_TYPES], true);
+    }
+
+    private function isPubliclyListable(EditorialContent $content): bool
+    {
+        if (! in_array($content->status, [EditorialStatus::Published, EditorialStatus::Scheduled], true)) {
+            return false;
+        }
+
+        $scheduledAt = $content->scheduled_at;
+
+        if ($content->status === EditorialStatus::Published) {
+            return $scheduledAt === null || $scheduledAt->lte(now());
+        }
+
+        return $scheduledAt !== null && $scheduledAt->lte(now());
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function musicBasePayload(EditorialContent $content, ?User $user): array
+    {
+        $access = $this->musicAccessPayload($content, $user);
+
+        return [
+            'id' => (string) $content->getKey(),
+            'visibility' => $content->visibility->value,
+            'summary' => $content->summary ?: $content->body ?: '',
+            'detail_url' => route('public.content.show', $content),
+            'play_url' => route('music.play', $content),
+            'tracks' => $this->tracklist($content),
+            'has_audio_source' => $this->audioUrl($content) !== null,
+            ...$access,
+        ];
+    }
+
+    /**
+     * @return array<string, string|null>
+     */
+    private function musicAccessPayload(EditorialContent $content, ?User $user): array
+    {
+        if ($content->isVisibleTo($user)) {
+            return [
+                'state' => 'ready',
+                'access_state' => 'ready',
+                'access_label' => match ($content->visibility) {
+                    VisibilityAudience::Open => 'Open',
+                    VisibilityAudience::Member => 'Member',
+                    VisibilityAudience::Royal => 'Royal',
+                    VisibilityAudience::Purchased => 'Unlocked',
+                },
+                'access_message' => 'Ready for this account.',
+                'cta_label' => null,
+                'cta_url' => null,
+            ];
+        }
+
+        if ($user === null) {
+            return [
+                'state' => 'login_required',
+                'access_state' => 'login_required',
+                'access_label' => 'Login required',
+                'access_message' => 'Sign in to check access for this music item.',
+                'cta_label' => 'Sign in',
+                'cta_url' => route('login'),
+            ];
+        }
+
+        if ($content->visibility === VisibilityAudience::Royal) {
+            return [
+                'state' => 'royal_required',
+                'access_state' => 'royal_required',
+                'access_label' => 'Royal required',
+                'access_message' => 'This music item requires an active Royal Pass.',
+                'cta_label' => 'Get Royal Pass',
+                'cta_url' => route('store'),
+            ];
+        }
+
+        if ($content->visibility === VisibilityAudience::Purchased) {
+            return [
+                'state' => 'content_locked',
+                'access_state' => 'content_locked',
+                'access_label' => 'Locked',
+                'access_message' => 'This music item unlocks after purchase.',
+                'cta_label' => 'Open store',
+                'cta_url' => route('store'),
+            ];
+        }
+
+        return [
+            'state' => 'content_locked',
+            'access_state' => 'content_locked',
+            'access_label' => 'Locked',
+            'access_message' => 'This release window is not open for this account.',
+            'cta_label' => 'View details',
+            'cta_url' => route('public.content.show', $content),
+        ];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function tracklist(EditorialContent $content): array
+    {
+        return collect(preg_split('/\R/', (string) $this->metadata($content, 'tracklist', '')) ?: [])
+            ->map(fn (string $line): string => trim($line))
+            ->filter()
+            ->values()
+            ->all();
     }
 
     private function metadata(EditorialContent $content, string $key, mixed $default = null): mixed

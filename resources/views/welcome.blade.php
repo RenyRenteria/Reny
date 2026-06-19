@@ -2,6 +2,25 @@
     $cmsFeatured = $publicCms['featured'] ?? null;
     $cmsAlbums = $publicCms['albums'] ?? [];
     $cmsSingles = $publicCms['singles'] ?? [];
+    $fallbackPlayState = [
+        'access_state' => 'playback_error',
+        'access_label' => 'Audio unavailable',
+        'access_message' => 'This demo music card is not connected to a CMS audio source yet.',
+        'cta_label' => 'Open music',
+        'cta_url' => route('home'),
+        'detail_url' => route('home'),
+    ];
+    $fallbackAlbums = [
+        [...$fallbackPlayState, 'id' => 'reny-sessions', 'kind' => 'album', 'title' => 'Reny Sessions', 'meta' => '12 tracks', 'cover_class' => 'cover-a'],
+        [...$fallbackPlayState, 'id' => 'bano-1', 'kind' => 'album', 'title' => 'Bano #1', 'meta' => '10 tracks', 'cover_class' => 'cover-b'],
+        [...$fallbackPlayState, 'id' => 'first-album', 'kind' => 'album', 'title' => 'First Album', 'meta' => '8 tracks', 'cover_class' => 'cover-c'],
+        [...$fallbackPlayState, 'id' => 'live-cuts', 'kind' => 'album', 'title' => 'Live Cuts', 'meta' => '6 tracks', 'cover_class' => 'cover-d'],
+    ];
+    $fallbackSingles = [
+        [...$fallbackPlayState, 'id' => 'biggest-launch', 'kind' => 'single', 'title' => 'Biggest Launch', 'artist' => 'Reny Renteria'],
+        [...$fallbackPlayState, 'id' => 'comeback-album', 'kind' => 'single', 'title' => 'Comeback Album', 'artist' => 'Reny Renteria'],
+        [...$fallbackPlayState, 'id' => 'first-drop', 'kind' => 'single', 'title' => 'First Drop', 'artist' => 'Reny Renteria'],
+    ];
 @endphp
 
 <!DOCTYPE html>
@@ -117,53 +136,38 @@
                     <section class="content-section" aria-labelledby="albums-title">
                         <div class="section-head">
                             <h3 id="albums-title">Albums</h3>
-                            <button class="view-all" type="button">VIEW ALL</button>
+                            <a class="view-all" href="{{ route('music.albums') }}">VIEW ALL</a>
                         </div>
 
                         <div class="albums">
                             @if ($cmsAlbums)
                                 @foreach ($cmsAlbums as $album)
-                                    <article class="album">
+                                    <article class="album music-item" data-access-state="{{ $album['access_state'] ?? 'ready' }}">
                                         <div
                                             class="cover {{ $album['cover_class'] ?? 'cover-a' }}"
                                             data-title="{{ $album['title'] }}"
                                             @if (! empty($album['image_url'])) style="background-image: url('{{ $album['image_url'] }}'); background-size: cover; background-position: center;" @endif
                                         >
-                                            <button class="play-button" type="button" aria-label="Open {{ $album['title'] }}"><span></span></button>
+                                            @include('partials.music-play-button', ['item' => $album, 'class' => 'play-button', 'type' => 'album'])
                                         </div>
-                                        <h4>{{ $album['title'] }}</h4>
+                                        @if (($album['access_state'] ?? 'ready') !== 'ready')
+                                            <span class="music-state-badge">{{ $album['access_label'] }}</span>
+                                        @endif
+                                        <h4><a href="{{ $album['detail_url'] }}">{{ $album['title'] }}</a></h4>
                                         <p>{{ $album['meta'] }}</p>
                                     </article>
                                 @endforeach
                             @else
-                                <article class="album">
-                                    <div class="cover cover-a" data-title="Reny">
-                                        <button class="play-button" type="button" aria-label="Play Reny Sessions"><span></span></button>
-                                    </div>
-                                    <h4>Reny Sessions</h4>
-                                    <p>12 tracks</p>
-                                </article>
-                                <article class="album">
-                                    <div class="cover cover-b" data-title="Bano">
-                                        <button class="play-button" type="button" aria-label="Play Bano #1"><span></span></button>
-                                    </div>
-                                    <h4>Bano #1</h4>
-                                    <p>10 tracks</p>
-                                </article>
-                                <article class="album">
-                                    <div class="cover cover-c" data-title="First">
-                                        <button class="play-button" type="button" aria-label="Play First Album"><span></span></button>
-                                    </div>
-                                    <h4>First Album</h4>
-                                    <p>8 tracks</p>
-                                </article>
-                                <article class="album">
-                                    <div class="cover cover-d" data-title="Live">
-                                        <button class="play-button" type="button" aria-label="Play Live Cuts"><span></span></button>
-                                    </div>
-                                    <h4>Live Cuts</h4>
-                                    <p>6 tracks</p>
-                                </article>
+                                @foreach ($fallbackAlbums as $album)
+                                    <article class="album music-item" data-access-state="{{ $album['access_state'] }}">
+                                        <div class="cover {{ $album['cover_class'] }}" data-title="{{ $album['title'] }}">
+                                            @include('partials.music-play-button', ['item' => $album, 'class' => 'play-button', 'type' => 'album'])
+                                        </div>
+                                        <span class="music-state-badge">{{ $album['access_label'] }}</span>
+                                        <h4>{{ $album['title'] }}</h4>
+                                        <p>{{ $album['meta'] }}</p>
+                                    </article>
+                                @endforeach
                             @endif
                         </div>
                     </section>
@@ -171,46 +175,40 @@
                     <section class="content-section" aria-labelledby="singles-title">
                         <div class="section-head">
                             <h3 id="singles-title">Singles</h3>
-                            <button class="view-all" type="button">VIEW ALL</button>
+                            <a class="view-all" href="{{ route('music.singles') }}">VIEW ALL</a>
                         </div>
 
                         <div class="singles">
                             @if ($cmsSingles)
                                 @foreach ($cmsSingles as $single)
-                                    <article class="single">
+                                    <article class="single music-item" data-access-state="{{ $single['access_state'] ?? 'ready' }}">
+                                        <div
+                                            class="single-art"
+                                            aria-hidden="true"
+                                            @if (! empty($single['image_url'])) style="background-image: url('{{ $single['image_url'] }}'); background-size: cover; background-position: center;" @endif
+                                        ></div>
+                                        <div>
+                                            <strong><a href="{{ $single['detail_url'] }}">{{ $single['title'] }}</a></strong>
+                                            <span>{{ $single['artist'] }}</span>
+                                            @if (($single['access_state'] ?? 'ready') !== 'ready')
+                                                <em class="music-inline-state">{{ $single['access_label'] }}</em>
+                                            @endif
+                                        </div>
+                                        @include('partials.music-play-button', ['item' => $single, 'class' => 'mini-play', 'type' => 'single'])
+                                    </article>
+                                @endforeach
+                            @else
+                                @foreach ($fallbackSingles as $single)
+                                    <article class="single music-item" data-access-state="{{ $single['access_state'] }}">
                                         <div class="single-art" aria-hidden="true"></div>
                                         <div>
                                             <strong>{{ $single['title'] }}</strong>
                                             <span>{{ $single['artist'] }}</span>
+                                            <em class="music-inline-state">{{ $single['access_label'] }}</em>
                                         </div>
-                                        <button class="mini-play" type="button" aria-label="Open {{ $single['title'] }}"><span></span></button>
+                                        @include('partials.music-play-button', ['item' => $single, 'class' => 'mini-play', 'type' => 'single'])
                                     </article>
                                 @endforeach
-                            @else
-                                <article class="single">
-                                    <div class="single-art" aria-hidden="true"></div>
-                                    <div>
-                                        <strong>Biggest Launch</strong>
-                                        <span>Reny Renteria</span>
-                                    </div>
-                                    <button class="mini-play" type="button" aria-label="Play Biggest Launch"><span></span></button>
-                                </article>
-                                <article class="single">
-                                    <div class="single-art" aria-hidden="true"></div>
-                                    <div>
-                                        <strong>Comeback Album</strong>
-                                        <span>Reny Renteria</span>
-                                    </div>
-                                    <button class="mini-play" type="button" aria-label="Play Comeback Album"><span></span></button>
-                                </article>
-                                <article class="single">
-                                    <div class="single-art" aria-hidden="true"></div>
-                                    <div>
-                                        <strong>First Drop</strong>
-                                        <span>Reny Renteria</span>
-                                    </div>
-                                    <button class="mini-play" type="button" aria-label="Play First Drop"><span></span></button>
-                                </article>
                                 <x-access-gate
                                     section="music"
                                     title="VIP Mix"
@@ -222,7 +220,16 @@
                                             <strong>VIP Mix</strong>
                                             <span>Royal-only audio stream</span>
                                         </div>
-                                        <button class="mini-play" type="button" aria-label="Play VIP Mix"><span></span></button>
+                                        @include('partials.music-play-button', [
+                                            'item' => [
+                                                ...$fallbackPlayState,
+                                                'id' => 'vip-mix',
+                                                'kind' => 'single',
+                                                'title' => 'VIP Mix',
+                                            ],
+                                            'class' => 'mini-play',
+                                            'type' => 'single',
+                                        ])
                                     </article>
                                 </x-access-gate>
                             @endif
@@ -547,5 +554,7 @@
                 </nav>
             </main>
         </div>
+
+        @include('partials.music-player-modal')
     </body>
 </html>

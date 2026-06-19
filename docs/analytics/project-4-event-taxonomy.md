@@ -40,9 +40,11 @@ Music:
 
 - `music_view_all_clicked`
 - `music_play_clicked`
+- `music_play_ready`
 - `music_play_started`
 - `music_play_failed`
-- `music_locked_content_clicked`
+- `music_access_blocked`
+- `music_permission_cta_clicked`
 
 Videos:
 
