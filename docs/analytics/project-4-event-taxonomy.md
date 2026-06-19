@@ -90,7 +90,8 @@ Store and checkout:
 - `store_payment_succeeded`
 - `store_payment_failed`
 - `store_rsvp_started`
-- `store_rsvp_confirmed`
+- `store_rsvp_succeeded`
+- `store_rsvp_failed`
 
 Photos:
 

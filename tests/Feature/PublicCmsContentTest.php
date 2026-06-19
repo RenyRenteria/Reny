@@ -138,7 +138,8 @@ class PublicCmsContentTest extends TestCase
         $response = $this->get('/store')
             ->assertOk()
             ->assertSee('CMS RSVP Concert')
-            ->assertSee('data-rsvp="CMS RSVP Concert"', false);
+            ->assertSee('data-rsvp="concierto"', false)
+            ->assertSee('data-rsvp-name="CMS RSVP Concert"', false);
 
         $this->assertStringNotContainsString('data-buy="concierto"', $response->getContent());
     }

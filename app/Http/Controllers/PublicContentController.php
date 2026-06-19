@@ -6,6 +6,7 @@ use App\Enums\EditorialStatus;
 use App\Enums\VisibilityAudience;
 use App\Models\EditorialContent;
 use App\Services\PublicCmsContentService;
+use App\Services\TicketCodeService;
 use App\Support\AccountStateView;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -54,11 +55,42 @@ class PublicContentController extends Controller
         ]);
     }
 
-    public function store(Request $request, PublicCmsContentService $cms): View
+    public function store(Request $request, PublicCmsContentService $cms, TicketCodeService $ticketCodes): View
     {
+        $publicCms = $cms->store($request->user());
+
         return view('store', [
-            'publicCms' => $cms->store($request->user()),
+            'publicCms' => $publicCms,
+            'rsvpTickets' => $this->rsvpTickets($request, $ticketCodes),
         ]);
+    }
+
+    /**
+     * @return array<string, array{status: string, rsvp_status: string, code: string, account_url: string}>
+     */
+    private function rsvpTickets(Request $request, TicketCodeService $ticketCodes): array
+    {
+        $user = $request->user();
+
+        if (! $user) {
+            return [];
+        }
+
+        return $user->tickets()
+            ->with('event')
+            ->whereIn('status', ['reserved', 'confirmed', 'checked_in'])
+            ->get()
+            ->filter(fn ($ticket): bool => ($ticket->event?->metadata['source'] ?? null) === 'store_rsvp'
+                && filled($ticket->event?->metadata['store_event_key'] ?? null))
+            ->mapWithKeys(fn ($ticket): array => [
+                $ticket->event->metadata['store_event_key'] => [
+                    'status' => $ticket->status,
+                    'rsvp_status' => $ticket->rsvp_status,
+                    'code' => $ticketCodes->displayCode($ticket),
+                    'account_url' => route('account.show'),
+                ],
+            ])
+            ->all();
     }
 
     public function payload(Request $request, PublicCmsContentService $cms, string $page): JsonResponse

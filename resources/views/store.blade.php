@@ -104,6 +104,8 @@
         ],
     ];
 
+    $rsvpTickets = $rsvpTickets ?? [];
+
     if (! empty($publicCms['products'] ?? [])) {
         $products = $publicCms['products'];
     }
@@ -125,6 +127,9 @@
     ];
 
     $heroImage = $heroEvent['image_url'] ?? asset('images/photos/' . $heroEvent['image']);
+    $heroIsRsvp = ($heroEvent['mode'] ?? 'buy') === 'rsvp';
+    $heroRsvpTicket = $rsvpTickets[$heroEvent['key']] ?? null;
+    $heroRsvpStatusId = 'hero-rsvp-status-' . \Illuminate\Support\Str::slug($heroEvent['key']);
 @endphp
 
 <!DOCTYPE html>
@@ -229,7 +234,28 @@
                         <p>{{ $heroEvent['date'] }} - {{ $heroEvent['place'] }}</p>
                         <div class="store-hero-actions">
                             <strong data-price="{{ $heroEvent['key'] }}" data-price-value="{{ $heroEvent['price'] }}">${{ $heroEvent['price'] }}</strong>
-                            @if (($heroEvent['mode'] ?? 'buy') === 'buy')
+                            @if ($heroIsRsvp)
+                                <button
+                                    class="store-button store-button-light"
+                                    type="button"
+                                    data-rsvp="{{ $heroEvent['key'] }}"
+                                    data-rsvp-name="{{ $heroEvent['name'] }}"
+                                    data-rsvp-endpoint="{{ route('store.rsvp') }}"
+                                    data-rsvp-status-target="{{ $heroRsvpStatusId }}"
+                                    data-rsvp-confirmed="{{ $heroRsvpTicket ? 'true' : 'false' }}"
+                                    aria-describedby="{{ $heroRsvpStatusId }}"
+                                >{{ $heroRsvpTicket ? 'RSVP confirmed' : $heroEvent['action'] }}</button>
+                                <p
+                                    class="store-rsvp-status {{ $heroRsvpTicket ? 'is-confirmed' : '' }}"
+                                    id="{{ $heroRsvpStatusId }}"
+                                >
+                                    @if ($heroRsvpTicket)
+                                        Reserved - {{ str_replace('_', ' ', $heroRsvpTicket['status']) }} - Code {{ $heroRsvpTicket['code'] }}
+                                    @else
+                                        Free RSVP confirms a reservation on this account.
+                                    @endif
+                                </p>
+                            @else
                                 <button
                                     class="store-button store-button-light"
                                     type="button"
@@ -238,8 +264,6 @@
                                     data-buy-type="{{ $heroEvent['kicker'] ?? 'Event' }}"
                                     data-buy-summary="{{ $heroEvent['date'] }} - {{ $heroEvent['place'] }}"
                                 >{{ $heroEvent['action'] }}</button>
-                            @else
-                                <button class="store-button store-button-light" type="button" data-rsvp="{{ $heroEvent['name'] }}">{{ $heroEvent['action'] }}</button>
                             @endif
                         </div>
                     </div>
@@ -299,6 +323,8 @@
                         @foreach ($events as $event)
                             @php
                                 $eventImage = $event['image_url'] ?? asset('images/photos/' . $event['image']);
+                                $rsvpTicket = $rsvpTickets[$event['key']] ?? null;
+                                $rsvpStatusId = 'rsvp-status-' . \Illuminate\Support\Str::slug($event['key']);
                             @endphp
                             <article class="store-event-card">
                                 <img src="{{ $eventImage }}" alt="{{ $event['name'] }} poster" loading="lazy" decoding="async">
@@ -319,7 +345,26 @@
                                             data-buy-summary="{{ $event['date'] }} - {{ $event['place'] }}"
                                         >{{ $event['action'] }} <span data-price="{{ $event['key'] }}" data-price-value="{{ $event['price'] }}">${{ $event['price'] }}</span></button>
                                     @else
-                                        <button class="store-button store-button-light" type="button" data-rsvp="{{ $event['name'] }}">{{ $event['action'] }}</button>
+                                        <button
+                                            class="store-button store-button-light"
+                                            type="button"
+                                            data-rsvp="{{ $event['key'] }}"
+                                            data-rsvp-name="{{ $event['name'] }}"
+                                            data-rsvp-endpoint="{{ route('store.rsvp') }}"
+                                            data-rsvp-status-target="{{ $rsvpStatusId }}"
+                                            data-rsvp-confirmed="{{ $rsvpTicket ? 'true' : 'false' }}"
+                                            aria-describedby="{{ $rsvpStatusId }}"
+                                        >{{ $rsvpTicket ? 'RSVP confirmed' : $event['action'] }}</button>
+                                        <p
+                                            class="store-rsvp-status {{ $rsvpTicket ? 'is-confirmed' : '' }}"
+                                            id="{{ $rsvpStatusId }}"
+                                        >
+                                            @if ($rsvpTicket)
+                                                Reserved - {{ str_replace('_', ' ', $rsvpTicket['status']) }} - Code {{ $rsvpTicket['code'] }}
+                                            @else
+                                                Free RSVP confirms a reservation on this account.
+                                            @endif
+                                        </p>
                                     @endif
                                 </div>
                             </article>
