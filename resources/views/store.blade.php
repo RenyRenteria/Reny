@@ -398,16 +398,16 @@
                         <h3>Step 1 - Bag</h3>
                         <p class="store-checkout-note">Every completed purchase activates Royal Pass for 1 month on this account.</p>
                         <div class="store-bag-list" id="bagList"></div>
-                        <label class="sr-only" for="emailField">Receipt email or phone</label>
-                        <input
-                            class="store-email"
-                            id="emailField"
-                            type="text"
-                            inputmode="email"
-                            autocomplete="email"
-                            value="fan@renyrenteria.com"
-                            placeholder="Email or phone for receipt"
-                        >
+                        <div class="store-contact-grid">
+                            <div>
+                                <label for="emailField">Receipt email</label>
+                                <input class="store-input" id="emailField" type="email" value="fan@renyrenteria.com" autocomplete="email">
+                            </div>
+                            <div>
+                                <label for="phoneField">Phone</label>
+                                <input class="store-input" id="phoneField" type="tel" value="" autocomplete="tel">
+                            </div>
+                        </div>
                         <div class="store-total-row">
                             <span>Total</span>
                             <strong id="bagTotal">$0</strong>
@@ -420,40 +420,26 @@
                     >
                         <h3>Step 2 - Pay</h3>
                         <div class="store-payments" role="radiogroup" aria-label="Payment method">
-                            <button class="is-active" type="button" role="radio" aria-checked="true" data-payment-method="paypal">PayPal</button>
-                            <button type="button" role="radio" aria-checked="false" data-payment-method="card">Card</button>
-                            <button type="button" role="radio" aria-checked="false" data-payment-method="apple_pay">Apple Pay</button>
-                            <button type="button" role="radio" aria-checked="false" data-payment-method="local">Local</button>
+                            <button class="is-active" type="button" data-payment-method="paypal" data-provider-available="true" aria-checked="true">PayPal</button>
+                            <button type="button" data-payment-method="card" data-provider-available="false" data-unavailable-reason="card_provider_not_configured" aria-checked="false">Card</button>
+                            <button type="button" data-payment-method="apple_pay" data-provider-available="false" data-unavailable-reason="apple_pay_provider_not_configured" aria-checked="false">Apple Pay</button>
+                            <button type="button" data-payment-method="local" data-provider-available="true" aria-checked="false">Local</button>
                         </div>
-                        <div class="store-payment-panel is-active" data-payment-panel="paypal">
-                            <div
-                                class="store-paypal-buttons"
-                                id="paypalButtons"
-                                data-paypal-client-id="{{ config('services.paypal.client_id') }}"
-                                data-create-order-endpoint="{{ route('checkout.paypal.orders') }}"
-                                data-capture-endpoint="{{ route('checkout.paypal') }}"
-                            ></div>
-                            <p class="store-checkout-note">PayPal approval is required before the Hub is updated.</p>
-                        </div>
-                        <div class="store-payment-panel" data-payment-panel="card" hidden>
-                            <p class="store-checkout-note">Card checkout is not configured yet. A card provider endpoint is required before this method can accept payment.</p>
-                        </div>
-                        <div class="store-payment-panel" data-payment-panel="apple_pay" hidden>
-                            <p class="store-checkout-note">Apple Pay is not configured yet. Merchant validation and a wallet provider are required before this method can accept payment.</p>
-                        </div>
-                        <div class="store-payment-panel" data-payment-panel="local" hidden>
-                            <label class="sr-only" for="localReference">Local receipt or reference</label>
-                            <input
-                                class="store-email"
-                                id="localReference"
-                                type="text"
-                                inputmode="text"
-                                autocomplete="off"
-                                placeholder="ACH-20260619-1234"
-                            >
+                        <div
+                            class="store-paypal-buttons"
+                            id="paypalButtons"
+                            data-paypal-client-id="{{ config('services.paypal.client_id') }}"
+                            data-create-order-endpoint="{{ route('checkout.paypal.orders') }}"
+                            data-capture-endpoint="{{ route('checkout.paypal') }}"
+                        ></div>
+                        <div class="store-local-panel" id="localPaymentPanel" hidden>
+                            <label for="localReferenceField">Bank reference</label>
+                            <input class="store-input" id="localReferenceField" type="text" inputmode="latin" placeholder="ACH-20260619-1234">
+                            <label for="localReceiptField">Receipt (optional)</label>
+                            <input class="store-input" id="localReceiptField" type="file" accept="image/*,.pdf">
                             <p class="store-checkout-note">Submit a bank/Yappy receipt or reference with at least 4 digits. Local orders stay pending until manual confirmation.</p>
                         </div>
-                        <p class="store-checkout-note store-payment-status" id="paymentStatus" data-state="idle">Add a product to enable checkout.</p>
+                        <p class="store-checkout-note" id="paymentStatus">Add a product to enable checkout.</p>
                         <button class="store-button" id="completePurchase" type="button">Load PayPal checkout</button>
                     </div>
                 </div>

@@ -87,20 +87,36 @@ class RoyalPassCheckoutTest extends TestCase
             ->assertJsonPath('paypal_order_id', 'PAYPAL-CREATED-100');
     }
 
-    public function test_checkout_requires_valid_email_or_phone_identifier(): void
+    public function test_checkout_rejects_empty_cart_before_paypal_order_creation(): void
     {
+        Http::fake();
+
         $this->postJson('/checkout/paypal/orders', [
-            'identifier' => 'abc',
-            'product_keys' => ['deluxe'],
+            'identifier' => 'fan@renyrenteria.com',
+            'product_keys' => [],
             'currency' => 'USD',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('product_keys');
+
+        Http::assertNothingSent();
+    }
+
+    public function test_checkout_rejects_invalid_contact_identifier_before_capture(): void
+    {
+        Http::fake();
+
+        $this->postJson('/checkout/paypal', [
+            'identifier' => 'abc',
+            'product_keys' => ['merch'],
+            'currency' => 'USD',
+            'paypal_order_id' => 'PAYPAL-INVALID-CONTACT',
         ])
             ->assertUnprocessable()
             ->assertJsonValidationErrors('identifier');
 
         $this->assertDatabaseCount('orders', 0);
-        $this->assertDatabaseMissing('users', [
-            'email' => 'phone-@renyrenteria.local',
-        ]);
+        Http::assertNothingSent();
     }
 
     public function test_checkout_rejects_non_usd_currency_before_payment_or_order_creation(): void
@@ -494,8 +510,6 @@ class RoyalPassCheckoutTest extends TestCase
             ->assertSee('Every completed purchase activates Royal Pass for 1 month')
             ->assertSee('Load PayPal checkout')
             ->assertSee('Submit a bank/Yappy receipt')
-            ->assertSee('Card checkout is not configured yet')
-            ->assertSee('Apple Pay is not configured yet')
             ->assertSee(route('checkout.paypal.orders'))
             ->assertSee(route('checkout.paypal'))
             ->assertSee(route('checkout.local'));
