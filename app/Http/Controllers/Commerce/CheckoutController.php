@@ -43,6 +43,8 @@ class CheckoutController extends Controller
         $expectedTotal = $this->expectedTotal($validated['product_keys']);
         $capture = $payPal->captureOrder($validated['paypal_order_id'], $expectedTotal, $currency);
 
+        $this->ensureUnusedPayPalCapture($capture);
+
         $user = Auth::user() ?: $royalPass->findOrCreateCustomer($validated['identifier']);
         Auth::login($user);
 
@@ -52,6 +54,7 @@ class CheckoutController extends Controller
                     'user_id' => $user->id,
                     'provider' => 'paypal',
                     'provider_order_id' => $this->providerOrderId($capture['order_id'], $productKey, $index),
+                    'provider_capture_id' => $capture['capture_id'],
                     'product_key' => $productKey,
                     'amount_cents' => $this->prices[$productKey],
                     'currency' => $currency,
@@ -252,6 +255,30 @@ class CheckoutController extends Controller
 
         throw ValidationException::withMessages([
             'local_reference' => 'This local payment reference has already been submitted.',
+        ]);
+    }
+
+    /**
+     * @param  array{order_id: string, capture_id: string, payer_id: string|null, payload: array<string, mixed>}  $capture
+     */
+    private function ensureUnusedPayPalCapture(array $capture): void
+    {
+        $paypalOrderId = $capture['order_id'];
+        $paypalCaptureId = $capture['capture_id'];
+
+        if (! Order::query()
+            ->where('provider', 'paypal')
+            ->where(function ($query) use ($paypalCaptureId, $paypalOrderId) {
+                $query
+                    ->where('provider_capture_id', $paypalCaptureId)
+                    ->orWhere('provider_order_id', 'like', "{$paypalOrderId}-%");
+            })
+            ->exists()) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'paypal_order_id' => 'This PayPal payment has already been recorded.',
         ]);
     }
 }

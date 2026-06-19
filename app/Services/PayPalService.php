@@ -5,8 +5,8 @@ namespace App\Services;
 use Illuminate\Http\Client\Response;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class PayPalService
@@ -48,7 +48,7 @@ class PayPalService
     }
 
     /**
-     * @return array{order_id: string, capture_id: string|null, payer_id: string|null, payload: array<string, mixed>}
+     * @return array{order_id: string, capture_id: string, payer_id: string|null, payload: array<string, mixed>}
      */
     public function captureOrder(string $paypalOrderId, int $expectedAmountCents, string $currency): array
     {
@@ -86,9 +86,17 @@ class PayPalService
             ]);
         }
 
+        $captureId = $completedCaptures->pluck('id')->filter()->first();
+
+        if (blank($captureId)) {
+            throw ValidationException::withMessages([
+                'paypal_order_id' => 'PayPal capture did not include a capture id.',
+            ]);
+        }
+
         return [
             'order_id' => (string) Arr::get($payload, 'id', $paypalOrderId),
-            'capture_id' => $completedCaptures->pluck('id')->filter()->first(),
+            'capture_id' => (string) $captureId,
             'payer_id' => Arr::get($payload, 'payer.payer_id'),
             'payload' => $payload,
         ];
