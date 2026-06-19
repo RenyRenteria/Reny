@@ -96,7 +96,9 @@ class AdminStatsTest extends TestCase
             ->assertSee('>2<', false)
             ->assertSee('$120,000,000,000')
             ->assertSee('120 billion')
-            ->assertSee('STATS');
+            ->assertSee('STATS')
+            ->assertSee('data-admin-nav="stats"', false)
+            ->assertDontSee('data-admin-nav="dashboard"', false);
     }
 
     public function test_admin_stats_page_marks_empty_values_in_red(): void

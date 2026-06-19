@@ -40,8 +40,8 @@
         <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="admin-cms-body admin-stats-body" data-theme="neutral" data-admin-current-section="dashboard">
-        @include('admin.partials.header', ['showSidebarToggle' => false, 'adminSection' => 'dashboard'])
+    <body class="admin-cms-body admin-stats-body" data-theme="neutral" data-admin-current-section="stats">
+        @include('admin.partials.header', ['showSidebarToggle' => false, 'adminSection' => 'stats'])
 
         <main class="admin-stats-main" aria-labelledby="stats-title">
             <h1 id="stats-title" class="sr-only">Stats</h1>
