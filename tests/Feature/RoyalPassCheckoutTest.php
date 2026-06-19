@@ -2,10 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ContentType;
+use App\Models\EditorialContent;
 use App\Models\FanEvent;
 use App\Models\Order;
 use App\Models\Ticket;
 use App\Models\User;
+use App\Models\UserUnlock;
+use App\Services\UserHubPurchaseSync;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
@@ -324,6 +328,175 @@ class RoyalPassCheckoutTest extends TestCase
             ->get('/account')
             ->assertOk()
             ->assertSee('Deluxe Digital Album');
+    }
+
+    public function test_cms_digital_checkout_creates_editorial_content_entitlement(): void
+    {
+        $content = EditorialContent::factory()->published()->create([
+            'type' => ContentType::Product->value,
+            'title' => 'Backstage Stems Pack',
+            'slug' => 'backstage-stems-pack',
+            'purchase_key' => 'cms-digital-stems',
+            'metadata' => [
+                'product_kind' => 'digital',
+                'price_cents' => 1200,
+            ],
+        ]);
+
+        $this->createPendingPayPalOrder('cms-digital@renyrenteria.com', ['cms-digital-stems'], 'PAYPAL-CMS-DIGITAL');
+        $this->fakeSuccessfulCapture('PAYPAL-CMS-DIGITAL', '12.00', 'CAPTURE-CMS-DIGITAL');
+
+        $this->postJson('/checkout/paypal', [
+            'identifier' => 'cms-digital@renyrenteria.com',
+            'product_keys' => ['cms-digital-stems'],
+            'currency' => 'USD',
+            'paypal_order_id' => 'PAYPAL-CMS-DIGITAL',
+        ])->assertOk();
+
+        $user = User::where('email', 'cms-digital@renyrenteria.com')->firstOrFail();
+        $order = Order::where('provider_order_id', 'PAYPAL-CMS-DIGITAL-1-cms-digital-stems')->firstOrFail();
+
+        $this->assertSame(1200, $order->amount_cents);
+        $this->assertSame('Backstage Stems Pack', data_get($order->metadata, 'product.title'));
+        $this->assertSame('editorial_content', data_get($order->metadata, 'product.source_type'));
+        $this->assertSame((string) $content->id, data_get($order->metadata, 'product.source_id'));
+
+        $this->assertDatabaseHas('user_unlocks', [
+            'user_id' => $user->id,
+            'order_id' => $order->id,
+            'product_key' => 'cms-digital-stems',
+            'unlock_type' => 'digital',
+            'title' => 'Backstage Stems Pack',
+            'source_type' => 'editorial_content',
+            'source_id' => (string) $content->id,
+            'status' => 'available',
+        ]);
+
+        $this->actingAs($user)
+            ->get('/account')
+            ->assertOk()
+            ->assertSee('Backstage Stems Pack');
+    }
+
+    public function test_cms_art_drop_checkout_creates_drop_entitlement(): void
+    {
+        $content = EditorialContent::factory()->published()->create([
+            'type' => ContentType::Drop->value,
+            'title' => 'Capri Contact Sheet',
+            'slug' => 'capri-contact-sheet',
+            'purchase_key' => 'capri-art-drop',
+            'metadata' => [
+                'drop_kind' => 'content',
+                'price_cents' => 8600,
+            ],
+        ]);
+
+        $this->createPendingPayPalOrder('artdrop@renyrenteria.com', ['capri-art-drop'], 'PAYPAL-CMS-DROP');
+        $this->fakeSuccessfulCapture('PAYPAL-CMS-DROP', '86.00', 'CAPTURE-CMS-DROP');
+
+        $this->postJson('/checkout/paypal', [
+            'identifier' => 'artdrop@renyrenteria.com',
+            'product_keys' => ['capri-art-drop'],
+            'currency' => 'USD',
+            'paypal_order_id' => 'PAYPAL-CMS-DROP',
+        ])->assertOk();
+
+        $user = User::where('email', 'artdrop@renyrenteria.com')->firstOrFail();
+
+        $this->assertDatabaseHas('user_unlocks', [
+            'user_id' => $user->id,
+            'product_key' => 'capri-art-drop',
+            'unlock_type' => 'drop',
+            'title' => 'Capri Contact Sheet',
+            'source_type' => 'editorial_content',
+            'source_id' => (string) $content->id,
+            'status' => 'available',
+        ]);
+
+        $this->actingAs($user)
+            ->get('/account')
+            ->assertOk()
+            ->assertSee('Capri Contact Sheet');
+    }
+
+    public function test_failed_cms_digital_capture_does_not_grant_entitlement(): void
+    {
+        EditorialContent::factory()->published()->create([
+            'type' => ContentType::Product->value,
+            'title' => 'Failed Digital Pack',
+            'slug' => 'failed-digital-pack',
+            'purchase_key' => 'failed-digital-pack',
+            'metadata' => [
+                'product_kind' => 'digital',
+                'price_cents' => 1200,
+            ],
+        ]);
+
+        $this->createPendingPayPalOrder('failed-digital@renyrenteria.com', ['failed-digital-pack'], 'PAYPAL-CMS-FAILED');
+
+        Http::fake([
+            'https://paypal.test/v1/oauth2/token' => Http::response([
+                'access_token' => 'paypal-token',
+            ], 200),
+            'https://paypal.test/v2/checkout/orders/PAYPAL-CMS-FAILED/capture' => Http::response([
+                'id' => 'PAYPAL-CMS-FAILED',
+                'status' => 'PAYER_ACTION_REQUIRED',
+            ], 200),
+        ]);
+
+        $this->postJson('/checkout/paypal', [
+            'identifier' => 'failed-digital@renyrenteria.com',
+            'product_keys' => ['failed-digital-pack'],
+            'currency' => 'USD',
+            'paypal_order_id' => 'PAYPAL-CMS-FAILED',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('paypal_order_id');
+
+        $this->assertDatabaseCount('user_unlocks', 0);
+        $this->assertDatabaseHas('orders', [
+            'provider_order_id' => 'PAYPAL-CMS-FAILED-1-failed-digital-pack',
+            'provider_capture_id' => null,
+            'status' => 'pending',
+        ]);
+    }
+
+    public function test_entitlement_sync_is_idempotent_for_replayed_completion(): void
+    {
+        EditorialContent::factory()->published()->create([
+            'type' => ContentType::Product->value,
+            'title' => 'Replay Digital Pack',
+            'slug' => 'replay-digital-pack',
+            'purchase_key' => 'replay-digital-pack',
+            'metadata' => [
+                'product_kind' => 'digital',
+                'price_cents' => 1200,
+            ],
+        ]);
+
+        $this->createPendingPayPalOrder('replay-digital@renyrenteria.com', ['replay-digital-pack'], 'PAYPAL-CMS-REPLAY');
+        $this->fakeSuccessfulCapture('PAYPAL-CMS-REPLAY', '12.00', 'CAPTURE-CMS-REPLAY');
+
+        $this->postJson('/checkout/paypal', [
+            'identifier' => 'replay-digital@renyrenteria.com',
+            'product_keys' => ['replay-digital-pack'],
+            'currency' => 'USD',
+            'paypal_order_id' => 'PAYPAL-CMS-REPLAY',
+        ])->assertOk();
+
+        $user = User::where('email', 'replay-digital@renyrenteria.com')->firstOrFail();
+        $order = Order::where('provider_order_id', 'PAYPAL-CMS-REPLAY-1-replay-digital-pack')->firstOrFail();
+
+        app(UserHubPurchaseSync::class)->recordCompletedOrder($user, $order, [
+            'capture_id' => 'CAPTURE-CMS-REPLAY',
+            'payer_id' => 'PAYER-100',
+        ]);
+
+        $this->assertSame(1, UserUnlock::query()
+            ->where('user_id', $user->id)
+            ->where('product_key', 'replay-digital-pack')
+            ->where('status', 'available')
+            ->count());
     }
 
     public function test_event_checkout_issues_internal_ticket_for_account_events(): void
@@ -899,6 +1072,38 @@ class RoyalPassCheckoutTest extends TestCase
             ->assertSee(route('checkout.paypal.orders.cancel'))
             ->assertSee(route('checkout.paypal'))
             ->assertSee(route('checkout.local'));
+    }
+
+    public function test_store_exposes_cms_digital_and_art_drop_purchase_keys(): void
+    {
+        EditorialContent::factory()->published()->create([
+            'type' => ContentType::Product->value,
+            'title' => 'CMS Digital Pack',
+            'slug' => 'cms-digital-pack',
+            'purchase_key' => 'cms-digital-pack',
+            'metadata' => [
+                'product_kind' => 'digital',
+                'price_cents' => 1200,
+            ],
+        ]);
+        EditorialContent::factory()->published()->create([
+            'type' => ContentType::Drop->value,
+            'title' => 'CMS Art Drop',
+            'slug' => 'cms-art-drop',
+            'purchase_key' => 'cms-art-drop',
+            'metadata' => [
+                'drop_kind' => 'content',
+                'price_cents' => 8600,
+            ],
+        ]);
+
+        $this->get('/store')
+            ->assertOk()
+            ->assertSee('CMS Digital Pack')
+            ->assertSee('CMS Art Drop')
+            ->assertSee('data-detail="cms-digital-pack"', false)
+            ->assertSee('data-detail="cms-art-drop"', false)
+            ->assertSee('data-category="drops content"', false);
     }
 
     private function fakeCreatedOrder(string $orderId): void

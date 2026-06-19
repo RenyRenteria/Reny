@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Commerce;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\User;
+use App\Services\Commerce\ProductCatalog;
 use App\Services\PayPalService;
 use App\Services\RoyalPassService;
 use App\Services\UserHubPurchaseSync;
@@ -14,7 +15,6 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -22,18 +22,7 @@ class CheckoutController extends Controller
 {
     private const SETTLEMENT_CURRENCY = 'USD';
 
-    /**
-     * @var array<string, int>
-     */
-    private array $prices = [
-        'deluxe' => 2400,
-        'singles' => 800,
-        'royal' => 499,
-        'merch' => 4800,
-        'print' => 8600,
-        'concert' => 4200,
-        'listening' => 1800,
-    ];
+    public function __construct(private readonly ProductCatalog $products) {}
 
     public function store(
         Request $request,
@@ -111,19 +100,23 @@ class CheckoutController extends Controller
         $currency = $this->currency($validated);
         $user = Auth::user() ?: $royalPass->findOrCreateCustomer($validated['identifier']);
         Auth::login($user);
+        $products = $this->resolveProducts($validated['product_keys'], $user);
 
         $pendingReference = 'PENDING-'.Str::upper(Str::random(20));
-        $orders = DB::transaction(function () use ($currency, $pendingReference, $user, $validated) {
-            return collect($validated['product_keys'])->map(function (string $productKey, int $index) use ($currency, $pendingReference, $user) {
+        $orders = DB::transaction(function () use ($currency, $pendingReference, $products, $user) {
+            return $products->map(function (array $product, int $index) use ($currency, $pendingReference, $user) {
                 return Order::create([
                     'user_id' => $user->id,
                     'provider' => 'paypal',
-                    'provider_order_id' => $this->providerOrderId($pendingReference, $productKey, $index),
-                    'product_key' => $productKey,
-                    'amount_cents' => $this->prices[$productKey],
+                    'provider_order_id' => $this->providerOrderId($pendingReference, $product['key'], $index),
+                    'product_key' => $product['key'],
+                    'amount_cents' => $product['amount_cents'],
                     'currency' => $currency,
                     'status' => 'pending',
                     'grants_royal_month' => true,
+                    'metadata' => [
+                        'product' => $this->products->orderSnapshot($product),
+                    ],
                 ]);
             });
         });
@@ -218,23 +211,27 @@ class CheckoutController extends Controller
 
         $user = Auth::user() ?: $royalPass->findOrCreateCustomer($validated['identifier']);
         Auth::login($user);
+        $products = $this->resolveProducts($validated['product_keys'], $user);
 
-        $orders = DB::transaction(function () use ($currency, $reference, $royalPass, $user, $validated) {
-            return collect($validated['product_keys'])->map(function (string $productKey, int $index) use ($currency, $reference, $royalPass, $user) {
-                $providerOrderId = $this->providerOrderId("LOCAL-{$reference}", $productKey, $index);
+        $orders = DB::transaction(function () use ($currency, $products, $reference, $royalPass, $user) {
+            return $products->map(function (array $product, int $index) use ($currency, $reference, $royalPass, $user) {
+                $providerOrderId = $this->providerOrderId("LOCAL-{$reference}", $product['key'], $index);
                 $order = Order::create([
                     'user_id' => $user->id,
                     'provider' => 'local',
                     'provider_order_id' => $providerOrderId,
-                    'product_key' => $productKey,
-                    'amount_cents' => $this->prices[$productKey],
+                    'product_key' => $product['key'],
+                    'amount_cents' => $product['amount_cents'],
                     'currency' => $currency,
                     'status' => 'pending',
                     'grants_royal_month' => false,
+                    'metadata' => [
+                        'product' => $this->products->orderSnapshot($product),
+                    ],
                 ]);
 
                 $royalPass->log($user, 'purchase_pending', 'order', $providerOrderId, [
-                    'product_key' => $productKey,
+                    'product_key' => $product['key'],
                     'provider' => 'local',
                     'local_reference' => $reference,
                 ]);
@@ -273,7 +270,7 @@ class CheckoutController extends Controller
                 },
             ],
             'product_keys' => ['required', 'array', 'min:1'],
-            'product_keys.*' => ['required', 'string', Rule::in(array_keys($this->prices))],
+            'product_keys.*' => ['required', 'string', 'max:120', 'regex:/^[A-Za-z0-9._-]+$/'],
             'currency' => ['nullable', 'string', 'size:3'],
             'paypal_order_id' => [$requirePaypalOrder ? 'required' : 'sometimes', 'string', 'max:255'],
             'local_reference' => [
@@ -312,6 +309,26 @@ class CheckoutController extends Controller
     }
 
     /**
+     * @param  array<int, string>  $productKeys
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function resolveProducts(array $productKeys, User $user): Collection
+    {
+        $products = $this->products->findMany($productKeys, $user);
+        $missing = collect($productKeys)
+            ->filter(fn (string $productKey, int $index): bool => $products->get($index) === null)
+            ->values();
+
+        if ($missing->isEmpty()) {
+            return $products->filter()->values();
+        }
+
+        throw ValidationException::withMessages([
+            'product_keys' => 'Some products are no longer available for checkout: '.$missing->implode(', '),
+        ]);
+    }
+
+    /**
      * @param  Collection<int, Order>  $orders
      * @return array<int, array{name: string, unit_amount_cents: int, quantity: int}>
      */
@@ -324,27 +341,13 @@ class CheckoutController extends Controller
                 $order = $group->first();
 
                 return [
-                    'name' => $this->productLabel($order->product_key),
+                    'name' => (string) data_get($order->metadata, 'product.title', str($order->product_key)->headline()->toString()),
                     'unit_amount_cents' => $order->amount_cents,
                     'quantity' => $group->count(),
                 ];
             })
             ->values()
             ->all();
-    }
-
-    private function productLabel(string $productKey): string
-    {
-        return match ($productKey) {
-            'deluxe' => 'Deluxe Digital Album',
-            'singles' => 'Singles / Digital Pack',
-            'royal' => 'Royal Pass',
-            'merch' => 'Signature Merch',
-            'print' => 'Numbered Art Print',
-            'concert' => 'Reny Live - Studio Night',
-            'listening' => 'Deluxe Preview Session',
-            default => str($productKey)->headline()->toString(),
-        };
     }
 
     /**

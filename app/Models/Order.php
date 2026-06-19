@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'grants_royal_month',
     'royal_granted_until',
     'refunded_at',
+    'metadata',
 ])]
 class Order extends Model
 {
@@ -27,6 +28,7 @@ class Order extends Model
             'grants_royal_month' => 'boolean',
             'royal_granted_until' => 'datetime',
             'refunded_at' => 'datetime',
+            'metadata' => 'array',
         ];
     }
 
