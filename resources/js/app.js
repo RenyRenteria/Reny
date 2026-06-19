@@ -2398,6 +2398,24 @@ const activateAdminSection = (sectionId, updateHash = true) => {
     return true;
 };
 
+const shouldHandleAdminNavClick = (link) => {
+    const href = link.getAttribute('href');
+
+    if (!href) {
+        return false;
+    }
+
+    if (href.startsWith('#')) {
+        return true;
+    }
+
+    const url = new URL(link.href, window.location.href);
+
+    return url.origin === window.location.origin
+        && url.pathname === window.location.pathname
+        && url.search === window.location.search;
+};
+
 const syncAdminTypeFields = () => {
     const typeSelect = document.querySelector('#content-type');
     const fieldsets = Array.from(document.querySelectorAll('[data-type-fieldset]'));
@@ -2461,7 +2479,7 @@ document.addEventListener('DOMContentLoaded', () => {
         link.addEventListener('click', (event) => {
             const sectionId = link.dataset.adminNav;
 
-            if (sectionId && activateAdminSection(sectionId)) {
+            if (sectionId && shouldHandleAdminNavClick(link) && activateAdminSection(sectionId)) {
                 event.preventDefault();
             }
         });
