@@ -14,7 +14,7 @@ class PhotosPageTest extends TestCase
         $response->assertSee('PHOTOS');
         $response->assertSee('class="photo-masonry"', false);
         $response->assertSee('class="tab is-active"', false);
-        $response->assertSee('href="' . url('/photos') . '"', false);
+        $response->assertSee('href="'.url('/photos').'"', false);
 
         $html = $response->getContent();
 
@@ -32,12 +32,12 @@ class PhotosPageTest extends TestCase
     {
         $this->get('/')
             ->assertOk()
-            ->assertSee('href="' . url('/photos') . '"', false)
+            ->assertSee('href="'.url('/photos').'"', false)
             ->assertDontSee('href="#photos"', false);
 
         $this->get('/videos')
             ->assertOk()
-            ->assertSee('href="' . url('/photos') . '"', false)
+            ->assertSee('href="'.url('/photos').'"', false)
             ->assertDontSee('href="#photos"', false);
     }
 }
