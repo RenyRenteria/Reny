@@ -87,6 +87,7 @@ const elementAnalyticsLabel = (element) => element.dataset.analyticsLabel
     || element.dataset.youtubeTitle
     || element.dataset.photoTitle
     || element.dataset.buyName
+    || element.dataset.rsvpName
     || element.dataset.name
     || element.dataset.rsvp
     || element.getAttribute('aria-label')
@@ -1158,6 +1159,7 @@ if (storeShell) {
     const paymentStatus = document.getElementById('paymentStatus');
     const completePurchaseButton = document.getElementById('completePurchase');
     const paymentButtons = [...document.querySelectorAll('.store-payments button[data-payment-method]')];
+    const rsvpButtons = [...document.querySelectorAll('[data-rsvp]')];
     const tierLabel = document.getElementById('tierLabel');
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     let activePaymentMethod = 'paypal';
@@ -1379,6 +1381,37 @@ if (storeShell) {
             const checkoutState = response.status === 422 ? 'validation_failed' : 'payment_failed';
 
             throw checkoutError(validationMessage || payload.message || 'Checkout failed.', checkoutState, payload.message || 'checkout_request_failed');
+        }
+
+        return payload;
+    };
+
+    const rsvpError = (message, reason = null) => Object.assign(new Error(message), {
+        reason: reason || normalizeAnalyticsKey(message),
+        userMessage: message,
+    });
+
+    const postRsvpJson = async (url, body) => {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+            },
+            body: JSON.stringify(body),
+        });
+        const payload = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            const validationMessage = Object.values(payload.errors || {})[0]?.[0];
+            const fallback = response.status === 401
+                ? 'Sign in before saving RSVP.'
+                : response.status === 419
+                    ? 'Refresh this page and try RSVP again.'
+                    : 'RSVP could not be saved. Try again.';
+
+            throw rsvpError(validationMessage || payload.message || fallback, payload.message || response.status);
         }
 
         return payload;
@@ -1825,17 +1858,90 @@ if (storeShell) {
         });
     });
 
-    document.querySelectorAll('[data-rsvp]').forEach((button) => {
-        button.addEventListener('click', () => {
+    const setRsvpStatus = (button, message, { tone = 'neutral', code = null, accountUrl = null } = {}) => {
+        const status = document.getElementById(button.dataset.rsvpStatusTarget);
+
+        if (!status) {
+            return;
+        }
+
+        status.classList.toggle('is-confirmed', tone === 'confirmed');
+        status.classList.toggle('is-error', tone === 'error');
+        status.replaceChildren();
+
+        const text = document.createElement('span');
+        text.textContent = code ? `${message} Code ${code}` : message;
+        status.append(text);
+
+        if (accountUrl) {
+            const link = document.createElement('a');
+            link.href = accountUrl;
+            link.textContent = 'View in account';
+            status.append(' ', link);
+        }
+    };
+
+    const renderRsvpSuccess = (button, payload) => {
+        const ticket = payload.ticket || {};
+        const event = payload.event || {};
+        const statusLabel = String(ticket.status || 'reserved').replace(/_/g, ' ');
+
+        button.dataset.rsvpConfirmed = 'true';
+        button.textContent = 'RSVP confirmed';
+        setRsvpStatus(button, `${event.name || button.dataset.rsvpName || 'Event'} reserved - ${statusLabel}.`, {
+            tone: 'confirmed',
+            code: ticket.code,
+            accountUrl: payload.account_url,
+        });
+    };
+
+    rsvpButtons.forEach((button) => {
+        button.addEventListener('click', async () => {
+            const originalLabel = button.textContent;
+
             trackElementEvent(button, 'store_rsvp_started', {
                 item_type: 'event',
+                item_id: button.dataset.rsvp,
                 result: 'started',
             });
-            showStoreToast(`${button.dataset.rsvp} RSVP saved.`);
-            trackElementEvent(button, 'store_rsvp_confirmed', {
-                item_type: 'event',
-                result: 'confirmed',
-            });
+
+            button.disabled = true;
+            button.textContent = 'Saving RSVP...';
+
+            try {
+                const payload = await postRsvpJson(button.dataset.rsvpEndpoint, {
+                    event_key: button.dataset.rsvp,
+                    event_name: button.dataset.rsvpName || elementAnalyticsLabel(button),
+                });
+
+                renderRsvpSuccess(button, payload);
+                showStoreToast(payload.message || 'RSVP confirmed.');
+                trackElementEvent(button, 'store_rsvp_succeeded', {
+                    item_type: 'event',
+                    item_id: button.dataset.rsvp,
+                    ticket_status: payload.ticket?.status,
+                    rsvp_status: payload.ticket?.rsvp_status,
+                    result: 'succeeded',
+                });
+            } catch (error) {
+                console.error(error);
+                const message = error.userMessage || 'RSVP could not be saved. Try again.';
+
+                setRsvpStatus(button, message, { tone: 'error' });
+                showStoreToast(message);
+                trackElementEvent(button, 'store_rsvp_failed', {
+                    item_type: 'event',
+                    item_id: button.dataset.rsvp,
+                    reason: error.reason || error.message || 'rsvp_failed',
+                    result: 'failed',
+                });
+
+                if (button.dataset.rsvpConfirmed !== 'true') {
+                    button.textContent = originalLabel;
+                }
+            } finally {
+                button.disabled = false;
+            }
         });
     });
 

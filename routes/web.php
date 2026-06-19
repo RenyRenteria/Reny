@@ -15,6 +15,7 @@ use App\Http\Controllers\MuxWebhookController;
 use App\Http\Controllers\PointsController;
 use App\Http\Controllers\PublicContentController;
 use App\Http\Controllers\Royal\PremiumContentController;
+use App\Http\Controllers\StoreRsvpController;
 use App\Http\Controllers\TicketCheckInController;
 use Illuminate\Support\Facades\Route;
 
@@ -75,6 +76,7 @@ Route::middleware('guest')->group(function () {
 Route::middleware('auth')->group(function () {
     Route::get('/account', [AccountController::class, 'show'])->name('account.show');
     Route::get('/points', [PointsController::class, 'index'])->name('points.index');
+    Route::post('/store/rsvp', StoreRsvpController::class)->name('store.rsvp');
     Route::post('/tickets/check-in', [TicketCheckInController::class, 'store'])->name('tickets.check-in');
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
 

@@ -30,6 +30,9 @@ class StorePageTest extends TestCase
         $response->assertSee('data-unavailable-reason="card_provider_not_configured"', false);
         $response->assertSee('data-unavailable-reason="apple_pay_provider_not_configured"', false);
         $response->assertSee('data-unavailable-reason="local_provider_not_configured"', false);
+        $response->assertSee('data-rsvp="making"', false);
+        $response->assertSee('data-rsvp-endpoint="'.route('store.rsvp').'"', false);
+        $response->assertSee('Free RSVP confirms a reservation on this account.');
         $response->assertSee('id="localReferenceField"', false);
         $response->assertSee('id="localReceiptField"', false);
 
@@ -40,6 +43,7 @@ class StorePageTest extends TestCase
         $this->assertLessThan(strpos($html, 'Events'), strpos($html, "Royal's Exclusives"));
         $this->assertStringNotContainsString('Crown Jacket', $html);
         $this->assertStringNotContainsString('data-buy="crown"', $html);
+        $this->assertStringNotContainsString('data-buy="making"', $html);
         $this->assertStringNotContainsString('Objects', $html);
         $this->assertStringNotContainsString('Crown Collection', $html);
         $this->assertStringNotContainsString('Fast Checkout', $html);

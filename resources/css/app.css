@@ -4815,6 +4815,11 @@ body.has-modal-open {
     text-transform: uppercase;
 }
 
+.store-button:disabled {
+    cursor: wait;
+    opacity: 0.68;
+}
+
 .store-button-light {
     background: #f5ead8;
 }
@@ -5017,6 +5022,29 @@ body.has-modal-open {
     background: rgba(255, 255, 255, 0.08);
     font-size: 0.6875rem;
     font-weight: 500;
+}
+
+.store-rsvp-status {
+    max-width: 23rem;
+    margin: 0.75rem 0 0;
+    color: rgba(255, 255, 255, 0.74);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 1.35;
+}
+
+.store-rsvp-status.is-confirmed {
+    color: #f5ead8;
+}
+
+.store-rsvp-status.is-error {
+    color: #ffd6d6;
+}
+
+.store-rsvp-status a {
+    color: #ffffff;
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
 }
 
 .store-modal-layer {
