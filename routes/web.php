@@ -11,6 +11,7 @@ use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Commerce\CheckoutController;
 use App\Http\Controllers\Commerce\PaypalWebhookController;
+use App\Http\Controllers\MusicController;
 use App\Http\Controllers\MuxWebhookController;
 use App\Http\Controllers\PointsController;
 use App\Http\Controllers\PublicContentController;
@@ -19,6 +20,9 @@ use App\Http\Controllers\TicketCheckInController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [PublicContentController::class, 'home'])->name('home');
+Route::get('/music/albums', [MusicController::class, 'albums'])->name('music.albums');
+Route::get('/music/singles', [MusicController::class, 'singles'])->name('music.singles');
+Route::get('/music/play/{content}', [MusicController::class, 'play'])->name('music.play');
 Route::get('/videos', [PublicContentController::class, 'videos']);
 Route::get('/photos', [PublicContentController::class, 'photos']);
 Route::get('/community', [PublicContentController::class, 'community']);

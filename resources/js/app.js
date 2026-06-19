@@ -240,13 +240,237 @@ document.querySelectorAll('.view-all').forEach((button) => {
     });
 });
 
-document.querySelectorAll('.play-button, .mini-play').forEach((button) => {
-    button.addEventListener('click', () => {
+const musicPlayerLayer = document.getElementById('musicPlayerLayer');
+const musicPlayerAudio = document.getElementById('musicPlayerAudio');
+const musicPlayerTitle = document.getElementById('musicPlayerTitle');
+const musicPlayerState = document.getElementById('musicPlayerState');
+const musicPlayerMessage = document.getElementById('musicPlayerMessage');
+const musicPlayerLoading = document.getElementById('musicPlayerLoading');
+const musicPlayerTracks = document.getElementById('musicPlayerTracks');
+const musicPlayerDetail = document.getElementById('musicPlayerDetail');
+const musicPlayerCta = document.getElementById('musicPlayerCta');
+let focusedBeforeMusicPlayer = null;
+let activeMusicButton = null;
+
+const getMusicFocusable = () => [...(musicPlayerLayer?.querySelectorAll('button, [href], audio, [tabindex]:not([tabindex="-1"])') || [])]
+    .filter((node) => !node.disabled && node.offsetParent !== null);
+
+const trapMusicFocus = (event) => {
+    const focusable = getMusicFocusable();
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    if (!first || !last) {
+        return;
+    }
+
+    if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+    }
+};
+
+const openMusicPlayer = () => {
+    if (!musicPlayerLayer) {
+        return;
+    }
+
+    focusedBeforeMusicPlayer = document.activeElement;
+    musicPlayerLayer.hidden = false;
+    musicPlayerLayer.removeAttribute('inert');
+    document.body.classList.add('has-modal-open');
+    getMusicFocusable()[0]?.focus();
+};
+
+const closeMusicPlayer = () => {
+    if (!musicPlayerLayer) {
+        return;
+    }
+
+    musicPlayerAudio?.pause();
+    musicPlayerLayer.hidden = true;
+    musicPlayerLayer.setAttribute('inert', '');
+    document.body.classList.remove('has-modal-open');
+    focusedBeforeMusicPlayer?.focus();
+};
+
+const setMusicLoadingState = (button) => {
+    activeMusicButton = button;
+    musicPlayerTitle.textContent = elementAnalyticsLabel(button);
+    musicPlayerState.textContent = 'Loading';
+    musicPlayerMessage.textContent = 'Checking access and audio availability.';
+    musicPlayerLoading.hidden = false;
+    musicPlayerTracks.hidden = true;
+    musicPlayerTracks.replaceChildren();
+    musicPlayerCta.hidden = true;
+    musicPlayerCta.removeAttribute('href');
+    musicPlayerAudio.hidden = true;
+    musicPlayerAudio.removeAttribute('src');
+    musicPlayerDetail.href = button.dataset.detailUrl || window.location.href;
+    openMusicPlayer();
+};
+
+const renderMusicTracks = (tracks = []) => {
+    musicPlayerTracks.replaceChildren();
+
+    if (!tracks.length) {
+        musicPlayerTracks.hidden = true;
+        return;
+    }
+
+    const list = document.createElement('ol');
+    tracks.slice(0, 12).forEach((track) => {
+        const item = document.createElement('li');
+        item.textContent = track;
+        list.append(item);
+    });
+
+    musicPlayerTracks.append(list);
+    musicPlayerTracks.hidden = false;
+};
+
+const renderMusicPlayerPayload = (payload, button) => {
+    const state = payload.state || button.dataset.accessState || 'playback_error';
+    const stateLabel = payload.access_label || button.dataset.accessLabel || state.replace(/_/g, ' ');
+    const message = payload.message || payload.access_message || button.dataset.accessMessage || 'Playback is not available.';
+
+    musicPlayerLoading.hidden = true;
+    musicPlayerTitle.textContent = payload.title || elementAnalyticsLabel(button);
+    musicPlayerState.textContent = stateLabel;
+    musicPlayerMessage.textContent = message;
+    musicPlayerDetail.href = payload.detail_url || button.dataset.detailUrl || window.location.href;
+    renderMusicTracks(payload.tracks || []);
+
+    if (payload.cta_url || button.dataset.ctaUrl) {
+        musicPlayerCta.href = payload.cta_url || button.dataset.ctaUrl;
+        musicPlayerCta.textContent = payload.cta_label || button.dataset.ctaLabel || 'Continue';
+        musicPlayerCta.hidden = false;
+    } else {
+        musicPlayerCta.hidden = true;
+        musicPlayerCta.removeAttribute('href');
+    }
+
+    if (state === 'ready' && payload.audio_url) {
+        musicPlayerAudio.src = payload.audio_url;
+        musicPlayerAudio.hidden = false;
+        musicPlayerAudio.load();
+        trackElementEvent(button, 'music_play_ready', {
+            item_type: button.dataset.analyticsType,
+            result: 'ready',
+        });
+        return;
+    }
+
+    musicPlayerAudio.hidden = true;
+    musicPlayerAudio.removeAttribute('src');
+
+    trackElementEvent(button, state === 'playback_error' ? 'music_play_failed' : 'music_access_blocked', {
+        item_type: button.dataset.analyticsType,
+        reason: state,
+        result: state === 'playback_error' ? 'failed' : 'blocked',
+    });
+};
+
+document.querySelectorAll('[data-music-play]').forEach((button) => {
+    button.addEventListener('click', async () => {
         trackElementEvent(button, 'music_play_clicked', {
-            item_type: button.classList.contains('mini-play') ? 'single' : 'album',
+            item_type: button.dataset.analyticsType || (button.classList.contains('mini-play') ? 'single' : 'album'),
             result: 'clicked',
         });
+
+        setMusicLoadingState(button);
+
+        if (!button.dataset.playUrl) {
+            renderMusicPlayerPayload({
+                state: button.dataset.accessState || 'playback_error',
+                access_label: button.dataset.accessLabel || 'Audio unavailable',
+                message: button.dataset.accessMessage || 'This music item is not connected to playback yet.',
+                cta_label: button.dataset.ctaLabel,
+                cta_url: button.dataset.ctaUrl,
+            }, button);
+            return;
+        }
+
+        try {
+            const response = await fetch(button.dataset.playUrl, {
+                headers: {
+                    'Accept': 'application/json',
+                },
+            });
+            const payload = await response.json().catch(() => ({}));
+
+            renderMusicPlayerPayload(payload, button);
+        } catch (error) {
+            console.error(error);
+            renderMusicPlayerPayload({
+                state: 'playback_error',
+                access_label: 'Playback error',
+                message: 'Playback could not load. Try again in a moment.',
+            }, button);
+        }
     });
+});
+
+musicPlayerAudio?.addEventListener('play', () => {
+    if (!activeMusicButton) {
+        return;
+    }
+
+    trackElementEvent(activeMusicButton, 'music_play_started', {
+        item_type: activeMusicButton.dataset.analyticsType,
+        result: 'started',
+    });
+}, { once: false });
+
+musicPlayerAudio?.addEventListener('error', () => {
+    if (!activeMusicButton) {
+        return;
+    }
+
+    musicPlayerState.textContent = 'Playback error';
+    musicPlayerMessage.textContent = 'The audio source could not be played.';
+    trackElementEvent(activeMusicButton, 'music_play_failed', {
+        item_type: activeMusicButton.dataset.analyticsType,
+        reason: 'audio_element_error',
+        result: 'failed',
+    });
+});
+
+document.querySelectorAll('[data-music-player-close]').forEach((button) => {
+    button.addEventListener('click', closeMusicPlayer);
+});
+
+musicPlayerLayer?.addEventListener('click', (event) => {
+    if (event.target === musicPlayerLayer) {
+        closeMusicPlayer();
+    }
+});
+
+musicPlayerCta?.addEventListener('click', () => {
+    if (!activeMusicButton) {
+        return;
+    }
+
+    trackElementEvent(activeMusicButton, 'music_permission_cta_clicked', {
+        item_type: activeMusicButton.dataset.analyticsType,
+        destination: musicPlayerCta.href,
+        result: 'clicked',
+    });
+});
+
+document.addEventListener('keydown', (event) => {
+    if (!musicPlayerLayer || musicPlayerLayer.hidden) {
+        return;
+    }
+
+    if (event.key === 'Tab') {
+        trapMusicFocus(event);
+    } else if (event.key === 'Escape') {
+        closeMusicPlayer();
+    }
 });
 
 const photoTiles = document.querySelectorAll('.photo-tile');
