@@ -86,6 +86,19 @@ class AnalyticsInstrumentationTest extends TestCase
         ] as $eventName) {
             $this->assertStringContainsString($eventName, $script);
         }
+
+        foreach ([
+            'checkout_state',
+            'unavailable',
+            'validation_failed',
+            'payment_started',
+            'payment_success',
+            'payment_failed',
+            'invalid_reference',
+            'missing_receipt',
+        ] as $checkoutState) {
+            $this->assertStringContainsString($checkoutState, $script);
+        }
     }
 
     public function test_project4_event_taxonomy_is_documented(): void

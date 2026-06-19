@@ -393,8 +393,16 @@
                         <h3>Step 1 - Bag</h3>
                         <p class="store-checkout-note">Every completed purchase activates Royal Pass for 1 month on this account.</p>
                         <div class="store-bag-list" id="bagList"></div>
-                        <label class="sr-only" for="emailField">Receipt email or phone</label>
-                        <input class="store-email" id="emailField" type="text" value="fan@renyrenteria.com">
+                        <div class="store-contact-grid">
+                            <div>
+                                <label for="emailField">Receipt email</label>
+                                <input class="store-input" id="emailField" type="email" value="fan@renyrenteria.com" autocomplete="email">
+                            </div>
+                            <div>
+                                <label for="phoneField">Phone</label>
+                                <input class="store-input" id="phoneField" type="tel" value="" autocomplete="tel">
+                            </div>
+                        </div>
                         <div class="store-total-row">
                             <span>Total</span>
                             <strong id="bagTotal">$0</strong>
@@ -403,10 +411,10 @@
                     <div class="store-checkout-panel">
                         <h3>Step 2 - Pay</h3>
                         <div class="store-payments" role="radiogroup" aria-label="Payment method">
-                            <button class="is-active" type="button">PayPal</button>
-                            <button type="button">Card</button>
-                            <button type="button">Apple Pay</button>
-                            <button type="button">Local</button>
+                            <button class="is-active" type="button" data-payment-method="paypal" data-provider-available="true" aria-checked="true">PayPal</button>
+                            <button type="button" data-payment-method="card" data-provider-available="false" data-unavailable-reason="card_provider_not_configured" aria-checked="false">Card</button>
+                            <button type="button" data-payment-method="apple_pay" data-provider-available="false" data-unavailable-reason="apple_pay_provider_not_configured" aria-checked="false">Apple Pay</button>
+                            <button type="button" data-payment-method="local" data-provider-available="false" data-unavailable-reason="local_provider_not_configured" aria-checked="false">Local</button>
                         </div>
                         <div
                             class="store-paypal-buttons"
@@ -415,7 +423,13 @@
                             data-create-order-endpoint="{{ route('checkout.paypal.orders') }}"
                             data-capture-endpoint="{{ route('checkout.paypal') }}"
                         ></div>
-                        <p class="store-checkout-note" id="paypalStatus">PayPal approval is required before the Hub is updated.</p>
+                        <div class="store-local-panel" id="localPaymentPanel" hidden>
+                            <label for="localReferenceField">Bank reference</label>
+                            <input class="store-input" id="localReferenceField" type="text" inputmode="latin" placeholder="RENYPAY-12345">
+                            <label for="localReceiptField">Receipt</label>
+                            <input class="store-input" id="localReceiptField" type="file" accept="image/*,.pdf">
+                        </div>
+                        <p class="store-checkout-note" id="paymentStatus">PayPal approval is required before the Hub is updated.</p>
                         <button class="store-button" id="completePurchase" type="button">Load PayPal checkout</button>
                     </div>
                 </div>

@@ -87,6 +87,38 @@ class RoyalPassCheckoutTest extends TestCase
             ->assertJsonPath('paypal_order_id', 'PAYPAL-CREATED-100');
     }
 
+    public function test_checkout_rejects_empty_cart_before_paypal_order_creation(): void
+    {
+        Http::fake();
+
+        $this->postJson('/checkout/paypal/orders', [
+            'identifier' => 'fan@renyrenteria.com',
+            'product_keys' => [],
+            'currency' => 'USD',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('product_keys');
+
+        Http::assertNothingSent();
+    }
+
+    public function test_checkout_rejects_invalid_contact_identifier_before_capture(): void
+    {
+        Http::fake();
+
+        $this->postJson('/checkout/paypal', [
+            'identifier' => 'abc',
+            'product_keys' => ['merch'],
+            'currency' => 'USD',
+            'paypal_order_id' => 'PAYPAL-INVALID-CONTACT',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('identifier');
+
+        $this->assertDatabaseCount('orders', 0);
+        Http::assertNothingSent();
+    }
+
     public function test_royal_pass_checkout_uses_four_ninety_nine_pricing(): void
     {
         $this->fakeSuccessfulCapture('PAYPAL-ROYAL-499', '4.99');

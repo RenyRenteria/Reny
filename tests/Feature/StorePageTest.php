@@ -22,7 +22,16 @@ class StorePageTest extends TestCase
         $response->assertSee('RSVP');
         $response->assertSee('reny-store-concert-poster.png');
         $response->assertSee('class="tab is-active"', false);
-        $response->assertSee('href="' . url('/store') . '"', false);
+        $response->assertSee('href="'.url('/store').'"', false);
+        $response->assertSee('data-payment-method="paypal"', false);
+        $response->assertSee('data-payment-method="card"', false);
+        $response->assertSee('data-payment-method="apple_pay"', false);
+        $response->assertSee('data-payment-method="local"', false);
+        $response->assertSee('data-unavailable-reason="card_provider_not_configured"', false);
+        $response->assertSee('data-unavailable-reason="apple_pay_provider_not_configured"', false);
+        $response->assertSee('data-unavailable-reason="local_provider_not_configured"', false);
+        $response->assertSee('id="localReferenceField"', false);
+        $response->assertSee('id="localReceiptField"', false);
 
         $html = $response->getContent();
 
@@ -46,7 +55,7 @@ class StorePageTest extends TestCase
         foreach (['/', '/videos', '/photos', '/community'] as $path) {
             $this->get($path)
                 ->assertOk()
-                ->assertSee('href="' . url('/store') . '"', false)
+                ->assertSee('href="'.url('/store').'"', false)
                 ->assertDontSee('href="#store"', false);
         }
     }
