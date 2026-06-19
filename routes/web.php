@@ -2,11 +2,9 @@
 
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\Admin\AdminLoginController;
-use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\EditorialActionController;
 use App\Http\Controllers\Admin\EditorialContentController;
 use App\Http\Controllers\Admin\MediaLibraryController;
-use App\Http\Controllers\Admin\SiteEditorController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
@@ -36,23 +34,24 @@ Route::prefix(config('admin.path', 'admin'))->name('admin.')->group(function () 
     Route::post('/login', [AdminLoginController::class, 'store'])->name('login.store');
 
     Route::middleware(['admin.access', 'admin.session'])->group(function () {
-        Route::get('/', AdminDashboardController::class)->name('dashboard');
+        Route::get('/', [AdminLoginController::class, 'create'])->name('dashboard');
         Route::post('/logout', [AdminLoginController::class, 'destroy'])->name('logout');
-        Route::get('/site-editor', [SiteEditorController::class, 'index'])->name('site-editor.index');
-        Route::get('/site-editor/{page}/preview', [SiteEditorController::class, 'preview'])->name('site-editor.preview');
-        Route::get('/site-editor/{page}', [SiteEditorController::class, 'show'])->name('site-editor.show');
-        Route::get('/content', [EditorialContentController::class, 'index'])->name('content.index');
-        Route::get('/content/create', [EditorialContentController::class, 'create'])->name('content.create');
+
+        Route::get('/site-editor', [AdminLoginController::class, 'create'])->name('site-editor.index');
+        Route::get('/site-editor/{page}/preview', [AdminLoginController::class, 'create'])->name('site-editor.preview');
+        Route::get('/site-editor/{page}', [AdminLoginController::class, 'create'])->name('site-editor.show');
+        Route::get('/content', [AdminLoginController::class, 'create'])->name('content.index');
+        Route::get('/content/create', [AdminLoginController::class, 'create'])->name('content.create');
         Route::post('/content', [EditorialContentController::class, 'store'])->name('content.store');
-        Route::get('/content/{content}/edit', [EditorialContentController::class, 'edit'])->name('content.edit');
+        Route::get('/content/{content}/edit', [AdminLoginController::class, 'create'])->name('content.edit');
         Route::match(['put', 'patch'], '/content/{content}', [EditorialContentController::class, 'update'])->name('content.update');
-        Route::get('/content/{content}/preview', [EditorialContentController::class, 'preview'])->name('content.preview');
-        Route::get('/media', [MediaLibraryController::class, 'index'])->name('media.index');
+        Route::get('/content/{content}/preview', [AdminLoginController::class, 'create'])->name('content.preview');
+        Route::get('/media', [AdminLoginController::class, 'create'])->name('media.index');
         Route::post('/media', [MediaLibraryController::class, 'store'])->name('media.store');
         Route::post('/media/mux/direct-uploads', [MediaLibraryController::class, 'createMuxDirectUpload'])->name('media.mux.direct-uploads.store');
-        Route::get('/editorial', [EditorialContentController::class, 'index'])->name('editorial.index');
-        Route::get('/editorial/{content}/edit', [EditorialContentController::class, 'edit'])->name('editorial.edit');
-        Route::get('/editorial/{content}/preview', [EditorialContentController::class, 'preview'])->name('editorial.preview');
+        Route::get('/editorial', [AdminLoginController::class, 'create'])->name('editorial.index');
+        Route::get('/editorial/{content}/edit', [AdminLoginController::class, 'create'])->name('editorial.edit');
+        Route::get('/editorial/{content}/preview', [AdminLoginController::class, 'create'])->name('editorial.preview');
         Route::post('/editorial/drafts', [EditorialActionController::class, 'saveDraft'])->name('editorial.drafts.store');
         Route::post('/editorial/publish', [EditorialActionController::class, 'publish'])
             ->middleware('admin.publish')

@@ -4,7 +4,7 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
-        <title>Admin sign in | Reny Renteria</title>
+        <title>Enter | Reny Renteria</title>
 
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,13 +14,11 @@
     <body>
         <main class="auth-shell admin-auth-shell">
             <section class="auth-panel admin-auth-panel" aria-labelledby="admin-login-title">
-                <a class="brand-link" href="{{ route('home') }}" aria-label="Reny Renteria home">
+                <div class="brand-link" aria-label="Reny Renteria">
                     <img class="brand-logo" src="{{ asset('images/reny-renteria-logo.png') }}" alt="Reny Renteria">
-                </a>
+                </div>
 
-                <p class="auth-kicker">Admin CMS</p>
-                <h1 id="admin-login-title">Sign in</h1>
-                <p class="auth-copy">Use an admin, artist admin, or editor account.</p>
+                <h1 id="admin-login-title">Enter</h1>
 
                 @if (session('status'))
                     <div class="auth-status">{{ session('status') }}</div>
@@ -45,7 +43,7 @@
                         @enderror
                     </label>
 
-                    <button class="auth-button" type="submit">Open admin</button>
+                    <button class="auth-button" type="submit">Enter</button>
                 </form>
             </section>
         </main>
