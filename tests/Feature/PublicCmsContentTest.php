@@ -99,6 +99,52 @@ class PublicCmsContentTest extends TestCase
         $this->get('/community')->assertOk()->assertSee('CMS Community Post')->assertSee('CMS poll question?');
     }
 
+    public function test_video_categories_render_cms_empty_states_without_static_fallback(): void
+    {
+        $this->publishedContent(ContentType::Video, [
+            'title' => 'CMS Live Performance',
+            'summary' => 'CMS performance summary',
+            'metadata' => [
+                'youtube_url' => 'https://www.youtube.com/watch?v=abc12345678',
+                'category' => 'performance',
+            ],
+        ]);
+
+        $this->get(route('videos', ['category' => 'performances']))
+            ->assertOk()
+            ->assertSee('CMS Live Performance')
+            ->assertDontSee('Places');
+
+        $this->get(route('videos', ['category' => 'vlogs']))
+            ->assertOk()
+            ->assertSee('No vlogs published yet.')
+            ->assertDontSee('Visitando Mas23');
+    }
+
+    public function test_video_without_youtube_source_renders_unavailable_player_state(): void
+    {
+        $this->publishedContent(ContentType::Video, [
+            'title' => 'CMS Video Pending Source',
+            'summary' => 'Video shell without playback URL',
+            'metadata' => [
+                'category' => 'music-video',
+            ],
+        ]);
+
+        $this->get('/videos')
+            ->assertOk()
+            ->assertSee('CMS Video Pending Source')
+            ->assertSee('data-video-state="unavailable"', false)
+            ->assertSee('Video unavailable')
+            ->assertDontSee('data-youtube-id="Ue8orNrHw9s"', false);
+
+        $this->getJson(route('public-content.payload', 'videos'))
+            ->assertOk()
+            ->assertJsonPath('music_videos.0.id', null)
+            ->assertJsonPath('music_videos.0.play_state', 'unavailable')
+            ->assertJsonPath('music_videos.0.external_url', null);
+    }
+
     public function test_public_pages_fall_back_to_last_cached_published_payload_when_cms_query_fails(): void
     {
         $this->publishedContent(ContentType::Photo, [

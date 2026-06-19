@@ -1,38 +1,64 @@
 @php
-    $musicVideos = [
-        ['id' => 'Ue8orNrHw9s', 'title' => 'I Swear', 'meta' => 'Official Music Video'],
-        ['id' => 'mfaOU7LFheE', 'title' => 'Ag&uuml;ita de Coco', 'meta' => 'Video Oficial'],
-        ['id' => 'GUISQgRCY44', 'title' => 'Want a man', 'meta' => 'Official Music Video'],
-        ['id' => 'w-W-Szxuk_A', 'title' => 'Crossroads', 'meta' => 'Official Music Video'],
-        ['id' => 'FBw7qjIngms', 'title' => 'Nada de m&iacute;', 'meta' => 'Official Music Video'],
-        ['id' => 'M5rPAEwICrA', 'title' => 'Lay on my shoulder', 'meta' => 'Music Video'],
+    $videoSections = [
+        'music_videos' => [
+            'title' => 'Music videos',
+            'heading_id' => 'music-videos-title',
+            'empty' => 'No music videos published yet.',
+        ],
+        'series' => [
+            'title' => 'Series (Playlists)',
+            'heading_id' => 'series-title',
+            'empty' => 'No video series published yet.',
+        ],
+        'performances' => [
+            'title' => 'Performances videos',
+            'heading_id' => 'performances-title',
+            'empty' => 'No performance videos published yet.',
+        ],
+        'behind_the_scenes' => [
+            'title' => 'Behind the scenes',
+            'heading_id' => 'behind-title',
+            'empty' => 'No behind the scenes videos published yet.',
+        ],
+        'vlogs' => [
+            'title' => 'Vlogs',
+            'heading_id' => 'vlogs-title',
+            'empty' => 'No vlogs published yet.',
+        ],
     ];
 
-    $series = [
-        ['id' => 'Ij8QJWR1LP0', 'title' => 'Raspao a Dolar', 'meta' => 'Conversaciones, cultura pop y temas de actualidad con formato de episodio.'],
-        ['id' => 'USfTD9rZ3o8', 'title' => 'Studio Sessions', 'meta' => 'Recording sessions, studio clips, rehearsals, and in-progress music moments.'],
-    ];
-
-    $performances = [
-        ['id' => '6PSCI5m43wk', 'title' => 'Places', 'meta' => 'Live en Tu Ma&ntilde;ana'],
-        ['id' => 'PrOrIS-6NvE', 'title' => 'Ag&uuml;ita de Coco', 'meta' => 'En vivo en Tu Ma&ntilde;ana'],
-        ['id' => 'q_pDpnIijWY', 'title' => 'Stamina', 'meta' => 'Live at Miss Universe Panama 2024'],
-        ['id' => 'sfOvmqQjpu0', 'title' => 'You Better Run', 'meta' => 'Live at Festival de La Rosa Dorada'],
-        ['id' => 'Sb0IcEiAPbA', 'title' => 'Touch it', 'meta' => 'Live performance on Tu Ma&ntilde;ana'],
-        ['id' => '0Xvjl-s4PwI', 'title' => 'In Your Heart', 'meta' => 'Live Performance Music Video'],
-    ];
-
-    $behindTheScenes = [
-        ['id' => 'USfTD9rZ3o8', 'title' => 'Wave', 'meta' => 'Studio Recording Session'],
-        ['id' => 'pBmyvcI8vtQ', 'title' => 'Places', 'meta' => 'Studio Clip'],
-        ['id' => 'cXo8awFAt4s', 'title' => 'Places', 'meta' => 'Dance Rehearsal with Ching'],
-        ['id' => '7ujK5dYKF7Q', 'title' => 'Make It Louder', 'meta' => 'Studio Recording Session'],
-    ];
-
-    $vlogs = [
-        ['id' => 'fA7CVtk0uNw', 'title' => 'Visitando Mas23', 'meta' => 'Panama vlog short'],
-        ['id' => 'yz6mBW-BshM', 'title' => 'IA o arte real?', 'meta' => 'Craftmanship by Christian Javier'],
-        ['id' => 'fcGJ7aZ39Hw', 'title' => 'New merch out now', 'meta' => '5D Stage update'],
+    $staticVideoGroups = [
+        'music_videos' => [
+            ['id' => 'Ue8orNrHw9s', 'title' => 'I Swear', 'meta' => 'Official Music Video'],
+            ['id' => 'mfaOU7LFheE', 'title' => 'Ag&uuml;ita de Coco', 'meta' => 'Video Oficial'],
+            ['id' => 'GUISQgRCY44', 'title' => 'Want a man', 'meta' => 'Official Music Video'],
+            ['id' => 'w-W-Szxuk_A', 'title' => 'Crossroads', 'meta' => 'Official Music Video'],
+            ['id' => 'FBw7qjIngms', 'title' => 'Nada de m&iacute;', 'meta' => 'Official Music Video'],
+            ['id' => 'M5rPAEwICrA', 'title' => 'Lay on my shoulder', 'meta' => 'Music Video'],
+        ],
+        'series' => [
+            ['id' => 'Ij8QJWR1LP0', 'title' => 'Raspao a Dolar', 'meta' => 'Conversaciones, cultura pop y temas de actualidad con formato de episodio.'],
+            ['id' => 'USfTD9rZ3o8', 'title' => 'Studio Sessions', 'meta' => 'Recording sessions, studio clips, rehearsals, and in-progress music moments.'],
+        ],
+        'performances' => [
+            ['id' => '6PSCI5m43wk', 'title' => 'Places', 'meta' => 'Live en Tu Ma&ntilde;ana'],
+            ['id' => 'PrOrIS-6NvE', 'title' => 'Ag&uuml;ita de Coco', 'meta' => 'En vivo en Tu Ma&ntilde;ana'],
+            ['id' => 'q_pDpnIijWY', 'title' => 'Stamina', 'meta' => 'Live at Miss Universe Panama 2024'],
+            ['id' => 'sfOvmqQjpu0', 'title' => 'You Better Run', 'meta' => 'Live at Festival de La Rosa Dorada'],
+            ['id' => 'Sb0IcEiAPbA', 'title' => 'Touch it', 'meta' => 'Live performance on Tu Ma&ntilde;ana'],
+            ['id' => '0Xvjl-s4PwI', 'title' => 'In Your Heart', 'meta' => 'Live Performance Music Video'],
+        ],
+        'behind_the_scenes' => [
+            ['id' => 'USfTD9rZ3o8', 'title' => 'Wave', 'meta' => 'Studio Recording Session'],
+            ['id' => 'pBmyvcI8vtQ', 'title' => 'Places', 'meta' => 'Studio Clip'],
+            ['id' => 'cXo8awFAt4s', 'title' => 'Places', 'meta' => 'Dance Rehearsal with Ching'],
+            ['id' => '7ujK5dYKF7Q', 'title' => 'Make It Louder', 'meta' => 'Studio Recording Session'],
+        ],
+        'vlogs' => [
+            ['id' => 'fA7CVtk0uNw', 'title' => 'Visitando Mas23', 'meta' => 'Panama vlog short'],
+            ['id' => 'yz6mBW-BshM', 'title' => 'IA o arte real?', 'meta' => 'Craftmanship by Christian Javier'],
+            ['id' => 'fcGJ7aZ39Hw', 'title' => 'New merch out now', 'meta' => '5D Stage update'],
+        ],
     ];
 
     $featuredVideo = [
@@ -41,29 +67,44 @@
         'meta' => 'Featured YouTube premiere',
     ];
 
-    if (! empty($publicCms['music_videos'] ?? [])) {
-        $musicVideos = $publicCms['music_videos'];
-    }
-
-    if (! empty($publicCms['series'] ?? [])) {
-        $series = $publicCms['series'];
-    }
-
-    if (! empty($publicCms['performances'] ?? [])) {
-        $performances = $publicCms['performances'];
-    }
-
-    if (! empty($publicCms['behind_the_scenes'] ?? [])) {
-        $behindTheScenes = $publicCms['behind_the_scenes'];
-    }
-
-    if (! empty($publicCms['vlogs'] ?? [])) {
-        $vlogs = $publicCms['vlogs'];
-    }
-
     if (! empty($publicCms['featured_video'] ?? null)) {
         $featuredVideo = $publicCms['featured_video'];
     }
+
+    $featuredVideo['external_url'] = $featuredVideo['external_url']
+        ?? (! empty($featuredVideo['id']) ? "https://www.youtube.com/watch?v={$featuredVideo['id']}" : null);
+
+    $usesCmsPayload = in_array($publicCms['_cms_source'] ?? 'static', ['cms', 'cache'], true);
+    $normalizeVideo = static function (array $video, string $group) use ($videoSections): array {
+        $youtubeId = $video['id'] ?? null;
+
+        return [
+            ...$video,
+            'id' => $youtubeId,
+            'title' => $video['title'] ?? 'Untitled video',
+            'meta' => $video['meta'] ?? $videoSections[$group]['title'],
+            'group' => $group,
+            'external_url' => $video['external_url'] ?? ($youtubeId ? "https://www.youtube.com/watch?v={$youtubeId}" : null),
+            'play_state' => $video['play_state'] ?? ($youtubeId ? 'ready' : 'unavailable'),
+        ];
+    };
+
+    $videoGroups = [];
+
+    foreach ($videoSections as $group => $section) {
+        $sourceVideos = $usesCmsPayload ? ($publicCms[$group] ?? []) : ($staticVideoGroups[$group] ?? []);
+        $videoGroups[$group] = array_values(array_map(
+            fn (array $video): array => $normalizeVideo($video, $group),
+            $sourceVideos,
+        ));
+    }
+
+    $selectedCategory = array_key_exists($selectedVideoCategory ?? '', $videoSections)
+        ? $selectedVideoCategory
+        : null;
+    $visibleVideoSections = $selectedCategory
+        ? [$selectedCategory => $videoSections[$selectedCategory]]
+        : $videoSections;
 @endphp
 
 <!DOCTYPE html>
@@ -172,85 +213,95 @@
                                 <strong>{{ $featuredVideo['title'] }}</strong>
                                 <span>{{ $featuredVideo['meta'] }}</span>
                             </div>
-                            <a class="youtube-pill" href="https://www.youtube.com/watch?v={{ $featuredVideo['id'] }}" target="_blank" rel="noreferrer">Open YouTube</a>
+                            @if (! empty($featuredVideo['external_url']))
+                                <a
+                                    class="youtube-pill"
+                                    href="{{ $featuredVideo['external_url'] }}"
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    data-analytics-type="video"
+                                    data-analytics-label="{{ $featuredVideo['title'] }}"
+                                >Open YouTube</a>
+                            @endif
                         </div>
                     </div>
                 </section>
 
-                <section class="content-section" aria-labelledby="music-videos-title">
-                    <div class="section-head">
-                        <h3 id="music-videos-title">Music videos</h3>
-                        <button class="view-all" type="button">VIEW ALL</button>
-                    </div>
+                @foreach ($visibleVideoSections as $group => $section)
+                    <section class="content-section video-list-section" aria-labelledby="{{ $section['heading_id'] }}">
+                        <div class="section-head">
+                            <div>
+                                @if ($selectedCategory)
+                                    <a class="video-back-link" href="{{ route('videos') }}">All videos</a>
+                                @endif
+                                <h3 id="{{ $section['heading_id'] }}">{{ $section['title'] }}</h3>
+                            </div>
+                            @if ($selectedCategory)
+                                <span class="video-count">{{ count($videoGroups[$group]) }} {{ count($videoGroups[$group]) === 1 ? 'video' : 'videos' }}</span>
+                            @else
+                                <a class="view-all" href="{{ route('videos', ['category' => $group]) }}" data-video-category="{{ $group }}">VIEW ALL</a>
+                            @endif
+                        </div>
 
-                    <div class="video-grid">
-                        @foreach ($musicVideos as $video)
-                            @include('partials.video-card', ['video' => $video])
-                        @endforeach
-                    </div>
-                </section>
-
-                <section class="content-section" aria-labelledby="series-title">
-                    <div class="section-head">
-                        <h3 id="series-title">Series (Playlists)</h3>
-                        <button class="view-all" type="button">VIEW ALL</button>
-                    </div>
-
-                    <div class="video-grid series-grid">
-                        @foreach ($series as $playlist)
-                            <article class="playlist-card">
-                                <div class="playlist-stack" style="--thumb-url: url('https://i.ytimg.com/vi/{{ $playlist['id'] }}/hqdefault.jpg');" aria-hidden="true"></div>
-                                <div class="playlist-copy">
-                                    <div>
-                                        <span>Playlist</span>
-                                        <h4>{!! $playlist['title'] !!}</h4>
-                                        <p>{!! $playlist['meta'] !!}</p>
-                                    </div>
-                                    <a class="playlist-link" href="https://www.youtube.com/watch?v={{ $playlist['id'] }}" target="_blank" rel="noreferrer">Start watching</a>
+                        @if ($videoGroups[$group])
+                            @if ($group === 'series')
+                                <div class="video-grid series-grid">
+                                    @foreach ($videoGroups[$group] as $playlist)
+                                        @php
+                                            $playlistTitle = e(strip_tags(html_entity_decode($playlist['title'])));
+                                            $playlistUrl = $playlist['external_url'] ?? null;
+                                        @endphp
+                                        <article class="playlist-card" data-video-state="{{ $playlist['play_state'] }}">
+                                            <div
+                                                class="playlist-stack"
+                                                @if (! empty($playlist['id'])) style="--thumb-url: url('https://i.ytimg.com/vi/{{ $playlist['id'] }}/hqdefault.jpg');" @endif
+                                                aria-hidden="true"
+                                            ></div>
+                                            <div class="playlist-copy">
+                                                <div>
+                                                    <span>Playlist</span>
+                                                    <h4>{!! $playlist['title'] !!}</h4>
+                                                    <p>{!! $playlist['meta'] !!}</p>
+                                                </div>
+                                                @if ($playlistUrl)
+                                                    <a
+                                                        class="playlist-link"
+                                                        href="{{ $playlistUrl }}"
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        data-analytics-type="playlist"
+                                                        data-analytics-label="{{ $playlistTitle }}"
+                                                    >Start watching</a>
+                                                @else
+                                                    <button
+                                                        class="playlist-link playlist-link-button"
+                                                        type="button"
+                                                        data-video-player
+                                                        data-youtube-title="{{ $playlistTitle }}"
+                                                        data-video-state="unavailable"
+                                                        data-analytics-type="playlist"
+                                                        data-analytics-label="{{ $playlistTitle }}"
+                                                    >Unavailable</button>
+                                                @endif
+                                            </div>
+                                        </article>
+                                    @endforeach
                                 </div>
-                            </article>
-                        @endforeach
-                    </div>
-                </section>
-
-                <section class="content-section" aria-labelledby="performances-title">
-                    <div class="section-head">
-                        <h3 id="performances-title">Performances videos</h3>
-                        <button class="view-all" type="button">VIEW ALL</button>
-                    </div>
-
-                    <div class="video-grid">
-                        @foreach ($performances as $video)
-                            @include('partials.video-card', ['video' => $video])
-                        @endforeach
-                    </div>
-                </section>
-
-                <section class="content-section" aria-labelledby="behind-title">
-                    <div class="section-head">
-                        <h3 id="behind-title">Behind the scenes</h3>
-                        <button class="view-all" type="button">VIEW ALL</button>
-                    </div>
-
-                    <div class="video-grid">
-                        @foreach ($behindTheScenes as $video)
-                            @include('partials.video-card', ['video' => $video])
-                        @endforeach
-                    </div>
-                </section>
-
-                <section class="content-section" aria-labelledby="vlogs-title">
-                    <div class="section-head">
-                        <h3 id="vlogs-title">Vlogs</h3>
-                        <button class="view-all" type="button">VIEW ALL</button>
-                    </div>
-
-                    <div class="video-grid">
-                        @foreach ($vlogs as $video)
-                            @include('partials.video-card', ['video' => $video])
-                        @endforeach
-                    </div>
-                </section>
+                            @else
+                                <div class="video-grid">
+                                    @foreach ($videoGroups[$group] as $video)
+                                        @include('partials.video-card', ['video' => $video])
+                                    @endforeach
+                                </div>
+                            @endif
+                        @else
+                            <div class="video-empty-state" data-video-empty-state="{{ $group }}">
+                                <span>Empty</span>
+                                <strong>{{ $section['empty'] }}</strong>
+                            </div>
+                        @endif
+                    </section>
+                @endforeach
 
                 <nav class="mobile-bottom-nav" aria-label="Mobile menu">
                     <a href="{{ url('/') }}">
@@ -294,5 +345,7 @@
                 </nav>
             </main>
         </div>
+
+        @include('partials.video-player-modal')
     </body>
 </html>
