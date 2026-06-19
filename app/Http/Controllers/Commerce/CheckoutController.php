@@ -4,15 +4,19 @@ namespace App\Http\Controllers\Commerce;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Models\User;
 use App\Services\PayPalService;
 use App\Services\RoyalPassService;
 use App\Services\UserHubPurchaseSync;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class CheckoutController extends Controller
 {
@@ -40,40 +44,55 @@ class CheckoutController extends Controller
         $validated = $this->validateCheckout($request, requirePaypalOrder: true);
 
         $currency = $this->currency($validated);
-        $expectedTotal = $this->expectedTotal($validated['product_keys']);
-        $capture = $payPal->captureOrder($validated['paypal_order_id'], $expectedTotal, $currency);
-
-        $this->ensureUnusedPayPalCapture($capture);
-
         $user = Auth::user() ?: $royalPass->findOrCreateCustomer($validated['identifier']);
         Auth::login($user);
 
-        $orders = DB::transaction(function () use ($capture, $currency, $purchaseSync, $royalPass, $user, $validated) {
-            return collect($validated['product_keys'])->map(function (string $productKey, int $index) use ($currency, $capture, $purchaseSync, $user, $royalPass) {
-                $order = Order::create([
-                    'user_id' => $user->id,
-                    'provider' => 'paypal',
-                    'provider_order_id' => $this->providerOrderId($capture['order_id'], $productKey, $index),
-                    'provider_capture_id' => $capture['capture_id'],
-                    'product_key' => $productKey,
-                    'amount_cents' => $this->prices[$productKey],
-                    'currency' => $currency,
-                    'status' => 'completed',
-                    'grants_royal_month' => true,
-                ]);
+        $pendingOrders = $this->pendingPayPalOrders($validated['paypal_order_id'], $user);
+        $this->ensurePendingPayPalOrders($validated['paypal_order_id'], $pendingOrders);
 
-                $royalPass->log($user, 'purchase', 'order', $order->provider_order_id, [
-                    'product_key' => $productKey,
-                    'provider' => 'paypal',
-                    'paypal_capture_id' => $capture['capture_id'],
-                ]);
+        $capture = $payPal->captureOrder(
+            $validated['paypal_order_id'],
+            $pendingOrders->sum('amount_cents'),
+            $this->orderCurrency($pendingOrders, $currency),
+        );
 
-                $royalPass->grantMonth($user, $order);
-                $purchaseSync->recordCompletedOrder($user, $order, $capture);
+        if ($capture['order_id'] !== $validated['paypal_order_id']) {
+            throw ValidationException::withMessages([
+                'paypal_order_id' => 'PayPal returned a different order than this checkout.',
+            ]);
+        }
 
-                return $order;
+        $this->ensureUnusedPayPalCapture($capture, $pendingOrders);
+
+        try {
+            $orders = DB::transaction(function () use ($capture, $purchaseSync, $royalPass, $user, $validated) {
+                $orders = $this->pendingPayPalOrders($validated['paypal_order_id'], $user, lock: true);
+                $this->ensurePendingPayPalOrders($validated['paypal_order_id'], $orders);
+                $this->ensureUnusedPayPalCapture($capture, $orders);
+
+                return $orders->map(function (Order $order) use ($capture, $purchaseSync, $royalPass, $user) {
+                    $order->forceFill([
+                        'provider_capture_id' => $capture['capture_id'],
+                        'status' => 'completed',
+                    ])->save();
+
+                    $royalPass->log($user, 'purchase', 'order', $order->provider_order_id, [
+                        'product_key' => $order->product_key,
+                        'provider' => 'paypal',
+                        'paypal_capture_id' => $capture['capture_id'],
+                    ]);
+
+                    $royalPass->grantMonth($user, $order);
+                    $purchaseSync->recordCompletedOrder($user, $order, $capture);
+
+                    return $order;
+                });
             });
-        });
+        } catch (Throwable $exception) {
+            $this->markCapturedPayPalOrderForReview($validated['paypal_order_id'], $user, $capture);
+
+            throw $exception;
+        }
 
         $request->session()->regenerate();
 
@@ -86,17 +105,105 @@ class CheckoutController extends Controller
         ]);
     }
 
-    public function createOrder(Request $request, PayPalService $payPal): JsonResponse
+    public function createOrder(Request $request, PayPalService $payPal, RoyalPassService $royalPass): JsonResponse
     {
         $validated = $this->validateCheckout($request);
-        $order = $payPal->createOrder(
-            $this->expectedTotal($validated['product_keys']),
-            $this->currency($validated)
-        );
+        $currency = $this->currency($validated);
+        $user = Auth::user() ?: $royalPass->findOrCreateCustomer($validated['identifier']);
+        Auth::login($user);
+
+        $pendingReference = 'PENDING-'.Str::upper(Str::random(20));
+        $orders = DB::transaction(function () use ($currency, $pendingReference, $user, $validated) {
+            return collect($validated['product_keys'])->map(function (string $productKey, int $index) use ($currency, $pendingReference, $user) {
+                return Order::create([
+                    'user_id' => $user->id,
+                    'provider' => 'paypal',
+                    'provider_order_id' => $this->providerOrderId($pendingReference, $productKey, $index),
+                    'product_key' => $productKey,
+                    'amount_cents' => $this->prices[$productKey],
+                    'currency' => $currency,
+                    'status' => 'pending',
+                    'grants_royal_month' => true,
+                ]);
+            });
+        });
+
+        try {
+            $order = $payPal->createOrder(
+                $orders->sum('amount_cents'),
+                $currency
+            );
+
+            $orders = DB::transaction(function () use ($order, $orders) {
+                return $orders->values()->map(function (Order $pendingOrder, int $index) use ($order) {
+                    $pendingOrder = Order::query()
+                        ->whereKey($pendingOrder->id)
+                        ->where('status', 'pending')
+                        ->lockForUpdate()
+                        ->firstOrFail();
+
+                    $pendingOrder->forceFill([
+                        'provider_order_id' => $this->providerOrderId($order['order_id'], $pendingOrder->product_key, $index),
+                    ])->save();
+
+                    return $pendingOrder;
+                });
+            });
+        } catch (Throwable $exception) {
+            Order::query()
+                ->whereKey($orders->pluck('id'))
+                ->where('status', 'pending')
+                ->update([
+                    'status' => 'failed',
+                    'updated_at' => now(),
+                ]);
+
+            throw $exception;
+        }
+
+        $request->session()->regenerate();
 
         return response()->json([
             'status' => 'created',
             'paypal_order_id' => $order['order_id'],
+            'order_ids' => $orders->pluck('provider_order_id')->values(),
+        ]);
+    }
+
+    public function cancelOrder(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'paypal_order_id' => ['required', 'string', 'max:255'],
+        ]);
+
+        $user = Auth::user();
+
+        if (! $user) {
+            throw ValidationException::withMessages([
+                'paypal_order_id' => 'Create a PayPal order before canceling checkout.',
+            ]);
+        }
+
+        $updated = Order::query()
+            ->where('provider', 'paypal')
+            ->where('user_id', $user->id)
+            ->where('status', 'pending')
+            ->whereNull('provider_capture_id')
+            ->where('provider_order_id', 'like', "{$validated['paypal_order_id']}-%")
+            ->update([
+                'status' => 'cancelled',
+                'updated_at' => now(),
+            ]);
+
+        if ($updated === 0) {
+            throw ValidationException::withMessages([
+                'paypal_order_id' => 'This PayPal order cannot be canceled.',
+            ]);
+        }
+
+        return response()->json([
+            'status' => 'cancelled',
+            'cancelled_orders' => $updated,
         ]);
     }
 
@@ -183,14 +290,6 @@ class CheckoutController extends Controller
     }
 
     /**
-     * @param  array<int, string>  $productKeys
-     */
-    private function expectedTotal(array $productKeys): int
-    {
-        return collect($productKeys)->sum(fn (string $productKey) => $this->prices[$productKey]);
-    }
-
-    /**
      * @param  array{currency?: string}  $validated
      */
     private function currency(array $validated): string
@@ -209,6 +308,25 @@ class CheckoutController extends Controller
     private function providerOrderId(string $paypalOrderId, string $productKey, int $index): string
     {
         return $paypalOrderId.'-'.($index + 1).'-'.$productKey;
+    }
+
+    /**
+     * @return Collection<int, Order>
+     */
+    private function pendingPayPalOrders(string $paypalOrderId, User $user, bool $lock = false): Collection
+    {
+        $query = Order::query()
+            ->where('provider', 'paypal')
+            ->where('user_id', $user->id)
+            ->where('status', 'pending')
+            ->where('provider_order_id', 'like', "{$paypalOrderId}-%")
+            ->orderBy('id');
+
+        if ($lock) {
+            $query->lockForUpdate();
+        }
+
+        return $query->get();
     }
 
     private function isValidIdentifier(string $value): bool
@@ -259,15 +377,55 @@ class CheckoutController extends Controller
     }
 
     /**
-     * @param  array{order_id: string, capture_id: string, payer_id: string|null, payload: array<string, mixed>}  $capture
+     * @param  Collection<int, Order>  $orders
      */
-    private function ensureUnusedPayPalCapture(array $capture): void
+    private function ensurePendingPayPalOrders(string $paypalOrderId, Collection $orders): void
+    {
+        if ($orders->isNotEmpty()) {
+            return;
+        }
+
+        $message = Order::query()
+            ->where('provider', 'paypal')
+            ->where('provider_order_id', 'like', "{$paypalOrderId}-%")
+            ->exists()
+                ? 'This PayPal order belongs to a different checkout or is no longer pending.'
+                : 'Create a PayPal order before capture.';
+
+        throw ValidationException::withMessages([
+            'paypal_order_id' => $message,
+        ]);
+    }
+
+    /**
+     * @param  Collection<int, Order>  $orders
+     */
+    private function orderCurrency(Collection $orders, string $fallback): string
+    {
+        $currencies = $orders->pluck('currency')->unique()->values();
+
+        if ($currencies->count() > 1) {
+            throw ValidationException::withMessages([
+                'currency' => 'Pending checkout contains mixed currencies.',
+            ]);
+        }
+
+        return (string) ($currencies->first() ?? $fallback);
+    }
+
+    /**
+     * @param  array{order_id: string, capture_id: string, payer_id: string|null, payload: array<string, mixed>}  $capture
+     * @param  Collection<int, Order>  $pendingOrders
+     */
+    private function ensureUnusedPayPalCapture(array $capture, Collection $pendingOrders): void
     {
         $paypalOrderId = $capture['order_id'];
         $paypalCaptureId = $capture['capture_id'];
+        $pendingOrderIds = $pendingOrders->pluck('id');
 
         if (! Order::query()
             ->where('provider', 'paypal')
+            ->whereNotIn('id', $pendingOrderIds)
             ->where(function ($query) use ($paypalCaptureId, $paypalOrderId) {
                 $query
                     ->where('provider_capture_id', $paypalCaptureId)
@@ -280,5 +438,22 @@ class CheckoutController extends Controller
         throw ValidationException::withMessages([
             'paypal_order_id' => 'This PayPal payment has already been recorded.',
         ]);
+    }
+
+    /**
+     * @param  array{order_id: string, capture_id: string, payer_id: string|null, payload: array<string, mixed>}  $capture
+     */
+    private function markCapturedPayPalOrderForReview(string $paypalOrderId, User $user, array $capture): void
+    {
+        Order::query()
+            ->where('provider', 'paypal')
+            ->where('user_id', $user->id)
+            ->where('status', 'pending')
+            ->where('provider_order_id', 'like', "{$paypalOrderId}-%")
+            ->update([
+                'provider_capture_id' => $capture['capture_id'],
+                'status' => 'payment_review',
+                'updated_at' => now(),
+            ]);
     }
 }

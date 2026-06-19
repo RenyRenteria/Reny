@@ -475,6 +475,7 @@
                             id="paypalButtons"
                             data-paypal-client-id="{{ config('services.paypal.client_id') }}"
                             data-create-order-endpoint="{{ route('checkout.paypal.orders') }}"
+                            data-cancel-order-endpoint="{{ route('checkout.paypal.orders.cancel') }}"
                             data-capture-endpoint="{{ route('checkout.paypal') }}"
                         ></div>
                         <div class="store-local-panel" id="localPaymentPanel" hidden>
