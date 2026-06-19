@@ -8,11 +8,15 @@ use App\Models\Order;
 use App\Models\Ticket;
 use App\Models\User;
 use App\Models\UserUnlock;
+use App\Services\Commerce\ProductCatalog;
 use Carbon\CarbonImmutable;
 
 class UserHubPurchaseSync
 {
-    public function __construct(private readonly TicketCodeService $tickets) {}
+    public function __construct(
+        private readonly TicketCodeService $tickets,
+        private readonly ProductCatalog $products,
+    ) {}
 
     /**
      * @param  array<string, mixed>  $capture
@@ -20,7 +24,7 @@ class UserHubPurchaseSync
     public function recordCompletedOrder(User $user, Order $order, array $capture): void
     {
         $user->refresh();
-        $product = $this->product($order->product_key);
+        $product = $this->product($order, $user);
 
         BillingProfile::updateOrCreate([
             'user_id' => $user->id,
@@ -39,10 +43,13 @@ class UserHubPurchaseSync
         ]);
 
         if (($product['unlock_type'] ?? null) !== null) {
+            $sourceType = (string) ($product['source_type'] ?? 'order');
+            $sourceId = (string) ($product['source_id'] ?? $order->provider_order_id);
+
             UserUnlock::updateOrCreate([
                 'user_id' => $user->id,
-                'source_type' => 'order',
-                'source_id' => $order->provider_order_id,
+                'source_type' => $sourceType,
+                'source_id' => $sourceId,
                 'product_key' => $order->product_key,
             ], [
                 'order_id' => $order->id,
@@ -54,6 +61,9 @@ class UserHubPurchaseSync
                 'metadata' => [
                     'provider' => $order->provider,
                     'capture_id' => $capture['capture_id'] ?? null,
+                    'provider_order_id' => $order->provider_order_id,
+                    'source_type' => $sourceType,
+                    'source_id' => $sourceId,
                 ],
             ]);
         }
@@ -95,43 +105,41 @@ class UserHubPurchaseSync
     }
 
     /**
-     * @return array{title: string, unlock_type?: string|null, event?: array<string, string>|null}
+     * @return array<string, mixed>
      */
-    private function product(string $productKey): array
+    private function product(Order $order, User $user): array
     {
-        return match ($productKey) {
-            'deluxe' => ['title' => 'Deluxe Digital Album', 'unlock_type' => 'album'],
-            'singles' => ['title' => 'Singles / Digital Pack', 'unlock_type' => 'album'],
-            'print' => ['title' => 'Numbered Art Print', 'unlock_type' => 'drop'],
-            'concert' => [
-                'title' => 'Reny Live - Studio Night',
-                'event' => [
-                    'title' => 'Reny Live - Studio Night',
-                    'venue' => 'Panama City',
-                    'address' => 'Panama City',
-                    'starts_at' => '2026-08-24 20:00:00',
-                ],
-            ],
-            'listening' => [
-                'title' => 'Deluxe Preview Session',
-                'event' => [
-                    'title' => 'Deluxe Preview Session',
-                    'venue' => 'Deluxe Listening Room',
-                    'address' => 'Royal Stream',
-                    'starts_at' => '2026-09-06 19:00:00',
-                ],
-            ],
-            default => ['title' => str($productKey)->headline()->toString(), 'unlock_type' => null],
-        };
+        $snapshot = data_get($order->metadata, 'product');
+
+        if (is_array($snapshot)) {
+            return [
+                'key' => $snapshot['key'] ?? $order->product_key,
+                'title' => $snapshot['title'] ?? str($order->product_key)->headline()->toString(),
+                'unlock_type' => $snapshot['unlock_type'] ?? null,
+                'source_type' => $snapshot['source_type'] ?? 'order',
+                'source_id' => $snapshot['source_id'] ?? $order->provider_order_id,
+                'event' => $snapshot['event'] ?? null,
+            ];
+        }
+
+        return $this->products->find($order->product_key, $user) ?? [
+            'key' => $order->product_key,
+            'title' => str($order->product_key)->headline()->toString(),
+            'unlock_type' => null,
+            'source_type' => 'order',
+            'source_id' => $order->provider_order_id,
+            'event' => null,
+        ];
     }
 
     /**
-     * @param  array{event: array<string, string>}  $product
+     * @param  array<string, mixed>  $product
      */
     private function event(array $product): FanEvent
     {
         $event = $product['event'];
-        $startsAt = CarbonImmutable::parse($event['starts_at'], 'America/Panama');
+        $timezone = $event['timezone'] ?? 'America/Panama';
+        $startsAt = CarbonImmutable::parse($event['starts_at'], $timezone);
 
         return FanEvent::firstOrCreate([
             'title' => $event['title'],
@@ -139,10 +147,11 @@ class UserHubPurchaseSync
         ], [
             'venue' => $event['venue'],
             'address' => $event['address'],
-            'timezone' => 'America/Panama',
+            'timezone' => $timezone,
             'status' => 'scheduled',
             'metadata' => [
                 'source' => 'paypal_checkout',
+                'store_event_key' => $product['key'] ?? null,
             ],
         ]);
     }

@@ -2,17 +2,20 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class StorePageTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_store_page_mounts_shop_with_events_and_royal_exclusives(): void
     {
         $response = $this->get('/store');
 
         $response->assertOk();
         $response->assertSee('Upcoming concert');
-        $response->assertSee("Royal's Exclusives");
+        $response->assertSee("Royal's Exclusives", false);
         $response->assertSee('$4.99/mo');
         $response->assertSee('Events');
         $response->assertSee('Reny Live - Studio Night');

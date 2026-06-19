@@ -516,12 +516,17 @@ class PublicCmsContentService
     {
         $price = ((int) $this->metadata($content, 'price_cents', 0)) / 100;
         $kind = (string) $this->metadata($content, 'product_kind', $this->metadata($content, 'drop_kind', 'digital'));
+        $isDrop = $content->type === ContentType::Drop;
 
         return [
             'key' => $content->purchase_key ?: $this->metadata($content, 'sku', $content->slug),
             'name' => $content->title,
-            'type' => str($kind)->headline()->toString(),
-            'category' => $kind === 'physical' ? 'physical merch' : $kind,
+            'type' => $isDrop ? 'Art Drop' : str($kind)->headline()->toString(),
+            'category' => match (true) {
+                $isDrop => trim('drops '.$kind),
+                $kind === 'physical' => 'physical merch',
+                default => $kind,
+            },
             'price' => $price,
             'suffix' => $kind === 'subscription' ? '/mo' : '',
             'availability' => $this->availability($content),
