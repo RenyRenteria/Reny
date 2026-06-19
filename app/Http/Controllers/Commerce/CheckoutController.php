@@ -16,6 +16,8 @@ use Illuminate\Validation\ValidationException;
 
 class CheckoutController extends Controller
 {
+    private const SETTLEMENT_CURRENCY = 'USD';
+
     /**
      * @var array<string, int>
      */
@@ -95,31 +97,86 @@ class CheckoutController extends Controller
         ]);
     }
 
-    /**
-     * @return array{identifier: string, product_keys: array<int, string>, currency?: string, paypal_order_id?: string}
-     */
-    private function validateCheckout(Request $request, bool $requirePaypalOrder = false): array
+    public function local(Request $request, RoyalPassService $royalPass): JsonResponse
     {
-        $validated = $request->validate([
-            'identifier' => ['required', 'string', 'max:255'],
+        $validated = $this->validateCheckout($request, requireLocalReference: true);
+        $currency = $this->currency($validated);
+        $reference = $this->normalizeLocalReference($validated['local_reference']);
+
+        $this->ensureUnusedLocalReference($reference);
+
+        $user = Auth::user() ?: $royalPass->findOrCreateCustomer($validated['identifier']);
+        Auth::login($user);
+
+        $orders = DB::transaction(function () use ($currency, $reference, $royalPass, $user, $validated) {
+            return collect($validated['product_keys'])->map(function (string $productKey, int $index) use ($currency, $reference, $royalPass, $user) {
+                $providerOrderId = $this->providerOrderId("LOCAL-{$reference}", $productKey, $index);
+                $order = Order::create([
+                    'user_id' => $user->id,
+                    'provider' => 'local',
+                    'provider_order_id' => $providerOrderId,
+                    'product_key' => $productKey,
+                    'amount_cents' => $this->prices[$productKey],
+                    'currency' => $currency,
+                    'status' => 'pending',
+                    'grants_royal_month' => false,
+                ]);
+
+                $royalPass->log($user, 'purchase_pending', 'order', $providerOrderId, [
+                    'product_key' => $productKey,
+                    'provider' => 'local',
+                    'local_reference' => $reference,
+                ]);
+
+                return $order;
+            });
+        });
+
+        $request->session()->regenerate();
+
+        return response()->json([
+            'status' => 'pending',
+            'message' => 'Local payment reference received. Access will update after manual confirmation.',
+            'order_ids' => $orders->pluck('provider_order_id')->values(),
+            'account_url' => route('account.show'),
+        ]);
+    }
+
+    /**
+     * @return array{identifier: string, product_keys: array<int, string>, currency?: string, paypal_order_id?: string, local_reference?: string}
+     */
+    private function validateCheckout(
+        Request $request,
+        bool $requirePaypalOrder = false,
+        bool $requireLocalReference = false,
+    ): array {
+        return $request->validate([
+            'identifier' => [
+                'required',
+                'string',
+                'max:255',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if (! $this->isValidIdentifier((string) $value)) {
+                        $fail('Enter a valid email or phone.');
+                    }
+                },
+            ],
             'product_keys' => ['required', 'array', 'min:1'],
             'product_keys.*' => ['required', 'string', Rule::in(array_keys($this->prices))],
             'currency' => ['nullable', 'string', 'size:3'],
             'paypal_order_id' => [$requirePaypalOrder ? 'required' : 'sometimes', 'string', 'max:255'],
+            'local_reference' => [
+                $requireLocalReference ? 'required' : 'sometimes',
+                'string',
+                'min:6',
+                'max:64',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if (! $this->isValidLocalReference((string) $value)) {
+                        $fail('Enter a valid receipt or reference with at least 4 digits.');
+                    }
+                },
+            ],
         ]);
-
-        $identifier = trim($validated['identifier']);
-        $phoneDigits = preg_replace('/\D+/', '', $identifier) ?? '';
-
-        if (! filter_var($identifier, FILTER_VALIDATE_EMAIL) && strlen($phoneDigits) < 7) {
-            throw ValidationException::withMessages([
-                'identifier' => 'Use a valid email or phone number.',
-            ]);
-        }
-
-        $validated['identifier'] = $identifier;
-
-        return $validated;
     }
 
     /**
@@ -135,11 +192,66 @@ class CheckoutController extends Controller
      */
     private function currency(array $validated): string
     {
-        return strtoupper($validated['currency'] ?? 'USD');
+        $currency = strtoupper($validated['currency'] ?? self::SETTLEMENT_CURRENCY);
+
+        if ($currency !== self::SETTLEMENT_CURRENCY) {
+            throw ValidationException::withMessages([
+                'currency' => 'Checkout currently settles in USD.',
+            ]);
+        }
+
+        return $currency;
     }
 
     private function providerOrderId(string $paypalOrderId, string $productKey, int $index): string
     {
         return $paypalOrderId.'-'.($index + 1).'-'.$productKey;
+    }
+
+    private function isValidIdentifier(string $value): bool
+    {
+        $value = trim($value);
+
+        if (filter_var($value, FILTER_VALIDATE_EMAIL)) {
+            return true;
+        }
+
+        $digits = preg_replace('/\D+/', '', $value) ?? '';
+
+        return strlen($digits) >= 7 && strlen($digits) <= 15;
+    }
+
+    private function isValidLocalReference(string $value): bool
+    {
+        $reference = $this->normalizeLocalReference($value);
+        $digits = preg_replace('/\D+/', '', $reference) ?? '';
+
+        return strlen($reference) >= 6
+            && strlen($reference) <= 64
+            && strlen($digits) >= 4
+            && (bool) preg_match('/^[A-Z0-9][A-Z0-9-]*[A-Z0-9]$/', $reference);
+    }
+
+    private function normalizeLocalReference(string $value): string
+    {
+        return str($value)
+            ->trim()
+            ->replaceMatches('/\s+/', '-')
+            ->upper()
+            ->toString();
+    }
+
+    private function ensureUnusedLocalReference(string $reference): void
+    {
+        if (! Order::query()
+            ->where('provider', 'local')
+            ->where('provider_order_id', 'like', "LOCAL-{$reference}-%")
+            ->exists()) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'local_reference' => 'This local payment reference has already been submitted.',
+        ]);
     }
 }
