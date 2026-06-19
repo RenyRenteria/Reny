@@ -2,9 +2,11 @@
 
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\Admin\AdminLoginController;
+use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\EditorialActionController;
 use App\Http\Controllers\Admin\EditorialContentController;
 use App\Http\Controllers\Admin\MediaLibraryController;
+use App\Http\Controllers\AnalyticsEventController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
@@ -48,6 +50,7 @@ Route::post('/community/clubs/{club}/messages', [CommunityInteractionController:
     ->where('club', '[A-Za-z0-9._-]+')
     ->name('community.clubs.messages.store');
 Route::get('/store', [PublicContentController::class, 'store'])->name('store');
+Route::post('/analytics/events', [AnalyticsEventController::class, 'store'])->name('analytics.events.store');
 Route::get('/api/public-content/{page}', [PublicContentController::class, 'payload'])->name('public-content.payload');
 Route::get('/content/{content}', [PublicContentController::class, 'show'])->name('public.content.show');
 
@@ -56,7 +59,7 @@ Route::prefix(config('admin.path', 'admin'))->name('admin.')->group(function () 
     Route::post('/login', [AdminLoginController::class, 'store'])->name('login.store');
 
     Route::middleware(['admin.access', 'admin.session'])->group(function () {
-        Route::get('/', [AdminLoginController::class, 'create'])->name('dashboard');
+        Route::get('/', DashboardController::class)->name('dashboard');
         Route::post('/logout', [AdminLoginController::class, 'destroy'])->name('logout');
 
         Route::get('/site-editor', [AdminLoginController::class, 'create'])->name('site-editor.index');
