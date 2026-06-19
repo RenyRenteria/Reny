@@ -131,7 +131,8 @@ class CheckoutController extends Controller
         try {
             $order = $payPal->createOrder(
                 $orders->sum('amount_cents'),
-                $currency
+                $currency,
+                $this->paypalItems($orders),
             );
 
             $orders = DB::transaction(function () use ($order, $orders) {
@@ -308,6 +309,42 @@ class CheckoutController extends Controller
     private function providerOrderId(string $paypalOrderId, string $productKey, int $index): string
     {
         return $paypalOrderId.'-'.($index + 1).'-'.$productKey;
+    }
+
+    /**
+     * @param  Collection<int, Order>  $orders
+     * @return array<int, array{name: string, unit_amount_cents: int, quantity: int}>
+     */
+    private function paypalItems(Collection $orders): array
+    {
+        return $orders
+            ->groupBy(fn (Order $order): string => $order->product_key.'|'.$order->amount_cents)
+            ->map(function (Collection $group): array {
+                /** @var Order $order */
+                $order = $group->first();
+
+                return [
+                    'name' => $this->productLabel($order->product_key),
+                    'unit_amount_cents' => $order->amount_cents,
+                    'quantity' => $group->count(),
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    private function productLabel(string $productKey): string
+    {
+        return match ($productKey) {
+            'deluxe' => 'Deluxe Digital Album',
+            'singles' => 'Singles / Digital Pack',
+            'royal' => 'Royal Pass',
+            'merch' => 'Signature Merch',
+            'print' => 'Numbered Art Print',
+            'concert' => 'Reny Live - Studio Night',
+            'listening' => 'Deluxe Preview Session',
+            default => str($productKey)->headline()->toString(),
+        };
     }
 
     /**

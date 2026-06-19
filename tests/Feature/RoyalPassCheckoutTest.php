@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Models\FanEvent;
 use App\Models\Order;
+use App\Models\Ticket;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
@@ -111,6 +113,41 @@ class RoyalPassCheckoutTest extends TestCase
             'amount_cents' => 800,
             'status' => 'pending',
         ]);
+    }
+
+    public function test_checkout_creates_paypal_order_with_all_ticket_line_items(): void
+    {
+        $this->fakeCreatedOrder('PAYPAL-TICKETS-ITEMS');
+
+        $this->postJson('/checkout/paypal/orders', [
+            'identifier' => 'tickets-items@renyrenteria.com',
+            'product_keys' => ['concert', 'concert', 'listening'],
+            'currency' => 'USD',
+        ])
+            ->assertOk()
+            ->assertJsonPath('status', 'created')
+            ->assertJsonPath('paypal_order_id', 'PAYPAL-TICKETS-ITEMS')
+            ->assertJsonPath('order_ids.0', 'PAYPAL-TICKETS-ITEMS-1-concert')
+            ->assertJsonPath('order_ids.1', 'PAYPAL-TICKETS-ITEMS-2-concert')
+            ->assertJsonPath('order_ids.2', 'PAYPAL-TICKETS-ITEMS-3-listening');
+
+        Http::assertSent(function ($request): bool {
+            if ($request->url() !== 'https://paypal.test/v2/checkout/orders') {
+                return false;
+            }
+
+            $payload = $request->data();
+            $items = collect(data_get($payload, 'purchase_units.0.items', []));
+
+            return data_get($payload, 'purchase_units.0.amount.value') === '102.00'
+                && data_get($payload, 'purchase_units.0.amount.breakdown.item_total.value') === '102.00'
+                && $items->contains(fn (array $item): bool => $item['name'] === 'Reny Live - Studio Night'
+                    && $item['quantity'] === '2'
+                    && data_get($item, 'unit_amount.value') === '42.00')
+                && $items->contains(fn (array $item): bool => $item['name'] === 'Deluxe Preview Session'
+                    && $item['quantity'] === '1'
+                    && data_get($item, 'unit_amount.value') === '18.00');
+        });
     }
 
     public function test_checkout_rejects_empty_cart_before_paypal_order_creation(): void
@@ -320,6 +357,131 @@ class RoyalPassCheckoutTest extends TestCase
             ->get('/account')
             ->assertOk()
             ->assertSee('Reny Live - Studio Night');
+    }
+
+    public function test_multi_ticket_same_event_checkout_issues_one_ticket_per_item(): void
+    {
+        $this->createPendingPayPalOrder('same-event@renyrenteria.com', ['concert', 'concert'], 'PAYPAL-SAME-EVENT');
+        $this->fakeSuccessfulCapture('PAYPAL-SAME-EVENT', '84.00', 'CAPTURE-SAME-EVENT');
+
+        $this->postJson('/checkout/paypal', [
+            'identifier' => 'same-event@renyrenteria.com',
+            'product_keys' => ['concert', 'concert'],
+            'currency' => 'USD',
+            'paypal_order_id' => 'PAYPAL-SAME-EVENT',
+        ])
+            ->assertOk()
+            ->assertJsonPath('order_ids.0', 'PAYPAL-SAME-EVENT-1-concert')
+            ->assertJsonPath('order_ids.1', 'PAYPAL-SAME-EVENT-2-concert');
+
+        $user = User::where('email', 'same-event@renyrenteria.com')->firstOrFail();
+        $event = FanEvent::where('title', 'Reny Live - Studio Night')->firstOrFail();
+
+        $this->assertSame(2, Ticket::query()
+            ->where('user_id', $user->id)
+            ->where('event_id', $event->id)
+            ->where('status', 'confirmed')
+            ->count());
+
+        $this->assertDatabaseHas('orders', [
+            'provider_order_id' => 'PAYPAL-SAME-EVENT-1-concert',
+            'provider_capture_id' => 'CAPTURE-SAME-EVENT',
+            'status' => 'completed',
+        ]);
+        $this->assertDatabaseHas('orders', [
+            'provider_order_id' => 'PAYPAL-SAME-EVENT-2-concert',
+            'provider_capture_id' => 'CAPTURE-SAME-EVENT',
+            'status' => 'completed',
+        ]);
+    }
+
+    public function test_multi_event_checkout_issues_tickets_for_each_event(): void
+    {
+        $this->createPendingPayPalOrder('multi-event@renyrenteria.com', ['concert', 'listening'], 'PAYPAL-MULTI-EVENT');
+        $this->fakeSuccessfulCapture('PAYPAL-MULTI-EVENT', '60.00', 'CAPTURE-MULTI-EVENT');
+
+        $this->postJson('/checkout/paypal', [
+            'identifier' => 'multi-event@renyrenteria.com',
+            'product_keys' => ['concert', 'listening'],
+            'currency' => 'USD',
+            'paypal_order_id' => 'PAYPAL-MULTI-EVENT',
+        ])
+            ->assertOk()
+            ->assertJsonPath('order_ids.0', 'PAYPAL-MULTI-EVENT-1-concert')
+            ->assertJsonPath('order_ids.1', 'PAYPAL-MULTI-EVENT-2-listening');
+
+        $user = User::where('email', 'multi-event@renyrenteria.com')->firstOrFail();
+        $concert = FanEvent::where('title', 'Reny Live - Studio Night')->firstOrFail();
+        $listening = FanEvent::where('title', 'Deluxe Preview Session')->firstOrFail();
+
+        $this->assertSame(1, Ticket::query()
+            ->where('user_id', $user->id)
+            ->where('event_id', $concert->id)
+            ->where('status', 'confirmed')
+            ->count());
+        $this->assertSame(1, Ticket::query()
+            ->where('user_id', $user->id)
+            ->where('event_id', $listening->id)
+            ->where('status', 'confirmed')
+            ->count());
+    }
+
+    public function test_ticket_checkout_rejects_paypal_capture_total_mismatch(): void
+    {
+        $this->createPendingPayPalOrder('ticket-mismatch@renyrenteria.com', ['concert', 'listening'], 'PAYPAL-TICKET-MISMATCH');
+        $this->fakeSuccessfulCapture('PAYPAL-TICKET-MISMATCH', '42.00', 'CAPTURE-TICKET-MISMATCH');
+
+        $this->postJson('/checkout/paypal', [
+            'identifier' => 'ticket-mismatch@renyrenteria.com',
+            'product_keys' => ['concert', 'listening'],
+            'currency' => 'USD',
+            'paypal_order_id' => 'PAYPAL-TICKET-MISMATCH',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('paypal_order_id');
+
+        $this->assertDatabaseHas('orders', [
+            'provider_order_id' => 'PAYPAL-TICKET-MISMATCH-1-concert',
+            'provider_capture_id' => null,
+            'status' => 'pending',
+        ]);
+        $this->assertDatabaseHas('orders', [
+            'provider_order_id' => 'PAYPAL-TICKET-MISMATCH-2-listening',
+            'provider_capture_id' => null,
+            'status' => 'pending',
+        ]);
+        $this->assertDatabaseCount('tickets', 0);
+    }
+
+    public function test_ticket_checkout_ignores_client_items_not_in_pending_paypal_order(): void
+    {
+        $this->createPendingPayPalOrder('ticket-snapshot@renyrenteria.com', ['concert'], 'PAYPAL-TICKET-SNAPSHOT');
+        $this->fakeSuccessfulCapture('PAYPAL-TICKET-SNAPSHOT', '42.00', 'CAPTURE-TICKET-SNAPSHOT');
+
+        $response = $this->postJson('/checkout/paypal', [
+            'identifier' => 'ticket-snapshot@renyrenteria.com',
+            'product_keys' => ['concert', 'listening'],
+            'currency' => 'USD',
+            'paypal_order_id' => 'PAYPAL-TICKET-SNAPSHOT',
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('order_ids.0', 'PAYPAL-TICKET-SNAPSHOT-1-concert');
+
+        $this->assertCount(1, $response->json('order_ids'));
+
+        $user = User::where('email', 'ticket-snapshot@renyrenteria.com')->firstOrFail();
+        $concert = FanEvent::where('title', 'Reny Live - Studio Night')->firstOrFail();
+
+        $this->assertSame(1, Ticket::query()
+            ->where('user_id', $user->id)
+            ->where('event_id', $concert->id)
+            ->where('status', 'confirmed')
+            ->count());
+        $this->assertDatabaseMissing('events', [
+            'title' => 'Deluxe Preview Session',
+        ]);
     }
 
     public function test_duplicate_products_in_one_paypal_order_get_unique_provider_order_ids(): void
