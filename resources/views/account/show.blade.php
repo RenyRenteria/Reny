@@ -283,6 +283,8 @@
                     @csrf
                     <button class="auth-secondary-button" type="submit">Log out</button>
                 </form>
+
+                <x-mobile-bottom-nav active="account" />
             </main>
         </div>
     </body>

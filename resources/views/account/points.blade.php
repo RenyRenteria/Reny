@@ -102,6 +102,8 @@
                         @endif
                     </article>
                 </section>
+
+                <x-mobile-bottom-nav active="account" />
             </main>
         </div>
     </body>

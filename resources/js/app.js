@@ -702,13 +702,16 @@ document.querySelectorAll('.auth-form').forEach((form) => {
     });
 });
 
-document.querySelectorAll('.member-card-link, .account-action').forEach((link) => {
+document.querySelectorAll('.member-card-link, .account-action, .mobile-auth-link').forEach((link) => {
     link.addEventListener('click', () => {
-        const action = link.href.includes('/login') ? 'auth_login_started' : 'account_navigation_clicked';
+        const action = link.dataset.analyticsEvent
+            || (link.href.includes('/login') ? 'auth_login_started' : 'account_navigation_clicked');
 
         trackElementEvent(link, action, {
             item_type: 'account_link',
+            access_state: link.dataset.accessState,
             destination: new URL(link.href, window.location.href).pathname,
+            surface: link.dataset.analyticsSurface,
             result: 'clicked',
         });
     });

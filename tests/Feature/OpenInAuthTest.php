@@ -126,6 +126,41 @@ class OpenInAuthTest extends TestCase
             ->assertDontSee('VIP MEMBER');
     }
 
+    public function test_guest_mobile_navigation_exposes_sign_in_entry(): void
+    {
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('<nav class="mobile-bottom-nav"', false)
+            ->assertSee('data-access-state="guest"', false)
+            ->assertSee('data-analytics-event="auth_login_started"', false)
+            ->assertSee('data-analytics-id="mobile_auth_guest"', false)
+            ->assertSee('data-analytics-surface="mobile_bottom_nav"', false)
+            ->assertSee('SIGN IN');
+    }
+
+    public function test_logged_in_mobile_navigation_links_to_account_and_shows_state(): void
+    {
+        $openUser = User::factory()->create();
+
+        $this->actingAs($openUser)
+            ->get('/community')
+            ->assertOk()
+            ->assertSee('href="'.route('account.show').'"', false)
+            ->assertSee('data-access-state="open"', false)
+            ->assertSee('data-analytics-event="account_navigation_clicked"', false)
+            ->assertSee('ACCOUNT');
+
+        $royalUser = User::factory()->royal()->create();
+
+        $this->actingAs($royalUser)
+            ->get('/videos')
+            ->assertOk()
+            ->assertSee('href="'.route('account.show').'"', false)
+            ->assertSee('data-access-state="royal_active"', false)
+            ->assertSee('data-analytics-id="mobile_auth_royal_active"', false)
+            ->assertSee('ROYAL');
+    }
+
     public function test_expired_user_keeps_account_but_sees_reactivation_state(): void
     {
         $user = User::factory()->expiredRoyal()->create([

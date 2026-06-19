@@ -37,6 +37,9 @@ class AnalyticsInstrumentationTest extends TestCase
         $this->assertStringContainsString('window.renyAnalytics', $script);
         $this->assertStringContainsString('reny_analytics_debug', $script);
         $this->assertStringContainsString('analytics_debug', $script);
+        $this->assertStringContainsString('mobile-auth-link', $script);
+        $this->assertStringContainsString('analyticsSurface', $script);
+        $this->assertStringContainsString('access_state', $script);
         $this->assertStringContainsString('window.dataLayer', $script);
         $this->assertStringContainsString('window.gtag', $script);
         $this->assertStringContainsString('window.plausible', $script);

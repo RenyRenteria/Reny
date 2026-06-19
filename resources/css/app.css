@@ -2734,7 +2734,7 @@ button {
         left: 0;
         z-index: 20;
         display: grid;
-        grid-template-columns: repeat(5, minmax(0, 1fr));
+        grid-template-columns: repeat(5, minmax(0, 1fr)) minmax(3.75rem, 1.15fr);
         height: calc(5rem + env(safe-area-inset-bottom));
         padding-bottom: env(safe-area-inset-bottom);
         border-top: 1px solid rgba(153, 115, 50, 0.36);
@@ -2746,6 +2746,9 @@ button {
     .mobile-bottom-nav a {
         position: relative;
         display: grid;
+        align-content: center;
+        justify-items: center;
+        gap: 0.1875rem;
         place-items: center;
         min-width: 0;
         border-right: 1px solid rgba(153, 115, 50, 0.36);
@@ -2768,6 +2771,24 @@ button {
         width: 1.75rem;
         height: 1.75rem;
         stroke-width: 1.9;
+    }
+
+    .mobile-auth-link[data-access-state="royal_active"],
+    .mobile-auth-link[data-access-state="royal_grace"] {
+        color: var(--red);
+    }
+
+    .mobile-auth-status {
+        display: block;
+        max-width: 100%;
+        overflow: hidden;
+        color: currentColor;
+        font-size: 0.5rem;
+        font-weight: 950;
+        letter-spacing: 0.05em;
+        line-height: 1;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     .hero {

@@ -72,6 +72,8 @@ Auth and account:
 - `account_navigation_clicked`
 - `account_viewed`
 
+Mobile bottom nav auth/account payloads also include `access_state` and `surface: mobile_bottom_nav` so QA can distinguish Guest, logged-in Open, and Royal taps.
+
 Store and checkout:
 
 - `store_product_opened`
