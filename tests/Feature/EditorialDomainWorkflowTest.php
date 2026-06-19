@@ -285,6 +285,8 @@ class EditorialDomainWorkflowTest extends TestCase
 
     private function actingAsAdmin(User $user): void
     {
+        config(['admin.cms_enabled' => true]);
+
         $this->actingAs($user)->withSession([
             'admin_authenticated_at' => now()->timestamp,
         ]);

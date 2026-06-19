@@ -132,6 +132,8 @@ class AdminAuthRbacTest extends TestCase
 
     public function test_manipulated_publish_request_cannot_bypass_rbac(): void
     {
+        config(['admin.cms_enabled' => true]);
+
         $editor = User::factory()->create(['role' => 'editor']);
 
         $this->actingAs($editor)
@@ -166,6 +168,8 @@ class AdminAuthRbacTest extends TestCase
 
     private function signInToAdmin(User $user): void
     {
+        config(['admin.cms_enabled' => true]);
+
         $this->post(route('admin.login.store'), [
             'email' => $user->email,
             'password' => 'password',
