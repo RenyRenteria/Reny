@@ -562,6 +562,7 @@ class PublicCmsContentService
     private function postPayload(EditorialContent $content): array
     {
         return [
+            'key' => 'cms-post-'.$content->id,
             'title' => $content->title,
             'time' => $content->published_at?->diffForHumans() ?? 'Published',
             'body' => $content->body ?: $content->summary ?: '',
@@ -580,12 +581,14 @@ class PublicCmsContentService
             ->filter()
             ->values()
             ->map(fn (string $option, int $index): array => [
+                'key' => 'option-'.($index + 1),
                 'label' => $option,
                 'percent' => [42, 34, 24, 18, 12, 8, 6, 4][$index] ?? 10,
             ])
             ->all();
 
         return [
+            'key' => 'cms-poll-'.$content->id,
             'question' => $this->metadata($content, 'question', $content->title),
             'options' => $options,
             'votes' => $this->metadata($content, 'votes', 'CMS poll'),

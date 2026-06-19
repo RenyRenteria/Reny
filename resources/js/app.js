@@ -734,6 +734,54 @@ const showCommunityToast = (message) => {
     }, 1800);
 };
 
+const communityCsrfToken = () => document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+const communityRequestError = (message, reason = null) => Object.assign(new Error(message), {
+    reason: reason || normalizeAnalyticsKey(message),
+    userMessage: message,
+});
+
+const postCommunityJson = async (url, body = {}) => {
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': communityCsrfToken(),
+        },
+        body: JSON.stringify(body),
+    });
+    const payload = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+        const validationMessage = Object.values(payload.errors || {})[0]?.[0];
+        const fallback = response.status === 401
+            ? 'Sign in before using community actions.'
+            : response.status === 403
+                ? 'Royal Pass required for community actions.'
+                : response.status === 419
+                    ? 'Refresh this page and try again.'
+                    : 'Community action could not be saved. Try again.';
+
+        const error = communityRequestError(validationMessage || payload.message || fallback, payload.message || response.status);
+        error.status = response.status;
+        throw error;
+    }
+
+    return payload;
+};
+
+const setCommunityFormStatus = (form, message = '', isError = false) => {
+    const status = form?.querySelector('[data-form-status]');
+
+    if (!status) {
+        return;
+    }
+
+    status.textContent = message;
+    status.classList.toggle('is-error', isError);
+};
+
 document.querySelectorAll('.community-toast-trigger').forEach((button) => {
     button.addEventListener('click', () => {
         trackElementEvent(button, 'community_action_clicked', {
@@ -745,22 +793,47 @@ document.querySelectorAll('.community-toast-trigger').forEach((button) => {
 });
 
 document.querySelectorAll('.reaction-button').forEach((button) => {
-    button.addEventListener('click', () => {
+    button.addEventListener('click', async () => {
         const countNode = button.querySelector('.reaction-count');
         const currentCount = Number(button.dataset.count || countNode?.textContent || 0);
-        const nextCount = button.classList.contains('is-reacted') ? currentCount - 1 : currentCount + 1;
+        const wasReacted = button.classList.contains('is-reacted');
+        const nextCount = wasReacted ? currentCount - 1 : currentCount + 1;
 
         button.dataset.count = String(nextCount);
-        button.classList.toggle('is-reacted');
+        button.classList.toggle('is-reacted', !wasReacted);
+        button.disabled = true;
 
         if (countNode) {
             countNode.textContent = String(nextCount);
         }
 
-        trackElementEvent(button, 'community_like_clicked', {
-            item_type: 'reaction',
-            result: button.classList.contains('is-reacted') ? 'liked' : 'unliked',
-        });
+        try {
+            if (button.dataset.endpoint) {
+                await postCommunityJson(button.dataset.endpoint);
+            }
+
+            trackElementEvent(button, 'community_like_clicked', {
+                item_type: 'reaction',
+                result: button.classList.contains('is-reacted') ? 'liked' : 'unliked',
+            });
+        } catch (error) {
+            console.error(error);
+            button.dataset.count = String(currentCount);
+            button.classList.toggle('is-reacted', wasReacted);
+
+            if (countNode) {
+                countNode.textContent = String(currentCount);
+            }
+
+            showCommunityToast(error.userMessage || 'Like could not be saved.');
+            trackElementEvent(button, 'community_like_clicked', {
+                item_type: 'reaction',
+                reason: error.reason || error.message || 'like_failed',
+                result: 'failed',
+            });
+        } finally {
+            button.disabled = false;
+        }
     });
 });
 
@@ -785,11 +858,29 @@ const normalizePollValues = (values) => {
     return roundedValues;
 };
 
-document.querySelectorAll('[data-poll]').forEach((poll) => {
+document.querySelectorAll('[data-community-poll], [data-poll]').forEach((poll) => {
     const options = [...poll.querySelectorAll('.poll-option')];
+    const totalNode = poll.querySelector('[data-poll-total]');
 
     options.forEach((option, selectedIndex) => {
-        option.addEventListener('click', () => {
+        if (option.tagName !== 'BUTTON') {
+            return;
+        }
+
+        option.addEventListener('click', async () => {
+            if (poll.dataset.voted === 'true') {
+                showCommunityToast('You already voted in this poll.');
+                return;
+            }
+
+            const previousValues = options.map((currentOption) => ({
+                percent: currentOption.dataset.percent,
+                voted: currentOption.classList.contains('is-voted'),
+                disabled: currentOption.disabled,
+                label: currentOption.querySelector('.poll-option-top strong')?.textContent || '',
+                width: currentOption.querySelector('.poll-meter span')?.style.width || '',
+            }));
+            const previousVoted = poll.dataset.voted;
             const boostedValues = options.map((currentOption, index) => {
                 const currentPercent = Number(currentOption.dataset.percent || 0);
                 return index === selectedIndex ? currentPercent + 8 : Math.max(1, currentPercent - 4);
@@ -813,19 +904,70 @@ document.querySelectorAll('[data-poll]').forEach((poll) => {
                 }
             });
 
-            trackElementEvent(option, 'community_poll_voted', {
-                item_type: 'poll_option',
-                item_id: normalizeAnalyticsKey(analyticsText(option)),
-                result: 'voted',
+            options.forEach((currentOption) => {
+                if (currentOption.tagName === 'BUTTON') {
+                    currentOption.disabled = true;
+                }
             });
+            poll.dataset.voted = 'true';
+
+            try {
+                if (poll.dataset.voteEndpoint) {
+                    await postCommunityJson(poll.dataset.voteEndpoint, {
+                        option_key: option.dataset.optionKey || normalizeAnalyticsKey(analyticsText(option)),
+                        option_label: option.dataset.optionLabel || analyticsText(option),
+                    });
+                }
+
+                if (totalNode) {
+                    const currentTotal = Number((totalNode.textContent || '').replace(/[^0-9]/g, '')) || 0;
+                    totalNode.textContent = `${currentTotal + 1} total votes`;
+                }
+
+                showCommunityToast('Vote saved.');
+                trackElementEvent(option, 'community_poll_voted', {
+                    item_type: 'poll_option',
+                    item_id: option.dataset.optionKey || normalizeAnalyticsKey(analyticsText(option)),
+                    result: 'voted',
+                });
+            } catch (error) {
+                console.error(error);
+                if (error.status !== 409) {
+                    poll.dataset.voted = previousVoted || 'false';
+                    options.forEach((currentOption, index) => {
+                        const previous = previousValues[index];
+                        const percentNode = currentOption.querySelector('.poll-option-top strong');
+                        const meter = currentOption.querySelector('.poll-meter span');
+
+                        currentOption.dataset.percent = previous.percent;
+                        currentOption.classList.toggle('is-voted', previous.voted);
+
+                        if (currentOption.tagName === 'BUTTON') {
+                            currentOption.disabled = previous.disabled;
+                        }
+
+                        if (percentNode) {
+                            percentNode.textContent = previous.label;
+                        }
+
+                        if (meter) {
+                            meter.style.width = previous.width;
+                        }
+                    });
+                }
+
+                showCommunityToast(error.userMessage || 'Vote could not be saved.');
+                trackElementEvent(option, 'community_poll_voted', {
+                    item_type: 'poll_option',
+                    item_id: option.dataset.optionKey || normalizeAnalyticsKey(analyticsText(option)),
+                    reason: error.reason || error.message || 'vote_failed',
+                    result: 'failed',
+                });
+            }
         });
     });
 });
 
-const groupTabs = document.querySelector('.country-groups-list');
-const countryName = document.getElementById('countryName');
-const countryMembers = document.getElementById('countryMembers');
-const countryActivity = document.getElementById('countryActivity');
 const countryChatFeed = document.getElementById('countryChatFeed');
 
 const renderChatMessage = (message, isSelf = false) => {
@@ -843,92 +985,50 @@ const renderChatMessage = (message, isSelf = false) => {
     return article;
 };
 
-const getCountryTabs = () => [...document.querySelectorAll('.country-group-tab')];
-
-const selectCountryGroup = (tab) => {
-    if (!tab || !countryName || !countryMembers || !countryActivity || !countryChatFeed) {
-        return;
-    }
-
-    getCountryTabs().forEach((currentTab) => {
-        const isSelected = currentTab === tab;
-        currentTab.classList.toggle('is-active', isSelected);
-        currentTab.setAttribute('aria-selected', isSelected ? 'true' : 'false');
-        currentTab.tabIndex = isSelected ? 0 : -1;
+document.querySelectorAll('.club-card a, [data-community-club-open]').forEach((link) => {
+    link.addEventListener('click', () => {
+        trackElementEvent(link, 'community_club_opened', {
+            item_type: 'country_club',
+            item_id: link.closest('[data-club-key]')?.dataset.clubKey || normalizeAnalyticsKey(analyticsText(link)),
+            result: 'opened',
+        });
     });
-
-    countryName.textContent = tab.dataset.country || 'Country group';
-    countryMembers.textContent = `${tab.dataset.members || '1'} members`;
-    countryActivity.textContent = tab.dataset.activity || 'New custom country group';
-    countryChatFeed.replaceChildren();
-
-    JSON.parse(tab.dataset.messages || '[]').forEach((message) => {
-        countryChatFeed.append(renderChatMessage(message));
-    });
-
-    trackElementEvent(tab, 'community_club_opened', {
-        item_type: 'country_club',
-        item_id: normalizeAnalyticsKey(tab.dataset.country),
-        result: 'opened',
-    });
-};
-
-groupTabs?.addEventListener('click', (event) => {
-    const tab = event.target.closest('.country-group-tab');
-
-    if (tab) {
-        selectCountryGroup(tab);
-    }
 });
 
-groupTabs?.addEventListener('keydown', (event) => {
-    if (!['ArrowDown', 'ArrowRight', 'ArrowUp', 'ArrowLeft', 'Home', 'End'].includes(event.key)) {
-        return;
-    }
+document.querySelectorAll('[data-community-club-join]').forEach((button) => {
+    button.addEventListener('click', async () => {
+        if (button.dataset.joined === 'true') {
+            showCommunityToast('You already joined this club.');
+            return;
+        }
 
-    const tabs = getCountryTabs();
-    const currentIndex = tabs.indexOf(document.activeElement);
+        const originalLabel = button.textContent;
+        button.disabled = true;
+        button.textContent = 'Joining...';
 
-    if (currentIndex === -1) {
-        return;
-    }
-
-    event.preventDefault();
-
-    let nextIndex = currentIndex;
-
-    if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
-        nextIndex = (currentIndex + 1) % tabs.length;
-    } else if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
-        nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
-    } else if (event.key === 'Home') {
-        nextIndex = 0;
-    } else if (event.key === 'End') {
-        nextIndex = tabs.length - 1;
-    }
-
-    tabs[nextIndex]?.focus();
-    selectCountryGroup(tabs[nextIndex]);
-});
-
-document.getElementById('countryReplyForm')?.addEventListener('submit', (event) => {
-    event.preventDefault();
-
-    const input = document.getElementById('countryReplyInput');
-    const text = input?.value.trim();
-
-    if (!text || !countryChatFeed) {
-        return;
-    }
-
-    countryChatFeed.append(renderChatMessage({ author: 'You', text }, true));
-    countryChatFeed.scrollTop = countryChatFeed.scrollHeight;
-    input.value = '';
-
-    trackEvent('community_reply_submitted', {
-        item_type: 'country_club_reply',
-        item_id: normalizeAnalyticsKey(countryName?.textContent),
-        result: 'submitted',
+        try {
+            const payload = await postCommunityJson(button.dataset.endpoint);
+            button.dataset.joined = 'true';
+            button.textContent = 'Joined';
+            showCommunityToast(payload.message || 'Club joined.');
+            trackElementEvent(button, 'community_club_joined', {
+                item_type: 'country_club',
+                item_id: button.dataset.clubKey,
+                result: 'joined',
+            });
+        } catch (error) {
+            console.error(error);
+            button.textContent = originalLabel;
+            showCommunityToast(error.userMessage || 'Club could not be joined.');
+            trackElementEvent(button, 'community_club_joined', {
+                item_type: 'country_club',
+                item_id: button.dataset.clubKey,
+                reason: error.reason || error.message || 'join_failed',
+                result: 'failed',
+            });
+        } finally {
+            button.disabled = false;
+        }
     });
 });
 
@@ -1012,49 +1112,66 @@ createGroupForm?.addEventListener('submit', (event) => {
     event.preventDefault();
 
     const formData = new FormData(createGroupForm);
-    const country = String(formData.get('country') || '').trim();
+    const country = String(formData.get('name') || '').trim();
     const activity = String(formData.get('activity') || '').trim();
 
-    if (!country || !activity || !groupTabs || !openCreateGroup) {
+    if (!country || !activity) {
+        setCommunityFormStatus(createGroupForm, 'Add a country and activity.', true);
         return;
     }
 
-    const tab = document.createElement('button');
-    const messages = [{ author: 'System', text: `${country} group created. Start the first thread.` }];
+    const submitButton = createGroupForm.querySelector('button[type="submit"]');
+    submitButton.disabled = true;
+    setCommunityFormStatus(createGroupForm, 'Creating...');
 
-    tab.className = 'country-group-tab';
-    tab.type = 'button';
-    tab.role = 'tab';
-    tab.setAttribute('aria-selected', 'false');
-    tab.setAttribute('aria-controls', 'country-panel');
-    tab.tabIndex = -1;
-    tab.dataset.country = country;
-    tab.dataset.members = '1';
-    tab.dataset.activity = activity;
-    tab.dataset.messages = JSON.stringify(messages);
+    postCommunityJson(createGroupForm.dataset.endpoint, {
+        name: country,
+        activity,
+    }).then((payload) => {
+        createGroupForm.reset();
+        closeCreateGroupModal();
+        showCommunityToast(payload.message || 'Country club created.');
+        trackEvent('community_club_created', {
+            item_type: 'country_club',
+            item_id: payload.club?.key || normalizeAnalyticsKey(country),
+            item_label: payload.club?.name || country,
+            result: 'created',
+        });
 
-    const title = document.createElement('strong');
-    title.textContent = country;
-
-    const members = document.createElement('span');
-    members.textContent = '1 member';
-
-    tab.append(title, members);
-    groupTabs.insertBefore(tab, openCreateGroup);
-    createGroupForm.reset();
-    closeCreateGroupModal();
-    selectCountryGroup(tab);
-    tab.focus();
-
-    trackElementEvent(tab, 'community_club_created', {
-        item_type: 'country_club',
-        item_id: normalizeAnalyticsKey(country),
-        result: 'created',
+        if (payload.club?.detail_url) {
+            window.location.assign(payload.club.detail_url);
+        }
+    }).catch((error) => {
+        console.error(error);
+        setCommunityFormStatus(createGroupForm, error.userMessage || 'Country club could not be created.', true);
+        showCommunityToast(error.userMessage || 'Country club could not be created.');
+        trackEvent('community_club_created', {
+            item_type: 'country_club',
+            item_id: normalizeAnalyticsKey(country),
+            reason: error.reason || error.message || 'create_club_failed',
+            result: 'failed',
+        });
+    }).finally(() => {
+        submitButton.disabled = false;
     });
 });
 
 document.querySelectorAll('.community-content .media-cta').forEach((button) => {
     button.addEventListener('click', () => {
+        if (button.dataset.noteOpen) {
+            const noteModal = document.getElementById('communityNoteModal');
+            const noteTitle = document.getElementById('communityNoteTitle');
+            const noteBody = document.getElementById('communityNoteBody');
+
+            if (noteModal && noteTitle && noteBody) {
+                noteTitle.textContent = button.dataset.noteTitle || 'Reny note';
+                noteBody.textContent = button.dataset.noteBody || '';
+                noteModal.classList.add('is-open');
+                noteModal.setAttribute('aria-hidden', 'false');
+                document.body.classList.add('has-modal-open');
+            }
+        }
+
         trackElementEvent(button, 'community_note_opened', {
             item_type: 'reny_note',
             result: 'opened',
@@ -1062,12 +1179,142 @@ document.querySelectorAll('.community-content .media-cta').forEach((button) => {
     });
 });
 
+document.getElementById('closeCommunityNote')?.addEventListener('click', () => {
+    const noteModal = document.getElementById('communityNoteModal');
+
+    noteModal?.classList.remove('is-open');
+    noteModal?.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('has-modal-open');
+});
+
 document.querySelectorAll('.community-content .share').forEach((button) => {
-    button.addEventListener('click', () => {
-        trackElementEvent(button, 'community_share_clicked', {
-            item_type: 'post',
-            result: 'clicked',
-        });
+    button.addEventListener('click', async () => {
+        const shareUrl = button.dataset.shareUrl || window.location.href;
+        const shareTitle = button.dataset.shareTitle || document.title;
+
+        try {
+            if (navigator.share) {
+                await navigator.share({
+                    title: shareTitle,
+                    url: shareUrl,
+                });
+            } else if (navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(shareUrl);
+                showCommunityToast('Link copied.');
+            } else {
+                window.prompt('Copy this link', shareUrl);
+            }
+
+            trackElementEvent(button, 'community_share_clicked', {
+                item_type: 'post',
+                result: 'shared',
+            });
+        } catch (error) {
+            const canceled = error?.name === 'AbortError';
+
+            trackElementEvent(button, 'community_share_clicked', {
+                item_type: 'post',
+                reason: canceled ? 'share_canceled' : error.message || 'share_failed',
+                result: canceled ? 'canceled' : 'failed',
+            });
+
+            if (!canceled) {
+                showCommunityToast('Share failed. Try copying the URL.');
+            }
+        }
+    });
+});
+
+document.querySelectorAll('[data-community-reply-form]').forEach((form) => {
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        const input = form.querySelector('input[name="body"]');
+        const body = input?.value.trim();
+
+        if (!body) {
+            setCommunityFormStatus(form, 'Write a reply first.', true);
+            return;
+        }
+
+        const submitButton = form.querySelector('button[type="submit"]');
+        submitButton.disabled = true;
+        setCommunityFormStatus(form, 'Posting...');
+
+        try {
+            const payload = await postCommunityJson(form.dataset.endpoint, { body });
+            const countNode = document.querySelector(`[data-reply-count="${form.dataset.postKey}"] span`);
+            const currentCount = Number((countNode?.textContent || '').replace(/[^0-9]/g, '')) || 0;
+
+            if (countNode) {
+                countNode.textContent = `${currentCount + 1} replies`;
+            }
+
+            input.value = '';
+            setCommunityFormStatus(form, payload.message || 'Reply posted.');
+            showCommunityToast(payload.message || 'Reply posted.');
+            trackEvent('community_reply_submitted', {
+                item_type: 'post_reply',
+                item_id: form.dataset.postKey,
+                result: 'submitted',
+            });
+        } catch (error) {
+            console.error(error);
+            setCommunityFormStatus(form, error.userMessage || 'Reply could not be posted.', true);
+            showCommunityToast(error.userMessage || 'Reply could not be posted.');
+            trackEvent('community_reply_submitted', {
+                item_type: 'post_reply',
+                item_id: form.dataset.postKey,
+                reason: error.reason || error.message || 'reply_failed',
+                result: 'failed',
+            });
+        } finally {
+            submitButton.disabled = false;
+        }
+    });
+});
+
+document.querySelectorAll('[data-community-club-message]').forEach((form) => {
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        const input = form.querySelector('input[name="body"]');
+        const body = input?.value.trim();
+
+        if (!body || !countryChatFeed) {
+            setCommunityFormStatus(form, 'Write a message first.', true);
+            return;
+        }
+
+        const submitButton = form.querySelector('button[type="submit"]');
+        submitButton.disabled = true;
+        setCommunityFormStatus(form, 'Posting...');
+
+        try {
+            const payload = await postCommunityJson(form.dataset.endpoint, { body });
+            countryChatFeed.append(renderChatMessage({ author: payload.author || 'You', text: payload.text || body }, true));
+            countryChatFeed.scrollTop = countryChatFeed.scrollHeight;
+            input.value = '';
+            setCommunityFormStatus(form, payload.message || 'Message posted.');
+            showCommunityToast(payload.message || 'Message posted.');
+            trackEvent('community_reply_submitted', {
+                item_type: 'country_club_reply',
+                item_id: form.dataset.clubKey,
+                result: 'submitted',
+            });
+        } catch (error) {
+            console.error(error);
+            setCommunityFormStatus(form, error.userMessage || 'Message could not be posted.', true);
+            showCommunityToast(error.userMessage || 'Message could not be posted.');
+            trackEvent('community_reply_submitted', {
+                item_type: 'country_club_reply',
+                item_id: form.dataset.clubKey,
+                reason: error.reason || error.message || 'club_reply_failed',
+                result: 'failed',
+            });
+        } finally {
+            submitButton.disabled = false;
+        }
     });
 });
 

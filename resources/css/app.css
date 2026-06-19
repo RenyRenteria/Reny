@@ -2463,7 +2463,18 @@ button {
 
 .post-metrics {
     display: flex;
+    flex-wrap: wrap;
     gap: 1.375rem;
+}
+
+.share {
+    display: inline-grid;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
 }
 
 .metric {
@@ -4449,6 +4460,48 @@ button {
     text-transform: uppercase;
 }
 
+.community-reply-form {
+    margin-top: 1rem;
+}
+
+.community-form-status {
+    grid-column: 1 / -1;
+    min-height: 1rem;
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.75rem;
+    font-weight: 750;
+}
+
+.community-form-status.is-error {
+    color: var(--red);
+}
+
+.club-card a {
+    color: inherit;
+    text-decoration: none;
+}
+
+.club-card a:focus-visible,
+.club-card a:hover {
+    color: var(--accent);
+}
+
+.club-detail-actions {
+    display: flex;
+    justify-content: flex-end;
+    padding: 1rem 1rem 0;
+}
+
+.community-back-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.5rem;
+    padding: 0 1rem;
+    text-decoration: none;
+}
+
 .create-group-modal {
     position: fixed;
     inset: 0;
@@ -4517,6 +4570,14 @@ button {
 
 .create-group-form input {
     padding: 0 0.75rem;
+}
+
+.community-note-body {
+    padding: 1rem;
+    color: var(--ink);
+    font-size: 0.9375rem;
+    font-weight: 650;
+    line-height: 1.55;
 }
 
 .community-toast {

@@ -68,6 +68,7 @@ Community:
 - `community_share_clicked`
 - `community_poll_voted`
 - `community_club_opened`
+- `community_club_joined`
 - `community_club_created`
 - `community_create_club_started`
 

@@ -3,6 +3,7 @@
     'title' => 'Royal Pass required',
     'preview' => 'Preview available in Open mode.',
     'cta' => 'Get your Royal Pass',
+    'href' => null,
 ])
 
 @php
@@ -20,6 +21,6 @@
             <strong>{{ $title }}</strong>
             <p>{{ $preview }}</p>
         </div>
-        <a class="access-gate-button" href="{{ route('store') }}">{{ $cta }}</a>
+        <a class="access-gate-button" href="{{ $href ?? route('store') }}">{{ $cta }}</a>
     </div>
 @endif

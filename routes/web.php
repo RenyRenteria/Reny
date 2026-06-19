@@ -10,6 +10,7 @@ use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Commerce\CheckoutController;
 use App\Http\Controllers\Commerce\PaypalWebhookController;
+use App\Http\Controllers\CommunityInteractionController;
 use App\Http\Controllers\MusicController;
 use App\Http\Controllers\MuxWebhookController;
 use App\Http\Controllers\PointsController;
@@ -26,6 +27,26 @@ Route::get('/music/play/{content}', [MusicController::class, 'play'])->name('mus
 Route::get('/videos', [PublicContentController::class, 'videos'])->name('videos');
 Route::get('/photos', [PublicContentController::class, 'photos']);
 Route::get('/community', [PublicContentController::class, 'community']);
+Route::get('/community/clubs/{club}', [CommunityInteractionController::class, 'showClub'])
+    ->where('club', '[A-Za-z0-9._-]+')
+    ->name('community.clubs.show');
+Route::post('/community/posts/{post}/like', [CommunityInteractionController::class, 'like'])
+    ->where('post', '[A-Za-z0-9._-]+')
+    ->name('community.posts.like');
+Route::post('/community/posts/{post}/replies', [CommunityInteractionController::class, 'reply'])
+    ->where('post', '[A-Za-z0-9._-]+')
+    ->name('community.posts.replies.store');
+Route::post('/community/polls/{poll}/vote', [CommunityInteractionController::class, 'vote'])
+    ->where('poll', '[A-Za-z0-9._-]+')
+    ->name('community.polls.vote');
+Route::post('/community/clubs', [CommunityInteractionController::class, 'storeClub'])
+    ->name('community.clubs.store');
+Route::post('/community/clubs/{club}/join', [CommunityInteractionController::class, 'joinClub'])
+    ->where('club', '[A-Za-z0-9._-]+')
+    ->name('community.clubs.join');
+Route::post('/community/clubs/{club}/messages', [CommunityInteractionController::class, 'clubMessage'])
+    ->where('club', '[A-Za-z0-9._-]+')
+    ->name('community.clubs.messages.store');
 Route::get('/store', [PublicContentController::class, 'store'])->name('store');
 Route::get('/api/public-content/{page}', [PublicContentController::class, 'payload'])->name('public-content.payload');
 Route::get('/content/{content}', [PublicContentController::class, 'show'])->name('public.content.show');
