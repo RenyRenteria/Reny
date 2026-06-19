@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\EditorialActionController;
 use App\Http\Controllers\Admin\EditorialContentController;
 use App\Http\Controllers\Admin\MediaLibraryController;
+use App\Http\Controllers\Admin\SiteEditorController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
@@ -33,6 +34,8 @@ Route::prefix(config('admin.path', 'admin'))->name('admin.')->group(function () 
     Route::middleware(['admin.access', 'admin.session'])->group(function () {
         Route::get('/', AdminDashboardController::class)->name('dashboard');
         Route::post('/logout', [AdminLoginController::class, 'destroy'])->name('logout');
+        Route::get('/site-editor', [SiteEditorController::class, 'index'])->name('site-editor.index');
+        Route::get('/site-editor/{page}', [SiteEditorController::class, 'show'])->name('site-editor.show');
         Route::get('/content', [EditorialContentController::class, 'index'])->name('content.index');
         Route::get('/content/create', [EditorialContentController::class, 'create'])->name('content.create');
         Route::post('/content', [EditorialContentController::class, 'store'])->name('content.store');
