@@ -121,6 +121,7 @@
         'image' => 'reny-store-concert-poster.png',
         'image_url' => null,
         'action' => 'Buy ticket',
+        'mode' => 'buy',
     ];
 
     $heroImage = $heroEvent['image_url'] ?? asset('images/photos/' . $heroEvent['image']);
@@ -228,14 +229,18 @@
                         <p>{{ $heroEvent['date'] }} - {{ $heroEvent['place'] }}</p>
                         <div class="store-hero-actions">
                             <strong data-price="{{ $heroEvent['key'] }}" data-price-value="{{ $heroEvent['price'] }}">${{ $heroEvent['price'] }}</strong>
-                            <button
-                                class="store-button store-button-light"
-                                type="button"
-                                data-buy="{{ $heroEvent['key'] }}"
-                                data-buy-name="{{ $heroEvent['name'] }}"
-                                data-buy-type="{{ $heroEvent['kicker'] ?? 'Event' }}"
-                                data-buy-summary="{{ $heroEvent['date'] }} - {{ $heroEvent['place'] }}"
-                            >{{ $heroEvent['action'] }}</button>
+                            @if (($heroEvent['mode'] ?? 'buy') === 'buy')
+                                <button
+                                    class="store-button store-button-light"
+                                    type="button"
+                                    data-buy="{{ $heroEvent['key'] }}"
+                                    data-buy-name="{{ $heroEvent['name'] }}"
+                                    data-buy-type="{{ $heroEvent['kicker'] ?? 'Event' }}"
+                                    data-buy-summary="{{ $heroEvent['date'] }} - {{ $heroEvent['place'] }}"
+                                >{{ $heroEvent['action'] }}</button>
+                            @else
+                                <button class="store-button store-button-light" type="button" data-rsvp="{{ $heroEvent['name'] }}">{{ $heroEvent['action'] }}</button>
+                            @endif
                         </div>
                     </div>
                 </section>

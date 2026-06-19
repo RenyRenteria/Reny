@@ -16,6 +16,8 @@ use Illuminate\Validation\ValidationException;
 
 class CheckoutController extends Controller
 {
+    private const SETTLEMENT_CURRENCY = 'USD';
+
     /**
      * @var array<string, int>
      */
@@ -190,7 +192,15 @@ class CheckoutController extends Controller
      */
     private function currency(array $validated): string
     {
-        return strtoupper($validated['currency'] ?? 'USD');
+        $currency = strtoupper($validated['currency'] ?? self::SETTLEMENT_CURRENCY);
+
+        if ($currency !== self::SETTLEMENT_CURRENCY) {
+            throw ValidationException::withMessages([
+                'currency' => 'Checkout currently settles in USD.',
+            ]);
+        }
+
+        return $currency;
     }
 
     private function providerOrderId(string $paypalOrderId, string $productKey, int $index): string

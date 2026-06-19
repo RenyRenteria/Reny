@@ -1141,6 +1141,7 @@ if (storeShell) {
 
     const products = {};
     let currency = 'usd';
+    const settlementCurrency = 'usd';
     let bag = [];
     let activeProduct = null;
     let focusedBeforeStoreModal = null;
@@ -1337,7 +1338,7 @@ if (storeShell) {
         const payload = {
             identifier,
             product_keys: [...bag],
-            currency: currency.toUpperCase(),
+            currency: settlementCurrency.toUpperCase(),
         };
 
         if (requireLocalReference) {
@@ -1392,8 +1393,8 @@ if (storeShell) {
         }
 
         return activePaymentMethod === 'local'
-            ? 'Local orders stay pending until manual confirmation.'
-            : 'PayPal approval is required before the Hub is updated.';
+            ? 'Local orders settle in USD and stay pending until manual confirmation.'
+            : 'PayPal approval settles in USD before the Hub is updated.';
     };
 
     const isCheckoutBlocked = () => checkoutState === 'loading'
@@ -1473,7 +1474,7 @@ if (storeShell) {
         paypalSdkPromise = new Promise((resolve, reject) => {
             const script = document.createElement('script');
             script.id = 'paypal-sdk';
-            script.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&currency=${encodeURIComponent(currency.toUpperCase())}&intent=capture`;
+            script.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&currency=${encodeURIComponent(settlementCurrency.toUpperCase())}&intent=capture`;
             script.async = true;
             script.onload = () => {
                 if (window.paypal?.Buttons) {

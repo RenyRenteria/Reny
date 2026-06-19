@@ -103,6 +103,31 @@ class RoyalPassCheckoutTest extends TestCase
         ]);
     }
 
+    public function test_checkout_rejects_non_usd_currency_before_payment_or_order_creation(): void
+    {
+        Http::fake();
+
+        $this->postJson('/checkout/paypal/orders', [
+            'identifier' => 'fan@renyrenteria.com',
+            'product_keys' => ['merch'],
+            'currency' => 'DOP',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('currency');
+
+        $this->postJson('/checkout/local', [
+            'identifier' => 'local@renyrenteria.com',
+            'product_keys' => ['deluxe'],
+            'currency' => 'EUR',
+            'local_reference' => 'ACH-20260619-4321',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('currency');
+
+        Http::assertNothingSent();
+        $this->assertDatabaseCount('orders', 0);
+    }
+
     public function test_local_checkout_requires_valid_reference_and_creates_pending_order(): void
     {
         $this->postJson('/checkout/local', [
