@@ -121,6 +121,29 @@ class PublicCmsContentTest extends TestCase
             ->assertDontSee('Visitando Mas23');
     }
 
+    public function test_store_hero_keeps_cms_rsvp_events_out_of_checkout(): void
+    {
+        $this->publishedContent(ContentType::Event, [
+            'title' => 'CMS RSVP Concert',
+            'purchase_key' => 'concierto',
+            'metadata' => [
+                'event_kind' => 'concert',
+                'starts_at' => '2026-08-24T20:00',
+                'location' => 'Panama City',
+                'price_cents' => 0,
+                'ticketing_mode' => 'rsvp',
+            ],
+        ]);
+
+        $response = $this->get('/store')
+            ->assertOk()
+            ->assertSee('CMS RSVP Concert')
+            ->assertSee('data-rsvp="concierto"', false)
+            ->assertSee('data-rsvp-name="CMS RSVP Concert"', false);
+
+        $this->assertStringNotContainsString('data-buy="concierto"', $response->getContent());
+    }
+
     public function test_video_without_youtube_source_renders_unavailable_player_state(): void
     {
         $this->publishedContent(ContentType::Video, [

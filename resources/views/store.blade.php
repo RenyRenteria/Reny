@@ -123,6 +123,7 @@
         'image' => 'reny-store-concert-poster.png',
         'image_url' => null,
         'action' => 'Buy ticket',
+        'mode' => 'buy',
     ];
 
     $heroImage = $heroEvent['image_url'] ?? asset('images/photos/' . $heroEvent['image']);
@@ -457,13 +458,17 @@
                             <strong id="bagTotal">$0</strong>
                         </div>
                     </div>
-                    <div class="store-checkout-panel">
+                    <div
+                        class="store-checkout-panel"
+                        id="checkoutPanel"
+                        data-local-endpoint="{{ route('checkout.local') }}"
+                    >
                         <h3>Step 2 - Pay</h3>
                         <div class="store-payments" role="radiogroup" aria-label="Payment method">
                             <button class="is-active" type="button" data-payment-method="paypal" data-provider-available="true" aria-checked="true">PayPal</button>
                             <button type="button" data-payment-method="card" data-provider-available="false" data-unavailable-reason="card_provider_not_configured" aria-checked="false">Card</button>
                             <button type="button" data-payment-method="apple_pay" data-provider-available="false" data-unavailable-reason="apple_pay_provider_not_configured" aria-checked="false">Apple Pay</button>
-                            <button type="button" data-payment-method="local" data-provider-available="false" data-unavailable-reason="local_provider_not_configured" aria-checked="false">Local</button>
+                            <button type="button" data-payment-method="local" data-provider-available="true" aria-checked="false">Local</button>
                         </div>
                         <div
                             class="store-paypal-buttons"
@@ -474,11 +479,12 @@
                         ></div>
                         <div class="store-local-panel" id="localPaymentPanel" hidden>
                             <label for="localReferenceField">Bank reference</label>
-                            <input class="store-input" id="localReferenceField" type="text" inputmode="latin" placeholder="RENYPAY-12345">
-                            <label for="localReceiptField">Receipt</label>
+                            <input class="store-input" id="localReferenceField" type="text" inputmode="latin" placeholder="ACH-20260619-1234">
+                            <label for="localReceiptField">Receipt (optional)</label>
                             <input class="store-input" id="localReceiptField" type="file" accept="image/*,.pdf">
+                            <p class="store-checkout-note">Submit a bank/Yappy receipt or reference with at least 4 digits. Local orders stay pending until manual confirmation.</p>
                         </div>
-                        <p class="store-checkout-note" id="paymentStatus">PayPal approval is required before the Hub is updated.</p>
+                        <p class="store-checkout-note" id="paymentStatus">Add a product to enable checkout.</p>
                         <button class="store-button" id="completePurchase" type="button">Load PayPal checkout</button>
                     </div>
                 </div>

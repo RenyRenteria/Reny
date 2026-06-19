@@ -29,7 +29,7 @@ class StorePageTest extends TestCase
         $response->assertSee('data-payment-method="local"', false);
         $response->assertSee('data-unavailable-reason="card_provider_not_configured"', false);
         $response->assertSee('data-unavailable-reason="apple_pay_provider_not_configured"', false);
-        $response->assertSee('data-unavailable-reason="local_provider_not_configured"', false);
+        $response->assertDontSee('data-unavailable-reason="local_provider_not_configured"', false);
         $response->assertSee('data-rsvp="making"', false);
         $response->assertSee('data-rsvp-endpoint="'.route('store.rsvp').'"', false);
         $response->assertSee('Free RSVP confirms a reservation on this account.');

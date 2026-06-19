@@ -119,6 +119,94 @@ class RoyalPassCheckoutTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function test_checkout_rejects_non_usd_currency_before_payment_or_order_creation(): void
+    {
+        Http::fake();
+
+        $this->postJson('/checkout/paypal/orders', [
+            'identifier' => 'fan@renyrenteria.com',
+            'product_keys' => ['merch'],
+            'currency' => 'DOP',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('currency');
+
+        $this->postJson('/checkout/local', [
+            'identifier' => 'local@renyrenteria.com',
+            'product_keys' => ['deluxe'],
+            'currency' => 'EUR',
+            'local_reference' => 'ACH-20260619-4321',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('currency');
+
+        Http::assertNothingSent();
+        $this->assertDatabaseCount('orders', 0);
+    }
+
+    public function test_local_checkout_requires_valid_reference_and_creates_pending_order(): void
+    {
+        $this->postJson('/checkout/local', [
+            'identifier' => 'local@renyrenteria.com',
+            'product_keys' => ['deluxe'],
+            'currency' => 'USD',
+            'local_reference' => 'abc',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('local_reference');
+
+        $response = $this->postJson('/checkout/local', [
+            'identifier' => 'local@renyrenteria.com',
+            'product_keys' => ['deluxe'],
+            'currency' => 'USD',
+            'local_reference' => 'ach 20260619 1234',
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('status', 'pending')
+            ->assertJsonPath('order_ids.0', 'LOCAL-ACH-20260619-1234-1-deluxe');
+
+        $user = User::where('email', 'local@renyrenteria.com')->firstOrFail();
+
+        $this->assertSame('open', $user->fresh()->royal_status);
+        $this->assertNull($user->fresh()->royal_ends_at);
+
+        $this->assertDatabaseHas('orders', [
+            'user_id' => $user->id,
+            'provider' => 'local',
+            'provider_order_id' => 'LOCAL-ACH-20260619-1234-1-deluxe',
+            'product_key' => 'deluxe',
+            'status' => 'pending',
+            'grants_royal_month' => false,
+        ]);
+
+        $this->assertDatabaseHas('access_events', [
+            'user_id' => $user->id,
+            'event_name' => 'purchase_pending',
+            'resource_key' => 'LOCAL-ACH-20260619-1234-1-deluxe',
+        ]);
+    }
+
+    public function test_local_checkout_rejects_reused_reference(): void
+    {
+        $this->postJson('/checkout/local', [
+            'identifier' => 'local-one@renyrenteria.com',
+            'product_keys' => ['deluxe'],
+            'currency' => 'USD',
+            'local_reference' => 'ACH-20260619-4321',
+        ])->assertOk();
+
+        $this->postJson('/checkout/local', [
+            'identifier' => 'local-two@renyrenteria.com',
+            'product_keys' => ['singles'],
+            'currency' => 'USD',
+            'local_reference' => 'ACH-20260619-4321',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('local_reference');
+    }
+
     public function test_royal_pass_checkout_uses_four_ninety_nine_pricing(): void
     {
         $this->fakeSuccessfulCapture('PAYPAL-ROYAL-499', '4.99');
@@ -421,8 +509,10 @@ class RoyalPassCheckoutTest extends TestCase
             ->assertOk()
             ->assertSee('Every completed purchase activates Royal Pass for 1 month')
             ->assertSee('Load PayPal checkout')
+            ->assertSee('Submit a bank/Yappy receipt')
             ->assertSee(route('checkout.paypal.orders'))
-            ->assertSee(route('checkout.paypal'));
+            ->assertSee(route('checkout.paypal'))
+            ->assertSee(route('checkout.local'));
     }
 
     private function fakeCreatedOrder(string $orderId): void
