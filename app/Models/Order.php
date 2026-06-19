@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'user_id',
     'provider',
     'provider_order_id',
+    'provider_capture_id',
     'product_key',
     'amount_cents',
     'currency',

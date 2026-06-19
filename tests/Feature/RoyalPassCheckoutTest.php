@@ -49,6 +49,7 @@ class RoyalPassCheckoutTest extends TestCase
             'user_id' => $user->id,
             'provider' => 'paypal',
             'provider_order_id' => 'PAYPAL-ORDER-100-1-merch',
+            'provider_capture_id' => 'CAPTURE-100',
             'product_key' => 'merch',
             'grants_royal_month' => true,
         ]);
@@ -360,6 +361,70 @@ class RoyalPassCheckoutTest extends TestCase
             'email' => 'fan@renyrenteria.com',
             'royal_status' => 'royal_active',
         ]);
+    }
+
+    public function test_checkout_rejects_completed_paypal_capture_without_capture_id(): void
+    {
+        Http::fake([
+            'https://paypal.test/v1/oauth2/token' => Http::response([
+                'access_token' => 'paypal-token',
+            ], 200),
+            'https://paypal.test/v2/checkout/orders/PAYPAL-NO-CAPTURE-ID/capture' => Http::response([
+                'id' => 'PAYPAL-NO-CAPTURE-ID',
+                'status' => 'COMPLETED',
+                'purchase_units' => [
+                    [
+                        'payments' => [
+                            'captures' => [
+                                [
+                                    'status' => 'COMPLETED',
+                                    'amount' => [
+                                        'currency_code' => 'USD',
+                                        'value' => '48.00',
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ], 201),
+        ]);
+
+        $this->postJson('/checkout/paypal', [
+            'identifier' => 'fan@renyrenteria.com',
+            'product_keys' => ['merch'],
+            'currency' => 'USD',
+            'paypal_order_id' => 'PAYPAL-NO-CAPTURE-ID',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('paypal_order_id');
+
+        $this->assertDatabaseCount('orders', 0);
+    }
+
+    public function test_checkout_rejects_reused_paypal_capture(): void
+    {
+        $this->fakeSuccessfulCapture('PAYPAL-REPLAY-100', '48.00');
+
+        $this->postJson('/checkout/paypal', [
+            'identifier' => 'first@renyrenteria.com',
+            'product_keys' => ['merch'],
+            'currency' => 'USD',
+            'paypal_order_id' => 'PAYPAL-REPLAY-100',
+        ])->assertOk();
+
+        $this->fakeSuccessfulCapture('PAYPAL-REPLAY-100', '48.00');
+
+        $this->postJson('/checkout/paypal', [
+            'identifier' => 'second@renyrenteria.com',
+            'product_keys' => ['merch'],
+            'currency' => 'USD',
+            'paypal_order_id' => 'PAYPAL-REPLAY-100',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('paypal_order_id');
+
+        $this->assertDatabaseCount('orders', 1);
     }
 
     public function test_refund_revokes_royal_access_and_logs_expiration(): void
