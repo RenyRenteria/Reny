@@ -40,7 +40,7 @@ class AdminAuthRbacTest extends TestCase
             ->assertNotFound();
     }
 
-    public function test_admin_can_sign_in_with_email_and_stays_on_enter_screen(): void
+    public function test_admin_can_sign_in_with_email_and_open_stats_dashboard(): void
     {
         $admin = User::factory()->create([
             'email' => 'admin@example.com',
@@ -52,7 +52,7 @@ class AdminAuthRbacTest extends TestCase
             'email' => 'admin@example.com',
             'password' => 'password',
         ])
-            ->assertRedirect(route('admin.login'))
+            ->assertRedirect(route('admin.dashboard'))
             ->assertSessionHas('admin_authenticated_at');
 
         $this->assertAuthenticatedAs($admin);
@@ -67,7 +67,10 @@ class AdminAuthRbacTest extends TestCase
 
         $this->get(route('admin.dashboard'))
             ->assertOk()
-            ->assertSee('Enter')
+            ->assertSee('Homepage Views')
+            ->assertSee('Paywall Views')
+            ->assertSee('Royal Members')
+            ->assertSee('Monthly Sales')
             ->assertDontSee('Dashboard editorial');
     }
 
@@ -173,6 +176,6 @@ class AdminAuthRbacTest extends TestCase
         $this->post(route('admin.login.store'), [
             'email' => $user->email,
             'password' => 'password',
-        ])->assertRedirect(route('admin.login'));
+        ])->assertRedirect(route('admin.dashboard'));
     }
 }

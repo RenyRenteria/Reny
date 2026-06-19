@@ -101,13 +101,13 @@
     </nav>
 
     <div class="admin-header-actions">
-        <a class="admin-money-link" href="{{ route('admin.dashboard') }}#pagos" data-admin-nav="pagos" aria-label="Pagos y ventas del CMS">
+        <span class="admin-money-link" aria-hidden="true">
             <img
                 class="admin-money-icon"
                 src="{{ asset('images/admin-money-icon.png') }}"
                 alt=""
                 aria-hidden="true"
             >
-        </a>
+        </span>
     </div>
 </header>

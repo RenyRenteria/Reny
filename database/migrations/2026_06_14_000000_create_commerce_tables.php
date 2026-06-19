@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('provider')->default('paypal');
             $table->string('provider_order_id')->unique();
             $table->string('product_key');
-            $table->integer('amount_cents');
+            $table->bigInteger('amount_cents');
             $table->string('currency', 3)->default('USD');
             $table->string('status')->default('completed');
             $table->boolean('grants_royal_month')->default(true);

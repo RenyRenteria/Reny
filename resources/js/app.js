@@ -53,6 +53,27 @@ const dispatchAnalyticsEvent = (event) => {
     }
 };
 
+const persistedAnalyticsEvents = new Set(['page_view', 'permission_denied']);
+
+const analyticsEndpoint = () => document.querySelector('meta[name="reny-analytics-endpoint"]')?.content
+    || '/analytics/events';
+
+const persistAnalyticsEvent = (event) => {
+    if (!persistedAnalyticsEvents.has(event.name) || typeof fetch !== 'function') {
+        return;
+    }
+
+    fetch(analyticsEndpoint(), {
+        method: 'POST',
+        headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(event),
+        keepalive: true,
+    }).catch(() => {});
+};
+
 const analyticsApi = window.renyAnalytics || {};
 analyticsApi.events = Array.isArray(analyticsApi.events) ? analyticsApi.events : [];
 
@@ -70,6 +91,7 @@ const trackEvent = (name, payload = {}) => {
 
     analyticsApi.events.push(event);
     dispatchAnalyticsEvent(event);
+    persistAnalyticsEvent(event);
 
     if (analyticsDebugEnabled()) {
         console.info('[analytics]', event.name, event.payload);
