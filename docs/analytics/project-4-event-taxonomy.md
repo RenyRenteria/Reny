@@ -97,6 +97,11 @@ Store and checkout:
 Photos:
 
 - `photo_opened`
+- `photo_navigated`
+- `photo_saved`
+- `photo_shared`
+- `photo_deep_link_opened`
+- `photo_image_failed`
 
 ## QA Verification
 

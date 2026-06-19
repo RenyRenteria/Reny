@@ -25,7 +25,7 @@ Route::get('/music/albums', [MusicController::class, 'albums'])->name('music.alb
 Route::get('/music/singles', [MusicController::class, 'singles'])->name('music.singles');
 Route::get('/music/play/{content}', [MusicController::class, 'play'])->name('music.play');
 Route::get('/videos', [PublicContentController::class, 'videos'])->name('videos');
-Route::get('/photos', [PublicContentController::class, 'photos']);
+Route::get('/photos', [PublicContentController::class, 'photos'])->name('photos');
 Route::get('/community', [PublicContentController::class, 'community']);
 Route::get('/community/clubs/{club}', [CommunityInteractionController::class, 'showClub'])
     ->where('club', '[A-Za-z0-9._-]+')

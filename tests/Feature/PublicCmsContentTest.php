@@ -53,6 +53,7 @@ class PublicCmsContentTest extends TestCase
 
         $this->publishedContent(ContentType::Photo, [
             'title' => 'CMS Photo Drop',
+            'slug' => 'cms-photo-drop',
             'metadata' => [
                 'caption' => 'CMS photo caption',
             ],
@@ -94,7 +95,11 @@ class PublicCmsContentTest extends TestCase
 
         $this->get('/')->assertOk()->assertSee('CMS Deluxe Album')->assertSee('CMS Lead Single');
         $this->get('/videos')->assertOk()->assertSee('CMS Video Premiere');
-        $this->get('/photos')->assertOk()->assertSee('CMS Photo Drop');
+        $this->get('/photos')
+            ->assertOk()
+            ->assertSee('CMS Photo Drop')
+            ->assertSee('data-photo-slug="cms-photo-drop"', false)
+            ->assertSee('data-photo-share-url="'.route('photos', ['photo' => 'cms-photo-drop']).'"', false);
         $this->get('/store')->assertOk()->assertSee('CMS Digital Product')->assertSee('CMS Listening Event');
         $this->get('/community')->assertOk()->assertSee('CMS Community Post')->assertSee('CMS poll question?');
     }

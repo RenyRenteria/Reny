@@ -499,6 +499,8 @@ class PublicCmsContentService
     private function photoPayload(EditorialContent $content, int $index): array
     {
         return [
+            'key' => 'cms-photo-'.$content->id,
+            'slug' => $content->slug,
             'image' => $this->metadata($content, 'fallback_image', 'cover.jpg'),
             'image_url' => $this->mediaUrl($content, ['image_asset_id']) ?? $this->metadata($content, 'image_url'),
             'type' => $content->type === ContentType::Gallery ? 'Album' : 'Single post',
@@ -506,6 +508,7 @@ class PublicCmsContentService
             'title' => $content->title,
             'caption' => $this->metadata($content, 'caption', $content->summary ?? ''),
             'size' => ['wide', 'tall', 'standard'][$index % 3],
+            'share_url' => route('photos', ['photo' => $content->slug]),
         ];
     }
 

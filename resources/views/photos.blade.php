@@ -187,15 +187,23 @@
                     @foreach ($photos as $photo)
                         @php
                             $photoSrc = $photo['image_url'] ?? asset('images/photos/' . $photo['image']);
+                            $photoSlug = $photo['slug'] ?? str($photo['title'])->slug()->toString();
+                            $photoKey = $photo['key'] ?? 'static-photo-'.$photoSlug;
+                            $photoShareUrl = $photo['share_url'] ?? url('/photos?photo='.rawurlencode($photoSlug));
                         @endphp
                         <button
                             class="photo-tile is-{{ $photo['size'] }}"
                             type="button"
+                            data-photo-key="{{ $photoKey }}"
+                            data-photo-slug="{{ $photoSlug }}"
                             data-photo-title="{{ $photo['title'] }}"
                             data-photo-type="{{ $photo['type'] }}"
                             data-photo-tone="{{ $photo['tone'] }}"
                             data-photo-caption="{{ $photo['caption'] }}"
                             data-photo-src="{{ $photoSrc }}"
+                            data-photo-share-url="{{ $photoShareUrl }}"
+                            data-analytics-id="{{ $photoKey }}"
+                            data-analytics-type="photo"
                         >
                             <img
                                 src="{{ $photoSrc }}"
@@ -203,6 +211,7 @@
                                 loading="lazy"
                                 decoding="async"
                             >
+                            <span class="photo-error" data-photo-error hidden>Image unavailable</span>
                             <span class="photo-overlay" aria-hidden="true">
                                 <span>{{ $photo['type'] }} / {{ $photo['tone'] }}</span>
                                 <strong>{{ $photo['title'] }}</strong>
@@ -256,16 +265,55 @@
 
         <div class="photo-lightbox" id="photoLightbox" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="photoLightboxTitle">
             <div class="photo-lightbox-inner">
-                <div class="photo-lightbox-frame">
+                <div class="photo-lightbox-frame" id="photoLightboxFrame">
+                    <button class="photo-lightbox-nav photo-lightbox-prev" id="photoLightboxPrev" type="button" aria-label="Previous photo">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="m15 18-6-6 6-6"></path>
+                        </svg>
+                    </button>
                     <img id="photoLightboxImage" alt="">
+                    <div class="photo-lightbox-error" id="photoLightboxError" role="status" hidden>
+                        Image unavailable. Try another photo.
+                    </div>
+                    <button class="photo-lightbox-nav photo-lightbox-next" id="photoLightboxNext" type="button" aria-label="Next photo">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="m9 18 6-6-6-6"></path>
+                        </svg>
+                    </button>
                 </div>
                 <div class="photo-lightbox-copy">
                     <span id="photoLightboxType">Photo</span>
                     <h2 id="photoLightboxTitle">Photo title</h2>
                     <p id="photoLightboxCaption">Photo caption</p>
-                    <button class="photo-lightbox-close" id="photoLightboxClose" type="button">Close</button>
+                    <div class="photo-lightbox-actions" aria-label="Photo actions">
+                        <button class="photo-lightbox-action" id="photoLightboxSave" type="button" aria-pressed="false">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2Z"></path>
+                            </svg>
+                            <span>Save</span>
+                        </button>
+                        <button class="photo-lightbox-action" id="photoLightboxShare" type="button">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <circle cx="18" cy="5" r="3"></circle>
+                                <circle cx="6" cy="12" r="3"></circle>
+                                <circle cx="18" cy="19" r="3"></circle>
+                                <path d="m8.6 13.5 6.8 4"></path>
+                                <path d="m15.4 6.5-6.8 4"></path>
+                            </svg>
+                            <span>Share</span>
+                        </button>
+                        <a class="photo-lightbox-action" id="photoLightboxDeepLink" href="{{ url('/photos') }}">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M10 13a5 5 0 0 0 7.1 0l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1"></path>
+                                <path d="M14 11a5 5 0 0 0-7.1 0l-2 2A5 5 0 0 0 12 20.1l1.1-1.1"></path>
+                            </svg>
+                            <span>Link</span>
+                        </a>
+                        <button class="photo-lightbox-close" id="photoLightboxClose" type="button">Close</button>
+                    </div>
                 </div>
             </div>
         </div>
+        <div class="photo-toast" id="photoToast" role="status" aria-live="polite"></div>
     </body>
 </html>

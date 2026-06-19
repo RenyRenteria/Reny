@@ -644,16 +644,140 @@ document.addEventListener('keydown', (event) => {
     }
 });
 
-const photoTiles = document.querySelectorAll('.photo-tile');
+const photoTiles = Array.from(document.querySelectorAll('.photo-tile'));
 const photoLightbox = document.getElementById('photoLightbox');
+const photoLightboxFrame = document.getElementById('photoLightboxFrame');
 const photoLightboxImage = document.getElementById('photoLightboxImage');
 const photoLightboxType = document.getElementById('photoLightboxType');
 const photoLightboxTitle = document.getElementById('photoLightboxTitle');
 const photoLightboxCaption = document.getElementById('photoLightboxCaption');
 const photoLightboxClose = document.getElementById('photoLightboxClose');
+const photoLightboxPrev = document.getElementById('photoLightboxPrev');
+const photoLightboxNext = document.getElementById('photoLightboxNext');
+const photoLightboxShare = document.getElementById('photoLightboxShare');
+const photoLightboxSave = document.getElementById('photoLightboxSave');
+const photoLightboxDeepLink = document.getElementById('photoLightboxDeepLink');
+const photoLightboxError = document.getElementById('photoLightboxError');
+const photoToast = document.getElementById('photoToast');
+const photoSaveStorageKey = 'reny_saved_photos';
 let activePhotoTile = null;
+let activePhotoIndex = -1;
 
-const closePhotoLightbox = () => {
+const showPhotoToast = (message) => {
+    if (!photoToast) {
+        return;
+    }
+
+    photoToast.textContent = message;
+    photoToast.classList.add('is-visible');
+    window.clearTimeout(showPhotoToast.timeout);
+    showPhotoToast.timeout = window.setTimeout(() => {
+        photoToast.classList.remove('is-visible');
+    }, 1800);
+};
+
+const readSavedPhotoKeys = () => {
+    try {
+        return new Set(JSON.parse(window.localStorage?.getItem(photoSaveStorageKey) || '[]'));
+    } catch {
+        return new Set();
+    }
+};
+
+let savedPhotoKeys = readSavedPhotoKeys();
+
+const writeSavedPhotoKeys = () => {
+    try {
+        window.localStorage?.setItem(photoSaveStorageKey, JSON.stringify(Array.from(savedPhotoKeys)));
+
+        return true;
+    } catch {
+        return false;
+    }
+};
+
+const currentPhotoTile = () => (activePhotoIndex >= 0 ? photoTiles[activePhotoIndex] : null);
+
+const currentPhotoSlugFromUrl = () => {
+    try {
+        return new URLSearchParams(window.location.search).get('photo');
+    } catch {
+        return null;
+    }
+};
+
+const updatePhotoHistory = (tile, replace = false) => {
+    if (!tile?.dataset.photoSlug || !window.history?.pushState) {
+        return;
+    }
+
+    try {
+        const url = new URL(window.location.href);
+
+        url.searchParams.set('photo', tile.dataset.photoSlug);
+        window.history[replace ? 'replaceState' : 'pushState']({ photo: tile.dataset.photoSlug }, '', url);
+    } catch {
+        // Deep links are progressive enhancement; the lightbox still works without History API updates.
+    }
+};
+
+const clearPhotoHistory = () => {
+    if (!window.history?.pushState) {
+        return;
+    }
+
+    try {
+        const url = new URL(window.location.href);
+
+        url.searchParams.delete('photo');
+        window.history.pushState({}, '', url);
+    } catch {
+        // Keep close behavior working even if URL parsing is unavailable.
+    }
+};
+
+const updatePhotoSaveButton = (tile) => {
+    if (!photoLightboxSave || !tile) {
+        return;
+    }
+
+    const key = tile.dataset.photoKey || tile.dataset.photoSlug || normalizeAnalyticsKey(tile.dataset.photoTitle);
+    const isSaved = savedPhotoKeys.has(key);
+    const label = photoLightboxSave.querySelector('span');
+
+    photoLightboxSave.classList.toggle('is-saved', isSaved);
+    photoLightboxSave.setAttribute('aria-pressed', isSaved ? 'true' : 'false');
+
+    if (label) {
+        label.textContent = isSaved ? 'Saved' : 'Save';
+    }
+};
+
+const resetPhotoImageError = () => {
+    photoLightboxFrame?.classList.remove('has-image-error');
+
+    if (photoLightboxError) {
+        photoLightboxError.hidden = true;
+    }
+};
+
+const markTileImageError = (tile) => {
+    tile.classList.add('is-broken');
+    tile.querySelector('[data-photo-error]')?.removeAttribute('hidden');
+
+    if (tile.dataset.photoImageErrorTracked === '1') {
+        return;
+    }
+
+    tile.dataset.photoImageErrorTracked = '1';
+    trackElementEvent(tile, 'photo_image_failed', {
+        item_type: 'photo',
+        reason: 'image_load_error',
+        result: 'failed',
+    });
+};
+
+const closePhotoLightbox = ({ restoreFocus = true, updateUrl = true } = {}) => {
     if (!photoLightbox || !photoLightboxImage) {
         return;
     }
@@ -661,35 +785,101 @@ const closePhotoLightbox = () => {
     photoLightbox.classList.remove('is-open');
     photoLightbox.setAttribute('aria-hidden', 'true');
     photoLightboxImage.removeAttribute('src');
+    resetPhotoImageError();
+    document.body.classList.remove('has-modal-open');
 
-    if (activePhotoTile) {
+    if (restoreFocus && activePhotoTile) {
         activePhotoTile.focus();
+    }
+
+    activePhotoTile = null;
+    activePhotoIndex = -1;
+
+    if (updateUrl) {
+        clearPhotoHistory();
     }
 };
 
-const openPhotoLightbox = (tile) => {
+const openPhotoLightbox = (tile, { updateUrl = true, replaceUrl = false } = {}) => {
     if (!photoLightbox || !photoLightboxImage || !photoLightboxType || !photoLightboxTitle || !photoLightboxCaption) {
         return;
     }
 
+    const nextIndex = photoTiles.indexOf(tile);
+
+    if (nextIndex === -1) {
+        return;
+    }
+
     activePhotoTile = tile;
+    activePhotoIndex = nextIndex;
+    resetPhotoImageError();
     photoLightboxImage.src = tile.dataset.photoSrc;
     photoLightboxImage.alt = tile.dataset.photoTitle || '';
     photoLightboxType.textContent = `${tile.dataset.photoType || 'Photo'} / ${tile.dataset.photoTone || 'gallery'}`;
     photoLightboxTitle.textContent = tile.dataset.photoTitle || 'Photo';
     photoLightboxCaption.textContent = tile.dataset.photoCaption || '';
+    updatePhotoSaveButton(tile);
+
+    if (photoLightboxDeepLink) {
+        photoLightboxDeepLink.href = tile.dataset.photoShareUrl || window.location.href;
+    }
+
     photoLightbox.classList.add('is-open');
     photoLightbox.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('has-modal-open');
     photoLightboxClose?.focus();
+
+    if (updateUrl) {
+        updatePhotoHistory(tile, replaceUrl);
+    }
 
     trackElementEvent(tile, 'photo_opened', {
         item_type: 'photo',
-        item_id: normalizeAnalyticsKey(tile.dataset.photoTitle),
         result: 'opened',
     });
 };
 
+const openPhotoByOffset = (offset) => {
+    if (!photoTiles.length || activePhotoIndex === -1) {
+        return;
+    }
+
+    const nextIndex = (activePhotoIndex + offset + photoTiles.length) % photoTiles.length;
+    const nextTile = photoTiles[nextIndex];
+
+    openPhotoLightbox(nextTile);
+    trackElementEvent(nextTile, 'photo_navigated', {
+        item_type: 'photo',
+        result: offset > 0 ? 'next' : 'previous',
+    });
+};
+
+const openPhotoBySlug = (slug, options = {}) => {
+    if (!slug) {
+        return false;
+    }
+
+    const tile = photoTiles.find((candidate) => candidate.dataset.photoSlug === slug);
+
+    if (!tile) {
+        return false;
+    }
+
+    openPhotoLightbox(tile, options);
+
+    return true;
+};
+
 photoTiles.forEach((tile) => {
+    const image = tile.querySelector('img');
+
+    image?.addEventListener('error', () => markTileImageError(tile));
+
+    if (image?.complete && image.naturalWidth === 0) {
+        markTileImageError(tile);
+    }
+
     tile.addEventListener('click', () => {
         const usesTouch = window.matchMedia('(hover: none)').matches;
 
@@ -704,6 +894,104 @@ photoTiles.forEach((tile) => {
 });
 
 photoLightboxClose?.addEventListener('click', closePhotoLightbox);
+photoLightboxPrev?.addEventListener('click', () => openPhotoByOffset(-1));
+photoLightboxNext?.addEventListener('click', () => openPhotoByOffset(1));
+
+photoLightboxImage?.addEventListener('error', () => {
+    const tile = currentPhotoTile();
+
+    photoLightboxFrame?.classList.add('has-image-error');
+
+    if (photoLightboxError) {
+        photoLightboxError.hidden = false;
+    }
+
+    if (tile) {
+        markTileImageError(tile);
+    }
+});
+
+photoLightboxSave?.addEventListener('click', () => {
+    const tile = currentPhotoTile();
+
+    if (!tile) {
+        return;
+    }
+
+    const key = tile.dataset.photoKey || tile.dataset.photoSlug || normalizeAnalyticsKey(tile.dataset.photoTitle);
+    const willSave = !savedPhotoKeys.has(key);
+
+    if (willSave) {
+        savedPhotoKeys.add(key);
+    } else {
+        savedPhotoKeys.delete(key);
+    }
+
+    const persisted = writeSavedPhotoKeys();
+
+    updatePhotoSaveButton(tile);
+    showPhotoToast(willSave ? 'Photo saved.' : 'Photo removed.');
+    trackElementEvent(tile, 'photo_saved', {
+        item_type: 'photo',
+        persistence: persisted ? 'local_storage' : 'memory',
+        result: willSave ? 'saved' : 'removed',
+    });
+});
+
+photoLightboxShare?.addEventListener('click', async () => {
+    const tile = currentPhotoTile();
+
+    if (!tile) {
+        return;
+    }
+
+    const shareUrl = tile.dataset.photoShareUrl || window.location.href;
+    const shareTitle = tile.dataset.photoTitle || document.title;
+
+    try {
+        if (navigator.share) {
+            await navigator.share({
+                title: shareTitle,
+                url: shareUrl,
+            });
+        } else if (navigator.clipboard?.writeText) {
+            await navigator.clipboard.writeText(shareUrl);
+            showPhotoToast('Link copied.');
+        } else {
+            window.prompt('Copy this link', shareUrl);
+        }
+
+        trackElementEvent(tile, 'photo_shared', {
+            item_type: 'photo',
+            result: 'shared',
+        });
+    } catch (error) {
+        const canceled = error?.name === 'AbortError';
+
+        trackElementEvent(tile, 'photo_shared', {
+            item_type: 'photo',
+            reason: canceled ? 'share_canceled' : error.message || 'share_failed',
+            result: canceled ? 'canceled' : 'failed',
+        });
+
+        if (!canceled) {
+            showPhotoToast('Share failed. Try copying the URL.');
+        }
+    }
+});
+
+photoLightboxDeepLink?.addEventListener('click', () => {
+    const tile = currentPhotoTile();
+
+    if (!tile) {
+        return;
+    }
+
+    trackElementEvent(tile, 'photo_deep_link_opened', {
+        item_type: 'photo',
+        result: 'opened',
+    });
+});
 
 photoLightbox?.addEventListener('click', (event) => {
     if (event.target === photoLightbox) {
@@ -712,12 +1000,32 @@ photoLightbox?.addEventListener('click', (event) => {
 });
 
 document.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape' || !photoLightbox?.classList.contains('is-open')) {
+    if (!photoLightbox?.classList.contains('is-open')) {
         return;
     }
 
-    closePhotoLightbox();
+    if (event.key === 'Escape') {
+        closePhotoLightbox();
+    } else if (event.key === 'ArrowLeft') {
+        openPhotoByOffset(-1);
+    } else if (event.key === 'ArrowRight') {
+        openPhotoByOffset(1);
+    }
 });
+
+window.addEventListener('popstate', () => {
+    const slug = currentPhotoSlugFromUrl();
+
+    if (slug) {
+        openPhotoBySlug(slug, { updateUrl: false });
+
+        return;
+    }
+
+    closePhotoLightbox({ restoreFocus: false, updateUrl: false });
+});
+
+openPhotoBySlug(currentPhotoSlugFromUrl(), { updateUrl: false });
 
 const showCommunityToast = (message) => {
     const toast = document.getElementById('communityToast');
