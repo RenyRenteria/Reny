@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\EditorialStatus;
 use App\Enums\VisibilityAudience;
 use App\Models\EditorialContent;
+use App\Services\CommunityInteractionService;
 use App\Services\PublicCmsContentService;
 use App\Services\TicketCodeService;
 use App\Support\AccountStateView;
@@ -48,10 +49,16 @@ class PublicContentController extends Controller
         ]);
     }
 
-    public function community(Request $request, PublicCmsContentService $cms): View
-    {
+    public function community(
+        Request $request,
+        PublicCmsContentService $cms,
+        CommunityInteractionService $community,
+    ): View {
+        $publicCms = $cms->community($request->user());
+
         return view('community', [
-            'publicCms' => $cms->community($request->user()),
+            'publicCms' => $publicCms,
+            'community' => $community->viewModel($request->user(), $publicCms),
         ]);
     }
 
