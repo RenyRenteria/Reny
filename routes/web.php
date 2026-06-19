@@ -111,6 +111,7 @@ Route::get('/session-expired', function () {
 })->name('session.expired');
 
 Route::post('/checkout/paypal/orders', [CheckoutController::class, 'createOrder'])->name('checkout.paypal.orders');
+Route::post('/checkout/paypal/orders/cancel', [CheckoutController::class, 'cancelOrder'])->name('checkout.paypal.orders.cancel');
 Route::post('/checkout/paypal', [CheckoutController::class, 'store'])->name('checkout.paypal');
 Route::post('/checkout/local', [CheckoutController::class, 'local'])->name('checkout.local');
 Route::post('/paypal/refund', [PaypalWebhookController::class, 'refund'])->name('paypal.refund');

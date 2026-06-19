@@ -1414,6 +1414,7 @@ if (storeShell) {
     let activePaymentMethod = 'paypal';
     let paypalButtonsRendered = false;
     let paypalSdkPromise = null;
+    let activePayPalOrderId = null;
 
     document.querySelectorAll('[data-detail]').forEach((button) => {
         products[button.dataset.detail] = {
@@ -1634,6 +1635,20 @@ if (storeShell) {
         return payload;
     };
 
+    const cancelPendingPayPalOrder = async () => {
+        const paypalOrderId = activePayPalOrderId;
+        const endpoint = paypalButtons?.dataset.cancelOrderEndpoint;
+        activePayPalOrderId = null;
+
+        if (!paypalOrderId || !endpoint) {
+            return;
+        }
+
+        await postCheckoutJson(endpoint, {
+            paypal_order_id: paypalOrderId,
+        });
+    };
+
     const rsvpError = (message, reason = null) => Object.assign(new Error(message), {
         reason: reason || normalizeAnalyticsKey(message),
         userMessage: message,
@@ -1743,24 +1758,28 @@ if (storeShell) {
                     currency: payload.currency,
                 });
                 const order = await postCheckoutJson(paypalButtons.dataset.createOrderEndpoint, payload);
+                activePayPalOrderId = order.paypal_order_id;
                 setPaymentStatus('Approve payment in PayPal.');
 
                 return order.paypal_order_id;
             },
             onApprove: async (data) => {
                 const payload = checkoutPayload();
+                const paypalOrderId = data.orderID || activePayPalOrderId;
                 setPaymentStatus('Capturing approved PayPal payment...');
                 const capture = await postCheckoutJson(paypalButtons.dataset.captureEndpoint, {
                     ...payload,
-                    paypal_order_id: data.orderID,
+                    paypal_order_id: paypalOrderId,
                 });
 
+                activePayPalOrderId = null;
                 completeApprovedCheckout(capture);
                 trackPaymentState('paypal', 'payment_success', {
-                    paypal_order_id: data.orderID,
+                    paypal_order_id: paypalOrderId,
                 });
             },
-            onCancel: () => {
+            onCancel: async () => {
+                await cancelPendingPayPalOrder().catch((error) => console.warn(error));
                 setPaymentStatus('PayPal checkout canceled. No purchase was recorded.');
                 showStoreToast('PayPal checkout canceled.');
                 trackPaymentState('paypal', 'payment_failed', {
@@ -1769,6 +1788,7 @@ if (storeShell) {
             },
             onError: (error) => {
                 console.error(error);
+                cancelPendingPayPalOrder().catch((cancelError) => console.warn(cancelError));
                 setPaymentStatus(error.userMessage || 'PayPal checkout failed. No purchase was recorded.');
                 showStoreToast(error.userMessage || 'PayPal checkout failed.');
                 trackPaymentState('paypal', error.checkoutState || 'payment_failed', {
