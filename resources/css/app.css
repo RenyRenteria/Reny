@@ -7012,7 +7012,7 @@ body.admin-cms-body[data-theme="royal"] {
     gap: 1.25rem;
 }
 
-.music-cms-tab {
+.music-cms-tabs .music-cms-tab {
     display: inline-flex;
     align-items: center;
     justify-content: center;
