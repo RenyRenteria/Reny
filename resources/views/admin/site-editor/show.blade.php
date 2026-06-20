@@ -20,13 +20,113 @@
 @section('admin_section', 'site-editor')
 @section('admin_theme', $pageConfig['theme'])
 
+@php
+    $musicInitialTab = 'banner';
+
+    if ($errors->any()) {
+        $erroredType = old('type');
+
+        if ($erroredType === 'song') {
+            $musicInitialTab = 'song';
+        } elseif (in_array($erroredType, ['musical_album', 'deluxe_album'], true)) {
+            $musicInitialTab = 'album';
+        }
+    }
+@endphp
+
 @section('content')
     <section class="admin-dashboard-section is-active site-editor-screen">
         @if ($activePage === 'music' && $musicBanner)
-            @include('admin.site-editor.music-banner', [
-                'banner' => $musicBanner,
-                'publicUrl' => $publicUrl,
-            ])
+            <div class="music-cms-screens" data-music-cms data-music-initial-tab="{{ $musicInitialTab }}">
+                <nav class="music-cms-tabs" role="tablist" aria-label="Editor de la pestana de musica">
+                    <button type="button" class="music-cms-tab" role="tab" data-music-tab="banner">Edit Banner</button>
+                    <button type="button" class="music-cms-tab" role="tab" data-music-tab="album">Add Album</button>
+                    <button type="button" class="music-cms-tab" role="tab" data-music-tab="song">Add Song</button>
+                </nav>
+
+                <div class="music-cms-panel" data-music-panel="banner">
+                    @include('admin.site-editor.music-banner', [
+                        'banner' => $musicBanner,
+                        'publicUrl' => $publicUrl,
+                    ])
+                </div>
+
+                <div class="music-cms-panel" data-music-panel="album">
+                    <div class="music-banner-cms">
+                        <div class="admin-page-heading music-banner-heading">
+                            <div>
+                                <h1>Add Album</h1>
+                                <p>Music / agrega un album al website publico.</p>
+                            </div>
+                            <a class="admin-button admin-button-ghost" href="{{ $publicUrl }}" target="_blank" rel="noreferrer">Ver website</a>
+                        </div>
+                        <section class="music-banner-editor admin-panel" aria-label="Formulario para agregar album">
+                            <div class="music-banner-panel-head">
+                                <div>
+                                    <p class="admin-kicker">Nuevo album</p>
+                                    <h2>Campos del album</h2>
+                                </div>
+                            </div>
+                            @include('admin.site-editor.music-add-album', [
+                                'visibilityAudiences' => $musicContentForm['visibilityAudiences'],
+                                'mediaAssets' => $musicContentForm['mediaAssets'],
+                            ])
+                        </section>
+                    </div>
+                </div>
+
+                <div class="music-cms-panel" data-music-panel="song">
+                    <div class="music-banner-cms">
+                        <div class="admin-page-heading music-banner-heading">
+                            <div>
+                                <h1>Add Song</h1>
+                                <p>Music / agrega una cancion al website publico.</p>
+                            </div>
+                            <a class="admin-button admin-button-ghost" href="{{ $publicUrl }}" target="_blank" rel="noreferrer">Ver website</a>
+                        </div>
+                        <section class="music-banner-editor admin-panel" aria-label="Formulario para agregar cancion">
+                            <div class="music-banner-panel-head">
+                                <div>
+                                    <p class="admin-kicker">Nueva cancion</p>
+                                    <h2>Campos de la cancion</h2>
+                                </div>
+                            </div>
+                            @include('admin.site-editor.music-add-song', [
+                                'visibilityAudiences' => $musicContentForm['visibilityAudiences'],
+                                'mediaAssets' => $musicContentForm['mediaAssets'],
+                            ])
+                        </section>
+                    </div>
+                </div>
+            </div>
+
+            <script>
+                (() => {
+                    const root = document.querySelector('[data-music-cms]');
+
+                    if (!root) return;
+
+                    const tabs = Array.from(root.querySelectorAll('[data-music-tab]'));
+                    const panels = Array.from(root.querySelectorAll('[data-music-panel]'));
+
+                    const activate = (name) => {
+                        tabs.forEach((tab) => {
+                            const isActive = tab.dataset.musicTab === name;
+                            tab.classList.toggle('is-active', isActive);
+                            tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+                        });
+                        panels.forEach((panel) => {
+                            panel.classList.toggle('is-active', panel.dataset.musicPanel === name);
+                        });
+                    };
+
+                    tabs.forEach((tab) => {
+                        tab.addEventListener('click', () => activate(tab.dataset.musicTab));
+                    });
+
+                    activate(root.dataset.musicInitialTab || 'banner');
+                })();
+            </script>
         @else
             <div class="admin-page-heading">
                 <div>
