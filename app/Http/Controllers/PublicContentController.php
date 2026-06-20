@@ -25,10 +25,11 @@ class PublicContentController extends Controller
         'vlogs',
     ];
 
-    public function home(Request $request, PublicCmsContentService $cms): View
+    public function home(Request $request, PublicCmsContentService $cms, TicketCodeService $ticketCodes): View
     {
-        return view('welcome', [
-            'publicCms' => $cms->music($request->user()),
+        return view('home', [
+            'publicCms' => $cms->home($request->user()),
+            'rsvpTickets' => $this->rsvpTickets($request, $ticketCodes),
         ]);
     }
 

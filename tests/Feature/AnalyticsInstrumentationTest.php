@@ -13,7 +13,7 @@ class AnalyticsInstrumentationTest extends TestCase
     public function test_public_pages_expose_analytics_screen_metadata(): void
     {
         $screens = [
-            '/' => 'music',
+            '/' => 'home',
             '/music' => 'music',
             '/videos' => 'videos',
             '/photos' => 'photos',

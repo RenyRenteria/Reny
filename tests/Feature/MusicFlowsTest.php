@@ -24,9 +24,8 @@ class MusicFlowsTest extends TestCase
         Cache::store('array')->flush();
     }
 
-    public function test_home_music_buttons_have_real_view_all_and_play_actions(): void
+    public function test_home_music_buttons_have_real_play_and_checkout_actions(): void
     {
-        $deluxeUrl = route('store', ['buy' => 'deluxe']);
         $album = $this->publishedMusic(ContentType::MusicalAlbum, 'Launch Album', [
             'tracklist' => "Intro\nSingle",
             'narrative' => 'Album narrative',
@@ -52,17 +51,19 @@ class MusicFlowsTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertSee('href="'.route('music.albums').'"', false)
-            ->assertSee('href="'.route('music.singles').'"', false)
             ->assertSee('data-music-play', false)
             ->assertSee(route('music.play', $album), false)
             ->assertSee(route('music.play', $single), false)
-            ->assertSee('href="'.$deluxeUrl.'"', false)
+            ->assertSee('data-buy="deluxe"', false)
             ->assertSee('Buy Deluxe')
             ->assertSee('Launch Album')
             ->assertSee('Launch Single');
 
-        $this->assertSame(2, substr_count($response->getContent(), 'class="album-deluxe-button"'));
+        $html = $response->getContent();
+
+        $this->assertSame(1, substr_count($html, 'class="home-buy-deluxe"'));
+        $this->assertStringNotContainsString('href="'.route('music.albums').'"', $html);
+        $this->assertStringNotContainsString('href="'.route('music.singles').'"', $html);
     }
 
     public function test_music_route_renders_banner_and_public_nav_targets_music(): void
@@ -95,7 +96,7 @@ class MusicFlowsTest extends TestCase
             'audio_url' => 'https://audio.test/royal-preview.mp3',
         ]);
 
-        $this->get('/')
+        $this->get(route('music'))
             ->assertOk()
             ->assertSee('Royal Preview Single')
             ->assertSee('Login required')

@@ -16,12 +16,12 @@ class SiteEditorPageRegistry
                 'label' => 'Home',
                 'theme' => 'music',
                 'public_path' => '/',
-                'summary' => 'Portada principal del sitio publico.',
+                'summary' => 'Portada principal conectada a Video, Store y Music.',
                 'blocks' => [
-                    $this->pageSettingsBlock('Hero, header y cover'),
-                    $this->block('home-featured-music', 'Featured music hero', [ContentType::Song, ContentType::MusicalAlbum, ContentType::DeluxeAlbum, ContentType::Exclusive], ContentType::Song),
-                    $this->block('home-featured-store', 'Featured store / event', [ContentType::Event, ContentType::Product, ContentType::Drop], ContentType::Event),
-                    $this->block('home-community-highlight', 'Community highlight', [ContentType::Post, ContentType::Poll], ContentType::Post),
+                    $this->block('home-featured-video', 'Featured video banner', [ContentType::Video], ContentType::Video),
+                    $this->block('home-events', 'Upcoming shows', [ContentType::Event], ContentType::Event),
+                    $this->block('home-latest-album', 'Latest deluxe album', [ContentType::MusicalAlbum, ContentType::DeluxeAlbum], ContentType::DeluxeAlbum),
+                    $this->block('home-latest-singles', 'Latest singles', [ContentType::Song, ContentType::Exclusive], ContentType::Song),
                 ],
             ],
             'music' => [

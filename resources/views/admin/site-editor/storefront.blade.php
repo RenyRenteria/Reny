@@ -6,6 +6,12 @@
         'album' => 'Album',
         'merch' => 'Crown Collection',
     ];
+    $editorPage = $editorPage ?? 'store';
+    $isHomeEditor = $editorPage === 'home';
+    $editorTitle = $isHomeEditor ? 'Home' : 'Store';
+    $editorDescription = $isHomeEditor
+        ? 'Home / controla Royal Pass, eventos y album deluxe usados en la portada publica.'
+        : 'Store / controla los 2 eventos, album deluxe y Crown Collection del website publico.';
     $slotField = fn (string $slot, string $key): string => (string) old("slots.{$slot}.{$key}", data_get($storefront, "slots.{$slot}.{$key}", ''));
     $slotDateField = function (string $slot, string $key) use ($slotField): string {
         $value = $slotField($slot, $key);
@@ -29,8 +35,8 @@
 <div class="music-banner-cms store-cms-editor">
     <div class="admin-page-heading music-banner-heading">
         <div>
-            <h1>Store</h1>
-            <p>Store / controla los 2 eventos, album deluxe y Crown Collection del website publico.</p>
+            <h1>{{ $editorTitle }}</h1>
+            <p>{{ $editorDescription }}</p>
         </div>
         <div class="admin-actions">
             <span @class([
@@ -46,6 +52,7 @@
 
     <form class="music-banner-form store-cms-form" action="{{ route('admin.site-editor.storefront.update') }}" method="POST" enctype="multipart/form-data">
         @csrf
+        <input type="hidden" name="return_page" value="{{ $editorPage }}">
 
         <section class="music-banner-editor admin-panel" aria-label="Royal Pass banner">
             <div class="music-banner-panel-head">

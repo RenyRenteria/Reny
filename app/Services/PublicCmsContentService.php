@@ -18,7 +18,7 @@ use Throwable;
 
 class PublicCmsContentService
 {
-    private const PAGES = ['music', 'videos', 'photos', 'store', 'community'];
+    private const PAGES = ['home', 'music', 'videos', 'photos', 'store', 'community'];
 
     private const VERSION_KEY = 'public-cms:last-published:version';
 
@@ -44,6 +44,50 @@ class PublicCmsContentService
         private readonly MusicBannerSettingsService $musicBannerSettings,
         private readonly StorefrontSettingsService $storefrontSettings,
     ) {}
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function home(?User $user): array
+    {
+        return $this->page('home', $user, function () use ($user): array {
+            $albums = $this->listableMusicContents('albums')
+                ->limit(4)
+                ->get()
+                ->values()
+                ->map(fn (EditorialContent $content, int $index): array => $this->albumPayload($content, $index, $user));
+
+            $storefront = $this->storefrontSettings->publicPayload();
+            $featuredVideo = $this->featuredVideoPayload(
+                $this->visibleContents($user, [ContentType::Video])->first()
+            );
+
+            return [
+                'featured_video' => $featuredVideo,
+                'events' => collect(['event_primary', 'event_secondary'])
+                    ->map(fn (string $key): array => data_get($storefront, "slots.{$key}", []))
+                    ->filter()
+                    ->values()
+                    ->all(),
+                'album' => $this->homeAlbumPayload($albums, data_get($storefront, 'slots.album', [])),
+                'singles' => $this->listableMusicContents('singles')
+                    ->limit(3)
+                    ->get()
+                    ->values()
+                    ->map(fn (EditorialContent $content): array => $this->singlePayload($content, $user))
+                    ->all(),
+                'royal_pass' => $storefront['royal_pass'] ?? [],
+                'royal_visuals' => collect(['event_primary', 'album', 'event_secondary'])
+                    ->map(fn (string $key): ?string => data_get($storefront, "slots.{$key}.image_url")
+                        ?: (filled(data_get($storefront, "slots.{$key}.image"))
+                            ? asset(data_get($storefront, "slots.{$key}.image"))
+                            : null))
+                    ->filter()
+                    ->values()
+                    ->all(),
+            ];
+        });
+    }
 
     /**
      * @return array<string, mixed>
@@ -264,6 +308,7 @@ class PublicCmsContentService
         abort_unless(in_array($page, self::PAGES, true), 404);
 
         return match ($page) {
+            'home' => $this->home($user),
             'music' => $this->music($user),
             'videos' => $this->videos($user),
             'photos' => $this->photos($user),
@@ -400,6 +445,40 @@ class PublicCmsContentService
             'royal:'.($user->hasRoyalAccess() || $user->isStaff() ? '1' : '0'),
             'unlocks:'.$availableUnlocks,
         ]));
+    }
+
+    /**
+     * @param  Collection<int, array<string, mixed>>  $albums
+     * @param  array<string, mixed>  $storeAlbum
+     * @return array<string, mixed>|null
+     */
+    private function homeAlbumPayload(Collection $albums, array $storeAlbum): ?array
+    {
+        $contentId = (string) ($storeAlbum['content_id'] ?? '');
+        $album = $contentId !== ''
+            ? $albums->firstWhere('id', $contentId)
+            : $albums->first();
+
+        if (! is_array($album)) {
+            return $storeAlbum === []
+                ? null
+                : [
+                    ...$storeAlbum,
+                    'summary' => $storeAlbum['description'] ?? '',
+                    'buy_label' => 'Buy Deluxe',
+                ];
+        }
+
+        return [
+            ...$album,
+            'title' => $storeAlbum['title'] ?? $album['title'],
+            'summary' => $storeAlbum['description'] ?? ($album['summary'] ?? ''),
+            'image_url' => $storeAlbum['image_url'] ?? $album['image_url'] ?? null,
+            'store_image' => $storeAlbum['image'] ?? null,
+            'image_alt' => $storeAlbum['image_alt'] ?? $album['title'],
+            'product_key' => $storeAlbum['product_key'] ?? 'deluxe',
+            'buy_label' => 'Buy Deluxe',
+        ];
     }
 
     /**

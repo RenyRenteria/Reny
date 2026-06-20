@@ -56,11 +56,6 @@ class AdminMusicBannerSettingsTest extends TestCase
             'status' => SitePageSetting::STATUS_DRAFT,
         ]);
 
-        $this->get('/')
-            ->assertOk()
-            ->assertSee('Biggest')
-            ->assertDontSee('Draft');
-
         $this->get(route('music'))
             ->assertOk()
             ->assertSee('Biggest')
@@ -83,12 +78,6 @@ class AdminMusicBannerSettingsTest extends TestCase
             'section' => 'banner',
             'status' => SitePageSetting::STATUS_DRAFT,
         ]);
-
-        $this->get('/')
-            ->assertOk()
-            ->assertSee('Published')
-            ->assertSee('Now')
-            ->assertSee('https://example.com/music-drop');
 
         $this->get(route('music'))
             ->assertOk()
@@ -131,7 +120,7 @@ class AdminMusicBannerSettingsTest extends TestCase
             'media_asset_id' => $asset->id,
         ]);
 
-        $this->get('/')
+        $this->get(route('music'))
             ->assertOk()
             ->assertSee('Artwork')
             ->assertSee('has-uploaded-art', false)

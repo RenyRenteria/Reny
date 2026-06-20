@@ -36,12 +36,13 @@
 
 @section('content')
     <section class="admin-dashboard-section is-active site-editor-screen">
-        @if ($activePage === 'store' && $storefront)
+        @if (in_array($activePage, ['home', 'store'], true) && $storefront)
             @include('admin.site-editor.storefront', [
                 'storefront' => $storefront,
                 'mediaAssets' => $storefrontForm['mediaAssets'],
                 'albums' => $storefrontForm['albums'],
                 'publicUrl' => $publicUrl,
+                'editorPage' => $activePage,
             ])
         @elseif ($activePage === 'music' && $musicBanner)
             <div class="music-cms-screens" data-music-cms data-music-initial-tab="{{ $musicInitialTab }}">
