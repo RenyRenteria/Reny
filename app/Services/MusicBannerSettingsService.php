@@ -27,7 +27,6 @@ class MusicBannerSettingsService
             'description' => 'A cinematic release package for Reny Renteria, built around a lead album, featured tracks, fan updates, and premium music drops.',
             'footer_line_1' => 'Visit us today at',
             'footer_line_2' => 'renyrenteria.com',
-            'badge' => 'RR',
             'destination_url' => 'https://renyrenteria.com',
             'sticker_line_1' => 'THE FIRST ALBUM',
             'sticker_line_2' => 'BANO #1',

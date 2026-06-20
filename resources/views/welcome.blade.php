@@ -8,7 +8,6 @@
         'description' => 'A cinematic release package for Reny Renteria, built around a lead album, featured tracks, fan updates, and premium music drops.',
         'footer_line_1' => 'Visit us today at',
         'footer_line_2' => 'renyrenteria.com',
-        'badge' => 'RR',
         'destination_url' => 'https://renyrenteria.com',
         'sticker_line_1' => 'THE FIRST ALBUM',
         'sticker_line_2' => 'BANO #1',
@@ -149,9 +148,6 @@
                         <div @class(['artist-card', 'has-uploaded-art' => filled($cmsBanner['image_url'] ?? null)]) aria-hidden="true">
                             @if (filled($cmsBanner['image_url'] ?? null))
                                 <img class="artist-card-image" src="{{ $cmsBanner['image_url'] }}" alt="">
-                            @endif
-                            @if (filled($cmsBanner['badge'] ?? null))
-                                <div class="disc-badge">{{ str($cmsBanner['badge'])->upper()->limit(4, '') }}</div>
                             @endif
                             <div class="barcode"></div>
                             @if (filled($cmsBanner['sticker_line_1'] ?? null) || filled($cmsBanner['sticker_line_2'] ?? null))

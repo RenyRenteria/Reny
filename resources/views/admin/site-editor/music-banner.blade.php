@@ -81,16 +81,10 @@
                     </label>
                 </div>
 
-                <div class="music-banner-form-grid two">
-                    <label>
-                        <span>Badge</span>
-                        <input data-banner-input="badge" name="badge" maxlength="4" value="{{ $field('badge') }}">
-                    </label>
-                    <label>
-                        <span>URL destino</span>
-                        <input data-banner-input="destination_url" name="destination_url" type="url" value="{{ $field('destination_url') }}" required>
-                    </label>
-                </div>
+                <label>
+                    <span>URL destino</span>
+                    <input data-banner-input="destination_url" name="destination_url" type="url" value="{{ $field('destination_url') }}" required>
+                </label>
 
                 <div class="music-banner-form-grid two">
                     <label>
@@ -165,7 +159,6 @@
                                 alt=""
                                 data-banner-image-preview
                             >
-                            <div class="disc-badge" data-banner-preview-field="badge">{{ str($field('badge'))->upper()->limit(4, '') }}</div>
                             <div class="barcode"></div>
                             <div class="artist-sticker">
                                 <span data-banner-preview-field="sticker_line_1">{{ $field('sticker_line_1') }}</span>
@@ -225,8 +218,8 @@
 
                 if (!target) return;
 
-                target.textContent = key === 'badge' ? value.slice(0, 4).toUpperCase() : value;
-                target.hidden = value.length === 0 && ['badge', 'sticker_line_1', 'sticker_line_2'].includes(key);
+                target.textContent = value;
+                target.hidden = value.length === 0 && ['sticker_line_1', 'sticker_line_2'].includes(key);
             });
 
             const status = root.querySelector('[data-banner-input="status"]')?.value;

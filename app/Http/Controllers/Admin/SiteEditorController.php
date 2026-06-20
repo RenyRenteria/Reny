@@ -211,7 +211,6 @@ class SiteEditorController extends Controller
             'description' => ['nullable', 'string', 'max:260'],
             'footer_line_1' => ['nullable', 'string', 'max:60'],
             'footer_line_2' => ['nullable', 'string', 'max:80'],
-            'badge' => ['nullable', 'string', 'max:4'],
             'destination_url' => ['required', 'url:http,https', 'max:2048'],
             'sticker_line_1' => ['nullable', 'string', 'max:40'],
             'sticker_line_2' => ['nullable', 'string', 'max:40'],
