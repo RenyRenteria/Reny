@@ -6,6 +6,8 @@
         ->filter()
         ->values();
     $rsvpTickets = $rsvpTickets ?? [];
+    $isGuestPreview = (bool) request()->attributes->get('site_editor_guest_preview', false);
+    $shouldShowRoyalPass = $isGuestPreview || auth()->guest();
     $slotImage = fn (array $slot): string => $slot['image_url'] ?? asset($slot['image'] ?? 'images/store/work-in-progress.png');
     $slotType = fn (array $slot): string => $slot['eyebrow'] ?: str($slot['kind'] ?? 'product')->headline()->toString();
 @endphp
@@ -94,7 +96,7 @@
                     </div>
                 </header>
 
-                @guest
+                @if ($shouldShowRoyalPass)
                     <section class="store-royal-pass" aria-label="Royal Pass">
                         <p>
                             {{ $royalPass['copy_before'] ?? 'Get your' }}
@@ -110,7 +112,7 @@
                             data-buy-summary="Monthly membership with exclusive content, community and more."
                         >{{ $royalPass['cta_label'] ?? 'BUY HERE' }}</button>
                     </section>
-                @endguest
+                @endif
 
                 <section class="storefront" aria-label="Store products">
                     <div class="storefront-grid">

@@ -5249,12 +5249,14 @@ body.has-modal-open {
     aspect-ratio: 245 / 301;
 }
 
-.storefront-card.is-event-secondary .storefront-image {
-    width: 99%;
-}
-
 .storefront-card.is-product .storefront-image {
     aspect-ratio: 1;
+}
+
+@media (min-width: 53.751rem) {
+    .storefront-card.is-event-secondary .storefront-image {
+        width: 99%;
+    }
 }
 
 .storefront-copy {

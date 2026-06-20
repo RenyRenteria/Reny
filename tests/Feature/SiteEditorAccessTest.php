@@ -66,6 +66,20 @@ class SiteEditorAccessTest extends TestCase
             ->assertDontSee('Sign in');
     }
 
+    public function test_store_preview_shows_royal_pass_banner_as_guest_for_authenticated_admin(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+
+        $this->actingAsAdmin($admin);
+
+        $this->get(route('admin.site-editor.preview', ['page' => 'store']))
+            ->assertOk()
+            ->assertSee('class="store-royal-pass"', false)
+            ->assertSee('Royal Pass')
+            ->assertSee('Guest')
+            ->assertDontSee($admin->name);
+    }
+
     public function test_unknown_site_editor_page_stays_on_enter_screen_when_cms_is_disabled(): void
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
