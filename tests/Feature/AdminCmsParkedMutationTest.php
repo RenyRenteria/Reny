@@ -155,6 +155,8 @@ class AdminCmsParkedMutationTest extends TestCase
 
     private function actingAsParkedAdmin(User $user): void
     {
+        config(['admin.cms_enabled' => false]);
+
         $this->actingAs($user)->withSession([
             'admin_authenticated_at' => now()->timestamp,
         ]);
