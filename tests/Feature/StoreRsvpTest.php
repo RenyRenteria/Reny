@@ -19,21 +19,21 @@ class StoreRsvpTest extends TestCase
         ]);
 
         $response = $this->actingAs($user)->postJson(route('store.rsvp'), [
-            'event_key' => 'making',
+            'event_key' => 'concert',
         ]);
 
         $response
             ->assertOk()
             ->assertJsonPath('status', 'confirmed')
-            ->assertJsonPath('event.name', 'Making The Deluxe Album')
+            ->assertJsonPath('event.name', 'Reny Renteria en Concierto')
             ->assertJsonPath('ticket.status', 'reserved')
             ->assertJsonPath('ticket.rsvp_status', 'confirmed');
 
-        $event = FanEvent::where('title', 'Making The Deluxe Album')->firstOrFail();
+        $event = FanEvent::where('title', 'Reny Renteria en Concierto')->firstOrFail();
         $ticket = Ticket::where('user_id', $user->id)->where('event_id', $event->id)->firstOrFail();
 
         $this->assertSame('store_rsvp', $event->metadata['source']);
-        $this->assertSame('making', $event->metadata['store_event_key']);
+        $this->assertSame('concert', $event->metadata['store_event_key']);
         $this->assertSame('reserved', $ticket->status);
         $this->assertSame('confirmed', $ticket->rsvp_status);
         $this->assertNull($ticket->order_id);
@@ -48,7 +48,7 @@ class StoreRsvpTest extends TestCase
         $this->actingAs($user)
             ->get('/account')
             ->assertOk()
-            ->assertSee('Making The Deluxe Album')
+            ->assertSee('Reny Renteria en Concierto')
             ->assertSee('TKT-'.$ticket->id.'-', false);
     }
 
