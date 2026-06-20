@@ -14,7 +14,15 @@ class AnalyticsEventController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', Rule::in(['page_view', 'permission_denied'])],
-            'payload' => ['nullable', 'array', 'max:20'],
+            'payload' => ['nullable', 'array:screen,path,result,title,referrer,section,item_type,item_id', 'max:8'],
+            'payload.screen' => ['nullable', 'string', 'max:80'],
+            'payload.path' => ['nullable', 'string', 'max:2048'],
+            'payload.result' => ['nullable', 'string', 'max:64'],
+            'payload.title' => ['nullable', 'string', 'max:255'],
+            'payload.referrer' => ['nullable', 'string', 'max:2048'],
+            'payload.section' => ['nullable', 'string', 'max:128'],
+            'payload.item_type' => ['nullable', 'string', 'max:64'],
+            'payload.item_id' => ['nullable', 'string', 'max:128'],
             'timestamp' => ['nullable', 'date'],
         ]);
 
