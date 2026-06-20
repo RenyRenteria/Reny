@@ -1871,7 +1871,7 @@ if (storeShell) {
 
     const isPaymentMethodAvailable = (method) => paymentButtons.find((button) => button.dataset.paymentMethod === method)?.dataset.providerAvailable === 'true';
 
-    const refreshCheckoutControls = () => {
+    const refreshCheckoutControls = ({ preserveStatus = false } = {}) => {
         const hasItems = bag.length > 0;
 
         paymentButtons.forEach((button) => {
@@ -1889,20 +1889,26 @@ if (storeShell) {
         if (!hasItems) {
             completePurchaseButton.disabled = true;
             completePurchaseButton.textContent = 'Add item to checkout';
-            setPaymentStatus('Add a product to enable PayPal checkout.');
+            if (!preserveStatus) {
+                setPaymentStatus('Add a product to enable PayPal checkout.');
+            }
             return;
         }
 
         if (activePaymentMethod === 'paypal') {
             completePurchaseButton.disabled = false;
             completePurchaseButton.textContent = 'Load PayPal checkout';
-            setPaymentStatus('PayPal checkout is charged in USD.');
+            if (!preserveStatus) {
+                setPaymentStatus('PayPal checkout is charged in USD.');
+            }
             return;
         }
 
         completePurchaseButton.disabled = true;
         completePurchaseButton.textContent = `${paymentMethodLabel(activePaymentMethod)} unavailable`;
-        setPaymentStatus(`${paymentMethodLabel(activePaymentMethod)} checkout needs a real provider before purchases can complete.`);
+        if (!preserveStatus) {
+            setPaymentStatus(`${paymentMethodLabel(activePaymentMethod)} checkout needs a real provider before purchases can complete.`);
+        }
     };
 
     const selectPaymentMethod = (method, { track = true } = {}) => {
@@ -2244,7 +2250,7 @@ if (storeShell) {
                 reason: error.userMessage || error.message || 'checkout_unavailable',
             });
         } finally {
-            refreshCheckoutControls();
+            refreshCheckoutControls({ preserveStatus: true });
         }
     });
 
