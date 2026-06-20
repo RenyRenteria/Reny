@@ -191,6 +191,35 @@ class AdminAuthRbacTest extends TestCase
         $this->assertGuest();
     }
 
+    public function test_expired_session_returns_to_intended_music_editor_after_relogin(): void
+    {
+        config(['admin.session_lifetime_minutes' => 1]);
+
+        $admin = User::factory()->create([
+            'email' => 'music-expire@example.com',
+            'password' => Hash::make('password'),
+            'role' => 'admin',
+        ]);
+        $musicEditorUrl = route('admin.site-editor.show', ['page' => 'music']);
+
+        $this->signInToAdmin($admin);
+
+        $this->travel(2)->minutes();
+
+        $this->get($musicEditorUrl)
+            ->assertRedirect(route('admin.login'))
+            ->assertSessionHas('status', 'Admin session expired. Sign in again to continue.');
+
+        $this->assertGuest();
+
+        $this->post(route('admin.login.store'), [
+            'email' => 'music-expire@example.com',
+            'password' => 'password',
+        ])->assertRedirect($musicEditorUrl);
+
+        $this->assertAuthenticatedAs($admin);
+    }
+
     private function signInToAdmin(User $user): void
     {
         config(['admin.cms_enabled' => true]);
