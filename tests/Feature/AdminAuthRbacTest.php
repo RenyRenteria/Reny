@@ -58,12 +58,7 @@ class AdminAuthRbacTest extends TestCase
         $this->assertAuthenticatedAs($admin);
 
         $this->get(route('admin.login'))
-            ->assertOk()
-            ->assertSee('Enter')
-            ->assertDontSee('Open admin')
-            ->assertDontSee('Dashboard editorial')
-            ->assertDontSee('Nuevo contenido')
-            ->assertDontSee('Contenido de tu Sitio');
+            ->assertRedirect(route('admin.dashboard'));
 
         $this->get(route('admin.dashboard'))
             ->assertOk()
