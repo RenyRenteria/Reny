@@ -40,7 +40,10 @@ class PublicCmsContentService
         ContentType::Exclusive,
     ];
 
-    public function __construct(private readonly MusicBannerSettingsService $musicBannerSettings) {}
+    public function __construct(
+        private readonly MusicBannerSettingsService $musicBannerSettings,
+        private readonly StorefrontSettingsService $storefrontSettings,
+    ) {}
 
     /**
      * @return array<string, mixed>
@@ -218,6 +221,7 @@ class PublicCmsContentService
             ])->get();
 
             return [
+                'storefront' => $this->storefrontSettings->publicPayload(),
                 'products' => $contents
                     ->whereIn('type', [ContentType::Product, ContentType::Drop, ContentType::Exclusive])
                     ->values()

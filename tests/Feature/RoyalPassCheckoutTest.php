@@ -143,14 +143,14 @@ class RoyalPassCheckoutTest extends TestCase
             $payload = $request->data();
             $items = collect(data_get($payload, 'purchase_units.0.items', []));
 
-            return data_get($payload, 'purchase_units.0.amount.value') === '102.00'
-                && data_get($payload, 'purchase_units.0.amount.breakdown.item_total.value') === '102.00'
+            return data_get($payload, 'purchase_units.0.amount.value') === '99.00'
+                && data_get($payload, 'purchase_units.0.amount.breakdown.item_total.value') === '99.00'
                 && $items->contains(fn (array $item): bool => $item['name'] === 'Reny Live - Studio Night'
                     && $item['quantity'] === '2'
                     && data_get($item, 'unit_amount.value') === '42.00')
-                && $items->contains(fn (array $item): bool => $item['name'] === 'Deluxe Preview Session'
+                && $items->contains(fn (array $item): bool => $item['name'] === 'Festival de la Rosa Dorada'
                     && $item['quantity'] === '1'
-                    && data_get($item, 'unit_amount.value') === '18.00');
+                    && data_get($item, 'unit_amount.value') === '15.00');
         });
     }
 
@@ -571,7 +571,7 @@ class RoyalPassCheckoutTest extends TestCase
     public function test_multi_event_checkout_issues_tickets_for_each_event(): void
     {
         $this->createPendingPayPalOrder('multi-event@renyrenteria.com', ['concert', 'listening'], 'PAYPAL-MULTI-EVENT');
-        $this->fakeSuccessfulCapture('PAYPAL-MULTI-EVENT', '60.00', 'CAPTURE-MULTI-EVENT');
+        $this->fakeSuccessfulCapture('PAYPAL-MULTI-EVENT', '57.00', 'CAPTURE-MULTI-EVENT');
 
         $this->postJson('/checkout/paypal', [
             'identifier' => 'multi-event@renyrenteria.com',
@@ -585,7 +585,7 @@ class RoyalPassCheckoutTest extends TestCase
 
         $user = User::where('email', 'multi-event@renyrenteria.com')->firstOrFail();
         $concert = FanEvent::where('title', 'Reny Live - Studio Night')->firstOrFail();
-        $listening = FanEvent::where('title', 'Deluxe Preview Session')->firstOrFail();
+        $listening = FanEvent::where('title', 'Festival de la Rosa Dorada')->firstOrFail();
 
         $this->assertSame(1, Ticket::query()
             ->where('user_id', $user->id)
@@ -653,7 +653,7 @@ class RoyalPassCheckoutTest extends TestCase
             ->where('status', 'confirmed')
             ->count());
         $this->assertDatabaseMissing('events', [
-            'title' => 'Deluxe Preview Session',
+            'title' => 'Festival de la Rosa Dorada',
         ]);
     }
 
@@ -1100,12 +1100,16 @@ class RoyalPassCheckoutTest extends TestCase
 
         $this->get('/store')
             ->assertOk()
-            ->assertSee('CMS Digital Pack')
-            ->assertSee('CMS Art Drop')
-            ->assertSee('data-detail="cms-digital-pack"', false)
-            ->assertSee('data-detail="cms-art-drop"', false)
-            ->assertSee('data-category="music"', false)
-            ->assertSee('data-category="merch"', false);
+            ->assertSee('Work in Progress')
+            ->assertDontSee('data-detail="cms-digital-pack"', false)
+            ->assertDontSee('data-detail="cms-art-drop"', false);
+
+        $this->getJson(route('public-content.payload', 'store'))
+            ->assertOk()
+            ->assertJsonPath('products.0.key', 'cms-art-drop')
+            ->assertJsonPath('products.1.key', 'cms-digital-pack')
+            ->assertJsonPath('products.0.category', 'merch')
+            ->assertJsonPath('products.1.category', 'music');
     }
 
     private function fakeCreatedOrder(string $orderId): void

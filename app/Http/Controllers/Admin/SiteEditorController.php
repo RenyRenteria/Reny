@@ -14,6 +14,7 @@ use App\Services\Media\MediaLibraryService;
 use App\Services\Media\MediaUploadException;
 use App\Services\MusicBannerSettingsService;
 use App\Services\PublicCmsContentService;
+use App\Services\StorefrontSettingsService;
 use App\Support\SiteEditorPageRegistry;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -50,6 +51,12 @@ class SiteEditorController extends Controller
             'musicContentForm' => $page === 'music'
                 ? $this->musicContentFormData()
                 : null,
+            'storefront' => $page === 'store'
+                ? app(StorefrontSettingsService::class)->editorPayload()
+                : null,
+            'storefrontForm' => $page === 'store'
+                ? $this->storefrontFormData()
+                : null,
             'blocks' => $this->blocksFor($pageConfig['blocks']),
             'timezone' => config('admin.publishing_timezone', 'America/Panama'),
         ]);
@@ -66,6 +73,22 @@ class SiteEditorController extends Controller
             'visibilityAudiences' => VisibilityAudience::cases(),
             'mediaAssets' => MediaAsset::query()->ready()->latest()->limit(100)->get(),
             'defaultType' => ContentType::MusicalAlbum->value,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function storefrontFormData(): array
+    {
+        return [
+            'mediaAssets' => MediaAsset::query()->ready()->latest()->limit(100)->get(),
+            'albums' => EditorialContent::query()
+                ->whereIn('type', [ContentType::MusicalAlbum->value, ContentType::DeluxeAlbum->value])
+                ->orderByRaw("CASE status WHEN 'published' THEN 0 WHEN 'scheduled' THEN 1 WHEN 'draft' THEN 2 ELSE 3 END")
+                ->latest()
+                ->limit(100)
+                ->get(),
         ];
     }
 
@@ -96,6 +119,35 @@ class SiteEditorController extends Controller
             ->with('status', $status === SitePageSetting::STATUS_PUBLISHED
                 ? 'Banner de musica publicado en el website.'
                 : 'Borrador del banner de musica guardado.');
+    }
+
+    public function updateStorefront(
+        Request $request,
+        StorefrontSettingsService $settings,
+        MediaLibraryService $library,
+    ): RedirectResponse {
+        $validated = $this->validatedStorefrontPayload($request);
+        $status = $validated['action'] === 'publish'
+            ? SitePageSetting::STATUS_PUBLISHED
+            : SitePageSetting::STATUS_DRAFT;
+
+        if ($status === SitePageSetting::STATUS_PUBLISHED && ! $request->user()?->canPublishContent()) {
+            abort(403);
+        }
+
+        try {
+            $payload = $this->storefrontPayloadWithUploads($request, $library, $validated['payload']);
+        } catch (MediaUploadException $exception) {
+            return back()->withErrors(['slot_images' => $exception->getMessage()])->withInput();
+        }
+
+        $settings->save($request->user(), $payload, $status);
+
+        return redirect()
+            ->route('admin.site-editor.show', ['page' => 'store'])
+            ->with('status', $status === SitePageSetting::STATUS_PUBLISHED
+                ? 'Store publicado en el website.'
+                : 'Borrador del Store guardado.');
     }
 
     public function preview(Request $request, PublicCmsContentService $cms, string $page): View
@@ -246,6 +298,71 @@ class SiteEditorController extends Controller
                 ])
                 ->all(),
         ];
+    }
+
+    /**
+     * @return array{action: string, payload: array<string, mixed>}
+     */
+    private function validatedStorefrontPayload(Request $request): array
+    {
+        $rules = [
+            'action' => ['required', Rule::in(['draft', 'publish'])],
+            'royal_pass.copy_before' => ['nullable', 'string', 'max:80'],
+            'royal_pass.emphasis' => ['nullable', 'string', 'max:40'],
+            'royal_pass.copy_after' => ['nullable', 'string', 'max:140'],
+            'royal_pass.cta_label' => ['nullable', 'string', 'max:32'],
+            'royal_pass.product_key' => ['nullable', 'string', 'max:80'],
+        ];
+
+        foreach (StorefrontSettingsService::slotKeys() as $slotKey) {
+            $rules["slots.{$slotKey}.title"] = ['nullable', 'string', 'max:120'];
+            $rules["slots.{$slotKey}.eyebrow"] = ['nullable', 'string', 'max:80'];
+            $rules["slots.{$slotKey}.description"] = ['nullable', 'string', 'max:260'];
+            $rules["slots.{$slotKey}.price_label"] = ['nullable', 'string', 'max:32'];
+            $rules["slots.{$slotKey}.cta_label"] = ['nullable', 'string', 'max:40'];
+            $rules["slots.{$slotKey}.action_type"] = ['nullable', Rule::in(['buy', 'rsvp', 'link'])];
+            $rules["slots.{$slotKey}.product_key"] = ['nullable', 'string', 'max:100'];
+            $rules["slots.{$slotKey}.url"] = ['nullable', 'url:http,https', 'max:2048'];
+            $rules["slots.{$slotKey}.image_asset_id"] = ['nullable', 'integer', 'exists:media_assets,id'];
+            $rules["slots.{$slotKey}.content_id"] = ['nullable', 'integer', 'exists:editorial_contents,id'];
+            $rules["slot_images.{$slotKey}"] = ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,gif', 'max:51200'];
+        }
+
+        $validated = $request->validate($rules);
+
+        return [
+            'action' => $validated['action'],
+            'payload' => [
+                'royal_pass' => $validated['royal_pass'] ?? [],
+                'slots' => $validated['slots'] ?? [],
+            ],
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function storefrontPayloadWithUploads(Request $request, MediaLibraryService $library, array $payload): array
+    {
+        foreach (StorefrontSettingsService::slotKeys() as $slotKey) {
+            $file = $request->file("slot_images.{$slotKey}");
+
+            if (! $file instanceof UploadedFile) {
+                continue;
+            }
+
+            $asset = $library->storeUploads($request->user(), [
+                'type' => MediaAssetType::Image->value,
+                'title' => 'Store '.str($slotKey)->headline()->toString().' image',
+                'alt_text' => (string) data_get($payload, "slots.{$slotKey}.title", 'Store image'),
+                'is_public' => true,
+            ], [$file])->first();
+
+            data_set($payload, "slots.{$slotKey}.image_asset_id", $asset?->id);
+        }
+
+        return $payload;
     }
 
     private function bannerImage(Request $request, MediaLibraryService $library): ?MediaAsset

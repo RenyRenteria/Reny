@@ -1407,8 +1407,8 @@ if (storeShell) {
         royal: 4.99,
         merch: 48,
         print: 86,
-        concert: 42,
-        listening: 18,
+        concert: 0,
+        listening: 15,
         making: 0,
     };
 
@@ -1459,30 +1459,6 @@ if (storeShell) {
         };
     });
 
-    products.concert = {
-        name: 'Reny Live - Studio Night',
-        type: 'Physical event',
-        priceKey: 'concert',
-        availability: '96 seats',
-        points: '+420 pts',
-        pass: 'No Royal Pass required',
-        access: 'Ticket unlocks in profile',
-        summary: 'Upcoming live concert ticket with instant receipt, profile update, and event access.',
-        cta: 'Buy ticket',
-    };
-
-    products.listening = {
-        name: 'Deluxe Preview Session',
-        type: 'Physical event',
-        priceKey: 'listening',
-        availability: '40 seats',
-        points: '+180 pts',
-        pass: 'Royal Pass early access',
-        access: 'Ticket unlocks in profile',
-        summary: 'Intimate listening room preview for the next deluxe release.',
-        cta: 'Buy ticket',
-    };
-
     document.querySelectorAll('[data-price][data-price-value]').forEach((node) => {
         const value = Number.parseFloat(node.dataset.priceValue || '');
 
@@ -1494,20 +1470,21 @@ if (storeShell) {
     document.querySelectorAll('[data-buy]').forEach((button) => {
         const key = button.dataset.buy;
 
-        if (!key || products[key]) {
+        if (!key) {
             return;
         }
 
         products[key] = {
-            name: button.dataset.buyName || key,
-            type: button.dataset.buyType || 'Event',
+            ...products[key],
+            name: button.dataset.buyName || products[key]?.name || key,
+            type: button.dataset.buyType || products[key]?.type || 'Product',
             priceKey: key,
-            availability: 'Available',
-            points: '+0 pts',
-            pass: 'No Royal Pass required',
-            access: 'Ticket unlocks in profile',
-            summary: button.dataset.buySummary || 'Event checkout',
-            cta: button.textContent?.trim() || 'Add to bag',
+            availability: products[key]?.availability || 'Available',
+            points: products[key]?.points || '+0 pts',
+            pass: products[key]?.pass || 'No Royal Pass required',
+            access: products[key]?.access || 'Checkout unlocks in profile',
+            summary: button.dataset.buySummary || products[key]?.summary || 'Store checkout',
+            cta: button.textContent?.trim() || products[key]?.cta || 'Add to bag',
         };
     });
 
@@ -1952,11 +1929,13 @@ if (storeShell) {
     };
 
     const renderBag = () => {
-        if (!bagCount || !bagList || !bagTotal) {
+        if (!bagList || !bagTotal) {
             return;
         }
 
-        bagCount.textContent = String(bag.length);
+        if (bagCount) {
+            bagCount.textContent = String(bag.length);
+        }
         bagList.replaceChildren();
 
         if (!bag.length) {
