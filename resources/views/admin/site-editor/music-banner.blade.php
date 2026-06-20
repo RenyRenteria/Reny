@@ -92,17 +92,6 @@
                     </label>
                 </div>
 
-                <div class="music-banner-form-grid two">
-                    <label>
-                        <span>Sticker linea 1</span>
-                        <input data-banner-input="sticker_line_1" name="sticker_line_1" value="{{ $field('sticker_line_1') }}">
-                    </label>
-                    <label>
-                        <span>Sticker linea 2</span>
-                        <input data-banner-input="sticker_line_2" name="sticker_line_2" value="{{ $field('sticker_line_2') }}">
-                    </label>
-                </div>
-
                 <label>
                     <span>Portada / arte</span>
                     <input data-banner-image-input name="image" type="file" accept="image/png,image/jpeg,image/webp,image/gif">
@@ -167,10 +156,6 @@
                             >
                             <div class="disc-badge" data-banner-preview-field="badge">{{ str($field('badge'))->upper()->limit(4, '') }}</div>
                             <div class="barcode"></div>
-                            <div class="artist-sticker">
-                                <span data-banner-preview-field="sticker_line_1">{{ $field('sticker_line_1') }}</span>
-                                <span data-banner-preview-field="sticker_line_2">{{ $field('sticker_line_2') }}</span>
-                            </div>
                         </div>
                     </section>
                 </article>
@@ -226,7 +211,7 @@
                 if (!target) return;
 
                 target.textContent = key === 'badge' ? value.slice(0, 4).toUpperCase() : value;
-                target.hidden = value.length === 0 && ['badge', 'sticker_line_1', 'sticker_line_2'].includes(key);
+                target.hidden = value.length === 0 && key === 'badge';
             });
 
             const status = root.querySelector('[data-banner-input="status"]')?.value;

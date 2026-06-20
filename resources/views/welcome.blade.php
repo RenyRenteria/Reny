@@ -10,8 +10,6 @@
         'footer_line_2' => 'renyrenteria.com',
         'badge' => 'RR',
         'destination_url' => 'https://renyrenteria.com',
-        'sticker_line_1' => 'THE FIRST ALBUM',
-        'sticker_line_2' => 'BANO #1',
         'image_url' => null,
         'image_alt' => 'Reny Renteria music banner artwork',
     ];
@@ -154,16 +152,6 @@
                                 <div class="disc-badge">{{ str($cmsBanner['badge'])->upper()->limit(4, '') }}</div>
                             @endif
                             <div class="barcode"></div>
-                            @if (filled($cmsBanner['sticker_line_1'] ?? null) || filled($cmsBanner['sticker_line_2'] ?? null))
-                                <div class="artist-sticker">
-                                    @if (filled($cmsBanner['sticker_line_1'] ?? null))
-                                        <span>{{ $cmsBanner['sticker_line_1'] }}</span>
-                                    @endif
-                                    @if (filled($cmsBanner['sticker_line_2'] ?? null))
-                                        <span>{{ $cmsBanner['sticker_line_2'] }}</span>
-                                    @endif
-                                </div>
-                            @endif
                         </div>
                     </section>
 

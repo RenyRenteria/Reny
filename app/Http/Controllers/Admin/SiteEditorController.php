@@ -213,8 +213,6 @@ class SiteEditorController extends Controller
             'footer_line_2' => ['nullable', 'string', 'max:80'],
             'badge' => ['nullable', 'string', 'max:4'],
             'destination_url' => ['required', 'url:http,https', 'max:2048'],
-            'sticker_line_1' => ['nullable', 'string', 'max:40'],
-            'sticker_line_2' => ['nullable', 'string', 'max:40'],
             'status' => ['nullable', Rule::in([SitePageSetting::STATUS_DRAFT, SitePageSetting::STATUS_PUBLISHED])],
             'image_asset_id' => ['nullable', 'integer', 'exists:media_assets,id'],
             'image' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,gif', 'max:51200'],

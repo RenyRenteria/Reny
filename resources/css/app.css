@@ -1835,24 +1835,6 @@ button {
     object-fit: cover;
 }
 
-.artist-sticker {
-    position: absolute;
-    bottom: 1.75rem;
-    left: -2.5rem;
-    display: grid;
-    width: 9.625rem;
-    padding: 0.625rem 0.75rem;
-    transform: rotate(-5deg);
-    background: var(--red);
-    box-shadow: 0 0.75rem 1.5rem rgba(0, 0, 0, 0.28);
-    color: #ffffff;
-    font-size: 0.875rem;
-    font-weight: 950;
-    letter-spacing: 0.03em;
-    line-height: 0.95;
-    text-transform: uppercase;
-}
-
 .disc-badge {
     position: absolute;
     top: -1.25rem;

@@ -29,8 +29,6 @@ class MusicBannerSettingsService
             'footer_line_2' => 'renyrenteria.com',
             'badge' => 'RR',
             'destination_url' => 'https://renyrenteria.com',
-            'sticker_line_1' => 'THE FIRST ALBUM',
-            'sticker_line_2' => 'BANO #1',
         ];
     }
 
