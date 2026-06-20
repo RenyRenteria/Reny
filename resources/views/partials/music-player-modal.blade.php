@@ -20,7 +20,7 @@
             <div class="music-player-tracks" id="musicPlayerTracks" hidden></div>
 
             <div class="music-player-actions">
-                <a class="music-player-link" id="musicPlayerDetail" href="{{ route('home') }}">Open details</a>
+                <a class="music-player-link" id="musicPlayerDetail" href="{{ route('music') }}">Open details</a>
                 <a class="music-player-link music-player-primary" id="musicPlayerCta" href="{{ route('store') }}" hidden>Continue</a>
             </div>
         </div>

@@ -31,6 +31,7 @@ class AdminMusicBannerSettingsTest extends TestCase
 
         $this->get(route('admin.site-editor.show', ['page' => 'music']))
             ->assertOk()
+            ->assertSee('href="'.url('/music').'"', false)
             ->assertSee('Banner')
             ->assertSee('Guardar y publicar')
             ->assertSee('Biggest')
@@ -60,6 +61,11 @@ class AdminMusicBannerSettingsTest extends TestCase
             ->assertSee('Biggest')
             ->assertDontSee('Draft');
 
+        $this->get(route('music'))
+            ->assertOk()
+            ->assertSee('Biggest')
+            ->assertDontSee('Draft');
+
         $this->post(route('admin.site-editor.music-banner.update'), $this->bannerPayload([
             'action' => 'publish',
             'title_line_1' => 'Published',
@@ -79,6 +85,12 @@ class AdminMusicBannerSettingsTest extends TestCase
         ]);
 
         $this->get('/')
+            ->assertOk()
+            ->assertSee('Published')
+            ->assertSee('Now')
+            ->assertSee('https://example.com/music-drop');
+
+        $this->get(route('music'))
             ->assertOk()
             ->assertSee('Published')
             ->assertSee('Now')

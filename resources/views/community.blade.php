@@ -33,7 +33,7 @@
                     </a>
 
                     <nav class="tabs" aria-label="Main menu">
-                        <a class="tab" href="{{ url('/') }}">
+                        <a class="tab" href="{{ route('music') }}">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                                 <path d="M9 18V5l10-2v13"></path>
                                 <circle cx="7" cy="18" r="3"></circle>
@@ -398,7 +398,7 @@
                 </div>
 
                 <nav class="mobile-bottom-nav" aria-label="Mobile menu">
-                    <a href="{{ url('/') }}">
+                    <a href="{{ route('music') }}">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                             <path d="M9 18V5l10-2v13"></path>
                             <circle cx="7" cy="18" r="3"></circle>

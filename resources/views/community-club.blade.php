@@ -23,7 +23,7 @@
                     </a>
 
                     <nav class="tabs" aria-label="Main menu">
-                        <a class="tab" href="{{ url('/') }}"><span>Music</span></a>
+                        <a class="tab" href="{{ route('music') }}"><span>Music</span></a>
                         <a class="tab" href="{{ url('/videos') }}"><span>Videos</span></a>
                         <a class="tab" href="{{ url('/photos') }}"><span>Photos</span></a>
                         <a class="tab is-active" href="{{ url('/community') }}" aria-current="page"><span>Community</span></a>
