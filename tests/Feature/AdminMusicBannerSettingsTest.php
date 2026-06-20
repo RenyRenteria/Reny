@@ -37,6 +37,34 @@ class AdminMusicBannerSettingsTest extends TestCase
             ->assertSee('Comeback Album!');
     }
 
+    public function test_site_editor_preview_navigation_links_back_to_private_cms_tabs(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+
+        $this->actingAsAdmin($admin);
+
+        $editorUrls = collect(['music', 'videos', 'photos', 'community', 'store'])
+            ->mapWithKeys(fn (string $page): array => [
+                $page => route('admin.site-editor.show', ['page' => $page]),
+            ]);
+
+        foreach ($editorUrls->keys() as $page) {
+            $response = $this->get(route('admin.site-editor.preview', ['page' => $page]))
+                ->assertOk()
+                ->assertSee('target="_top"', false);
+
+            foreach ($editorUrls as $editorUrl) {
+                $response->assertSee('href="'.$editorUrl.'"', false);
+            }
+        }
+
+        $this->get('/videos')
+            ->assertOk()
+            ->assertSee('href="'.url('/videos').'"', false)
+            ->assertDontSee('target="_top"', false)
+            ->assertDontSee($editorUrls->get('music'), false);
+    }
+
     public function test_draft_banner_does_not_change_public_music_banner_until_published(): void
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
