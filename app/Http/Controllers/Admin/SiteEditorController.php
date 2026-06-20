@@ -159,7 +159,11 @@ class SiteEditorController extends Controller
         $request->attributes->set('site_editor_guest_preview', true);
 
         return match ($page) {
-            'home', 'music' => view('welcome', [
+            'home' => view('home', [
+                'publicCms' => $this->publicPayload($cms, $page),
+                'rsvpTickets' => [],
+            ]),
+            'music' => view('welcome', [
                 'publicCms' => $this->publicPayload($cms, $page),
             ]),
             'videos' => view('videos', [
@@ -260,7 +264,11 @@ class SiteEditorController extends Controller
      */
     private function publicPayload(PublicCmsContentService $cms, string $page, ?User $user = null): array
     {
-        if (in_array($page, ['home', 'music'], true)) {
+        if ($page === 'home') {
+            return $cms->home($user);
+        }
+
+        if ($page === 'music') {
             return $cms->music($user);
         }
 

@@ -12,7 +12,7 @@ class EntitlementGateTest extends TestCase
 
     public function test_open_mode_renders_preview_without_premium_payload(): void
     {
-        $this->get('/')
+        $this->get('/music')
             ->assertOk()
             ->assertSee('VIP Mix')
             ->assertSee('Get your Royal Pass')
@@ -24,7 +24,7 @@ class EntitlementGateTest extends TestCase
         $user = User::factory()->royal()->create();
 
         $this->actingAs($user)
-            ->get('/')
+            ->get('/music')
             ->assertOk()
             ->assertSee('Royal-only audio stream')
             ->assertDontSee('Open users can see the drop');

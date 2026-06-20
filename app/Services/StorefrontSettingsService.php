@@ -255,20 +255,23 @@ class StorefrontSettingsService
 
     private function publishedAlbum(int $contentId): ?EditorialContent
     {
-        if ($contentId <= 0) {
-            return null;
-        }
-
         $now = now();
 
-        return EditorialContent::query()
+        $query = EditorialContent::query()
             ->with(['mediaAssets'])
-            ->whereKey($contentId)
             ->whereIn('type', [ContentType::MusicalAlbum->value, ContentType::DeluxeAlbum->value])
             ->whereIn('status', [EditorialStatus::Published->value, EditorialStatus::Scheduled->value])
             ->where(function ($query) use ($now): void {
                 $query->whereNull('scheduled_at')->orWhere('scheduled_at', '<=', $now);
-            })
+            });
+
+        if ($contentId > 0) {
+            return $query->whereKey($contentId)->first();
+        }
+
+        return $query
+            ->orderByRaw("CASE type WHEN 'deluxe_album' THEN 0 ELSE 1 END")
+            ->orderByRaw('COALESCE(published_at, scheduled_at, created_at) DESC')
             ->first();
     }
 
@@ -285,6 +288,7 @@ class StorefrontSettingsService
 
         return [
             ...$slot,
+            'content_id' => $album->id,
             'title' => $album->title,
             'eyebrow' => $album->type === ContentType::DeluxeAlbum ? 'Deluxe Album' : 'Album',
             'description' => $album->summary ?: $slot['description'],
