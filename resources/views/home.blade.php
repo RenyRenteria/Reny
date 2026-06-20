@@ -12,7 +12,17 @@
     $featuredVideo['title'] = $featuredVideo['title'] ?? $defaultVideo['title'];
     $featuredVideo['meta'] = $featuredVideo['meta'] ?? $defaultVideo['meta'];
 
-    $events = collect($publicCms['events'] ?? [])->filter()->values();
+    $events = collect($publicCms['events'] ?? [])
+        ->filter(fn (mixed $event): bool => is_array($event) && filled($event['title'] ?? null))
+        ->values();
+
+    if ($events->isEmpty()) {
+        $storefrontFallback = app(\App\Services\StorefrontSettingsService::class)->defaults();
+        $events = collect(['event_primary', 'event_secondary'])
+            ->map(fn (string $key): array => data_get($storefrontFallback, "slots.{$key}", []))
+            ->filter(fn (array $event): bool => filled($event['title'] ?? null))
+            ->values();
+    }
     $album = $publicCms['album'] ?? null;
     $singles = collect($publicCms['singles'] ?? [])->take(3)->values();
     $royalPass = $publicCms['royal_pass'] ?? [];

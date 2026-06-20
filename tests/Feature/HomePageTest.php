@@ -76,7 +76,27 @@ class HomePageTest extends TestCase
             ->get('/')
             ->assertOk()
             ->assertDontSee('class="home-royal-pass"', false)
+            ->assertSee('Reny Renteria en Concierto')
+            ->assertSee('Festival de la Rosa Dorada')
             ->assertSee('Watch more');
+    }
+
+    public function test_home_falls_back_to_storefront_events_when_payload_events_are_empty(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->view('home', [
+            'publicCms' => [
+                'events' => [],
+            ],
+            'rsvpTickets' => [],
+        ]);
+
+        $response
+            ->assertSee('Upcoming Shows')
+            ->assertSee('Reny Renteria en Concierto')
+            ->assertSee('Festival de la Rosa Dorada')
+            ->assertDontSee('class="home-royal-pass"', false);
     }
 
     public function test_home_payload_is_available_from_public_cms_endpoint(): void
