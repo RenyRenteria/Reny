@@ -69,6 +69,33 @@ class AdminAuthRbacTest extends TestCase
             ->assertDontSee('Dashboard editorial');
     }
 
+    public function test_admin_login_returns_to_intended_music_site_editor_page(): void
+    {
+        $admin = User::factory()->create([
+            'email' => 'music-admin@example.com',
+            'password' => Hash::make('password'),
+            'role' => 'admin',
+        ]);
+        $musicEditorUrl = route('admin.site-editor.show', ['page' => 'music']);
+
+        $this->get($musicEditorUrl)
+            ->assertRedirect(route('admin.login'));
+
+        $this->post(route('admin.login.store'), [
+            'email' => 'music-admin@example.com',
+            'password' => 'password',
+        ])
+            ->assertRedirect($musicEditorUrl)
+            ->assertSessionHas('admin_authenticated_at');
+
+        $this->assertAuthenticatedAs($admin);
+
+        $this->get($musicEditorUrl)
+            ->assertOk()
+            ->assertSee('Reny Site Editor')
+            ->assertSee('Banner');
+    }
+
     public function test_admin_login_rejects_non_admin_accounts(): void
     {
         User::factory()->create([

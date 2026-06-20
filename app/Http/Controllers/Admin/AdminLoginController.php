@@ -49,7 +49,7 @@ class AdminLoginController extends Controller
         $request->session()->regenerate();
         $request->session()->put('admin_authenticated_at', now()->timestamp);
 
-        return redirect()->route('admin.dashboard');
+        return redirect()->intended(route('admin.dashboard'));
     }
 
     public function destroy(Request $request): RedirectResponse
