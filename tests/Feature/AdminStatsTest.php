@@ -167,6 +167,13 @@ class AdminStatsTest extends TestCase
 
         $this->postJson(route('analytics.events.store'), [
             'name' => 'page_view',
+            'payload' => 'not-an-object',
+            'timestamp' => now()->toIso8601String(),
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['payload']);
+
+        $this->postJson(route('analytics.events.store'), [
+            'name' => 'page_view',
             'payload' => [
                 'screen' => 'music',
                 'path' => '/',
@@ -175,6 +182,20 @@ class AdminStatsTest extends TestCase
             ],
             'timestamp' => now()->toIso8601String(),
         ])->assertUnprocessable();
+
+        $this->postJson(route('analytics.events.store'), [
+            'name' => 'permission_denied',
+            'payload' => [
+                'screen' => ['nested' => 'bad'],
+                'path' => '/',
+                'item_type' => 'access_gate',
+                'item_id' => 'royal',
+                'section' => 'royal',
+                'result' => 'blocked',
+            ],
+            'timestamp' => now()->toIso8601String(),
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['payload.screen']);
 
         $this->postJson(route('analytics.events.store'), [
             'name' => 'permission_denied',
@@ -189,6 +210,17 @@ class AdminStatsTest extends TestCase
             'timestamp' => now()->toIso8601String(),
         ])->assertUnprocessable()
             ->assertJsonValidationErrors(['payload.item_id']);
+
+        $this->postJson(route('analytics.events.store'), [
+            'name' => 'page_view',
+            'payload' => [
+                'screen' => 'music',
+                'path' => '/',
+                'title' => str_repeat('A', 3000),
+                'result' => 'viewed',
+            ],
+            'timestamp' => now()->toIso8601String(),
+        ])->assertStatus(413);
 
         $this->assertDatabaseCount('access_events', 0);
     }
@@ -207,7 +239,7 @@ class AdminStatsTest extends TestCase
             'timestamp' => now()->toIso8601String(),
         ];
 
-        for ($attempt = 0; $attempt < 120; $attempt++) {
+        for ($attempt = 0; $attempt < 60; $attempt++) {
             $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.42'])
                 ->postJson(route('analytics.events.store'), $payload)
                 ->assertCreated();
@@ -217,7 +249,7 @@ class AdminStatsTest extends TestCase
             ->postJson(route('analytics.events.store'), $payload)
             ->assertStatus(429);
 
-        $this->assertDatabaseCount('access_events', 120);
+        $this->assertDatabaseCount('access_events', 60);
     }
 
     private function actingAsAdmin(User $user): void

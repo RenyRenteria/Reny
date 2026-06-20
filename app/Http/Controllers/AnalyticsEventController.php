@@ -7,22 +7,29 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Validation\Rule;
+use Symfony\Component\HttpFoundation\Response;
 
 class AnalyticsEventController extends Controller
 {
+    private const MAX_BODY_BYTES = 2048;
+
     public function store(Request $request): JsonResponse
     {
+        if (strlen($request->getContent()) > self::MAX_BODY_BYTES) {
+            return response()->json(['message' => 'Payload too large.'], Response::HTTP_REQUEST_ENTITY_TOO_LARGE);
+        }
+
         $data = $request->validate([
             'name' => ['required', 'string', Rule::in(['page_view', 'permission_denied'])],
             'payload' => ['nullable', 'array:screen,path,result,title,referrer,section,item_type,item_id', 'max:8'],
             'payload.screen' => ['nullable', 'string', 'max:80'],
-            'payload.path' => ['nullable', 'string', 'max:2048'],
-            'payload.result' => ['nullable', 'string', 'max:64'],
-            'payload.title' => ['nullable', 'string', 'max:255'],
-            'payload.referrer' => ['nullable', 'string', 'max:2048'],
-            'payload.section' => ['nullable', 'string', 'max:128'],
-            'payload.item_type' => ['nullable', 'string', 'max:64'],
-            'payload.item_id' => ['nullable', 'string', 'max:128'],
+            'payload.path' => ['nullable', 'string', 'max:200'],
+            'payload.result' => ['nullable', 'string', 'max:40'],
+            'payload.title' => ['nullable', 'string', 'max:180'],
+            'payload.referrer' => ['nullable', 'string', 'max:300'],
+            'payload.section' => ['nullable', 'string', 'max:80'],
+            'payload.item_type' => ['nullable', 'string', 'max:80'],
+            'payload.item_id' => ['nullable', 'string', 'max:120'],
             'timestamp' => ['nullable', 'date'],
         ]);
 
