@@ -8,6 +8,13 @@
 
     $headerTabs = [
         [
+            'label' => 'HOME',
+            'href' => route('admin.site-editor.show', ['page' => 'home']),
+            'page' => 'home',
+            'content_section' => 'home',
+            'nav' => 'site-editor',
+        ],
+        [
             'label' => 'MUSIC',
             'href' => route('admin.site-editor.show', ['page' => 'music']),
             'page' => 'music',
@@ -109,5 +116,12 @@
                 aria-hidden="true"
             >
         </span>
+
+        @auth
+            <form method="POST" action="{{ route('admin.logout') }}" class="admin-header-logout">
+                @csrf
+                <button class="admin-button admin-button-secondary" type="submit">Log out</button>
+            </form>
+        @endauth
     </div>
 </header>

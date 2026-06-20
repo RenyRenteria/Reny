@@ -5740,6 +5740,11 @@ body.admin-cms-body[data-theme="royal"] {
 .admin-header-actions {
     justify-content: flex-end;
     min-width: 0;
+    gap: 0.75rem;
+}
+
+.admin-header-logout {
+    margin: 0;
 }
 
 .admin-money-link {
