@@ -4923,7 +4923,7 @@ body.has-modal-open {
     border: 0;
     border-radius: 999px;
     background: #ffffff;
-    color: var(--store-black);
+    color: var(--store-black, #100f0d);
     cursor: pointer;
     font-size: 0.75rem;
     font-weight: 500;
@@ -5179,6 +5179,172 @@ body.has-modal-open {
     color: #ffffff;
     text-decoration: underline;
     text-underline-offset: 0.2em;
+}
+
+.store-royal-pass,
+.storefront {
+    width: min(100%, 52rem);
+    margin-inline: auto;
+}
+
+.store-royal-pass {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    min-height: 3.75rem;
+    margin-bottom: 1rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.1875rem;
+    background: #f3e3d4;
+    gap: 1rem;
+}
+
+.store-royal-pass p {
+    margin: 0;
+    color: #000000;
+    font-size: 1.0625rem;
+    font-weight: 300;
+    line-height: 1.3;
+}
+
+.store-royal-pass strong {
+    font-weight: 500;
+}
+
+.store-royal-pass-button {
+    min-width: 9.125rem;
+    min-height: 2.25rem;
+    background: #000000;
+    color: #ffffff;
+    font-size: 0.9375rem;
+    letter-spacing: 0;
+}
+
+.storefront {
+    padding-top: 1rem;
+}
+
+.storefront-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: clamp(2rem, 8vw, 6rem);
+    row-gap: 3.75rem;
+}
+
+.storefront-card {
+    display: grid;
+    align-content: start;
+    min-width: 0;
+    color: #000000;
+}
+
+.storefront-image {
+    display: block;
+    width: 100%;
+    object-fit: cover;
+    background: #eee7df;
+}
+
+.storefront-card.is-event .storefront-image {
+    aspect-ratio: 245 / 301;
+}
+
+.storefront-card.is-product .storefront-image {
+    aspect-ratio: 1;
+}
+
+@media (min-width: 53.751rem) {
+    .storefront-card.is-event-secondary .storefront-image {
+        width: 99%;
+    }
+}
+
+.storefront-copy {
+    display: grid;
+    justify-items: start;
+    padding-top: 0.75rem;
+    gap: 0.125rem;
+}
+
+.storefront-copy span,
+.storefront-copy p,
+.storefront-price {
+    font-size: 0.875rem;
+    font-weight: 300;
+    line-height: 1.22;
+}
+
+.storefront-copy span {
+    color: #000000;
+}
+
+.storefront-copy h2 {
+    margin: 0 0 0.125rem;
+    color: #000000;
+    font-size: 1.25rem;
+    font-weight: 500;
+    line-height: 1.08;
+    letter-spacing: 0;
+}
+
+.storefront-copy p {
+    margin: 0;
+    color: #000000;
+}
+
+.storefront-price {
+    margin-top: 0;
+    color: #000000;
+}
+
+.storefront-copy .store-button {
+    min-width: 9.125rem;
+    min-height: 2.125rem;
+    margin-top: 0.875rem;
+    padding: 0 1.25rem;
+    background: #f3e3d4;
+    color: #000000;
+    font-size: 1rem;
+    letter-spacing: 0;
+}
+
+.storefront-rsvp-status:not(.sr-only) {
+    margin: 0.5rem 0 0;
+    color: #000000;
+    font-size: 0.8125rem;
+    line-height: 1.3;
+}
+
+.store-cms-form {
+    gap: 1rem;
+}
+
+.store-cms-slot-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.store-cms-slot {
+    align-content: start;
+}
+
+.store-cms-thumb {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    object-fit: cover;
+}
+
+.store-cms-actions {
+    align-items: center;
+}
+
+.store-cms-actions span {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    font-weight: 700;
 }
 
 .store-modal-layer {
@@ -5496,6 +5662,16 @@ body.has-modal-open {
     .store-toast {
         bottom: calc(5.75rem + env(safe-area-inset-bottom));
     }
+
+    .store-royal-pass {
+        grid-template-columns: 1fr auto;
+        padding: 0.75rem 1rem;
+    }
+
+    .storefront-grid {
+        column-gap: 1rem;
+        row-gap: 2rem;
+    }
 }
 
 @media (max-width: 38rem) {
@@ -5549,6 +5725,44 @@ body.has-modal-open {
 
     .store-event-card {
         min-height: 29rem;
+    }
+
+    .store-royal-pass {
+        grid-template-columns: 1fr;
+        align-items: start;
+    }
+
+    .store-royal-pass p {
+        font-size: 0.9375rem;
+    }
+
+    .store-royal-pass-button,
+    .storefront-copy .store-button {
+        min-width: 0;
+        font-size: 0.8125rem;
+    }
+
+    .storefront-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1.5rem 0.75rem;
+    }
+
+    .storefront-copy {
+        padding-top: 0.5rem;
+    }
+
+    .storefront-copy h2 {
+        font-size: 0.9375rem;
+    }
+
+    .storefront-copy span,
+    .storefront-copy p,
+    .storefront-price {
+        font-size: 0.75rem;
+    }
+
+    .store-cms-slot-grid {
+        grid-template-columns: 1fr;
     }
 }
 

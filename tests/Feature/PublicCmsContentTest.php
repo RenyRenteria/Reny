@@ -97,10 +97,12 @@ class PublicCmsContentTest extends TestCase
         $this->get('/photos')->assertOk()->assertSee('CMS Photo Drop');
         $this->get('/store')
             ->assertOk()
-            ->assertSee('CMS Digital Product')
-            ->assertSee('CMS Listening Event')
-            ->assertSee('data-category="music"', false)
-            ->assertSee('Buy music');
+            ->assertSee('Reny Renteria en Concierto')
+            ->assertSee('Crown Collection');
+        $this->getJson(route('public-content.payload', 'store'))
+            ->assertOk()
+            ->assertJsonPath('products.0.name', 'CMS Digital Product')
+            ->assertJsonPath('events.0.name', 'CMS Listening Event');
         $this->get('/community')->assertOk()->assertSee('CMS Community Post')->assertSee('CMS poll question?');
     }
 
@@ -142,11 +144,15 @@ class PublicCmsContentTest extends TestCase
 
         $response = $this->get('/store')
             ->assertOk()
-            ->assertSee('CMS RSVP Concert')
-            ->assertSee('data-rsvp="concierto"', false)
-            ->assertSee('data-rsvp-name="CMS RSVP Concert"', false);
+            ->assertSee('data-rsvp="concert"', false);
 
         $this->assertStringNotContainsString('data-buy="concierto"', $response->getContent());
+
+        $this->getJson(route('public-content.payload', 'store'))
+            ->assertOk()
+            ->assertJsonPath('events.0.name', 'CMS RSVP Concert')
+            ->assertJsonPath('events.0.mode', 'rsvp')
+            ->assertJsonPath('events.0.key', 'concierto');
     }
 
     public function test_video_without_youtube_source_renders_unavailable_player_state(): void

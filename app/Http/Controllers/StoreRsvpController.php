@@ -20,6 +20,13 @@ class StoreRsvpController extends Controller
      * @var array<string, array{title: string, venue: string, address: string, starts_at: string, timezone: string}>
      */
     private const STATIC_RSVP_EVENTS = [
+        'concert' => [
+            'title' => 'Reny Renteria en Concierto',
+            'venue' => 'Rock & Folk Pty, Ciudad de Panama',
+            'address' => 'Rock & Folk Pty, Ciudad de Panama',
+            'starts_at' => '2026-09-21 19:30:00',
+            'timezone' => 'America/Panama',
+        ],
         'making' => [
             'title' => 'Making The Deluxe Album',
             'venue' => 'Royal Stream',

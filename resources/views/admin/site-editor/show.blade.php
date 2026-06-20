@@ -36,7 +36,14 @@
 
 @section('content')
     <section class="admin-dashboard-section is-active site-editor-screen">
-        @if ($activePage === 'music' && $musicBanner)
+        @if ($activePage === 'store' && $storefront)
+            @include('admin.site-editor.storefront', [
+                'storefront' => $storefront,
+                'mediaAssets' => $storefrontForm['mediaAssets'],
+                'albums' => $storefrontForm['albums'],
+                'publicUrl' => $publicUrl,
+            ])
+        @elseif ($activePage === 'music' && $musicBanner)
             <div class="music-cms-screens" data-music-cms data-music-initial-tab="{{ $musicInitialTab }}">
                 <nav class="music-cms-tabs" role="tablist" aria-label="Editor de la pestana de musica">
                     <button type="button" class="music-cms-tab" role="tab" data-music-tab="banner">Edit Banner</button>
