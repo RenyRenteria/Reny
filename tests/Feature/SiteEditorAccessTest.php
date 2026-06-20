@@ -26,11 +26,24 @@ class SiteEditorAccessTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_admin_site_editor_routes_stay_on_enter_screen(): void
+    public function test_admin_can_open_music_site_editor_by_default(): void
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
 
         $this->actingAsAdmin($admin);
+
+        $this->get(route('admin.site-editor.show', ['page' => 'music']))
+            ->assertOk()
+            ->assertSee('Reny Site Editor')
+            ->assertSee('Banner')
+            ->assertSee('Guardar y publicar');
+    }
+
+    public function test_admin_site_editor_routes_stay_on_enter_screen_when_cms_is_disabled(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+
+        $this->actingAsParkedAdmin($admin);
 
         $this->get(route('admin.site-editor.show', ['page' => 'store']))
             ->assertOk()
@@ -40,11 +53,11 @@ class SiteEditorAccessTest extends TestCase
             ->assertDontSee('CMS conectado');
     }
 
-    public function test_site_editor_preview_stays_on_enter_screen(): void
+    public function test_site_editor_preview_stays_on_enter_screen_when_cms_is_disabled(): void
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
 
-        $this->actingAsAdmin($admin);
+        $this->actingAsParkedAdmin($admin);
 
         $this->get(route('admin.site-editor.preview', ['page' => 'home']))
             ->assertOk()
@@ -53,11 +66,11 @@ class SiteEditorAccessTest extends TestCase
             ->assertDontSee('Sign in');
     }
 
-    public function test_unknown_site_editor_page_stays_on_enter_screen(): void
+    public function test_unknown_site_editor_page_stays_on_enter_screen_when_cms_is_disabled(): void
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
 
-        $this->actingAsAdmin($admin);
+        $this->actingAsParkedAdmin($admin);
 
         $this->get(route('admin.site-editor.show', ['page' => 'not-real']))
             ->assertOk()
@@ -69,5 +82,12 @@ class SiteEditorAccessTest extends TestCase
         $this->actingAs($user)->withSession([
             'admin_authenticated_at' => now()->timestamp,
         ]);
+    }
+
+    private function actingAsParkedAdmin(User $user): void
+    {
+        config(['admin.cms_enabled' => false]);
+
+        $this->actingAsAdmin($user);
     }
 }
