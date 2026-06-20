@@ -423,6 +423,16 @@ document.querySelectorAll('.view-all').forEach((button) => {
     });
 });
 
+document.querySelectorAll('.album-deluxe-button').forEach((link) => {
+    link.addEventListener('click', () => {
+        trackElementEvent(link, 'music_deluxe_clicked', {
+            item_type: 'album',
+            destination: new URL(link.href, window.location.href).pathname,
+            result: 'clicked',
+        });
+    });
+});
+
 const musicPlayerLayer = document.getElementById('musicPlayerLayer');
 const musicPlayerAudio = document.getElementById('musicPlayerAudio');
 const musicPlayerTitle = document.getElementById('musicPlayerTitle');
@@ -2254,6 +2264,24 @@ if (storeShell) {
         }
     });
 
+    const openRequestedCheckout = () => {
+        const requestedProduct = new URLSearchParams(window.location.search).get('buy');
+
+        if (requestedProduct !== 'deluxe' || !products[requestedProduct]) {
+            return;
+        }
+
+        addToBag(requestedProduct);
+        openStoreLayer('bagLayer');
+        trackEvent('store_checkout_started', {
+            item_type: 'checkout',
+            item_id: requestedProduct,
+            item_count: bag.length,
+            source: 'music_deluxe',
+            result: 'opened',
+        });
+    };
+
     document.querySelectorAll('[data-close]').forEach((button) => {
         button.addEventListener('click', () => closeStoreLayer(button.dataset.close));
     });
@@ -2280,6 +2308,7 @@ if (storeShell) {
     selectPaymentMethod('paypal', { track: false });
     updateStorePrices();
     renderBag();
+    openRequestedCheckout();
 }
 
 const adminSectionThemes = {

@@ -26,9 +26,15 @@ class MusicFlowsTest extends TestCase
 
     public function test_home_music_buttons_have_real_view_all_and_play_actions(): void
     {
+        $deluxeUrl = route('store', ['buy' => 'deluxe']);
         $album = $this->publishedMusic(ContentType::MusicalAlbum, 'Launch Album', [
             'tracklist' => "Intro\nSingle",
             'narrative' => 'Album narrative',
+            'release_cycle' => 'Launch',
+        ]);
+        $this->publishedMusic(ContentType::MusicalAlbum, 'Launch Album Two', [
+            'tracklist' => "Intro\nFinale",
+            'narrative' => 'Second album narrative',
             'release_cycle' => 'Launch',
         ]);
 
@@ -51,8 +57,12 @@ class MusicFlowsTest extends TestCase
             ->assertSee('data-music-play', false)
             ->assertSee(route('music.play', $album), false)
             ->assertSee(route('music.play', $single), false)
+            ->assertSee('href="'.$deluxeUrl.'"', false)
+            ->assertSee('Buy Deluxe')
             ->assertSee('Launch Album')
             ->assertSee('Launch Single');
+
+        $this->assertSame(2, substr_count($response->getContent(), 'class="album-deluxe-button"'));
     }
 
     public function test_music_route_renders_banner_and_public_nav_targets_music(): void
@@ -94,16 +104,23 @@ class MusicFlowsTest extends TestCase
 
     public function test_music_view_all_pages_and_empty_state_render(): void
     {
+        $deluxeUrl = route('store', ['buy' => 'deluxe']);
         $this->publishedMusic(ContentType::MusicalAlbum, 'Full Album One', [
             'tracklist' => "Intro\nFinale",
             'narrative' => 'Album narrative',
             'release_cycle' => 'Launch',
         ]);
 
-        $this->get('/music/albums')
+        $response = $this->get('/music/albums');
+
+        $response
             ->assertOk()
             ->assertSee('Full Album One')
+            ->assertSee('href="'.$deluxeUrl.'"', false)
+            ->assertSee('Buy Deluxe')
             ->assertSee('data-analytics-screen="music_albums"', false);
+
+        $this->assertSame(1, substr_count($response->getContent(), 'class="album-deluxe-button"'));
 
         $this->get('/music/singles')
             ->assertOk()

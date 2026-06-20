@@ -2,6 +2,7 @@
     $items = $publicCms['items'] ?? [];
     $isAlbums = $section === 'albums';
     $title = $isAlbums ? 'Albums' : 'Singles';
+    $deluxeUrl = route('store', ['buy' => 'deluxe']);
 @endphp
 
 <!DOCTYPE html>
@@ -104,6 +105,7 @@
                                         @endif
                                         <h4><a href="{{ $album['detail_url'] }}">{{ $album['title'] }}</a></h4>
                                         <p>{{ $album['meta'] }}</p>
+                                        <a class="album-deluxe-button" href="{{ $deluxeUrl }}" aria-label="Buy Deluxe - {{ $album['title'] }}">Buy Deluxe</a>
                                     </article>
                                 @endforeach
                             </div>
