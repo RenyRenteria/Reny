@@ -1,5 +1,20 @@
 @php
-    $cmsFeatured = $publicCms['featured'] ?? null;
+    $cmsBanner = $publicCms['banner'] ?? [
+        'eyebrow_line_1' => 'First',
+        'eyebrow_line_2' => 'Album',
+        'title_line_1' => 'Biggest',
+        'title_line_2' => 'Launch',
+        'subtitle' => 'Comeback Album!',
+        'description' => 'A cinematic release package for Reny Renteria, built around a lead album, featured tracks, fan updates, and premium music drops.',
+        'footer_line_1' => 'Visit us today at',
+        'footer_line_2' => 'renyrenteria.com',
+        'badge' => 'RR',
+        'destination_url' => 'https://renyrenteria.com',
+        'sticker_line_1' => 'THE FIRST ALBUM',
+        'sticker_line_2' => 'BANO #1',
+        'image_url' => null,
+        'image_alt' => 'Reny Renteria music banner artwork',
+    ];
     $cmsAlbums = $publicCms['albums'] ?? [];
     $cmsSingles = $publicCms['singles'] ?? [];
     $fallbackPlayState = [
@@ -109,27 +124,46 @@
                 <section class="tab-panel is-active" id="music" data-tab-panel="music">
                     <section class="hero" aria-label="Featured album">
                         <div class="hero-content">
-                            @if ($cmsFeatured)
-                                <p class="eyebrow">{{ $cmsFeatured['eyebrow'] }}</p>
-                                <h1>{{ $cmsFeatured['title'] }}</h1>
-                                <h2>{{ $cmsFeatured['subtitle'] }}</h2>
-                                <p class="hero-copy">{{ $cmsFeatured['copy'] }}</p>
-                                <p class="hero-link">Published from<br>CMS</p>
-                            @else
-                                <p class="eyebrow">First<br>Album</p>
-                                <h1>Biggest<br>Launch</h1>
-                                <h2>Comeback Album!</h2>
-                                <p class="hero-copy">
-                                    A cinematic release package for Reny Renteria, built around a lead album,
-                                    featured tracks, fan updates, and premium music drops.
-                                </p>
-                                <p class="hero-link">Visit us today at<br>renyrenteria.com</p>
-                            @endif
+                            <p class="eyebrow">
+                                <span>{{ $cmsBanner['eyebrow_line_1'] }}</span>
+                                @if (filled($cmsBanner['eyebrow_line_2'] ?? null))
+                                    <br><span>{{ $cmsBanner['eyebrow_line_2'] }}</span>
+                                @endif
+                            </p>
+                            <h1>
+                                <span>{{ $cmsBanner['title_line_1'] }}</span>
+                                @if (filled($cmsBanner['title_line_2'] ?? null))
+                                    <br><span>{{ $cmsBanner['title_line_2'] }}</span>
+                                @endif
+                            </h1>
+                            <h2>{{ $cmsBanner['subtitle'] }}</h2>
+                            <p class="hero-copy">{{ $cmsBanner['description'] }}</p>
+                            <a class="hero-link" href="{{ $cmsBanner['destination_url'] }}" target="_blank" rel="noreferrer">
+                                <span>{{ $cmsBanner['footer_line_1'] }}</span>
+                                @if (filled($cmsBanner['footer_line_2'] ?? null))
+                                    <br><span>{{ $cmsBanner['footer_line_2'] }}</span>
+                                @endif
+                            </a>
                         </div>
 
-                        <div class="artist-card" aria-hidden="true">
-                            <div class="disc-badge">RR</div>
+                        <div @class(['artist-card', 'has-uploaded-art' => filled($cmsBanner['image_url'] ?? null)]) aria-hidden="true">
+                            @if (filled($cmsBanner['image_url'] ?? null))
+                                <img class="artist-card-image" src="{{ $cmsBanner['image_url'] }}" alt="">
+                            @endif
+                            @if (filled($cmsBanner['badge'] ?? null))
+                                <div class="disc-badge">{{ str($cmsBanner['badge'])->upper()->limit(4, '') }}</div>
+                            @endif
                             <div class="barcode"></div>
+                            @if (filled($cmsBanner['sticker_line_1'] ?? null) || filled($cmsBanner['sticker_line_2'] ?? null))
+                                <div class="artist-sticker">
+                                    @if (filled($cmsBanner['sticker_line_1'] ?? null))
+                                        <span>{{ $cmsBanner['sticker_line_1'] }}</span>
+                                    @endif
+                                    @if (filled($cmsBanner['sticker_line_2'] ?? null))
+                                        <span>{{ $cmsBanner['sticker_line_2'] }}</span>
+                                    @endif
+                                </div>
+                            @endif
                         </div>
                     </section>
 

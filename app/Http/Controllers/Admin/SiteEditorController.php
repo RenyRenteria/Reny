@@ -2,14 +2,22 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\MediaAssetType;
 use App\Http\Controllers\Controller;
 use App\Models\EditorialContent;
+use App\Models\MediaAsset;
+use App\Models\SitePageSetting;
 use App\Models\User;
+use App\Services\Media\MediaLibraryService;
+use App\Services\Media\MediaUploadException;
+use App\Services\MusicBannerSettingsService;
 use App\Services\PublicCmsContentService;
 use App\Support\SiteEditorPageRegistry;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class SiteEditorController extends Controller
@@ -34,9 +42,41 @@ class SiteEditorController extends Controller
             'publicUrl' => url($pageConfig['public_path']),
             'previewUrl' => route('admin.site-editor.preview', ['page' => $page]),
             'publicPayload' => $this->publicPayload($cms, $page),
+            'musicBanner' => $page === 'music'
+                ? app(MusicBannerSettingsService::class)->editorPayload()
+                : null,
             'blocks' => $this->blocksFor($pageConfig['blocks']),
             'timezone' => config('admin.publishing_timezone', 'America/Panama'),
         ]);
+    }
+
+    public function updateMusicBanner(
+        Request $request,
+        MusicBannerSettingsService $settings,
+        MediaLibraryService $library,
+    ): RedirectResponse {
+        $validated = $this->validatedMusicBannerPayload($request);
+        $status = $validated['action'] === 'publish'
+            ? SitePageSetting::STATUS_PUBLISHED
+            : SitePageSetting::STATUS_DRAFT;
+
+        if ($status === SitePageSetting::STATUS_PUBLISHED && ! $request->user()?->canPublishContent()) {
+            abort(403);
+        }
+
+        try {
+            $mediaAsset = $this->bannerImage($request, $library);
+        } catch (MediaUploadException $exception) {
+            return back()->withErrors(['image' => $exception->getMessage()])->withInput();
+        }
+
+        $settings->save($request->user(), $validated['payload'], $mediaAsset, $status);
+
+        return redirect()
+            ->route('admin.site-editor.show', ['page' => 'music'])
+            ->with('status', $status === SitePageSetting::STATUS_PUBLISHED
+                ? 'Banner de musica publicado en el website.'
+                : 'Borrador del banner de musica guardado.');
     }
 
     public function preview(Request $request, PublicCmsContentService $cms, string $page): View
@@ -154,5 +194,61 @@ class SiteEditorController extends Controller
         }
 
         return $cms->payload($page, $user);
+    }
+
+    /**
+     * @return array{action: string, payload: array<string, mixed>}
+     */
+    private function validatedMusicBannerPayload(Request $request): array
+    {
+        $validated = $request->validate([
+            'action' => ['required', Rule::in(['draft', 'publish'])],
+            'eyebrow_line_1' => ['nullable', 'string', 'max:40'],
+            'eyebrow_line_2' => ['nullable', 'string', 'max:40'],
+            'title_line_1' => ['required', 'string', 'max:48'],
+            'title_line_2' => ['nullable', 'string', 'max:48'],
+            'subtitle' => ['nullable', 'string', 'max:80'],
+            'description' => ['nullable', 'string', 'max:260'],
+            'footer_line_1' => ['nullable', 'string', 'max:60'],
+            'footer_line_2' => ['nullable', 'string', 'max:80'],
+            'badge' => ['nullable', 'string', 'max:4'],
+            'destination_url' => ['required', 'url:http,https', 'max:2048'],
+            'sticker_line_1' => ['nullable', 'string', 'max:40'],
+            'sticker_line_2' => ['nullable', 'string', 'max:40'],
+            'status' => ['nullable', Rule::in([SitePageSetting::STATUS_DRAFT, SitePageSetting::STATUS_PUBLISHED])],
+            'image_asset_id' => ['nullable', 'integer', 'exists:media_assets,id'],
+            'image' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,gif', 'max:51200'],
+        ]);
+
+        return [
+            'action' => $validated['action'],
+            'payload' => collect(app(MusicBannerSettingsService::class)->defaults())
+                ->mapWithKeys(fn (string $default, string $key): array => [
+                    $key => $request->exists($key) ? ($validated[$key] ?? '') : $default,
+                ])
+                ->all(),
+        ];
+    }
+
+    private function bannerImage(Request $request, MediaLibraryService $library): ?MediaAsset
+    {
+        $file = $request->file('image');
+
+        if ($file instanceof UploadedFile) {
+            return $library->storeUploads($request->user(), [
+                'type' => MediaAssetType::Image->value,
+                'title' => 'Music banner artwork',
+                'alt_text' => 'Reny Renteria music banner artwork',
+                'is_public' => true,
+            ], [$file])->first();
+        }
+
+        $assetId = $request->integer('image_asset_id');
+
+        if ($assetId <= 0) {
+            return null;
+        }
+
+        return MediaAsset::query()->whereKey($assetId)->first();
     }
 }

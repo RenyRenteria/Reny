@@ -40,6 +40,8 @@ class PublicCmsContentService
         ContentType::Exclusive,
     ];
 
+    public function __construct(private readonly MusicBannerSettingsService $musicBannerSettings) {}
+
     /**
      * @return array<string, mixed>
      */
@@ -61,6 +63,7 @@ class PublicCmsContentService
                 ->all();
 
             return [
+                'banner' => $this->musicBannerSettings->publicPayload(),
                 'albums' => $albums,
                 'singles' => $singles,
                 'featured' => $this->featuredMusicPayload(
