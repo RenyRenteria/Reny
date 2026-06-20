@@ -40,7 +40,7 @@ class EnsureAdminSessionIsFresh
         $request->session()->regenerateToken();
 
         return redirect()
-            ->route('admin.login')
+            ->guest(route('admin.login'))
             ->with('status', 'Admin session expired. Sign in again to continue.');
     }
 }
