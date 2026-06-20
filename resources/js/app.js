@@ -1420,12 +1420,8 @@ if (storeShell) {
     const bagCount = document.getElementById('bagCount');
     const bagList = document.getElementById('bagList');
     const bagTotal = document.getElementById('bagTotal');
-    const checkoutPanel = document.getElementById('checkoutPanel');
     const emailField = document.getElementById('emailField');
     const phoneField = document.getElementById('phoneField');
-    const localPaymentPanel = document.getElementById('localPaymentPanel');
-    const localReferenceField = document.getElementById('localReferenceField');
-    const localReceiptField = document.getElementById('localReceiptField');
     const paypalButtons = document.getElementById('paypalButtons');
     const paymentStatus = document.getElementById('paymentStatus');
     const completePurchaseButton = document.getElementById('completePurchase');
@@ -1449,6 +1445,7 @@ if (storeShell) {
             access: button.dataset.access,
             summary: button.dataset.summary,
             image: button.dataset.image,
+            cta: button.dataset.cta || 'Add to bag',
         };
     });
 
@@ -1461,6 +1458,7 @@ if (storeShell) {
         pass: 'No Royal Pass required',
         access: 'Ticket unlocks in profile',
         summary: 'Upcoming live concert ticket with instant receipt, profile update, and event access.',
+        cta: 'Buy ticket',
     };
 
     products.listening = {
@@ -1472,6 +1470,7 @@ if (storeShell) {
         pass: 'Royal Pass early access',
         access: 'Ticket unlocks in profile',
         summary: 'Intimate listening room preview for the next deluxe release.',
+        cta: 'Buy ticket',
     };
 
     document.querySelectorAll('[data-price][data-price-value]').forEach((node) => {
@@ -1498,6 +1497,7 @@ if (storeShell) {
             pass: 'No Royal Pass required',
             access: 'Ticket unlocks in profile',
             summary: button.dataset.buySummary || 'Event checkout',
+            cta: button.textContent?.trim() || 'Add to bag',
         };
     });
 
@@ -1612,26 +1612,6 @@ if (storeShell) {
             identifier: contact.identifier,
             product_keys: [...bag],
             currency: settlementCurrency.toUpperCase(),
-        };
-    };
-
-    const normalizeLocalReference = (value) => (value || '').trim().toUpperCase().replace(/\s+/g, '-');
-
-    const localCheckoutPayload = () => {
-        const payload = checkoutPayload();
-        const reference = normalizeLocalReference(localReferenceField?.value || '');
-
-        if (!/^(?=.{6,64}$)(?=(?:.*\d){4,})[A-Z0-9][A-Z0-9-]*[A-Z0-9]$/.test(reference)) {
-            throw checkoutError('Enter a valid receipt or reference with at least 4 digits.', 'validation_failed', 'invalid_reference');
-        }
-
-        const receiptName = localReceiptField?.files?.[0]?.name || '';
-
-        return {
-            ...payload,
-            local_reference: reference,
-            receipt_name: receiptName,
-            receipt_state: receiptName ? 'attached' : 'missing_receipt',
         };
     };
 
@@ -1883,7 +1863,6 @@ if (storeShell) {
     const paymentMethodLabel = (method) => ({
         apple_pay: 'Apple Pay',
         card: 'Card',
-        local: 'Local',
         paypal: 'PayPal',
     }[method] || method);
 
@@ -1892,7 +1871,7 @@ if (storeShell) {
 
     const isPaymentMethodAvailable = (method) => paymentButtons.find((button) => button.dataset.paymentMethod === method)?.dataset.providerAvailable === 'true';
 
-    const refreshCheckoutControls = () => {
+    const refreshCheckoutControls = ({ preserveStatus = false } = {}) => {
         const hasItems = bag.length > 0;
 
         paymentButtons.forEach((button) => {
@@ -1903,10 +1882,6 @@ if (storeShell) {
             paypalButtons.hidden = activePaymentMethod !== 'paypal' || !hasItems;
         }
 
-        if (localPaymentPanel) {
-            localPaymentPanel.hidden = activePaymentMethod !== 'local' || !hasItems;
-        }
-
         if (!completePurchaseButton) {
             return;
         }
@@ -1914,27 +1889,26 @@ if (storeShell) {
         if (!hasItems) {
             completePurchaseButton.disabled = true;
             completePurchaseButton.textContent = 'Add item to checkout';
-            setPaymentStatus('Add a product before choosing payment.');
+            if (!preserveStatus) {
+                setPaymentStatus('Add a product to enable PayPal checkout.');
+            }
             return;
         }
 
         if (activePaymentMethod === 'paypal') {
             completePurchaseButton.disabled = false;
             completePurchaseButton.textContent = 'Load PayPal checkout';
-            setPaymentStatus('PayPal approval settles in USD before the Hub is updated.');
-            return;
-        }
-
-        if (activePaymentMethod === 'local') {
-            completePurchaseButton.disabled = false;
-            completePurchaseButton.textContent = 'Submit local reference';
-            setPaymentStatus('Local orders settle in USD and stay pending until manual confirmation.');
+            if (!preserveStatus) {
+                setPaymentStatus('PayPal checkout is charged in USD.');
+            }
             return;
         }
 
         completePurchaseButton.disabled = true;
         completePurchaseButton.textContent = `${paymentMethodLabel(activePaymentMethod)} unavailable`;
-        setPaymentStatus(`${paymentMethodLabel(activePaymentMethod)} checkout needs a real provider before purchases can complete.`);
+        if (!preserveStatus) {
+            setPaymentStatus(`${paymentMethodLabel(activePaymentMethod)} checkout needs a real provider before purchases can complete.`);
+        }
     };
 
     const selectPaymentMethod = (method, { track = true } = {}) => {
@@ -1963,51 +1937,6 @@ if (storeShell) {
         if (!isPaymentMethodAvailable(method)) {
             trackPaymentState(method, 'unavailable', {
                 reason: unavailableReason(method),
-            });
-        }
-    };
-
-    const handleLocalCheckout = async () => {
-        let payload;
-
-        try {
-            payload = localCheckoutPayload();
-        } catch (error) {
-            setPaymentStatus(error.userMessage || 'Local payment details are incomplete.');
-            showStoreToast(error.userMessage || 'Local payment details are incomplete.');
-            trackPaymentState('local', 'validation_failed', {
-                reason: error.reason || error.message || 'local_validation_failed',
-            });
-            return;
-        }
-
-        setPaymentStatus('Submitting local reference...');
-        trackPaymentState('local', 'payment_started', {
-            item_count: payload.product_keys.length,
-            currency: payload.currency,
-            receipt_state: payload.receipt_state,
-        });
-
-        try {
-            const localCheckout = await postCheckoutJson(checkoutPanel.dataset.localEndpoint, payload);
-
-            bag = [];
-            renderBag();
-            setPaymentStatus(localCheckout.message || 'Local payment reference received.');
-            showStoreToast('Local reference received.');
-            trackPaymentState('local', 'payment_success', {
-                result: 'pending',
-                receipt_state: payload.receipt_state,
-            });
-
-            if (localCheckout.account_url) {
-                window.setTimeout(() => window.location.assign(localCheckout.account_url), 900);
-            }
-        } catch (error) {
-            setPaymentStatus(error.userMessage || 'Local checkout is unavailable.');
-            showStoreToast(error.userMessage || 'Local checkout is unavailable.');
-            trackPaymentState('local', error.checkoutState || 'payment_failed', {
-                reason: error.reason || error.message || 'local_checkout_failed',
             });
         }
     };
@@ -2115,7 +2044,7 @@ if (storeShell) {
             grid.append(cell);
         });
 
-        document.getElementById('detailBuy').textContent = 'Add to bag';
+        document.getElementById('detailBuy').textContent = product.cta || 'Add to bag';
         openStoreLayer('detailLayer');
     };
 
@@ -2123,7 +2052,9 @@ if (storeShell) {
         button.addEventListener('click', () => {
             currency = button.dataset.currency || 'usd';
             document.querySelectorAll('.currency-button').forEach((node) => {
-                node.classList.toggle('is-active', node === button);
+                const active = node === button;
+                node.classList.toggle('is-active', active);
+                node.setAttribute('aria-pressed', active ? 'true' : 'false');
             });
             updateStorePrices();
             renderBag();
@@ -2142,7 +2073,7 @@ if (storeShell) {
             document.querySelectorAll('.store-filter').forEach((node) => {
                 const active = node === button;
                 node.classList.toggle('is-active', active);
-                node.setAttribute('aria-selected', active ? 'true' : 'false');
+                node.setAttribute('aria-pressed', active ? 'true' : 'false');
             });
 
             document.querySelectorAll('.store-product-card').forEach((card) => {
@@ -2292,14 +2223,6 @@ if (storeShell) {
     completePurchaseButton?.addEventListener('click', async (event) => {
         const button = event.currentTarget;
 
-        if (activePaymentMethod === 'local') {
-            button.disabled = true;
-            button.textContent = 'Submitting...';
-            await handleLocalCheckout();
-            refreshCheckoutControls();
-            return;
-        }
-
         if (activePaymentMethod !== 'paypal') {
             setPaymentStatus(`${paymentMethodLabel(activePaymentMethod)} checkout needs a real provider before purchases can complete.`);
             showStoreToast(`${paymentMethodLabel(activePaymentMethod)} is not available yet.`);
@@ -2327,7 +2250,7 @@ if (storeShell) {
                 reason: error.userMessage || error.message || 'checkout_unavailable',
             });
         } finally {
-            refreshCheckoutControls();
+            refreshCheckoutControls({ preserveStatus: true });
         }
     });
 

@@ -4,7 +4,7 @@
             'key' => 'deluxe',
             'name' => 'Deluxe Digital Album',
             'type' => 'Digital',
-            'category' => 'digital',
+            'category' => 'music',
             'price' => 24,
             'availability' => 'Instant access',
             'points' => '+240 pts',
@@ -12,12 +12,13 @@
             'access' => 'Unlocks in profile',
             'image' => 'cover.jpg',
             'summary' => 'Extended cuts, alternate versions, lyric annotations, visual zine, and documentary materials.',
+            'cta' => 'Buy album',
         ],
         [
             'key' => 'singles',
             'name' => 'Singles / Digital Pack',
             'type' => 'Digital',
-            'category' => 'digital',
+            'category' => 'music',
             'price' => 8,
             'availability' => 'Instant access',
             'points' => '+80 pts',
@@ -25,12 +26,13 @@
             'access' => 'Unlocks in profile',
             'image' => 'campaign.jpg',
             'summary' => 'Small digital packs for fans who want new releases without waiting for the full album cycle.',
+            'cta' => 'Buy music',
         ],
         [
             'key' => 'royal',
             'name' => 'Royal Pass',
             'type' => 'Subscription',
-            'category' => 'pass',
+            'category' => 'membership',
             'price' => 4.99,
             'suffix' => '/mo',
             'availability' => 'Active today',
@@ -39,12 +41,13 @@
             'access' => 'Content lives in Royal Pass',
             'image' => 'studio.jpg',
             'summary' => 'Monthly membership with exclusive songs, livestreams, community access, voting, and early drops.',
+            'cta' => 'Join membership',
         ],
         [
             'key' => 'merch',
             'name' => 'Studio Merch',
             'type' => 'Physical',
-            'category' => 'physical merch',
+            'category' => 'merch',
             'price' => 48,
             'availability' => 'In stock',
             'points' => '+120 pts',
@@ -52,12 +55,13 @@
             'access' => 'Ships after checkout',
             'image' => 'dance.jpg',
             'summary' => 'Minimal studio pieces designed as wearable objects, not generic tour merch.',
+            'cta' => 'Add to bag',
         ],
         [
             'key' => 'print',
             'name' => 'Numbered Art Print',
             'type' => 'Drop',
-            'category' => 'drops physical',
+            'category' => 'merch',
             'price' => 86,
             'availability' => '31 left of 100',
             'points' => '+220 pts',
@@ -65,6 +69,7 @@
             'access' => 'Certificate included',
             'image' => 'places.jpg',
             'summary' => "A numbered visual companion to the current release and entry point into Royal's Exclusives.",
+            'cta' => 'Add print',
         ],
     ];
 
@@ -114,22 +119,16 @@
         $events = $publicCms['events'];
     }
 
-    $heroEvent = $events[0] ?? [
-        'key' => 'concert',
-        'name' => 'Reny Live - Studio Night',
-        'date' => 'Aug 24, 2026',
-        'place' => 'Panama City',
-        'price' => 42,
-        'image' => 'reny-store-concert-poster.png',
-        'image_url' => null,
-        'action' => 'Buy ticket',
-        'mode' => 'buy',
+    $featuredProduct = collect($products)->firstWhere('key', 'royal') ?? $products[0] ?? [
+        'key' => 'deluxe',
+        'name' => 'Deluxe Digital Album',
+        'type' => 'Digital',
+        'price' => 24,
+        'image' => 'cover.jpg',
+        'cta' => 'Buy album',
     ];
-
-    $heroImage = $heroEvent['image_url'] ?? asset('images/photos/' . $heroEvent['image']);
-    $heroIsRsvp = ($heroEvent['mode'] ?? 'buy') === 'rsvp';
-    $heroRsvpTicket = $rsvpTickets[$heroEvent['key']] ?? null;
-    $heroRsvpStatusId = 'hero-rsvp-status-' . \Illuminate\Support\Str::slug($heroEvent['key']);
+    $heroImage = $featuredProduct['image_url'] ?? asset('images/photos/' . ($featuredProduct['image'] ?? 'cover.jpg'));
+    $featuredCta = $featuredProduct['cta'] ?? 'Add to bag';
 @endphp
 
 <!DOCTYPE html>
@@ -217,66 +216,43 @@
                 </header>
 
                 <div class="store-topline">
-                    <div class="currency-switch" role="group" aria-label="Currency">
-                        <button class="currency-button is-active" type="button" data-currency="usd">USD</button>
-                        <button class="currency-button" type="button" data-currency="eur">EUR</button>
-                        <button class="currency-button" type="button" data-currency="gbp">GBP</button>
-                        <button class="currency-button" type="button" data-currency="dop">DOP</button>
+                    <div>
+                        <div class="currency-switch" role="group" aria-label="Currency reference" aria-describedby="currency-note">
+                            <button class="currency-button is-active" type="button" data-currency="usd" aria-pressed="true">USD</button>
+                            <button class="currency-button" type="button" data-currency="eur" aria-pressed="false">EUR</button>
+                            <button class="currency-button" type="button" data-currency="gbp" aria-pressed="false">GBP</button>
+                            <button class="currency-button" type="button" data-currency="dop" aria-pressed="false">DOP</button>
+                        </div>
+                        <p class="store-currency-note" id="currency-note">Reference prices update here. Checkout is charged in USD.</p>
                     </div>
                     <button class="store-bag-button" id="openBag" type="button">Bag <span id="bagCount">0</span></button>
                 </div>
 
                 <section class="store-hero" aria-labelledby="store-hero-title">
-                    <img src="{{ $heroImage }}" alt="{{ $heroEvent['name'] }} poster">
+                    <img src="{{ $heroImage }}" alt="{{ $featuredProduct['name'] }}">
                     <div class="store-hero-copy">
-                        <span>Upcoming concert</span>
-                        <h1 id="store-hero-title">{{ $heroEvent['name'] }}</h1>
-                        <p>{{ $heroEvent['date'] }} - {{ $heroEvent['place'] }}</p>
+                        <span>Official store</span>
+                        <h1 id="store-hero-title">Reny Shop</h1>
+                        <p>Membership, music and merch in one clean checkout.</p>
                         <div class="store-hero-actions">
-                            <strong data-price="{{ $heroEvent['key'] }}" data-price-value="{{ $heroEvent['price'] }}">${{ $heroEvent['price'] }}</strong>
-                            @if ($heroIsRsvp)
-                                <button
-                                    class="store-button store-button-light"
-                                    type="button"
-                                    data-rsvp="{{ $heroEvent['key'] }}"
-                                    data-rsvp-name="{{ $heroEvent['name'] }}"
-                                    data-rsvp-endpoint="{{ route('store.rsvp') }}"
-                                    data-rsvp-status-target="{{ $heroRsvpStatusId }}"
-                                    data-rsvp-confirmed="{{ $heroRsvpTicket ? 'true' : 'false' }}"
-                                    aria-describedby="{{ $heroRsvpStatusId }}"
-                                >{{ $heroRsvpTicket ? 'RSVP confirmed' : $heroEvent['action'] }}</button>
-                                <p
-                                    class="store-rsvp-status {{ $heroRsvpTicket ? 'is-confirmed' : '' }}"
-                                    id="{{ $heroRsvpStatusId }}"
-                                >
-                                    @if ($heroRsvpTicket)
-                                        Reserved - {{ str_replace('_', ' ', $heroRsvpTicket['status']) }} - Code {{ $heroRsvpTicket['code'] }}
-                                    @else
-                                        Free RSVP confirms a reservation on this account.
-                                    @endif
-                                </p>
-                            @else
-                                <button
-                                    class="store-button store-button-light"
-                                    type="button"
-                                    data-buy="{{ $heroEvent['key'] }}"
-                                    data-buy-name="{{ $heroEvent['name'] }}"
-                                    data-buy-type="{{ $heroEvent['kicker'] ?? 'Event' }}"
-                                    data-buy-summary="{{ $heroEvent['date'] }} - {{ $heroEvent['place'] }}"
-                                >{{ $heroEvent['action'] }}</button>
-                            @endif
+                            <strong data-price="{{ $featuredProduct['key'] }}" data-price-value="{{ $featuredProduct['price'] }}">${{ $featuredProduct['price'] }}{{ $featuredProduct['suffix'] ?? '' }}</strong>
+                            <button
+                                class="store-button store-button-light"
+                                type="button"
+                                data-buy="{{ $featuredProduct['key'] }}"
+                            >{{ $featuredCta }}</button>
                         </div>
                     </div>
                 </section>
 
                 <section class="store-market" aria-labelledby="market-title">
                     <div class="store-section-head">
-                        <h2 id="market-title">Royal's Exclusives</h2>
-                        <div class="store-filters" role="tablist" aria-label="Product filters">
-                            <button class="store-filter is-active" type="button" data-filter="all" role="tab" aria-selected="true">All</button>
-                            <button class="store-filter" type="button" data-filter="digital" role="tab" aria-selected="false">Digital</button>
-                            <button class="store-filter" type="button" data-filter="drops" role="tab" aria-selected="false">Drops</button>
-                            <button class="store-filter" type="button" data-filter="merch" role="tab" aria-selected="false">Merch</button>
+                        <h2 id="market-title">Shop</h2>
+                        <div class="store-filters" role="group" aria-label="Product filters">
+                            <button class="store-filter is-active" type="button" data-filter="all" aria-pressed="true">All</button>
+                            <button class="store-filter" type="button" data-filter="membership" aria-pressed="false">Membership</button>
+                            <button class="store-filter" type="button" data-filter="music" aria-pressed="false">Music</button>
+                            <button class="store-filter" type="button" data-filter="merch" aria-pressed="false">Merch</button>
                         </div>
                     </div>
 
@@ -299,6 +275,7 @@
                                     data-access="{{ $product['access'] }}"
                                     data-summary="{{ $product['summary'] }}"
                                     data-image="{{ $productImage }}"
+                                    data-cta="{{ $product['cta'] ?? 'Add to bag' }}"
                                 >
                                     <span class="store-product-visual">
                                         <img src="{{ $productImage }}" alt="{{ $product['name'] }}" loading="lazy" decoding="async">
@@ -309,6 +286,14 @@
                                         <em data-price="{{ $product['key'] }}" data-price-value="{{ $product['price'] }}">${{ $product['price'] }}{{ $product['suffix'] ?? '' }}</em>
                                     </span>
                                 </button>
+                                <div class="store-product-actions">
+                                    <button
+                                        class="store-button store-product-cta"
+                                        type="button"
+                                        data-buy="{{ $product['key'] }}"
+                                        aria-label="{{ $product['cta'] ?? 'Add to bag' }} - {{ $product['name'] }}"
+                                    >{{ $product['cta'] ?? 'Add to bag' }}</button>
+                                </div>
                             </article>
                         @endforeach
                     </div>
@@ -441,12 +426,12 @@
                 <div class="store-checkout-grid">
                     <div class="store-checkout-panel">
                         <h3>Step 1 - Bag</h3>
-                        <p class="store-checkout-note">Every completed purchase activates Royal Pass for 1 month on this account.</p>
+                        <p class="store-checkout-note">Selected currency is a reference. PayPal checkout is charged in USD. Every completed purchase activates Royal Pass for 1 month on this account.</p>
                         <div class="store-bag-list" id="bagList"></div>
                         <div class="store-contact-grid">
                             <div>
                                 <label for="emailField">Receipt email</label>
-                                <input class="store-input" id="emailField" type="email" value="fan@renyrenteria.com" autocomplete="email">
+                                <input class="store-input" id="emailField" type="email" value="" autocomplete="email">
                             </div>
                             <div>
                                 <label for="phoneField">Phone</label>
@@ -461,14 +446,10 @@
                     <div
                         class="store-checkout-panel"
                         id="checkoutPanel"
-                        data-local-endpoint="{{ route('checkout.local') }}"
                     >
                         <h3>Step 2 - Pay</h3>
                         <div class="store-payments" role="radiogroup" aria-label="Payment method">
-                            <button class="is-active" type="button" data-payment-method="paypal" data-provider-available="true" aria-checked="true">PayPal</button>
-                            <button type="button" data-payment-method="card" data-provider-available="false" data-unavailable-reason="card_provider_not_configured" aria-checked="false">Card</button>
-                            <button type="button" data-payment-method="apple_pay" data-provider-available="false" data-unavailable-reason="apple_pay_provider_not_configured" aria-checked="false">Apple Pay</button>
-                            <button type="button" data-payment-method="local" data-provider-available="true" aria-checked="false">Local</button>
+                            <button class="is-active" type="button" data-payment-method="paypal" data-provider-available="true" role="radio" aria-checked="true">PayPal</button>
                         </div>
                         <div
                             class="store-paypal-buttons"
@@ -478,14 +459,7 @@
                             data-cancel-order-endpoint="{{ route('checkout.paypal.orders.cancel') }}"
                             data-capture-endpoint="{{ route('checkout.paypal') }}"
                         ></div>
-                        <div class="store-local-panel" id="localPaymentPanel" hidden>
-                            <label for="localReferenceField">Bank reference</label>
-                            <input class="store-input" id="localReferenceField" type="text" inputmode="latin" placeholder="ACH-20260619-1234">
-                            <label for="localReceiptField">Receipt (optional)</label>
-                            <input class="store-input" id="localReceiptField" type="file" accept="image/*,.pdf">
-                            <p class="store-checkout-note">Submit a bank/Yappy receipt or reference with at least 4 digits. Local orders stay pending until manual confirmation.</p>
-                        </div>
-                        <p class="store-checkout-note" id="paymentStatus">Add a product to enable checkout.</p>
+                        <p class="store-checkout-note" id="paymentStatus">Add a product to enable PayPal checkout.</p>
                         <button class="store-button" id="completePurchase" type="button">Load PayPal checkout</button>
                     </div>
                 </div>
