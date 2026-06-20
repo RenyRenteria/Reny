@@ -22,8 +22,8 @@
         'access_label' => 'Audio unavailable',
         'access_message' => 'This demo music card is not connected to a CMS audio source yet.',
         'cta_label' => 'Open music',
-        'cta_url' => route('home'),
-        'detail_url' => route('home'),
+        'cta_url' => route('music'),
+        'detail_url' => route('music'),
     ];
     $fallbackAlbums = [
         [...$fallbackPlayState, 'id' => 'reny-sessions', 'kind' => 'album', 'title' => 'Reny Sessions', 'meta' => '12 tracks', 'cover_class' => 'cover-a'],
@@ -64,7 +64,7 @@
                     </a>
 
                     <nav class="tabs" aria-label="Main menu">
-                        <a class="tab is-active" href="#music" data-tab-link="music" aria-current="page">
+                        <a class="tab is-active" href="{{ route('music') }}" aria-current="page">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                                 <path d="M9 18V5l10-2v13"></path>
                                 <circle cx="7" cy="18" r="3"></circle>
@@ -547,7 +547,7 @@
                 </section>
 
                 <nav class="mobile-bottom-nav" aria-label="Mobile menu">
-                    <a class="is-active" href="#music" data-tab-link="music" aria-current="page">
+                    <a class="is-active" href="{{ route('music') }}" aria-current="page">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                             <path d="M9 18V5l10-2v13"></path>
                             <circle cx="7" cy="18" r="3"></circle>

@@ -27,7 +27,7 @@ class SiteEditorPageRegistry
             'music' => [
                 'label' => 'Music',
                 'theme' => 'music',
-                'public_path' => '/',
+                'public_path' => '/music',
                 'summary' => 'Albums, singles, canciones y releases destacados.',
                 'blocks' => [
                     $this->pageSettingsBlock('Music page header'),

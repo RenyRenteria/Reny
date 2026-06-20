@@ -14,6 +14,7 @@ class AnalyticsInstrumentationTest extends TestCase
     {
         $screens = [
             '/' => 'music',
+            '/music' => 'music',
             '/videos' => 'videos',
             '/photos' => 'photos',
             '/community' => 'community',

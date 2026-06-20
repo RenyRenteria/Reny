@@ -10,6 +10,13 @@ use Illuminate\View\View;
 
 class MusicController extends Controller
 {
+    public function index(Request $request, PublicCmsContentService $cms): View
+    {
+        return view('welcome', [
+            'publicCms' => $cms->music($request->user()),
+        ]);
+    }
+
     public function albums(Request $request, PublicCmsContentService $cms): View
     {
         return $this->collection($request, $cms, 'albums');

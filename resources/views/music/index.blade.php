@@ -26,7 +26,7 @@
                     </a>
 
                     <nav class="tabs" aria-label="Main menu">
-                        <a class="tab is-active" href="{{ route('home') }}" aria-current="page">
+                        <a class="tab is-active" href="{{ route('music') }}" aria-current="page">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                                 <path d="M9 18V5l10-2v13"></path>
                                 <circle cx="7" cy="18" r="3"></circle>
@@ -82,7 +82,7 @@
                 <section class="content-section music-list-section" aria-labelledby="music-list-title">
                     <div class="section-head">
                         <div>
-                            <a class="music-back-link" href="{{ route('home') }}">Music</a>
+                            <a class="music-back-link" href="{{ route('music') }}">Music</a>
                             <h1 id="music-list-title">{{ $title }}</h1>
                         </div>
                     </div>
@@ -137,7 +137,7 @@
                 </section>
 
                 <nav class="mobile-bottom-nav" aria-label="Mobile menu">
-                    <a class="is-active" href="{{ route('home') }}" aria-current="page">
+                    <a class="is-active" href="{{ route('music') }}" aria-current="page">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                             <path d="M9 18V5l10-2v13"></path>
                             <circle cx="7" cy="18" r="3"></circle>

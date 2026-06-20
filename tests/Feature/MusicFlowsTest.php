@@ -55,6 +55,24 @@ class MusicFlowsTest extends TestCase
             ->assertSee('Launch Single');
     }
 
+    public function test_music_route_renders_banner_and_public_nav_targets_music(): void
+    {
+        $this->get(route('music'))
+            ->assertOk()
+            ->assertSee('data-analytics-screen="music"', false)
+            ->assertSee('Biggest')
+            ->assertSee('Comeback Album!')
+            ->assertSee('href="'.route('music').'"', false)
+            ->assertSee('href="'.route('music.albums').'"', false)
+            ->assertSee('href="'.route('music.singles').'"', false);
+
+        foreach (['/videos', '/photos', '/community', '/store'] as $path) {
+            $this->get($path)
+                ->assertOk()
+                ->assertSee('href="'.route('music').'"', false);
+        }
+    }
+
     public function test_locked_music_cards_do_not_render_audio_urls_before_access_check(): void
     {
         $this->publishedMusic(ContentType::Song, 'Royal Preview Single', [
