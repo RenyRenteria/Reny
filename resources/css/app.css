@@ -7250,9 +7250,9 @@ body.admin-cms-body[data-theme="royal"] {
     font-size: clamp(1.75rem, 3.1vw, 2rem);
 }
 
-.stats-summary-card strong.is-zero,
-.stats-y-axis .is-zero,
-.stats-bar-column.is-zero .stats-bar-value {
+.stats-summary-card strong.is-error,
+.stats-y-axis .is-error,
+.stats-bar-column.is-error .stats-bar-value {
     color: #c93a3a;
 }
 
@@ -7362,8 +7362,12 @@ body.admin-cms-body[data-theme="royal"] {
     background: #45aa2d;
 }
 
-.stats-bar-column.is-zero .stats-bar {
+.stats-bar-column.is-empty .stats-bar {
     height: 0.125rem;
+    background: rgba(0, 0, 0, 0.28);
+}
+
+.stats-bar-column.is-error .stats-bar {
     background: #c93a3a;
 }
 

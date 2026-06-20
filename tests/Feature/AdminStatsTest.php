@@ -101,7 +101,7 @@ class AdminStatsTest extends TestCase
             ->assertDontSee('data-admin-nav="dashboard"', false);
     }
 
-    public function test_admin_stats_page_marks_empty_values_in_red(): void
+    public function test_admin_stats_page_renders_empty_values_as_normal_numbers(): void
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
 
@@ -109,8 +109,40 @@ class AdminStatsTest extends TestCase
 
         $this->get(route('admin.dashboard'))
             ->assertOk()
-            ->assertSee('class="is-zero"', false)
-            ->assertSee('>0<', false);
+            ->assertSee('>0<', false)
+            ->assertSee('>$0<', false)
+            ->assertDontSee('class="is-zero"', false)
+            ->assertDontSee('class="is-error"', false);
+    }
+
+    public function test_admin_stats_page_marks_data_errors_in_red(): void
+    {
+        $this->view('admin.stats', [
+            'stats' => [
+                'homepageViews' => 0,
+                'paywallViews' => 0,
+                'royalMembers' => 0,
+                'monthlySales' => 0,
+            ],
+            'statsErrors' => [
+                'homepageViews' => true,
+                'paywallViews' => false,
+                'royalMembers' => false,
+                'monthlySales' => false,
+                'salesChart' => true,
+            ],
+            'salesChart' => [
+                'ticks' => [
+                    ['value' => 0, 'label' => '0', 'is_zero' => true],
+                ],
+                'points' => [
+                    ['month' => 'January', 'amount' => 0.0, 'compact' => '0', 'height' => 0, 'is_zero' => true],
+                ],
+            ],
+        ])
+            ->assertSee('<strong class="is-error">0</strong>', false)
+            ->assertSee('<span class="is-error">0</span>', false)
+            ->assertSee('stats-bar-column is-empty is-error', false);
     }
 
     public function test_analytics_endpoint_records_homepage_and_paywall_views(): void
