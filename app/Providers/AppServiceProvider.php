@@ -23,7 +23,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         RateLimiter::for('analytics-events', function (Request $request) {
-            return Limit::perMinute(120)->by($request->ip() ?: 'anonymous');
+            return Limit::perMinute(60)->by($request->ip() ?: 'anonymous');
         });
     }
 }
