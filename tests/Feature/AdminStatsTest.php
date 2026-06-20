@@ -120,6 +120,8 @@ class AdminStatsTest extends TestCase
             'payload' => [
                 'screen' => 'music',
                 'path' => '/',
+                'title' => 'Reny Music',
+                'referrer' => null,
                 'result' => 'viewed',
             ],
             'timestamp' => now()->toIso8601String(),
@@ -148,6 +150,74 @@ class AdminStatsTest extends TestCase
             'resource_type' => 'access_gate',
             'resource_key' => 'royal',
         ]);
+    }
+
+    public function test_analytics_endpoint_rejects_untracked_events_and_unexpected_payload_shape(): void
+    {
+        $this->postJson(route('analytics.events.store'), [
+            'name' => 'paywall_cta_clicked',
+            'payload' => [
+                'screen' => 'music',
+                'path' => '/',
+                'result' => 'clicked',
+            ],
+            'timestamp' => now()->toIso8601String(),
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['name']);
+
+        $this->postJson(route('analytics.events.store'), [
+            'name' => 'page_view',
+            'payload' => [
+                'screen' => 'music',
+                'path' => '/',
+                'result' => 'viewed',
+                'debug' => str_repeat('x', 512),
+            ],
+            'timestamp' => now()->toIso8601String(),
+        ])->assertUnprocessable();
+
+        $this->postJson(route('analytics.events.store'), [
+            'name' => 'permission_denied',
+            'payload' => [
+                'screen' => 'music',
+                'path' => '/',
+                'item_type' => 'access_gate',
+                'item_id' => str_repeat('royal', 40),
+                'section' => 'royal',
+                'result' => 'blocked',
+            ],
+            'timestamp' => now()->toIso8601String(),
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['payload.item_id']);
+
+        $this->assertDatabaseCount('access_events', 0);
+    }
+
+    public function test_analytics_endpoint_throttles_repeated_posts_by_ip(): void
+    {
+        $payload = [
+            'name' => 'page_view',
+            'payload' => [
+                'screen' => 'music',
+                'path' => '/',
+                'title' => 'Reny Music',
+                'referrer' => null,
+                'result' => 'viewed',
+            ],
+            'timestamp' => now()->toIso8601String(),
+        ];
+
+        for ($attempt = 0; $attempt < 120; $attempt++) {
+            $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.42'])
+                ->postJson(route('analytics.events.store'), $payload)
+                ->assertCreated();
+        }
+
+        $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.42'])
+            ->postJson(route('analytics.events.store'), $payload)
+            ->assertStatus(429);
+
+        $this->assertDatabaseCount('access_events', 120);
     }
 
     private function actingAsAdmin(User $user): void

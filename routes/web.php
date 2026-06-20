@@ -51,7 +51,9 @@ Route::post('/community/clubs/{club}/messages', [CommunityInteractionController:
     ->where('club', '[A-Za-z0-9._-]+')
     ->name('community.clubs.messages.store');
 Route::get('/store', [PublicContentController::class, 'store'])->name('store');
-Route::post('/analytics/events', [AnalyticsEventController::class, 'store'])->name('analytics.events.store');
+Route::post('/analytics/events', [AnalyticsEventController::class, 'store'])
+    ->middleware('throttle:analytics-events')
+    ->name('analytics.events.store');
 Route::get('/api/public-content/{page}', [PublicContentController::class, 'payload'])->name('public-content.payload');
 Route::get('/content/{content}', [PublicContentController::class, 'show'])->name('public.content.show');
 
