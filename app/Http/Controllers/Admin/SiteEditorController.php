@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\ContentType;
 use App\Enums\MediaAssetType;
+use App\Enums\VisibilityAudience;
 use App\Http\Controllers\Controller;
 use App\Models\EditorialContent;
 use App\Models\MediaAsset;
@@ -45,9 +47,26 @@ class SiteEditorController extends Controller
             'musicBanner' => $page === 'music'
                 ? app(MusicBannerSettingsService::class)->editorPayload()
                 : null,
+            'musicContentForm' => $page === 'music'
+                ? $this->musicContentFormData()
+                : null,
             'blocks' => $this->blocksFor($pageConfig['blocks']),
             'timezone' => config('admin.publishing_timezone', 'America/Panama'),
         ]);
+    }
+
+    /**
+     * Data needed by the inline "Add album" / "Add song" screens in the music editor.
+     *
+     * @return array<string, mixed>
+     */
+    private function musicContentFormData(): array
+    {
+        return [
+            'visibilityAudiences' => VisibilityAudience::cases(),
+            'mediaAssets' => MediaAsset::query()->ready()->latest()->limit(100)->get(),
+            'defaultType' => ContentType::MusicalAlbum->value,
+        ];
     }
 
     public function updateMusicBanner(
