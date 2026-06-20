@@ -1,27 +1,29 @@
 @php
+    $statsErrors = $statsErrors ?? [];
+    $salesChartError = $statsErrors['salesChart'] ?? false;
     $summaryCards = [
         [
             'label' => 'Homepage Views',
             'value' => number_format($stats['homepageViews']),
-            'is_zero' => $stats['homepageViews'] <= 0,
+            'has_error' => $statsErrors['homepageViews'] ?? false,
             'tone' => 'small',
         ],
         [
             'label' => 'Paywall Views',
             'value' => number_format($stats['paywallViews']),
-            'is_zero' => $stats['paywallViews'] <= 0,
+            'has_error' => $statsErrors['paywallViews'] ?? false,
             'tone' => 'small',
         ],
         [
             'label' => 'Royal Members',
             'value' => number_format($stats['royalMembers']),
-            'is_zero' => $stats['royalMembers'] <= 0,
+            'has_error' => $statsErrors['royalMembers'] ?? false,
             'tone' => 'small',
         ],
         [
             'label' => 'Monthly Sales',
             'value' => '$'.number_format($stats['monthlySales'], 0),
-            'is_zero' => $stats['monthlySales'] <= 0,
+            'has_error' => $statsErrors['monthlySales'] ?? false,
             'tone' => 'wide',
         ],
     ];
@@ -50,7 +52,7 @@
                 @foreach ($summaryCards as $card)
                     <article class="stats-summary-card stats-summary-card-{{ $card['tone'] }}">
                         <p>{{ $card['label'] }}</p>
-                        <strong @class(['is-zero' => $card['is_zero']])>{{ $card['value'] }}</strong>
+                        <strong{!! $card['has_error'] ? ' class="is-error"' : '' !!}>{{ $card['value'] }}</strong>
                     </article>
                 @endforeach
             </section>
@@ -67,13 +69,13 @@
                 <div class="stats-chart">
                     <div class="stats-y-axis" aria-hidden="true">
                         @foreach ($salesChart['ticks'] as $tick)
-                            <span @class(['is-zero' => $tick['is_zero']])>{{ $tick['label'] }}</span>
+                            <span{!! $salesChartError ? ' class="is-error"' : '' !!}>{{ $tick['label'] }}</span>
                         @endforeach
                     </div>
 
                     <div class="stats-bars" aria-label="Sales by month">
                         @foreach ($salesChart['points'] as $point)
-                            <div @class(['stats-bar-column', 'is-zero' => $point['is_zero']])>
+                            <div @class(['stats-bar-column', 'is-empty' => $point['is_zero'], 'is-error' => $salesChartError])>
                                 <span class="stats-bar-value">{{ $point['compact'] }}</span>
                                 <div
                                     class="stats-bar"

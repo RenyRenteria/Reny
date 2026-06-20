@@ -10,6 +10,7 @@ use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use Throwable;
 
 class DashboardController extends Controller
 {
@@ -19,28 +20,72 @@ class DashboardController extends Controller
         $monthStart = $now->startOfMonth();
         $yearStart = $now->startOfYear();
 
-        $monthlySalesCents = Order::query()
-            ->where('status', 'completed')
-            ->whereNull('refunded_at')
-            ->where('currency', 'USD')
-            ->where('created_at', '>=', $monthStart)
-            ->where('created_at', '<=', $now)
-            ->sum('amount_cents');
+        [$homepageViews, $homepageViewsError] = $this->resolveStat(
+            fn (): int => $this->monthlyEventCount('page_view', 'page', 'home', $monthStart, $now),
+            0,
+        );
+        [$paywallViews, $paywallViewsError] = $this->resolveStat(
+            fn (): int => $this->monthlyEventCount('permission_denied', 'access_gate', null, $monthStart, $now),
+            0,
+        );
+        [$royalMembers, $royalMembersError] = $this->resolveStat(
+            fn (): int => User::query()
+                ->whereIn('royal_status', [AccessState::RoyalActive->value, AccessState::RoyalGrace->value])
+                ->where('royal_ends_at', '>', $now)
+                ->count(),
+            0,
+        );
+        [$monthlySalesCents, $monthlySalesError] = $this->resolveStat(
+            fn (): int|float => Order::query()
+                ->where('status', 'completed')
+                ->whereNull('refunded_at')
+                ->where('currency', 'USD')
+                ->where('created_at', '>=', $monthStart)
+                ->where('created_at', '<=', $now)
+                ->sum('amount_cents'),
+            0,
+        );
+        [$salesChart, $salesChartError] = $this->resolveStat(
+            fn (): array => $this->salesChart($yearStart, $now),
+            $this->emptySalesChart(),
+        );
 
         $monthlySales = $monthlySalesCents / 100;
 
         return view('admin.stats', [
             'stats' => [
-                'homepageViews' => $this->monthlyEventCount('page_view', 'page', 'home', $monthStart, $now),
-                'paywallViews' => $this->monthlyEventCount('permission_denied', 'access_gate', null, $monthStart, $now),
-                'royalMembers' => User::query()
-                    ->whereIn('royal_status', [AccessState::RoyalActive->value, AccessState::RoyalGrace->value])
-                    ->where('royal_ends_at', '>', $now)
-                    ->count(),
+                'homepageViews' => $homepageViews,
+                'paywallViews' => $paywallViews,
+                'royalMembers' => $royalMembers,
                 'monthlySales' => $monthlySales,
             ],
-            'salesChart' => $this->salesChart($yearStart, $now),
+            'statsErrors' => [
+                'homepageViews' => $homepageViewsError,
+                'paywallViews' => $paywallViewsError,
+                'royalMembers' => $royalMembersError,
+                'monthlySales' => $monthlySalesError,
+                'salesChart' => $salesChartError,
+            ],
+            'salesChart' => $salesChart,
         ]);
+    }
+
+    /**
+     * @template TStat
+     *
+     * @param  callable(): TStat  $resolver
+     * @param  TStat  $fallback
+     * @return array{0: TStat, 1: bool}
+     */
+    private function resolveStat(callable $resolver, mixed $fallback): array
+    {
+        try {
+            return [$resolver(), false];
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return [$fallback, true];
+        }
     }
 
     private function monthlyEventCount(
@@ -99,6 +144,34 @@ class DashboardController extends Controller
                     'value' => $tickBase * $index,
                     'label' => $this->compactMoneyLabel($tickBase * $index),
                     'is_zero' => $tickBase <= 0,
+                ])
+                ->all(),
+        ];
+    }
+
+    /**
+     * @return array{
+     *     points: array<int, array{month: string, amount: float, compact: string, height: int, is_zero: bool}>,
+     *     ticks: array<int, array{value: float, label: string, is_zero: bool}>
+     * }
+     */
+    private function emptySalesChart(): array
+    {
+        return [
+            'points' => collect(range(1, 12))
+                ->map(fn (int $month): array => [
+                    'month' => CarbonImmutable::create(null, $month, 1)->format('F'),
+                    'amount' => 0.0,
+                    'compact' => '0',
+                    'height' => 0,
+                    'is_zero' => true,
+                ])
+                ->all(),
+            'ticks' => collect(range(5, 1))
+                ->map(fn (): array => [
+                    'value' => 0.0,
+                    'label' => '0',
+                    'is_zero' => true,
                 ])
                 ->all(),
         ];
