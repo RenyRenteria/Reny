@@ -138,7 +138,7 @@ class AdminMusicBannerSettingsTest extends TestCase
             ->assertSee($asset->publicUrl(), false);
     }
 
-    public function test_public_music_banner_no_longer_renders_album_sticker(): void
+    public function test_public_music_banner_no_longer_renders_disc_badge_but_keeps_ribbon(): void
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
 
@@ -146,20 +146,20 @@ class AdminMusicBannerSettingsTest extends TestCase
 
         $this->post(route('admin.site-editor.music-banner.update'), $this->bannerPayload([
             'action' => 'publish',
-            'title_line_1' => 'Sticker',
+            'title_line_1' => 'Badge',
             'title_line_2' => 'Gone',
         ]))->assertRedirect(route('admin.site-editor.show', ['page' => 'music']));
 
         $this->get(route('music'))
             ->assertOk()
-            ->assertDontSee('artist-sticker', false)
-            ->assertDontSee('THE FIRST ALBUM')
-            ->assertDontSee('BANO #1');
+            ->assertDontSee('disc-badge', false)
+            ->assertSee('artist-sticker', false)
+            ->assertSee('THE FIRST ALBUM');
 
         $this->get(route('admin.site-editor.show', ['page' => 'music']))
             ->assertOk()
-            ->assertDontSee('artist-sticker', false)
-            ->assertDontSee('Sticker linea');
+            ->assertDontSee('disc-badge', false)
+            ->assertSee('artist-sticker', false);
     }
 
     /**
@@ -178,8 +178,9 @@ class AdminMusicBannerSettingsTest extends TestCase
             'description' => 'A cinematic release package for Reny Renteria, built around a lead album, featured tracks, fan updates, and premium music drops.',
             'footer_line_1' => 'Visit us today at',
             'footer_line_2' => 'renyrenteria.com',
-            'badge' => 'RR',
             'destination_url' => 'https://renyrenteria.com',
+            'sticker_line_1' => 'THE FIRST ALBUM',
+            'sticker_line_2' => 'BANO #1',
             'status' => 'published',
             ...$overrides,
         ];

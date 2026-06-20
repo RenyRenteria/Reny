@@ -130,8 +130,9 @@ class AdminCmsParkedMutationTest extends TestCase
             'description' => 'This should not persist while the CMS is parked.',
             'footer_line_1' => 'Visit us today at',
             'footer_line_2' => 'renyrenteria.com',
-            'badge' => 'RR',
             'destination_url' => 'https://renyrenteria.com',
+            'sticker_line_1' => 'THE FIRST ALBUM',
+            'sticker_line_2' => 'BANO #1',
             'status' => 'published',
         ])
             ->assertOk()
