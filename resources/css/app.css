@@ -5614,6 +5614,7 @@ body.has-modal-open {
 
     .store-content {
         padding-top: 1rem;
+        padding-bottom: calc(8.75rem + env(safe-area-inset-bottom));
     }
 
     .store-topline {
@@ -5728,8 +5729,9 @@ body.has-modal-open {
     }
 
     .store-royal-pass {
-        grid-template-columns: 1fr;
-        align-items: start;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 0.75rem;
     }
 
     .store-royal-pass p {
@@ -5742,9 +5744,18 @@ body.has-modal-open {
         font-size: 0.8125rem;
     }
 
+    .store-royal-pass-button {
+        min-width: 7.5rem;
+    }
+
     .storefront-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 1.5rem 0.75rem;
+        gap: 1rem 0.75rem;
+        padding-bottom: calc(5.75rem + env(safe-area-inset-bottom));
+    }
+
+    .storefront-card.is-event .storefront-image {
+        aspect-ratio: 1;
     }
 
     .storefront-copy {
