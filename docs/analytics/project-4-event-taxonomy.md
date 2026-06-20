@@ -50,6 +50,7 @@ Music:
 - `music_play_failed`
 - `music_access_blocked`
 - `music_permission_cta_clicked`
+- `music_deluxe_clicked`
 
 Videos:
 

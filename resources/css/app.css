@@ -2019,6 +2019,34 @@ button {
     font-weight: 600;
 }
 
+.album-deluxe-button {
+    display: inline-flex;
+    width: fit-content;
+    min-height: 2.25rem;
+    align-items: center;
+    justify-content: center;
+    margin-top: 0.75rem;
+    padding: 0.625rem 0.875rem;
+    border: 1px solid var(--soft-ink);
+    border-radius: 0.5rem;
+    background: var(--soft-ink);
+    color: #ffffff;
+    font-size: 0.75rem;
+    font-weight: 950;
+    letter-spacing: 0.08em;
+    line-height: 1;
+    text-transform: uppercase;
+    transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.album-deluxe-button:hover,
+.album-deluxe-button:focus-visible {
+    border-color: var(--red);
+    background: var(--red);
+    outline: 0;
+    transform: translateY(-1px);
+}
+
 .singles {
     display: grid;
     grid-template-columns: repeat(2, minmax(15rem, 1fr));
@@ -3165,6 +3193,14 @@ button {
     .album h4,
     .album p {
         display: none;
+    }
+
+    .album-deluxe-button {
+        width: 100%;
+        min-height: 2.5rem;
+        margin-top: 0.625rem;
+        padding-inline: 0.5rem;
+        font-size: 0.6875rem;
     }
 
     .music-list-section .album h4,
