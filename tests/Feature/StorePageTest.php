@@ -27,6 +27,9 @@ class StorePageTest extends TestCase
         $response->assertSee('GET TICKETS');
         $response->assertSee('GET DELUXE');
         $response->assertSee('GET MERCH');
+        $response->assertSee('class="storefront-countdown"', false);
+        $response->assertSee('data-countdown-at="2026-09-21T19:30:00-05:00"', false);
+        $response->assertSee('data-countdown-at="2026-12-19T19:30:00-05:00"', false);
         $response->assertSee('images/store/reny-concert.png');
         $response->assertSee('images/store/rosa-dorada.png');
         $response->assertSee('images/store/work-in-progress.png');
@@ -47,8 +50,10 @@ class StorePageTest extends TestCase
         $html = $response->getContent();
 
         $this->assertSame(4, substr_count($html, 'storefront-card'));
+        $this->assertSame(2, substr_count($html, 'storefront-countdown'));
         $this->assertLessThan(strpos($html, 'Reny Renteria en Concierto'), strpos($html, 'Royal Pass'));
         $this->assertLessThan(strpos($html, 'Festival de la Rosa Dorada'), strpos($html, 'Reny Renteria en Concierto'));
+        $this->assertStringNotContainsString('is-event-secondary', $html);
         $this->assertStringNotContainsString('Official store', $html);
         $this->assertStringNotContainsString('Reny Shop', $html);
         $this->assertStringNotContainsString('data-filter=', $html);
@@ -69,6 +74,17 @@ class StorePageTest extends TestCase
             ->assertDontSee('class="store-royal-pass"', false)
             ->assertDontSee('BUY HERE')
             ->assertSee('Reny Renteria en Concierto');
+    }
+
+    public function test_store_event_images_use_matching_ratio_rules(): void
+    {
+        $css = file_get_contents(resource_path('css/app.css'));
+
+        $this->assertStringContainsString('.storefront-card.is-event .storefront-image', $css);
+        $this->assertStringContainsString('aspect-ratio: 245 / 301;', $css);
+        $this->assertStringContainsString('object-fit: contain;', $css);
+        $this->assertStringNotContainsString('storefront-card.is-event-secondary .storefront-image', $css);
+        $this->assertStringNotContainsString('aspect-ratio: 1;'."\n    }\n\n    .storefront-copy", $css);
     }
 
     public function test_existing_tabs_link_to_store_route(): void

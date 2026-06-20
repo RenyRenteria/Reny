@@ -320,6 +320,7 @@ class SiteEditorController extends Controller
             $rules["slots.{$slotKey}.description"] = ['nullable', 'string', 'max:260'];
             $rules["slots.{$slotKey}.price_label"] = ['nullable', 'string', 'max:32'];
             $rules["slots.{$slotKey}.cta_label"] = ['nullable', 'string', 'max:40'];
+            $rules["slots.{$slotKey}.countdown_at"] = ['nullable', 'date'];
             $rules["slots.{$slotKey}.action_type"] = ['nullable', Rule::in(['buy', 'rsvp', 'link'])];
             $rules["slots.{$slotKey}.product_key"] = ['nullable', 'string', 'max:100'];
             $rules["slots.{$slotKey}.url"] = ['nullable', 'url:http,https', 'max:2048'];

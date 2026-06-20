@@ -7,6 +7,19 @@
         'merch' => 'Crown Collection',
     ];
     $slotField = fn (string $slot, string $key): string => (string) old("slots.{$slot}.{$key}", data_get($storefront, "slots.{$slot}.{$key}", ''));
+    $slotDateField = function (string $slot, string $key) use ($slotField): string {
+        $value = $slotField($slot, $key);
+
+        if ($value === '') {
+            return '';
+        }
+
+        try {
+            return \Carbon\CarbonImmutable::parse($value, config('admin.publishing_timezone', config('app.timezone')))->format('Y-m-d\TH:i');
+        } catch (\Throwable) {
+            return $value;
+        }
+    };
     $royalField = fn (string $key): string => (string) old("royal_pass.{$key}", data_get($storefront, "royal_pass.{$key}", ''));
     $status = old('status', $storefront['_editor_status'] ?? 'draft');
     $publishedAt = $storefront['_published_at'] ?? null;
@@ -129,6 +142,13 @@
                             <input name="slots[{{ $slot }}][cta_label]" value="{{ $slotField($slot, 'cta_label') }}">
                         </label>
                     </div>
+
+                    @if (str_starts_with($slot, 'event_'))
+                        <label>
+                            <span>Countdown fecha/hora</span>
+                            <input name="slots[{{ $slot }}][countdown_at]" type="datetime-local" value="{{ $slotDateField($slot, 'countdown_at') }}">
+                        </label>
+                    @endif
 
                     <div class="music-banner-form-grid two">
                         <label>

@@ -10,6 +10,44 @@
     $shouldShowRoyalPass = $isGuestPreview || auth()->guest();
     $slotImage = fn (array $slot): string => $slot['image_url'] ?? asset($slot['image'] ?? 'images/store/work-in-progress.png');
     $slotType = fn (array $slot): string => $slot['eyebrow'] ?: str($slot['kind'] ?? 'product')->headline()->toString();
+    $storeTimezone = config('admin.publishing_timezone', config('app.timezone', 'UTC'));
+    $slotCountdownTarget = function (?string $value) use ($storeTimezone) {
+        if (! filled($value)) {
+            return null;
+        }
+
+        try {
+            return \Carbon\CarbonImmutable::parse($value, $storeTimezone);
+        } catch (\Throwable) {
+            return null;
+        }
+    };
+    $slotCountdownLabel = function ($target): ?string {
+        if (! $target) {
+            return null;
+        }
+
+        $seconds = (int) max(0, now()->diffInSeconds($target, false));
+
+        if ($seconds <= 0) {
+            return 'Today';
+        }
+
+        $days = intdiv($seconds, 86400);
+        $hours = intdiv($seconds % 86400, 3600);
+
+        if ($days > 0) {
+            return "{$days}D {$hours}H";
+        }
+
+        $minutes = intdiv($seconds % 3600, 60);
+
+        if ($hours > 0) {
+            return "{$hours}H {$minutes}M";
+        }
+
+        return max(1, $minutes).'M';
+    };
 @endphp
 
 <!DOCTYPE html>
@@ -120,13 +158,17 @@
                             @php
                                 $slotKey = $slot['key'] ?? 'slot-'.$loop->index;
                                 $slotProductKey = $slot['product_key'] ?? $slotKey;
+                                $slotActionType = $slot['action_type'] ?? 'buy';
                                 $slotStatusId = 'rsvp-status-' . \Illuminate\Support\Str::slug($slotProductKey);
                                 $rsvpTicket = $rsvpTickets[$slotProductKey] ?? null;
+                                $countdownTarget = ($slot['kind'] ?? '') === 'event'
+                                    ? $slotCountdownTarget($slot['countdown_at'] ?? null)
+                                    : null;
+                                $countdownLabel = $slotCountdownLabel($countdownTarget);
                             @endphp
                             <article @class([
                                 'storefront-card',
                                 'is-event' => ($slot['kind'] ?? '') === 'event',
-                                'is-event-secondary' => $slotKey === 'event_secondary',
                                 'is-product' => ($slot['kind'] ?? '') !== 'event',
                             ])>
                                 <img
@@ -146,17 +188,42 @@
                                         <strong class="storefront-price">{{ $slot['price_label'] }}</strong>
                                     @endif
 
-                                    @if (($slot['action_type'] ?? 'buy') === 'rsvp')
-                                        <button
-                                            class="store-button store-button-light"
-                                            type="button"
-                                            data-rsvp="{{ $slotProductKey }}"
-                                            data-rsvp-name="{{ $slot['title'] }}"
-                                            data-rsvp-endpoint="{{ route('store.rsvp') }}"
-                                            data-rsvp-status-target="{{ $slotStatusId }}"
-                                            data-rsvp-confirmed="{{ $rsvpTicket ? 'true' : 'false' }}"
-                                            aria-describedby="{{ $slotStatusId }}"
-                                        >{{ $rsvpTicket ? 'RSVP confirmed' : ($slot['cta_label'] ?? 'GET TICKETS') }}</button>
+                                    <div class="storefront-action-row">
+                                        @if ($slotActionType === 'rsvp')
+                                            <button
+                                                class="store-button store-button-light"
+                                                type="button"
+                                                data-rsvp="{{ $slotProductKey }}"
+                                                data-rsvp-name="{{ $slot['title'] }}"
+                                                data-rsvp-endpoint="{{ route('store.rsvp') }}"
+                                                data-rsvp-status-target="{{ $slotStatusId }}"
+                                                data-rsvp-confirmed="{{ $rsvpTicket ? 'true' : 'false' }}"
+                                                aria-describedby="{{ $slotStatusId }}"
+                                            >{{ $rsvpTicket ? 'RSVP confirmed' : ($slot['cta_label'] ?? 'GET TICKETS') }}</button>
+                                        @elseif ($slotActionType === 'link' && filled($slot['url'] ?? null))
+                                            <a class="store-button store-button-light" href="{{ $slot['url'] }}" target="_blank" rel="noreferrer">{{ $slot['cta_label'] ?? 'OPEN' }}</a>
+                                        @else
+                                            <button
+                                                class="store-button store-button-light"
+                                                type="button"
+                                                data-buy="{{ $slotProductKey }}"
+                                                data-buy-name="{{ $slot['title'] }}"
+                                                data-buy-type="{{ $slotType($slot) }}"
+                                                data-buy-summary="{{ str_replace("\n", ' - ', $slot['description'] ?? '') }}"
+                                            >{{ $slot['cta_label'] ?? 'BUY' }}</button>
+                                        @endif
+
+                                        @if ($countdownTarget && $countdownLabel)
+                                            <span
+                                                class="storefront-countdown"
+                                                data-countdown-at="{{ $countdownTarget->toIso8601String() }}"
+                                                data-countdown-ended-label="Today"
+                                                aria-live="polite"
+                                            >{{ $countdownLabel }}</span>
+                                        @endif
+                                    </div>
+
+                                    @if ($slotActionType === 'rsvp')
                                         <p
                                             class="storefront-rsvp-status sr-only {{ $rsvpTicket ? 'is-confirmed' : '' }}"
                                             id="{{ $slotStatusId }}"
@@ -167,17 +234,6 @@
                                                 Free RSVP confirms a reservation on this account.
                                             @endif
                                         </p>
-                                    @elseif (($slot['action_type'] ?? 'buy') === 'link' && filled($slot['url'] ?? null))
-                                        <a class="store-button store-button-light" href="{{ $slot['url'] }}" target="_blank" rel="noreferrer">{{ $slot['cta_label'] ?? 'OPEN' }}</a>
-                                    @else
-                                        <button
-                                            class="store-button store-button-light"
-                                            type="button"
-                                            data-buy="{{ $slotProductKey }}"
-                                            data-buy-name="{{ $slot['title'] }}"
-                                            data-buy-type="{{ $slotType($slot) }}"
-                                            data-buy-summary="{{ str_replace("\n", ' - ', $slot['description'] ?? '') }}"
-                                        >{{ $slot['cta_label'] ?? 'BUY' }}</button>
                                     @endif
                                 </div>
                             </article>
