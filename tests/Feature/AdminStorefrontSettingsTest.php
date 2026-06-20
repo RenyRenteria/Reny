@@ -41,6 +41,68 @@ class AdminStorefrontSettingsTest extends TestCase
             ->assertSee('Guardar y publicar');
     }
 
+    public function test_admin_can_open_home_storefront_editor_when_cms_is_enabled(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+
+        $this->actingAsAdmin($admin);
+
+        $this->get(route('admin.site-editor.show', ['page' => 'home']))
+            ->assertOk()
+            ->assertSee('Home / controla Royal Pass, eventos y album deluxe usados en la portada publica.')
+            ->assertSee('Royal Pass banner')
+            ->assertSee('Event 1')
+            ->assertSee('Event 2')
+            ->assertSee('Album')
+            ->assertSee('Countdown fecha/hora')
+            ->assertSee('name="return_page" value="home"', false)
+            ->assertDontSee('Payload publico');
+    }
+
+    public function test_home_storefront_editor_updates_shared_public_home_payload(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+
+        $this->actingAsAdmin($admin);
+
+        $this->post(route('admin.site-editor.storefront.update'), $this->storefrontPayload([
+            'return_page' => 'home',
+            'slots' => [
+                'event_primary' => [
+                    'title' => 'Home CMS Show',
+                    'description' => "Teatro CMS\nNov 5 - 8:00 PM",
+                    'price_label' => 'FREE',
+                    'cta_label' => 'RESERVE',
+                    'countdown_at' => '2026-11-05T20:00',
+                    'action_type' => 'rsvp',
+                    'product_key' => 'home-cms-show',
+                ],
+                'album' => [
+                    'title' => 'Home Deluxe Album',
+                    'description' => 'Home selected deluxe content',
+                    'cta_label' => 'BUY DELUXE',
+                    'action_type' => 'buy',
+                    'product_key' => 'home-deluxe',
+                ],
+            ],
+        ]))->assertRedirect(route('admin.site-editor.show', ['page' => 'home']));
+
+        $this->assertDatabaseHas('site_page_settings', [
+            'page' => 'store',
+            'section' => 'storefront',
+            'status' => SitePageSetting::STATUS_PUBLISHED,
+        ]);
+
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('Home CMS Show')
+            ->assertSee('RESERVE')
+            ->assertSee('data-rsvp="home-cms-show"', false)
+            ->assertSee('Home Deluxe Album')
+            ->assertSee('Home selected deluxe content')
+            ->assertSee('data-buy="home-deluxe"', false);
+    }
+
     public function test_published_storefront_settings_feed_public_store(): void
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);

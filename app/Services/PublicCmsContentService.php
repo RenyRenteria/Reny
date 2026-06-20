@@ -460,7 +460,13 @@ class PublicCmsContentService
             : $albums->first();
 
         if (! is_array($album)) {
-            return $storeAlbum ?: null;
+            return $storeAlbum === []
+                ? null
+                : [
+                    ...$storeAlbum,
+                    'summary' => $storeAlbum['description'] ?? '',
+                    'buy_label' => 'Buy Deluxe',
+                ];
         }
 
         return [

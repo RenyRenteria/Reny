@@ -38,6 +38,8 @@ class SiteEditorController extends Controller
 
         abort_unless($pageConfig !== null, 404);
 
+        $usesStorefrontEditor = in_array($page, ['home', 'store'], true);
+
         return view('admin.site-editor.show', [
             'activePage' => $page,
             'pages' => $this->registry->pages(),
@@ -51,10 +53,10 @@ class SiteEditorController extends Controller
             'musicContentForm' => $page === 'music'
                 ? $this->musicContentFormData()
                 : null,
-            'storefront' => $page === 'store'
+            'storefront' => $usesStorefrontEditor
                 ? app(StorefrontSettingsService::class)->editorPayload()
                 : null,
-            'storefrontForm' => $page === 'store'
+            'storefrontForm' => $usesStorefrontEditor
                 ? $this->storefrontFormData()
                 : null,
             'blocks' => $this->blocksFor($pageConfig['blocks']),
@@ -143,11 +145,13 @@ class SiteEditorController extends Controller
 
         $settings->save($request->user(), $payload, $status);
 
+        $returnPage = $this->storefrontReturnPage($request);
+
         return redirect()
-            ->route('admin.site-editor.show', ['page' => 'store'])
+            ->route('admin.site-editor.show', ['page' => $returnPage])
             ->with('status', $status === SitePageSetting::STATUS_PUBLISHED
-                ? 'Store publicado en el website.'
-                : 'Borrador del Store guardado.');
+                ? str($returnPage)->headline()->toString().' publicado en el website.'
+                : 'Borrador de '.str($returnPage)->headline()->lower()->toString().' guardado.');
     }
 
     public function preview(Request $request, PublicCmsContentService $cms, string $page): View
@@ -372,6 +376,13 @@ class SiteEditorController extends Controller
         }
 
         return $payload;
+    }
+
+    private function storefrontReturnPage(Request $request): string
+    {
+        $page = (string) $request->input('return_page', 'store');
+
+        return in_array($page, ['home', 'store'], true) ? $page : 'store';
     }
 
     private function bannerImage(Request $request, MediaLibraryService $library): ?MediaAsset
