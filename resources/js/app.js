@@ -1437,6 +1437,7 @@ if (storeShell) {
     const completePurchaseButton = document.getElementById('completePurchase');
     const paymentButtons = [...document.querySelectorAll('.store-payments button[data-payment-method]')];
     const rsvpButtons = [...document.querySelectorAll('[data-rsvp]')];
+    const countdownNodes = [...document.querySelectorAll('[data-countdown-at]')];
     const tierLabel = document.getElementById('tierLabel');
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     let activePaymentMethod = 'paypal';
@@ -1487,6 +1488,46 @@ if (storeShell) {
             cta: button.textContent?.trim() || products[key]?.cta || 'Add to bag',
         };
     });
+
+    const countdownLabel = (target, endedLabel) => {
+        const seconds = Math.max(0, Math.floor((target.getTime() - Date.now()) / 1000));
+
+        if (!Number.isFinite(seconds) || seconds <= 0) {
+            return endedLabel || 'Today';
+        }
+
+        const days = Math.floor(seconds / 86400);
+        const hours = Math.floor((seconds % 86400) / 3600);
+
+        if (days > 0) {
+            return `${days}D ${hours}H`;
+        }
+
+        const minutes = Math.floor((seconds % 3600) / 60);
+
+        if (hours > 0) {
+            return `${hours}H ${minutes}M`;
+        }
+
+        return `${Math.max(1, minutes)}M`;
+    };
+
+    const renderCountdowns = () => {
+        countdownNodes.forEach((node) => {
+            const target = new Date(node.dataset.countdownAt || '');
+
+            if (Number.isNaN(target.getTime())) {
+                return;
+            }
+
+            node.textContent = countdownLabel(target, node.dataset.countdownEndedLabel);
+        });
+    };
+
+    if (countdownNodes.length > 0) {
+        renderCountdowns();
+        window.setInterval(renderCountdowns, 60000);
+    }
 
     const money = (value, suffix = '') => {
         const current = currencies[currency];

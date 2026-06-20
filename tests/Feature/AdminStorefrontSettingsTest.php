@@ -37,6 +37,7 @@ class AdminStorefrontSettingsTest extends TestCase
             ->assertSee('Event 2')
             ->assertSee('Album')
             ->assertSee('Crown Collection')
+            ->assertSee('Countdown fecha/hora')
             ->assertSee('Guardar y publicar');
     }
 
@@ -62,6 +63,7 @@ class AdminStorefrontSettingsTest extends TestCase
                     'description' => "Venue CMS\nJan 10 - 8:00 PM",
                     'price_label' => 'FREE',
                     'cta_label' => 'SAVE SEAT',
+                    'countdown_at' => '2026-11-02T20:45',
                     'action_type' => 'rsvp',
                     'product_key' => 'cms-free',
                     'image_asset_id' => $eventAsset->id,
@@ -86,6 +88,7 @@ class AdminStorefrontSettingsTest extends TestCase
             ->assertSee('CMS Free Night')
             ->assertSee('SAVE SEAT')
             ->assertSee('data-rsvp="cms-free"', false)
+            ->assertSee('data-countdown-at="2026-11-02T20:45:00-05:00"', false)
             ->assertSee('/storage/store/cms-event.png', false)
             ->assertSee('CMS Deluxe Album')
             ->assertSee('CMS selected album summary')
@@ -95,6 +98,7 @@ class AdminStorefrontSettingsTest extends TestCase
         $this->getJson(route('public-content.payload', 'store'))
             ->assertOk()
             ->assertJsonPath('storefront.slots.event_primary.title', 'CMS Free Night')
+            ->assertJsonPath('storefront.slots.event_primary.countdown_at', '2026-11-02T20:45')
             ->assertJsonPath('storefront.slots.album.title', 'CMS Deluxe Album');
     }
 
@@ -136,6 +140,7 @@ class AdminStorefrontSettingsTest extends TestCase
                     'description' => "Rock & Folk Pty, Ciudad de Panama\n21/ Sep - 7:30 PM",
                     'price_label' => 'FREE',
                     'cta_label' => 'GET TICKETS',
+                    'countdown_at' => '2026-09-21T19:30',
                     'action_type' => 'rsvp',
                     'product_key' => 'concert',
                 ],
@@ -144,6 +149,7 @@ class AdminStorefrontSettingsTest extends TestCase
                     'description' => "Rock & Folk Pty, Ciudad de Panama\n19/ Dic - 7:30 PM",
                     'price_label' => '$15',
                     'cta_label' => 'GET TICKETS',
+                    'countdown_at' => '2026-12-19T19:30',
                     'action_type' => 'buy',
                     'product_key' => 'listening',
                 ],
