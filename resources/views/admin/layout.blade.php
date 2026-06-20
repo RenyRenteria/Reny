@@ -1,12 +1,6 @@
 @php
     $adminSection = trim($__env->yieldContent('admin_section', 'dashboard'));
     $adminTheme = trim($__env->yieldContent('admin_theme', 'neutral'));
-    $user = auth()->user();
-    $sectionRoute = fn (string $section): string => $section === 'dashboard'
-        ? route('admin.dashboard')
-        : route('admin.dashboard').'#'.$section;
-    $isActive = fn (string $section): bool => $adminSection === $section;
-    $navClass = fn (string $section): string => $isActive($section) ? 'sidebar-btn is-active' : 'sidebar-btn';
 @endphp
 
 <!DOCTYPE html>
@@ -39,102 +33,9 @@
             <button type="button" class="admin-toast-close" data-admin-close-toast aria-label="Cerrar notificacion">×</button>
         </div>
 
-        @include('admin.partials.header', ['showSidebarToggle' => true, 'adminSection' => $adminSection])
+        @include('admin.partials.header', ['showSidebarToggle' => false, 'adminSection' => $adminSection])
 
         <div class="admin-cms-frame">
-            <aside id="sidebar" class="admin-cms-sidebar" aria-label="Admin navigation">
-                <div class="admin-sidebar-scroll">
-                    <nav class="admin-side-nav" aria-label="CMS sections">
-                        <a class="{{ $navClass('dashboard') }}" href="{{ route('admin.dashboard') }}" data-admin-nav="dashboard">
-                            <span class="admin-nav-icon" aria-hidden="true">▦</span>
-                            <span>Resumen Principal</span>
-                        </a>
-
-                        <p>Tabs publicos</p>
-
-                        <a class="{{ $navClass('site-editor') }}" href="{{ route('admin.site-editor.index') }}" data-admin-nav="site-editor">
-                            <span class="admin-nav-icon" aria-hidden="true">▣</span>
-                            <span>Reny Site Editor</span>
-                        </a>
-                        <a class="{{ $navClass('contenido') }}" href="{{ route('admin.content.index', ['section' => 'music']) }}" data-admin-nav="contenido">
-                            <span class="admin-nav-icon" aria-hidden="true">♫</span>
-                            <span>Musica / Content</span>
-                        </a>
-                        <a class="{{ $navClass('editor') }}" href="{{ route('admin.content.create') }}" data-admin-nav="editor">
-                            <span class="admin-nav-icon" aria-hidden="true">✎</span>
-                            <span>Nuevo Contenido</span>
-                        </a>
-                        <a class="{{ $navClass('biblioteca') }}" href="{{ route('admin.media.index') }}" data-admin-nav="biblioteca">
-                            <span class="admin-nav-icon" aria-hidden="true">▧</span>
-                            <span>Video / Biblioteca</span>
-                        </a>
-                        <a class="{{ $navClass('productos') }}" href="{{ $sectionRoute('productos') }}" data-admin-nav="productos">
-                            <span class="admin-nav-icon" aria-hidden="true">□</span>
-                            <span>Productos y Drops</span>
-                        </a>
-
-                        <p>Comunidad y Miembros</p>
-
-                        <a class="{{ $navClass('royalpass') }}" href="{{ $sectionRoute('royalpass') }}" data-admin-nav="royalpass">
-                            <span class="admin-nav-icon" aria-hidden="true">♛</span>
-                            <span>Miembros Royal <small>PRO</small></span>
-                        </a>
-                        <a class="{{ $navClass('usuarios') }}" href="{{ $sectionRoute('usuarios') }}" data-admin-nav="usuarios">
-                            <span class="admin-nav-icon" aria-hidden="true">◎</span>
-                            <span>Gente / Usuarios</span>
-                        </a>
-                        <a class="{{ $navClass('comunidad') }}" href="{{ $sectionRoute('comunidad') }}" data-admin-nav="comunidad">
-                            <span class="admin-nav-icon" aria-hidden="true">☷</span>
-                            <span>Community</span>
-                        </a>
-                        <a class="{{ $navClass('eventos') }}" href="{{ $sectionRoute('eventos') }}" data-admin-nav="eventos">
-                            <span class="admin-nav-icon" aria-hidden="true">◴</span>
-                            <span>Events / Tickets</span>
-                        </a>
-                        <a class="{{ $navClass('puntos') }}" href="{{ $sectionRoute('puntos') }}" data-admin-nav="puntos">
-                            <span class="admin-nav-icon" aria-hidden="true">◇</span>
-                            <span>Puntos y Ranking</span>
-                        </a>
-
-                        <p>Negocios y Control</p>
-
-                        <a class="{{ $navClass('pagos') }}" href="{{ $sectionRoute('pagos') }}" data-admin-nav="pagos">
-                            <span class="admin-nav-icon" aria-hidden="true">$</span>
-                            <span>Pagos y Devoluciones</span>
-                        </a>
-                        <a class="{{ $navClass('notificaciones') }}" href="{{ $sectionRoute('notificaciones') }}" data-admin-nav="notificaciones">
-                            <span class="admin-nav-icon" aria-hidden="true">✉</span>
-                            <span>Anuncios y Mensajes</span>
-                        </a>
-                        <a class="{{ $navClass('equipo') }}" href="{{ $sectionRoute('equipo') }}" data-admin-nav="equipo">
-                            <span class="admin-nav-icon" aria-hidden="true">◌</span>
-                            <span>Equipo y Permisos</span>
-                        </a>
-                        <a class="{{ $navClass('historial') }}" href="{{ $sectionRoute('historial') }}" data-admin-nav="historial">
-                            <span class="admin-nav-icon" aria-hidden="true">◷</span>
-                            <span>Historial de Cambios</span>
-                        </a>
-                        <a class="{{ $navClass('ajustes') }}" href="{{ $sectionRoute('ajustes') }}" data-admin-nav="ajustes">
-                            <span class="admin-nav-icon" aria-hidden="true">⚙</span>
-                            <span>Ajustes del Sitio</span>
-                        </a>
-                    </nav>
-                </div>
-
-                <div class="admin-sidebar-footer">
-                    <p>© 2026 Reny Renteria CMS</p>
-                    <span><i></i> Servidores Activos</span>
-                    @if ($user)
-                        <form method="POST" action="{{ route('admin.logout') }}">
-                            @csrf
-                            <button class="admin-button admin-button-secondary" type="submit">Log out</button>
-                        </form>
-                    @endif
-                </div>
-            </aside>
-
-            <button id="sidebarOverlay" type="button" class="admin-sidebar-overlay" data-admin-sidebar-toggle aria-label="Cerrar menu"></button>
-
             <main class="admin-cms-main">
                 @if (session('status'))
                     <div class="auth-status">{{ session('status') }}</div>
