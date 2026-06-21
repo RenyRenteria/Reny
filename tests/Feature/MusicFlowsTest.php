@@ -117,9 +117,13 @@ class MusicFlowsTest extends TestCase
         $response
             ->assertOk()
             ->assertSee('Full Album One')
-            ->assertSee('href="'.$deluxeUrl.'"', false)
+            ->assertSee('data-buy="deluxe"', false)
+            ->assertSee('data-buy-url="'.$deluxeUrl.'"', false)
+            ->assertSee('id="bagLayer"', false)
+            ->assertSee('name="csrf-token"', false)
             ->assertSee('Buy Deluxe')
-            ->assertSee('data-analytics-screen="music_albums"', false);
+            ->assertSee('data-analytics-screen="music_albums"', false)
+            ->assertDontSee('href="'.$deluxeUrl.'"', false);
 
         $this->assertSame(1, substr_count($response->getContent(), 'class="album-deluxe-button"'));
 

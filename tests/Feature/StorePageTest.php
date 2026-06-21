@@ -90,6 +90,8 @@ class StorePageTest extends TestCase
             ->assertSee('$15')
             ->assertSee('data-buy="listening"', false)
             ->assertSee('data-buy-price-value="15.00"', false)
+            ->assertSee('data-buy-url="'.route('store.checkout', ['product' => 'listening']).'"', false)
+            ->assertSee('data-auto-open-checkout="true"', false)
             ->assertSee('data-copy-url="'.route('store.checkout', ['product' => 'listening']).'"', false)
             ->assertSee('id="bagLayer"', false)
             ->assertSee('data-payment-method="paypal"', false)
