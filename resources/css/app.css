@@ -2037,6 +2037,7 @@ button {
     font-weight: 950;
     letter-spacing: 0.08em;
     line-height: 1;
+    text-decoration: none;
     text-transform: uppercase;
     transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
 }

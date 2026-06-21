@@ -93,6 +93,8 @@ class StorePageTest extends TestCase
             ->assertSee('$15')
             ->assertSee('data-buy="listening"', false)
             ->assertSee('data-buy-price-value="15.00"', false)
+            ->assertSee('data-buy-url="'.route('store.checkout', ['product' => 'listening']).'"', false)
+            ->assertSee('data-auto-open-checkout="true"', false)
             ->assertSee('data-copy-url="'.route('store.checkout', ['product' => 'listening']).'"', false)
             ->assertSee('id="bagLayer"', false)
             ->assertSee('id="paypalButtons"', false)
@@ -107,7 +109,8 @@ class StorePageTest extends TestCase
     {
         $js = file_get_contents(resource_path('js/app.js'));
 
-        $this->assertStringContainsString("openCheckoutModal(button.dataset.buy, { source: 'buy_button' })", $js);
+        $this->assertStringContainsString('startCheckoutFromBuyButton(button);', $js);
+        $this->assertStringContainsString("startCheckoutFromBuyButton(button, { source: 'shareable_checkout' });", $js);
         $this->assertStringContainsString('initializeVisiblePayPalCheckout();', $js);
         $this->assertStringNotContainsString('completePurchaseButton', $js);
         $this->assertStringNotContainsString('Load PayPal checkout', $js);
