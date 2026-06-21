@@ -148,6 +148,7 @@
                             data-buy-name="{{ $royalPass['emphasis'] ?? 'Royal Pass' }}"
                             data-buy-type="Membership"
                             data-buy-summary="Monthly membership with exclusive content, community and more."
+                            data-buy-url="{{ route('store.checkout', ['product' => $royalPass['product_key'] ?? 'royal']) }}"
                         >{{ $royalPass['cta_label'] ?? 'BUY HERE' }}</button>
                     </section>
                 @endif
@@ -210,6 +211,7 @@
                                                 data-buy-name="{{ $slot['title'] }}"
                                                 data-buy-type="{{ $slotType($slot) }}"
                                                 data-buy-summary="{{ str_replace("\n", ' - ', $slot['description'] ?? '') }}"
+                                                data-buy-url="{{ route('store.checkout', ['product' => $slotProductKey]) }}"
                                             >{{ $slot['cta_label'] ?? 'BUY' }}</button>
                                         @endif
 

@@ -16,7 +16,7 @@
     ];
     $cmsAlbums = $publicCms['albums'] ?? [];
     $cmsSingles = $publicCms['singles'] ?? [];
-    $deluxeUrl = route('store', ['buy' => 'deluxe']);
+    $deluxeUrl = route('store.checkout', ['product' => 'deluxe']);
     $fallbackPlayState = [
         'access_state' => 'playback_error',
         'access_label' => 'Audio unavailable',

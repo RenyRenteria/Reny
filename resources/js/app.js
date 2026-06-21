@@ -1475,6 +1475,12 @@ if (storeShell) {
             return;
         }
 
+        const buyPriceValue = Number.parseFloat(button.dataset.buyPriceValue || '');
+
+        if (Number.isFinite(buyPriceValue)) {
+            prices[key] = buyPriceValue;
+        }
+
         products[key] = {
             ...products[key],
             name: button.dataset.buyName || products[key]?.name || key,
@@ -1485,6 +1491,7 @@ if (storeShell) {
             pass: products[key]?.pass || 'No Royal Pass required',
             access: products[key]?.access || 'Checkout unlocks in profile',
             summary: button.dataset.buySummary || products[key]?.summary || 'Store checkout',
+            image: button.dataset.buyImage || products[key]?.image,
             cta: button.textContent?.trim() || products[key]?.cta || 'Add to bag',
         };
     });
@@ -2034,6 +2041,25 @@ if (storeShell) {
         });
     };
 
+    const openBuyUrl = (button) => {
+        if (!button.dataset.buyUrl) {
+            return false;
+        }
+
+        const url = new URL(button.dataset.buyUrl, window.location.href);
+
+        trackElementEvent(button, 'store_checkout_link_opened', {
+            item_type: button.dataset.buyType || 'product',
+            item_id: button.dataset.buy,
+            destination: url.pathname,
+            result: 'opened',
+        });
+
+        window.location.assign(url.href);
+
+        return true;
+    };
+
     const openProductDetail = (key) => {
         const product = products[key];
 
@@ -2132,8 +2158,47 @@ if (storeShell) {
 
     document.querySelectorAll('[data-buy]').forEach((button) => {
         button.addEventListener('click', () => {
+            if (openBuyUrl(button)) {
+                return;
+            }
+
             addToBag(button.dataset.buy);
             openStoreLayer('bagLayer');
+        });
+    });
+
+    document.querySelectorAll('[data-copy-current-url]').forEach((button) => {
+        button.addEventListener('click', async () => {
+            const value = button.dataset.copyUrl || window.location.href;
+            const successLabel = button.dataset.copySuccess || 'Link copied';
+            const originalLabel = button.textContent;
+
+            try {
+                if (!navigator.clipboard?.writeText) {
+                    throw new Error('clipboard_unavailable');
+                }
+
+                await navigator.clipboard.writeText(value);
+                button.textContent = successLabel;
+                showStoreToast(successLabel);
+                trackElementEvent(button, 'store_checkout_link_copied', {
+                    item_type: 'checkout_link',
+                    destination: new URL(value, window.location.href).pathname,
+                    result: 'copied',
+                });
+            } catch (error) {
+                console.warn(error);
+                showStoreToast('Copy the checkout URL from the address bar.');
+                trackElementEvent(button, 'store_checkout_link_copy_failed', {
+                    item_type: 'checkout_link',
+                    reason: error.message || 'clipboard_unavailable',
+                    result: 'failed',
+                });
+            } finally {
+                window.setTimeout(() => {
+                    button.textContent = originalLabel;
+                }, 1800);
+            }
         });
     });
 
@@ -2287,7 +2352,7 @@ if (storeShell) {
     const openRequestedCheckout = () => {
         const requestedProduct = new URLSearchParams(window.location.search).get('buy');
 
-        if (requestedProduct !== 'deluxe' || !products[requestedProduct]) {
+        if (!requestedProduct || !products[requestedProduct]) {
             return;
         }
 
@@ -2297,7 +2362,7 @@ if (storeShell) {
             item_type: 'checkout',
             item_id: requestedProduct,
             item_count: bag.length,
-            source: 'music_deluxe',
+            source: 'query_buy',
             result: 'opened',
         });
     };
