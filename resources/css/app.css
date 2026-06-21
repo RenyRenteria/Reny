@@ -6139,7 +6139,7 @@ body.has-modal-open {
 
 @media (max-width: 53.75rem) {
     .home-content {
-        padding: 0.75rem 0.625rem 1.25rem;
+        padding: 0.75rem 0.625rem calc(6.25rem + env(safe-area-inset-bottom));
         background: #f3f0eb;
     }
 
@@ -6404,9 +6404,6 @@ body.has-modal-open {
         object-fit: cover;
     }
 
-    .home-bottom-nav {
-        display: none;
-    }
 }
 
 @media (max-width: 23.75rem) {

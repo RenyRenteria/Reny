@@ -68,6 +68,29 @@ class HomePageTest extends TestCase
         $this->assertStringContainsString('class="home-royal-pass"', $html);
     }
 
+    public function test_home_mobile_navigation_shows_five_buttons_without_active_tab(): void
+    {
+        $html = $this->get('/')
+            ->assertOk()
+            ->getContent();
+
+        $this->assertMatchesRegularExpression(
+            '/<nav class="mobile-bottom-nav home-bottom-nav" aria-label="Mobile menu">.*?<\/nav>/s',
+            $html
+        );
+
+        preg_match('/<nav class="mobile-bottom-nav home-bottom-nav" aria-label="Mobile menu">(.*?)<\/nav>/s', $html, $matches);
+        $navHtml = $matches[1] ?? '';
+
+        $this->assertSame(5, substr_count($navHtml, '<a '));
+        $this->assertStringNotContainsString('is-active', $navHtml);
+        $this->assertStringNotContainsString('aria-current="page"', $navHtml);
+
+        $css = file_get_contents(resource_path('css/app.css'));
+
+        $this->assertDoesNotMatchRegularExpression('/\.home-bottom-nav\s*\{[^}]*display\s*:\s*none\s*;/s', $css);
+    }
+
     public function test_home_hides_royal_pass_for_authenticated_users(): void
     {
         $user = User::factory()->create();
