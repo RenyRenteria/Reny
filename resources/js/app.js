@@ -1435,8 +1435,10 @@ if (commerceRoot) {
     const bagCount = document.getElementById('bagCount');
     const bagList = document.getElementById('bagList');
     const bagTotal = document.getElementById('bagTotal');
+    const nameField = document.getElementById('nameField');
     const emailField = document.getElementById('emailField');
     const phoneField = document.getElementById('phoneField');
+    const countryField = document.getElementById('countryField');
     const paypalButtons = document.getElementById('paypalButtons');
     const paymentStatus = document.getElementById('paymentStatus');
     const paymentButtons = [...document.querySelectorAll('.store-payments button[data-payment-method]')];
@@ -1596,60 +1598,77 @@ if (commerceRoot) {
         });
     };
 
-    const phoneDigits = (value) => (value || '').replace(/\D+/g, '');
-
     const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
-    const isValidPhone = (value) => phoneDigits(value).length >= 7;
+    const normalizeInternationalPhone = (value) => String(value || '').trim().replace(/[()\s.-]/g, '');
 
-    const contactPayload = ({ requireBoth = false } = {}) => {
-        const email = emailField?.value?.trim() || '';
-        const phone = phoneField?.value?.trim() || '';
+    const isValidPhone = (value) => /^\+[1-9][0-9]{6,14}$/.test(normalizeInternationalPhone(value));
 
-        if (requireBoth) {
-            if (!isValidEmail(email)) {
-                throw checkoutError('Add a valid receipt email.', 'validation_failed', 'invalid_email');
-            }
-
-            if (!isValidPhone(phone)) {
-                throw checkoutError('Add a valid phone number.', 'validation_failed', 'invalid_phone');
-            }
-
-            return {
-                identifier: email,
-                email,
-                phone: phoneDigits(phone),
-            };
+    const markFieldValidity = (field, valid) => {
+        if (!field) {
+            return;
         }
 
-        if (email) {
-            if (!isValidEmail(email)) {
-                throw checkoutError('Add a valid receipt email.', 'validation_failed', 'invalid_email');
-            }
-
-            return { identifier: email, email, phone: phone ? phoneDigits(phone) : '' };
-        }
-
-        if (phone) {
-            if (!isValidPhone(phone)) {
-                throw checkoutError('Add a valid phone number.', 'validation_failed', 'invalid_phone');
-            }
-
-            return { identifier: phone, email: '', phone: phoneDigits(phone) };
-        }
-
-        throw checkoutError('Add a valid email or phone.', 'validation_failed', 'missing_contact');
+        field.setAttribute('aria-invalid', valid ? 'false' : 'true');
     };
 
-    const checkoutPayload = ({ requireBothContacts = false } = {}) => {
+    const customerDetailsComplete = () => {
+        const name = nameField?.value?.trim() || '';
+        const email = emailField?.value?.trim() || '';
+        const phone = phoneField?.value?.trim() || '';
+        const country = countryField?.value?.trim() || '';
+
+        return name.length > 0 && isValidEmail(email) && isValidPhone(phone) && country.length > 0;
+    };
+
+    const contactPayload = () => {
+        const name = nameField?.value?.trim() || '';
+        const email = emailField?.value?.trim() || '';
+        const phone = phoneField?.value?.trim() || '';
+        const country = countryField?.value?.trim() || '';
+
+        if (!name) {
+            markFieldValidity(nameField, false);
+            throw checkoutError('Add your name.', 'validation_failed', 'missing_name');
+        }
+
+        if (!isValidEmail(email)) {
+            markFieldValidity(emailField, false);
+            throw checkoutError('Add a valid receipt email.', 'validation_failed', 'invalid_email');
+        }
+
+        if (!isValidPhone(phone)) {
+            markFieldValidity(phoneField, false);
+            throw checkoutError('Add a valid international phone number.', 'validation_failed', 'invalid_phone');
+        }
+
+        if (!country) {
+            markFieldValidity(countryField, false);
+            throw checkoutError('Select your country.', 'validation_failed', 'missing_country');
+        }
+
+        return {
+            identifier: email,
+            customer_name: name,
+            customer_email: email,
+            customer_phone: normalizeInternationalPhone(phone),
+            customer_country: country,
+        };
+    };
+
+    const checkoutPayload = () => {
         if (!bag.length) {
             throw checkoutError('Add a product first.', 'validation_failed', 'empty_cart');
         }
 
-        const contact = contactPayload({ requireBoth: requireBothContacts });
+        const contact = contactPayload();
 
         return {
             identifier: contact.identifier,
+            customer_name: contact.customer_name,
+            customer_email: contact.customer_email,
+            customer_phone: contact.customer_phone,
+            customer_country: contact.customer_country,
             product_keys: [...bag],
             currency: settlementCurrency.toUpperCase(),
         };
@@ -1772,7 +1791,7 @@ if (commerceRoot) {
         }
 
         if (paypalButtonsRendered) {
-            setPaymentStatus('Use the PayPal button to approve payment.');
+            setPaymentStatus(customerDetailsComplete() ? 'Use the PayPal button to approve payment.' : 'Add customer details, then approve with PayPal.');
             return;
         }
 
@@ -1804,6 +1823,7 @@ if (commerceRoot) {
                 },
                 createOrder: async () => {
                     const payload = checkoutPayload();
+                    [nameField, emailField, phoneField, countryField].forEach((field) => markFieldValidity(field, true));
                     setPaymentStatus('Creating PayPal order...');
                     trackPaymentState('paypal', 'payment_started', {
                         item_count: payload.product_keys.length,
@@ -1850,7 +1870,7 @@ if (commerceRoot) {
             }).render(paypalButtons);
 
             paypalButtonsRendered = true;
-            setPaymentStatus('Use the PayPal button to approve payment.');
+            setPaymentStatus(customerDetailsComplete() ? 'Use the PayPal button to approve payment.' : 'Add customer details, then approve with PayPal.');
         } finally {
             paypalButtonsLoading = false;
         }
@@ -1944,7 +1964,9 @@ if (commerceRoot) {
 
         if (activePaymentMethod === 'paypal') {
             if (!preserveStatus) {
-                setPaymentStatus(paypalButtonsRendered ? 'Use the PayPal button to approve payment.' : 'Loading PayPal checkout...');
+                setPaymentStatus(paypalButtonsRendered
+                    ? (customerDetailsComplete() ? 'Use the PayPal button to approve payment.' : 'Add customer details, then approve with PayPal.')
+                    : 'Loading PayPal checkout...');
             }
             return;
         }
@@ -2408,6 +2430,13 @@ if (commerceRoot) {
     });
 
     const openRequestedCheckout = () => {
+        const autoOpenButton = document.querySelector('[data-auto-open-checkout="true"][data-buy]');
+
+        if (autoOpenButton && products[autoOpenButton.dataset.buy]) {
+            openCheckoutModal(autoOpenButton.dataset.buy, { source: 'dedicated_checkout_url' });
+            return;
+        }
+
         const requestedProduct = new URLSearchParams(window.location.search).get('buy');
 
         if (!requestedProduct || !products[requestedProduct]) {
@@ -2453,6 +2482,16 @@ if (commerceRoot) {
     selectPaymentMethod('paypal', { track: false });
     updateStorePrices();
     renderBag();
+    [nameField, emailField, phoneField, countryField].forEach((field) => {
+        field?.addEventListener('input', () => {
+            markFieldValidity(field, true);
+            refreshCheckoutControls();
+        });
+        field?.addEventListener('change', () => {
+            markFieldValidity(field, true);
+            refreshCheckoutControls();
+        });
+    });
     openRequestedCheckout();
     openAutoCheckout();
 }

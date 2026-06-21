@@ -91,6 +91,7 @@ class StorePageTest extends TestCase
             ->assertSee('Festival de la Rosa Dorada')
             ->assertSee('Rock &amp; Folk Pty, Ciudad de Panama', false)
             ->assertSee('$15')
+            ->assertSee('images/store/rosa-dorada.png')
             ->assertSee('data-buy="listening"', false)
             ->assertSee('data-buy-price-value="15.00"', false)
             ->assertSee('data-buy-url="'.route('store.checkout', ['product' => 'listening']).'"', false)
@@ -99,6 +100,12 @@ class StorePageTest extends TestCase
             ->assertSee('id="bagLayer"', false)
             ->assertSee('id="paypalButtons"', false)
             ->assertSee('PayPal Checkout')
+            ->assertSee('id="nameField"', false)
+            ->assertSee('id="emailField"', false)
+            ->assertSee('id="phoneField"', false)
+            ->assertSee('id="countryField"', false)
+            ->assertSee('pattern="^\+[1-9][0-9]{6,14}$"', false)
+            ->assertSee('Select country')
             ->assertSee('data-payment-method="paypal"', false)
             ->assertSee('data-create-order-endpoint="'.route('checkout.paypal.orders').'"', false)
             ->assertDontSee('Load PayPal checkout')
@@ -111,7 +118,11 @@ class StorePageTest extends TestCase
 
         $this->assertStringContainsString('startCheckoutFromBuyButton(button);', $js);
         $this->assertStringContainsString("startCheckoutFromBuyButton(button, { source: 'shareable_checkout' });", $js);
+        $this->assertStringContainsString("openCheckoutModal(autoOpenButton.dataset.buy, { source: 'dedicated_checkout_url' })", $js);
         $this->assertStringContainsString('initializeVisiblePayPalCheckout();', $js);
+        $this->assertStringContainsString('customer_name', $js);
+        $this->assertStringContainsString('customer_country', $js);
+        $this->assertStringContainsString('Add a valid international phone number.', $js);
         $this->assertStringNotContainsString('completePurchaseButton', $js);
         $this->assertStringNotContainsString('Load PayPal checkout', $js);
     }
