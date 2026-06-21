@@ -55,6 +55,8 @@ class MusicFlowsTest extends TestCase
             ->assertSee(route('music.play', $album), false)
             ->assertSee(route('music.play', $single), false)
             ->assertSee('data-buy="deluxe"', false)
+            ->assertSee('id="paypalButtons"', false)
+            ->assertDontSee('Load PayPal checkout')
             ->assertSee('Buy Deluxe')
             ->assertSee('Launch Album')
             ->assertSee('Launch Single');
@@ -117,7 +119,9 @@ class MusicFlowsTest extends TestCase
         $response
             ->assertOk()
             ->assertSee('Full Album One')
-            ->assertSee('href="'.$deluxeUrl.'"', false)
+            ->assertSee('data-buy="deluxe"', false)
+            ->assertSee('data-buy-url="'.$deluxeUrl.'"', false)
+            ->assertSee('id="paypalButtons"', false)
             ->assertSee('Buy Deluxe')
             ->assertSee('data-analytics-screen="music_albums"', false);
 

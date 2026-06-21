@@ -43,6 +43,9 @@ class StorePageTest extends TestCase
         $response->assertSee('data-buy-url="'.route('store.checkout', ['product' => 'deluxe']).'"', false);
         $response->assertSee('data-buy-url="'.route('store.checkout', ['product' => 'merch']).'"', false);
         $response->assertDontSee('data-buy="concert"', false);
+        $response->assertSee('PayPal Checkout');
+        $response->assertSee('id="paypalButtons"', false);
+        $response->assertDontSee('Load PayPal checkout');
         $response->assertSee('class="tab is-active"', false);
         $response->assertSee('href="'.url('/store').'"', false);
         $response->assertSee('data-payment-method="paypal"', false);
@@ -92,9 +95,22 @@ class StorePageTest extends TestCase
             ->assertSee('data-buy-price-value="15.00"', false)
             ->assertSee('data-copy-url="'.route('store.checkout', ['product' => 'listening']).'"', false)
             ->assertSee('id="bagLayer"', false)
+            ->assertSee('id="paypalButtons"', false)
+            ->assertSee('PayPal Checkout')
             ->assertSee('data-payment-method="paypal"', false)
             ->assertSee('data-create-order-endpoint="'.route('checkout.paypal.orders').'"', false)
+            ->assertDontSee('Load PayPal checkout')
             ->assertSee('GET TICKETS');
+    }
+
+    public function test_checkout_frontend_opens_paypal_without_redundant_button(): void
+    {
+        $js = file_get_contents(resource_path('js/app.js'));
+
+        $this->assertStringContainsString("openCheckoutModal(button.dataset.buy, { source: 'buy_button' })", $js);
+        $this->assertStringContainsString('initializeVisiblePayPalCheckout();', $js);
+        $this->assertStringNotContainsString('completePurchaseButton', $js);
+        $this->assertStringNotContainsString('Load PayPal checkout', $js);
     }
 
     public function test_checkout_screen_rejects_unknown_product(): void

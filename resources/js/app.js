@@ -1399,8 +1399,9 @@ document.querySelectorAll('.access-gate-button').forEach((link) => {
 });
 
 const storeShell = document.querySelector('.store-shell');
+const storeCheckoutLayer = document.getElementById('bagLayer');
 
-if (storeShell) {
+if (storeShell || storeCheckoutLayer) {
     const prices = {
         deluxe: 24,
         singles: 8,
@@ -1434,7 +1435,6 @@ if (storeShell) {
     const phoneField = document.getElementById('phoneField');
     const paypalButtons = document.getElementById('paypalButtons');
     const paymentStatus = document.getElementById('paymentStatus');
-    const completePurchaseButton = document.getElementById('completePurchase');
     const paymentButtons = [...document.querySelectorAll('.store-payments button[data-payment-method]')];
     const rsvpButtons = [...document.querySelectorAll('[data-rsvp]')];
     const countdownNodes = [...document.querySelectorAll('[data-countdown-at]')];
@@ -1917,13 +1917,7 @@ if (storeShell) {
             paypalButtons.hidden = activePaymentMethod !== 'paypal' || !hasItems;
         }
 
-        if (!completePurchaseButton) {
-            return;
-        }
-
         if (!hasItems) {
-            completePurchaseButton.disabled = true;
-            completePurchaseButton.textContent = 'Add item to checkout';
             if (!preserveStatus) {
                 setPaymentStatus('Add a product to enable PayPal checkout.');
             }
@@ -1931,16 +1925,12 @@ if (storeShell) {
         }
 
         if (activePaymentMethod === 'paypal') {
-            completePurchaseButton.disabled = false;
-            completePurchaseButton.textContent = 'Load PayPal checkout';
             if (!preserveStatus) {
-                setPaymentStatus('PayPal checkout is charged in USD.');
+                setPaymentStatus(paypalButtonsRendered ? 'Use the PayPal button to approve payment.' : 'Loading PayPal checkout...');
             }
             return;
         }
 
-        completePurchaseButton.disabled = true;
-        completePurchaseButton.textContent = `${paymentMethodLabel(activePaymentMethod)} unavailable`;
         if (!preserveStatus) {
             setPaymentStatus(`${paymentMethodLabel(activePaymentMethod)} checkout needs a real provider before purchases can complete.`);
         }
@@ -2011,13 +2001,24 @@ if (storeShell) {
             const item = document.createElement('div');
             item.className = 'store-bag-item';
 
-            const name = document.createElement('span');
+            const copy = document.createElement('div');
+            copy.className = 'store-bag-copy';
+
+            const name = document.createElement('strong');
             name.textContent = product.name;
 
+            const meta = document.createElement('span');
+            meta.textContent = product.type || 'Product';
+
+            const summary = document.createElement('p');
+            summary.textContent = product.summary || 'Store checkout';
+
             const price = document.createElement('strong');
+            price.className = 'store-bag-price';
             price.textContent = money(prices[priceKey] || 0, priceKey === 'royal' ? '/mo' : '');
 
-            item.append(name, price);
+            copy.append(name, meta, summary);
+            item.append(copy, price);
             bagList.append(item);
         });
 
@@ -2025,20 +2026,30 @@ if (storeShell) {
         refreshCheckoutControls();
     };
 
-    const addToBag = (key) => {
+    const setCheckoutProduct = (key) => {
         if (!products[key]) {
-            return;
+            return false;
         }
 
-        bag.push(key);
+        bag = [key];
         renderBag();
-        showStoreToast(`${products[key].name} added.`);
+
+        return true;
+    };
+
+    const addToBag = (key) => {
+        if (!setCheckoutProduct(key)) {
+            return false;
+        }
+
         trackEvent('store_product_added', {
             item_type: products[key].type || 'product',
             item_id: key,
             item_label: products[key].name,
             result: 'added',
         });
+
+        return true;
     };
 
     const openBuyUrl = (button) => {
@@ -2056,6 +2067,47 @@ if (storeShell) {
         });
 
         window.location.assign(url.href);
+
+        return true;
+    };
+
+    const initializeVisiblePayPalCheckout = async () => {
+        if (activePaymentMethod !== 'paypal') {
+            setPaymentStatus(`${paymentMethodLabel(activePaymentMethod)} checkout needs a real provider before purchases can complete.`);
+            trackPaymentState(activePaymentMethod, 'unavailable', {
+                reason: unavailableReason(activePaymentMethod),
+            });
+            return;
+        }
+
+        try {
+            await renderPayPalButtons();
+        } catch (error) {
+            setPaymentStatus(error.userMessage || 'PayPal checkout is unavailable.');
+            showStoreToast(error.userMessage || 'PayPal checkout is unavailable.');
+            trackPaymentState('paypal', error.checkoutState || 'payment_failed', {
+                reason: error.userMessage || error.message || 'checkout_unavailable',
+            });
+        } finally {
+            refreshCheckoutControls({ preserveStatus: true });
+        }
+    };
+
+    const openCheckoutModal = (key, { source = 'buy_button' } = {}) => {
+        if (!storeCheckoutLayer || !setCheckoutProduct(key)) {
+            return false;
+        }
+
+        selectPaymentMethod('paypal', { track: false });
+        openStoreLayer('bagLayer');
+        trackEvent('store_checkout_started', {
+            item_type: 'checkout',
+            item_id: key,
+            item_count: bag.length,
+            source,
+            result: 'opened',
+        });
+        void initializeVisiblePayPalCheckout();
 
         return true;
     };
@@ -2100,7 +2152,7 @@ if (storeShell) {
             grid.append(cell);
         });
 
-        document.getElementById('detailBuy').textContent = product.cta || 'Add to bag';
+        document.getElementById('detailBuy').textContent = product.cta || 'Checkout with PayPal';
         openStoreLayer('detailLayer');
     };
 
@@ -2158,6 +2210,10 @@ if (storeShell) {
 
     document.querySelectorAll('[data-buy]').forEach((button) => {
         button.addEventListener('click', () => {
+            if (openCheckoutModal(button.dataset.buy, { source: 'buy_button' })) {
+                return;
+            }
+
             if (openBuyUrl(button)) {
                 return;
             }
@@ -2294,14 +2350,16 @@ if (storeShell) {
             return;
         }
 
-        addToBag(activeProduct);
         closeStoreLayer('detailLayer');
-        openStoreLayer('bagLayer');
+        openCheckoutModal(activeProduct, { source: 'detail_modal' });
     });
 
     document.getElementById('openBag')?.addEventListener('click', () => {
         renderBag();
         openStoreLayer('bagLayer');
+        if (bag.length) {
+            void initializeVisiblePayPalCheckout();
+        }
         trackEvent('store_checkout_started', {
             item_type: 'checkout',
             item_count: bag.length,
@@ -2315,40 +2373,6 @@ if (storeShell) {
         });
     });
 
-    completePurchaseButton?.addEventListener('click', async (event) => {
-        const button = event.currentTarget;
-
-        if (activePaymentMethod !== 'paypal') {
-            setPaymentStatus(`${paymentMethodLabel(activePaymentMethod)} checkout needs a real provider before purchases can complete.`);
-            showStoreToast(`${paymentMethodLabel(activePaymentMethod)} is not available yet.`);
-            trackPaymentState(activePaymentMethod, 'unavailable', {
-                reason: unavailableReason(activePaymentMethod),
-            });
-            return;
-        }
-
-        button.disabled = true;
-        button.textContent = 'Loading PayPal...';
-
-        try {
-            const payload = checkoutPayload();
-            trackPaymentState('paypal', 'payment_started', {
-                item_count: payload.product_keys.length,
-                currency: payload.currency,
-            });
-            await renderPayPalButtons();
-            showStoreToast('Use PayPal to approve payment.');
-        } catch (error) {
-            setPaymentStatus(error.userMessage || 'PayPal checkout is unavailable.');
-            showStoreToast(error.userMessage || 'PayPal checkout is unavailable.');
-            trackPaymentState('paypal', error.checkoutState || 'payment_failed', {
-                reason: error.userMessage || error.message || 'checkout_unavailable',
-            });
-        } finally {
-            refreshCheckoutControls({ preserveStatus: true });
-        }
-    });
-
     const openRequestedCheckout = () => {
         const requestedProduct = new URLSearchParams(window.location.search).get('buy');
 
@@ -2356,15 +2380,7 @@ if (storeShell) {
             return;
         }
 
-        addToBag(requestedProduct);
-        openStoreLayer('bagLayer');
-        trackEvent('store_checkout_started', {
-            item_type: 'checkout',
-            item_id: requestedProduct,
-            item_count: bag.length,
-            source: 'query_buy',
-            result: 'opened',
-        });
+        openCheckoutModal(requestedProduct, { source: 'query_buy' });
     };
 
     document.querySelectorAll('[data-close]').forEach((button) => {
