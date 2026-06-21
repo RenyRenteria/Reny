@@ -89,6 +89,10 @@ class HomePageTest extends TestCase
         $css = file_get_contents(resource_path('css/app.css'));
 
         $this->assertDoesNotMatchRegularExpression('/\.home-bottom-nav\s*\{[^}]*display\s*:\s*none\s*;/s', $css);
+        $this->assertMatchesRegularExpression(
+            '/\.home-bottom-nav\s*\{[^}]*height\s*:\s*calc\(2rem \+ env\(safe-area-inset-bottom\)\);/s',
+            $css
+        );
     }
 
     public function test_home_hides_royal_pass_for_authenticated_users(): void
