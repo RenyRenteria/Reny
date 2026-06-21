@@ -96,7 +96,7 @@ class CheckoutController extends Controller
 
     public function createOrder(Request $request, PayPalService $payPal, RoyalPassService $royalPass): JsonResponse
     {
-        $validated = $this->validateCheckout($request);
+        $validated = $this->validateCheckout($request, requireCustomerDetails: true);
         $currency = $this->currency($validated);
         $user = Auth::user() ?: $royalPass->findOrCreateCustomer($validated['identifier']);
         Auth::login($user);
@@ -253,6 +253,7 @@ class CheckoutController extends Controller
         Request $request,
         bool $requirePaypalOrder = false,
         bool $requireLocalReference = false,
+        bool $requireCustomerDetails = false,
     ): array {
         return $request->validate([
             'identifier' => [
@@ -268,10 +269,10 @@ class CheckoutController extends Controller
             'product_keys' => ['required', 'array', 'min:1'],
             'product_keys.*' => ['required', 'string', 'max:120', 'regex:/^[A-Za-z0-9._-]+$/'],
             'currency' => ['nullable', 'string', 'size:3'],
-            'customer_name' => ['sometimes', 'string', 'max:120'],
-            'customer_email' => ['sometimes', 'email', 'max:255'],
-            'customer_phone' => ['sometimes', 'string', 'max:32', 'regex:/^\+[1-9][0-9]{6,14}$/'],
-            'customer_country' => ['sometimes', 'string', 'max:80'],
+            'customer_name' => [$requireCustomerDetails ? 'required' : 'sometimes', 'string', 'max:120'],
+            'customer_email' => [$requireCustomerDetails ? 'required' : 'sometimes', 'email', 'max:255'],
+            'customer_phone' => [$requireCustomerDetails ? 'required' : 'sometimes', 'string', 'max:32', 'regex:/^\+[1-9][0-9]{6,14}$/'],
+            'customer_country' => [$requireCustomerDetails ? 'required' : 'sometimes', 'string', 'max:80'],
             'paypal_order_id' => [$requirePaypalOrder ? 'required' : 'sometimes', 'string', 'max:255'],
             'local_reference' => [
                 $requireLocalReference ? 'required' : 'sometimes',

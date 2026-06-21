@@ -89,6 +89,10 @@ class RoyalPassCheckoutTest extends TestCase
 
         $this->postJson('/checkout/paypal/orders', [
             'identifier' => 'fan@renyrenteria.com',
+            'customer_name' => 'Reny Fan',
+            'customer_email' => 'fan@renyrenteria.com',
+            'customer_phone' => '+50760000000',
+            'customer_country' => 'Panama',
             'product_keys' => ['deluxe', 'singles'],
             'currency' => 'USD',
         ])
@@ -117,6 +121,27 @@ class RoyalPassCheckoutTest extends TestCase
             'amount_cents' => 800,
             'status' => 'pending',
         ]);
+    }
+
+    public function test_checkout_requires_customer_details_before_paypal_order_creation(): void
+    {
+        Http::fake();
+
+        $this->postJson('/checkout/paypal/orders', [
+            'identifier' => 'fan@renyrenteria.com',
+            'product_keys' => ['deluxe'],
+            'currency' => 'USD',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors([
+                'customer_name',
+                'customer_email',
+                'customer_phone',
+                'customer_country',
+            ]);
+
+        $this->assertDatabaseCount('orders', 0);
+        Http::assertNothingSent();
     }
 
     public function test_checkout_stores_customer_capture_details_on_pending_paypal_order(): void
@@ -152,6 +177,10 @@ class RoyalPassCheckoutTest extends TestCase
 
         $this->postJson('/checkout/paypal/orders', [
             'identifier' => 'tickets-items@renyrenteria.com',
+            'customer_name' => 'Tickets Fan',
+            'customer_email' => 'tickets-items@renyrenteria.com',
+            'customer_phone' => '+50760000001',
+            'customer_country' => 'Panama',
             'product_keys' => ['concert', 'concert', 'listening'],
             'currency' => 'USD',
         ])
@@ -187,6 +216,10 @@ class RoyalPassCheckoutTest extends TestCase
 
         $this->postJson('/checkout/paypal/orders', [
             'identifier' => 'fan@renyrenteria.com',
+            'customer_name' => 'Reny Fan',
+            'customer_email' => 'fan@renyrenteria.com',
+            'customer_phone' => '+50760000002',
+            'customer_country' => 'Panama',
             'product_keys' => [],
             'currency' => 'USD',
         ])
@@ -219,6 +252,10 @@ class RoyalPassCheckoutTest extends TestCase
 
         $this->postJson('/checkout/paypal/orders', [
             'identifier' => 'fan@renyrenteria.com',
+            'customer_name' => 'Reny Fan',
+            'customer_email' => 'fan@renyrenteria.com',
+            'customer_phone' => '+50760000003',
+            'customer_country' => 'Panama',
             'product_keys' => ['merch'],
             'currency' => 'DOP',
         ])
@@ -796,6 +833,10 @@ class RoyalPassCheckoutTest extends TestCase
 
         $this->postJson('/checkout/paypal/orders', [
             'identifier' => 'failed@renyrenteria.com',
+            'customer_name' => 'Failed Fan',
+            'customer_email' => 'failed@renyrenteria.com',
+            'customer_phone' => '+50760000004',
+            'customer_country' => 'Panama',
             'product_keys' => ['merch'],
             'currency' => 'USD',
         ])
@@ -1163,6 +1204,10 @@ class RoyalPassCheckoutTest extends TestCase
 
         $response = $this->postJson('/checkout/paypal/orders', [
             'identifier' => $identifier,
+            'customer_name' => 'Reny Fan',
+            'customer_email' => 'fan@renyrenteria.com',
+            'customer_phone' => '+50760000005',
+            'customer_country' => 'Panama',
             'product_keys' => $productKeys,
             'currency' => 'USD',
         ]);
