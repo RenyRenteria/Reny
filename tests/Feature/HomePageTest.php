@@ -68,29 +68,50 @@ class HomePageTest extends TestCase
         $this->assertStringContainsString('class="home-royal-pass"', $html);
     }
 
-    public function test_home_mobile_navigation_shows_five_buttons_without_active_tab(): void
+    public function test_mobile_navigation_uses_shared_compact_sizing_across_public_tabs(): void
     {
-        $html = $this->get('/')
-            ->assertOk()
-            ->getContent();
+        $paths = [
+            '/' => 'mobile-bottom-nav home-bottom-nav',
+            '/music' => 'mobile-bottom-nav',
+            '/videos' => 'mobile-bottom-nav',
+            '/photos' => 'mobile-bottom-nav',
+            '/community' => 'mobile-bottom-nav',
+            '/store' => 'mobile-bottom-nav',
+        ];
 
-        $this->assertMatchesRegularExpression(
-            '/<nav class="mobile-bottom-nav home-bottom-nav" aria-label="Mobile menu">.*?<\/nav>/s',
-            $html
-        );
+        foreach ($paths as $path => $classes) {
+            $html = $this->get($path)
+                ->assertOk()
+                ->getContent();
 
-        preg_match('/<nav class="mobile-bottom-nav home-bottom-nav" aria-label="Mobile menu">(.*?)<\/nav>/s', $html, $matches);
-        $navHtml = $matches[1] ?? '';
+            $this->assertMatchesRegularExpression(
+                '/<nav class="'.preg_quote($classes, '/').'" aria-label="Mobile menu">.*?<\/nav>/s',
+                $html,
+                "Missing mobile nav on [{$path}]"
+            );
 
-        $this->assertSame(5, substr_count($navHtml, '<a '));
-        $this->assertStringNotContainsString('is-active', $navHtml);
-        $this->assertStringNotContainsString('aria-current="page"', $navHtml);
+            preg_match('/<nav class="'.preg_quote($classes, '/').'" aria-label="Mobile menu">(.*?)<\/nav>/s', $html, $matches);
+            $navHtml = $matches[1] ?? '';
+
+            $this->assertSame(5, substr_count($navHtml, '<a '), "Unexpected mobile nav item count on [{$path}]");
+
+            if ($path === '/') {
+                $this->assertStringNotContainsString('is-active', $navHtml);
+                $this->assertStringNotContainsString('aria-current="page"', $navHtml);
+            }
+        }
 
         $css = file_get_contents(resource_path('css/app.css'));
 
         $this->assertDoesNotMatchRegularExpression('/\.home-bottom-nav\s*\{[^}]*display\s*:\s*none\s*;/s', $css);
+        $this->assertDoesNotMatchRegularExpression('/\.home-bottom-nav\s*\{[^}]*height\s*:/s', $css);
+        $this->assertDoesNotMatchRegularExpression('/\.home-bottom-nav svg\s*\{/s', $css);
         $this->assertMatchesRegularExpression(
-            '/\.home-bottom-nav\s*\{[^}]*height\s*:\s*calc\(3\.1875rem \+ env\(safe-area-inset-bottom\)\);/s',
+            '/\.mobile-bottom-nav\s*\{[^}]*height\s*:\s*calc\(3\.1875rem \+ env\(safe-area-inset-bottom\)\);/s',
+            $css
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.mobile-bottom-nav svg\s*\{[^}]*width\s*:\s*1\.75rem;[^}]*height\s*:\s*1\.75rem;/s',
             $css
         );
     }
