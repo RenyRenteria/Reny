@@ -120,6 +120,7 @@
                                     data-buy-summary="{{ $checkoutProduct['summary'] }}"
                                     data-buy-image="{{ $checkoutProduct['image_url'] }}"
                                     data-buy-price-value="{{ $checkoutAmount }}"
+                                    data-auto-open-checkout="true"
                                 >{{ $checkoutProduct['cta_label'] }}</button>
 
                                 <button

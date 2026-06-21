@@ -281,17 +281,17 @@ class PublicContentController extends Controller
         return match ($kind) {
             'ticket' => [
                 'Ticket purchase is saved to the account used at checkout.',
-                'Receipt email or phone can be added inside the checkout modal.',
+                'Name, email, international phone and country are captured before PayPal approval.',
                 'Completed purchase activates Royal Pass for 1 month.',
             ],
             'subscription' => [
                 'Unlock exclusive content and community access.',
-                'Receipt email or phone can be added inside the checkout modal.',
+                'Name, email, international phone and country are captured before PayPal approval.',
                 'Access starts after PayPal confirms the purchase.',
             ],
             default => [
                 'Product access is linked to the checkout account.',
-                'Receipt email or phone can be added inside the checkout modal.',
+                'Name, email, international phone and country are captured before PayPal approval.',
                 'Completed purchase activates Royal Pass for 1 month.',
             ],
         };

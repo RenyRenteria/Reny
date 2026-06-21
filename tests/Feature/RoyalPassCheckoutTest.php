@@ -119,6 +119,33 @@ class RoyalPassCheckoutTest extends TestCase
         ]);
     }
 
+    public function test_checkout_stores_customer_capture_details_on_pending_paypal_order(): void
+    {
+        $this->fakeCreatedOrder('PAYPAL-CUSTOMER-100');
+
+        $this->postJson('/checkout/paypal/orders', [
+            'identifier' => 'customer@renyrenteria.com',
+            'customer_name' => 'Reny Fan',
+            'customer_email' => 'customer@renyrenteria.com',
+            'customer_phone' => '+50760000000',
+            'customer_country' => 'Panama',
+            'product_keys' => ['listening'],
+            'currency' => 'USD',
+        ])
+            ->assertOk()
+            ->assertJsonPath('status', 'created')
+            ->assertJsonPath('paypal_order_id', 'PAYPAL-CUSTOMER-100');
+
+        $order = Order::query()
+            ->where('provider_order_id', 'PAYPAL-CUSTOMER-100-1-listening')
+            ->firstOrFail();
+
+        $this->assertSame('Reny Fan', data_get($order->metadata, 'customer.name'));
+        $this->assertSame('customer@renyrenteria.com', data_get($order->metadata, 'customer.email'));
+        $this->assertSame('+50760000000', data_get($order->metadata, 'customer.phone'));
+        $this->assertSame('Panama', data_get($order->metadata, 'customer.country'));
+    }
+
     public function test_checkout_creates_paypal_order_with_all_ticket_line_items(): void
     {
         $this->fakeCreatedOrder('PAYPAL-TICKETS-ITEMS');

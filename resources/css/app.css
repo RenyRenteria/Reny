@@ -5755,8 +5755,18 @@ body.has-modal-open {
     margin-top: 0.875rem;
 }
 
+.store-contact-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .store-local-panel[hidden] {
     display: none;
+}
+
+.store-field {
+    display: grid;
+    min-width: 0;
+    gap: 0.375rem;
 }
 
 .store-contact-grid label,
@@ -5778,6 +5788,11 @@ body.has-modal-open {
     background: #ffffff;
     color: var(--ink);
     font: inherit;
+}
+
+.store-input[aria-invalid="true"] {
+    border-color: var(--red);
+    outline: 0.1875rem solid rgba(240, 20, 55, 0.12);
 }
 
 .store-total-row {
@@ -5992,6 +6007,7 @@ body.has-modal-open {
     .store-event-grid,
     .store-detail-grid,
     .store-certificate-meta,
+    .store-contact-grid,
     .store-payments {
         grid-template-columns: 1fr;
     }

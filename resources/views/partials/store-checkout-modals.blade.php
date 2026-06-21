@@ -27,13 +27,43 @@
                 <p class="store-checkout-note">Selected currency is a reference. PayPal checkout is charged in USD. Every completed purchase activates Royal Pass for 1 month on this account.</p>
                 <div class="store-bag-list" id="bagList"></div>
                 <div class="store-contact-grid">
-                    <div>
-                        <label for="emailField">Receipt email</label>
-                        <input class="store-input" id="emailField" type="email" value="" autocomplete="email">
+                    <div class="store-field">
+                        <label for="nameField">Name</label>
+                        <input class="store-input" id="nameField" type="text" value="" autocomplete="name" required>
                     </div>
-                    <div>
+                    <div class="store-field">
+                        <label for="emailField">Email</label>
+                        <input class="store-input" id="emailField" type="email" value="" autocomplete="email" required>
+                    </div>
+                    <div class="store-field">
                         <label for="phoneField">Phone</label>
-                        <input class="store-input" id="phoneField" type="tel" value="" autocomplete="tel">
+                        <input
+                            class="store-input"
+                            id="phoneField"
+                            type="tel"
+                            value=""
+                            autocomplete="tel"
+                            inputmode="tel"
+                            placeholder="+507 6000 0000"
+                            pattern="^\+[1-9][0-9]{6,14}$"
+                            required
+                        >
+                    </div>
+                    <div class="store-field">
+                        <label for="countryField">Country</label>
+                        <select class="store-input" id="countryField" autocomplete="country-name" required>
+                            <option value="">Select country</option>
+                            <option value="Panama">Panama</option>
+                            <option value="Dominican Republic">Dominican Republic</option>
+                            <option value="United States">United States</option>
+                            <option value="Puerto Rico">Puerto Rico</option>
+                            <option value="Mexico">Mexico</option>
+                            <option value="Colombia">Colombia</option>
+                            <option value="Costa Rica">Costa Rica</option>
+                            <option value="Venezuela">Venezuela</option>
+                            <option value="Spain">Spain</option>
+                            <option value="Other">Other</option>
+                        </select>
                     </div>
                 </div>
                 <div class="store-total-row">

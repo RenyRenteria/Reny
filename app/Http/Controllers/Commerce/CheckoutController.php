@@ -103,8 +103,8 @@ class CheckoutController extends Controller
         $products = $this->resolveProducts($validated['product_keys'], $user);
 
         $pendingReference = 'PENDING-'.Str::upper(Str::random(20));
-        $orders = DB::transaction(function () use ($currency, $pendingReference, $products, $user) {
-            return $products->map(function (array $product, int $index) use ($currency, $pendingReference, $user) {
+        $orders = DB::transaction(function () use ($currency, $pendingReference, $products, $user, $validated) {
+            return $products->map(function (array $product, int $index) use ($currency, $pendingReference, $user, $validated) {
                 return Order::create([
                     'user_id' => $user->id,
                     'provider' => 'paypal',
@@ -114,9 +114,7 @@ class CheckoutController extends Controller
                     'currency' => $currency,
                     'status' => 'pending',
                     'grants_royal_month' => true,
-                    'metadata' => [
-                        'product' => $this->products->orderSnapshot($product),
-                    ],
+                    'metadata' => $this->orderMetadata($product, $validated),
                 ]);
             });
         });
@@ -213,8 +211,8 @@ class CheckoutController extends Controller
         Auth::login($user);
         $products = $this->resolveProducts($validated['product_keys'], $user);
 
-        $orders = DB::transaction(function () use ($currency, $products, $reference, $royalPass, $user) {
-            return $products->map(function (array $product, int $index) use ($currency, $reference, $royalPass, $user) {
+        $orders = DB::transaction(function () use ($currency, $products, $reference, $royalPass, $user, $validated) {
+            return $products->map(function (array $product, int $index) use ($currency, $reference, $royalPass, $user, $validated) {
                 $providerOrderId = $this->providerOrderId("LOCAL-{$reference}", $product['key'], $index);
                 $order = Order::create([
                     'user_id' => $user->id,
@@ -225,9 +223,7 @@ class CheckoutController extends Controller
                     'currency' => $currency,
                     'status' => 'pending',
                     'grants_royal_month' => false,
-                    'metadata' => [
-                        'product' => $this->products->orderSnapshot($product),
-                    ],
+                    'metadata' => $this->orderMetadata($product, $validated),
                 ]);
 
                 $royalPass->log($user, 'purchase_pending', 'order', $providerOrderId, [
@@ -251,7 +247,7 @@ class CheckoutController extends Controller
     }
 
     /**
-     * @return array{identifier: string, product_keys: array<int, string>, currency?: string, paypal_order_id?: string, local_reference?: string}
+     * @return array{identifier: string, product_keys: array<int, string>, currency?: string, paypal_order_id?: string, local_reference?: string, customer_name?: string, customer_email?: string, customer_phone?: string, customer_country?: string}
      */
     private function validateCheckout(
         Request $request,
@@ -272,6 +268,10 @@ class CheckoutController extends Controller
             'product_keys' => ['required', 'array', 'min:1'],
             'product_keys.*' => ['required', 'string', 'max:120', 'regex:/^[A-Za-z0-9._-]+$/'],
             'currency' => ['nullable', 'string', 'size:3'],
+            'customer_name' => ['sometimes', 'string', 'max:120'],
+            'customer_email' => ['sometimes', 'email', 'max:255'],
+            'customer_phone' => ['sometimes', 'string', 'max:32', 'regex:/^\+[1-9][0-9]{6,14}$/'],
+            'customer_country' => ['sometimes', 'string', 'max:80'],
             'paypal_order_id' => [$requirePaypalOrder ? 'required' : 'sometimes', 'string', 'max:255'],
             'local_reference' => [
                 $requireLocalReference ? 'required' : 'sometimes',
@@ -285,6 +285,31 @@ class CheckoutController extends Controller
                 },
             ],
         ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $product
+     * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
+     */
+    private function orderMetadata(array $product, array $validated): array
+    {
+        $metadata = [
+            'product' => $this->products->orderSnapshot($product),
+        ];
+
+        $customer = array_filter([
+            'name' => $validated['customer_name'] ?? null,
+            'email' => $validated['customer_email'] ?? null,
+            'phone' => $validated['customer_phone'] ?? null,
+            'country' => $validated['customer_country'] ?? null,
+        ], fn (mixed $value): bool => filled($value));
+
+        if ($customer !== []) {
+            $metadata['customer'] = $customer;
+        }
+
+        return $metadata;
     }
 
     /**
