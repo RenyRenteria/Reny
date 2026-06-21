@@ -1442,6 +1442,7 @@ if (storeShell) {
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     let activePaymentMethod = 'paypal';
     let paypalButtonsRendered = false;
+    let paypalButtonsRenderingPromise = null;
     let paypalSdkPromise = null;
     let activePayPalOrderId = null;
 
@@ -1566,6 +1567,16 @@ if (storeShell) {
         if (paymentStatus) {
             paymentStatus.textContent = message;
         }
+    };
+
+    const setCheckoutRetryButton = ({ visible = false, disabled = false, label = 'Retry PayPal checkout' } = {}) => {
+        if (!completePurchaseButton) {
+            return;
+        }
+
+        completePurchaseButton.hidden = !visible;
+        completePurchaseButton.disabled = disabled;
+        completePurchaseButton.textContent = label;
     };
 
     const checkoutError = (message, checkoutState = 'validation_failed', reason = null) => Object.assign(new Error(message), {
@@ -1767,75 +1778,88 @@ if (storeShell) {
             return;
         }
 
-        const clientId = paypalButtons.dataset.paypalClientId;
-
-        if (!clientId) {
-            trackPaymentState('paypal', 'unavailable', {
-                reason: 'paypal_not_configured',
-            });
-            throw checkoutError('PayPal is not configured.', 'unavailable', 'paypal_not_configured');
+        if (paypalButtonsRenderingPromise) {
+            await paypalButtonsRenderingPromise;
+            return;
         }
 
-        setPaymentStatus('Loading PayPal checkout...');
-        const paypal = await loadPayPalSdk(clientId);
-        paypalButtons.replaceChildren();
+        paypalButtonsRenderingPromise = (async () => {
+            const clientId = paypalButtons.dataset.paypalClientId;
 
-        await paypal.Buttons({
-            style: {
-                layout: 'vertical',
-                color: 'gold',
-                shape: 'rect',
-                label: 'paypal',
-            },
-            createOrder: async () => {
-                const payload = checkoutPayload();
-                setPaymentStatus('Creating PayPal order...');
-                trackPaymentState('paypal', 'payment_started', {
-                    item_count: payload.product_keys.length,
-                    currency: payload.currency,
+            if (!clientId) {
+                trackPaymentState('paypal', 'unavailable', {
+                    reason: 'paypal_not_configured',
                 });
-                const order = await postCheckoutJson(paypalButtons.dataset.createOrderEndpoint, payload);
-                activePayPalOrderId = order.paypal_order_id;
-                setPaymentStatus('Approve payment in PayPal.');
+                throw checkoutError('PayPal is not configured.', 'unavailable', 'paypal_not_configured');
+            }
 
-                return order.paypal_order_id;
-            },
-            onApprove: async (data) => {
-                const payload = checkoutPayload();
-                const paypalOrderId = data.orderID || activePayPalOrderId;
-                setPaymentStatus('Capturing approved PayPal payment...');
-                const capture = await postCheckoutJson(paypalButtons.dataset.captureEndpoint, {
-                    ...payload,
-                    paypal_order_id: paypalOrderId,
-                });
+            setPaymentStatus('Loading PayPal checkout...');
+            const paypal = await loadPayPalSdk(clientId);
+            paypalButtons.replaceChildren();
 
-                activePayPalOrderId = null;
-                completeApprovedCheckout(capture);
-                trackPaymentState('paypal', 'payment_success', {
-                    paypal_order_id: paypalOrderId,
-                });
-            },
-            onCancel: async () => {
-                await cancelPendingPayPalOrder().catch((error) => console.warn(error));
-                setPaymentStatus('PayPal checkout canceled. No purchase was recorded.');
-                showStoreToast('PayPal checkout canceled.');
-                trackPaymentState('paypal', 'payment_failed', {
-                    reason: 'canceled',
-                });
-            },
-            onError: (error) => {
-                console.error(error);
-                cancelPendingPayPalOrder().catch((cancelError) => console.warn(cancelError));
-                setPaymentStatus(error.userMessage || 'PayPal checkout failed. No purchase was recorded.');
-                showStoreToast(error.userMessage || 'PayPal checkout failed.');
-                trackPaymentState('paypal', error.checkoutState || 'payment_failed', {
-                    reason: error.userMessage || error.message || 'paypal_error',
-                });
-            },
-        }).render(paypalButtons);
+            await paypal.Buttons({
+                style: {
+                    layout: 'vertical',
+                    color: 'gold',
+                    shape: 'rect',
+                    label: 'paypal',
+                },
+                createOrder: async () => {
+                    const payload = checkoutPayload();
+                    setPaymentStatus('Creating PayPal order...');
+                    trackPaymentState('paypal', 'payment_started', {
+                        item_count: payload.product_keys.length,
+                        currency: payload.currency,
+                    });
+                    const order = await postCheckoutJson(paypalButtons.dataset.createOrderEndpoint, payload);
+                    activePayPalOrderId = order.paypal_order_id;
+                    setPaymentStatus('Approve payment in PayPal.');
 
-        paypalButtonsRendered = true;
-        setPaymentStatus('Use the PayPal button to approve payment.');
+                    return order.paypal_order_id;
+                },
+                onApprove: async (data) => {
+                    const payload = checkoutPayload();
+                    const paypalOrderId = data.orderID || activePayPalOrderId;
+                    setPaymentStatus('Capturing approved PayPal payment...');
+                    const capture = await postCheckoutJson(paypalButtons.dataset.captureEndpoint, {
+                        ...payload,
+                        paypal_order_id: paypalOrderId,
+                    });
+
+                    activePayPalOrderId = null;
+                    completeApprovedCheckout(capture);
+                    trackPaymentState('paypal', 'payment_success', {
+                        paypal_order_id: paypalOrderId,
+                    });
+                },
+                onCancel: async () => {
+                    await cancelPendingPayPalOrder().catch((error) => console.warn(error));
+                    setPaymentStatus('PayPal checkout canceled. No purchase was recorded.');
+                    showStoreToast('PayPal checkout canceled.');
+                    trackPaymentState('paypal', 'payment_failed', {
+                        reason: 'canceled',
+                    });
+                },
+                onError: (error) => {
+                    console.error(error);
+                    cancelPendingPayPalOrder().catch((cancelError) => console.warn(cancelError));
+                    setPaymentStatus(error.userMessage || 'PayPal checkout failed. No purchase was recorded.');
+                    showStoreToast(error.userMessage || 'PayPal checkout failed.');
+                    trackPaymentState('paypal', error.checkoutState || 'payment_failed', {
+                        reason: error.userMessage || error.message || 'paypal_error',
+                    });
+                },
+            }).render(paypalButtons);
+
+            paypalButtonsRendered = true;
+            setPaymentStatus('Use the PayPal button to approve payment.');
+        })();
+
+        try {
+            await paypalButtonsRenderingPromise;
+        } finally {
+            paypalButtonsRenderingPromise = null;
+        }
     };
 
     const updateStorePrices = () => {
@@ -1922,25 +1946,26 @@ if (storeShell) {
         }
 
         if (!hasItems) {
-            completePurchaseButton.disabled = true;
-            completePurchaseButton.textContent = 'Add item to checkout';
+            setCheckoutRetryButton();
             if (!preserveStatus) {
-                setPaymentStatus('Add a product to enable PayPal checkout.');
+                setPaymentStatus('Add a product to show PayPal checkout.');
             }
             return;
         }
 
         if (activePaymentMethod === 'paypal') {
-            completePurchaseButton.disabled = false;
-            completePurchaseButton.textContent = 'Load PayPal checkout';
+            setCheckoutRetryButton();
             if (!preserveStatus) {
                 setPaymentStatus('PayPal checkout is charged in USD.');
             }
             return;
         }
 
-        completePurchaseButton.disabled = true;
-        completePurchaseButton.textContent = `${paymentMethodLabel(activePaymentMethod)} unavailable`;
+        setCheckoutRetryButton({
+            visible: true,
+            disabled: true,
+            label: `${paymentMethodLabel(activePaymentMethod)} unavailable`,
+        });
         if (!preserveStatus) {
             setPaymentStatus(`${paymentMethodLabel(activePaymentMethod)} checkout needs a real provider before purchases can complete.`);
         }
@@ -2011,13 +2036,24 @@ if (storeShell) {
             const item = document.createElement('div');
             item.className = 'store-bag-item';
 
-            const name = document.createElement('span');
+            const copy = document.createElement('span');
+            copy.className = 'store-bag-item-copy';
+
+            const name = document.createElement('strong');
             name.textContent = product.name;
+
+            const detail = document.createElement('span');
+            detail.textContent = [product.type, product.summary].filter(Boolean).join(' - ');
 
             const price = document.createElement('strong');
             price.textContent = money(prices[priceKey] || 0, priceKey === 'royal' ? '/mo' : '');
 
-            item.append(name, price);
+            copy.append(name);
+            if (detail.textContent) {
+                copy.append(detail);
+            }
+
+            item.append(copy, price);
             bagList.append(item);
         });
 
@@ -2025,20 +2061,67 @@ if (storeShell) {
         refreshCheckoutControls();
     };
 
-    const addToBag = (key) => {
+    const addToBag = (key, { toast = true, replace = false } = {}) => {
         if (!products[key]) {
             return;
         }
 
-        bag.push(key);
+        bag = replace ? [key] : [...bag, key];
         renderBag();
-        showStoreToast(`${products[key].name} added.`);
+        if (toast) {
+            showStoreToast(`${products[key].name} added.`);
+        }
         trackEvent('store_product_added', {
             item_type: products[key].type || 'product',
             item_id: key,
             item_label: products[key].name,
             result: 'added',
         });
+    };
+
+    const initializePayPalCheckout = async ({ showReadyToast = false } = {}) => {
+        if (activePaymentMethod !== 'paypal') {
+            setPaymentStatus(`${paymentMethodLabel(activePaymentMethod)} checkout needs a real provider before purchases can complete.`);
+            showStoreToast(`${paymentMethodLabel(activePaymentMethod)} is not available yet.`);
+            trackPaymentState(activePaymentMethod, 'unavailable', {
+                reason: unavailableReason(activePaymentMethod),
+            });
+            return;
+        }
+
+        setCheckoutRetryButton();
+
+        try {
+            await renderPayPalButtons();
+            refreshCheckoutControls({ preserveStatus: true });
+            if (showReadyToast) {
+                showStoreToast('Use PayPal to approve payment.');
+            }
+        } catch (error) {
+            setPaymentStatus(error.userMessage || 'PayPal checkout is unavailable.');
+            showStoreToast(error.userMessage || 'PayPal checkout is unavailable.');
+            trackPaymentState('paypal', error.checkoutState || 'payment_failed', {
+                reason: error.userMessage || error.message || 'checkout_unavailable',
+            });
+            setCheckoutRetryButton({ visible: true });
+        }
+    };
+
+    const openCheckoutModal = (key, { source = 'buy_button', showReadyToast = false } = {}) => {
+        if (!products[key]) {
+            return;
+        }
+
+        addToBag(key, { replace: true, toast: false });
+        openStoreLayer('bagLayer');
+        trackEvent('store_checkout_started', {
+            item_type: 'checkout',
+            item_id: key,
+            item_count: bag.length,
+            source,
+            result: 'opened',
+        });
+        initializePayPalCheckout({ showReadyToast });
     };
 
     const openBuyUrl = (button) => {
@@ -2162,8 +2245,7 @@ if (storeShell) {
                 return;
             }
 
-            addToBag(button.dataset.buy);
-            openStoreLayer('bagLayer');
+            openCheckoutModal(button.dataset.buy, { showReadyToast: true });
         });
     });
 
@@ -2294,9 +2376,11 @@ if (storeShell) {
             return;
         }
 
-        addToBag(activeProduct);
         closeStoreLayer('detailLayer');
-        openStoreLayer('bagLayer');
+        openCheckoutModal(activeProduct, {
+            source: 'product_detail',
+            showReadyToast: true,
+        });
     });
 
     document.getElementById('openBag')?.addEventListener('click', () => {
@@ -2319,51 +2403,25 @@ if (storeShell) {
         const button = event.currentTarget;
 
         if (activePaymentMethod !== 'paypal') {
-            setPaymentStatus(`${paymentMethodLabel(activePaymentMethod)} checkout needs a real provider before purchases can complete.`);
-            showStoreToast(`${paymentMethodLabel(activePaymentMethod)} is not available yet.`);
-            trackPaymentState(activePaymentMethod, 'unavailable', {
-                reason: unavailableReason(activePaymentMethod),
-            });
+            initializePayPalCheckout({ showReadyToast: true });
             return;
         }
 
         button.disabled = true;
         button.textContent = 'Loading PayPal...';
-
-        try {
-            const payload = checkoutPayload();
-            trackPaymentState('paypal', 'payment_started', {
-                item_count: payload.product_keys.length,
-                currency: payload.currency,
-            });
-            await renderPayPalButtons();
-            showStoreToast('Use PayPal to approve payment.');
-        } catch (error) {
-            setPaymentStatus(error.userMessage || 'PayPal checkout is unavailable.');
-            showStoreToast(error.userMessage || 'PayPal checkout is unavailable.');
-            trackPaymentState('paypal', error.checkoutState || 'payment_failed', {
-                reason: error.userMessage || error.message || 'checkout_unavailable',
-            });
-        } finally {
-            refreshCheckoutControls({ preserveStatus: true });
-        }
+        initializePayPalCheckout({ showReadyToast: true });
     });
 
     const openRequestedCheckout = () => {
-        const requestedProduct = new URLSearchParams(window.location.search).get('buy');
+        const queryProduct = new URLSearchParams(window.location.search).get('buy');
+        const requestedProduct = queryProduct || document.body.dataset.checkoutProduct;
 
         if (!requestedProduct || !products[requestedProduct]) {
             return;
         }
 
-        addToBag(requestedProduct);
-        openStoreLayer('bagLayer');
-        trackEvent('store_checkout_started', {
-            item_type: 'checkout',
-            item_id: requestedProduct,
-            item_count: bag.length,
-            source: 'query_buy',
-            result: 'opened',
+        openCheckoutModal(requestedProduct, {
+            source: queryProduct ? 'query_buy' : 'checkout_page',
         });
     };
 

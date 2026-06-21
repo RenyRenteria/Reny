@@ -23,7 +23,7 @@
         </div>
         <div class="store-checkout-grid">
             <div class="store-checkout-panel">
-                <h3>Step 1 - Bag</h3>
+                <h3>Product</h3>
                 <p class="store-checkout-note">Selected currency is a reference. PayPal checkout is charged in USD. Every completed purchase activates Royal Pass for 1 month on this account.</p>
                 <div class="store-bag-list" id="bagList"></div>
                 <div class="store-contact-grid">
@@ -42,7 +42,7 @@
                 </div>
             </div>
             <div class="store-checkout-panel" id="checkoutPanel">
-                <h3>Step 2 - Pay</h3>
+                <h3>PayPal checkout</h3>
                 <div class="store-payments" role="radiogroup" aria-label="Payment method">
                     <button class="is-active" type="button" data-payment-method="paypal" data-provider-available="true" role="radio" aria-checked="true">PayPal</button>
                 </div>
@@ -54,8 +54,8 @@
                     data-cancel-order-endpoint="{{ route('checkout.paypal.orders.cancel') }}"
                     data-capture-endpoint="{{ route('checkout.paypal') }}"
                 ></div>
-                <p class="store-checkout-note" id="paymentStatus">Add a product to enable PayPal checkout.</p>
-                <button class="store-button" id="completePurchase" type="button">Load PayPal checkout</button>
+                <p class="store-checkout-note" id="paymentStatus">Add a product to show PayPal checkout.</p>
+                <button class="store-button" id="completePurchase" type="button" hidden>Retry PayPal checkout</button>
             </div>
         </div>
     </div>

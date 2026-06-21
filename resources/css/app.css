@@ -5707,8 +5707,30 @@ body.has-modal-open {
 
 .store-bag-item {
     display: flex;
+    align-items: flex-start;
     justify-content: space-between;
     gap: 1rem;
+}
+
+.store-bag-item-copy {
+    display: grid;
+    min-width: 0;
+    gap: 0.25rem;
+}
+
+.store-bag-item-copy strong {
+    font-size: 0.9375rem;
+    font-weight: 500;
+}
+
+.store-bag-item-copy span {
+    color: var(--muted);
+    font-size: 0.75rem;
+    line-height: 1.35;
+}
+
+.store-bag-item > strong {
+    flex: 0 0 auto;
 }
 
 .store-contact-grid,
