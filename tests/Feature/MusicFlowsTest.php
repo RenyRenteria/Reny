@@ -105,7 +105,7 @@ class MusicFlowsTest extends TestCase
 
     public function test_music_view_all_pages_and_empty_state_render(): void
     {
-        $deluxeUrl = route('store', ['buy' => 'deluxe']);
+        $deluxeUrl = route('store.checkout', ['product' => 'deluxe']);
         $this->publishedMusic(ContentType::MusicalAlbum, 'Full Album One', [
             'tracklist' => "Intro\nFinale",
             'narrative' => 'Album narrative',

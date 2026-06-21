@@ -52,6 +52,9 @@ Route::post('/community/clubs/{club}/messages', [CommunityInteractionController:
     ->where('club', '[A-Za-z0-9._-]+')
     ->name('community.clubs.messages.store');
 Route::get('/store', [PublicContentController::class, 'store'])->name('store');
+Route::get('/store/checkout/{product}', [PublicContentController::class, 'checkout'])
+    ->where('product', '[A-Za-z0-9._-]+')
+    ->name('store.checkout');
 Route::post('/analytics/events', [AnalyticsEventController::class, 'store'])
     ->middleware('throttle:analytics-events')
     ->name('analytics.events.store');

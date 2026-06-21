@@ -39,6 +39,9 @@ class StorePageTest extends TestCase
         $response->assertSee('data-buy="listening"', false);
         $response->assertSee('data-buy="deluxe"', false);
         $response->assertSee('data-buy="merch"', false);
+        $response->assertSee('data-buy-url="'.route('store.checkout', ['product' => 'listening']).'"', false);
+        $response->assertSee('data-buy-url="'.route('store.checkout', ['product' => 'deluxe']).'"', false);
+        $response->assertSee('data-buy-url="'.route('store.checkout', ['product' => 'merch']).'"', false);
         $response->assertDontSee('data-buy="concert"', false);
         $response->assertSee('class="tab is-active"', false);
         $response->assertSee('href="'.url('/store').'"', false);
@@ -74,6 +77,30 @@ class StorePageTest extends TestCase
             ->assertDontSee('class="store-royal-pass"', false)
             ->assertDontSee('BUY HERE')
             ->assertSee('Reny Renteria en Concierto');
+    }
+
+    public function test_checkout_screen_renders_product_details_and_modal_hooks(): void
+    {
+        $response = $this->get(route('store.checkout', ['product' => 'listening']));
+
+        $response
+            ->assertOk()
+            ->assertSee('Festival de la Rosa Dorada')
+            ->assertSee('Rock &amp; Folk Pty, Ciudad de Panama', false)
+            ->assertSee('$15')
+            ->assertSee('data-buy="listening"', false)
+            ->assertSee('data-buy-price-value="15.00"', false)
+            ->assertSee('data-copy-url="'.route('store.checkout', ['product' => 'listening']).'"', false)
+            ->assertSee('id="bagLayer"', false)
+            ->assertSee('data-payment-method="paypal"', false)
+            ->assertSee('data-create-order-endpoint="'.route('checkout.paypal.orders').'"', false)
+            ->assertSee('GET TICKETS');
+    }
+
+    public function test_checkout_screen_rejects_unknown_product(): void
+    {
+        $this->get('/store/checkout/not-real')
+            ->assertNotFound();
     }
 
     public function test_store_event_images_use_matching_ratio_rules(): void
