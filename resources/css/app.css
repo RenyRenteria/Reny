@@ -3073,7 +3073,7 @@ button {
     }
 
     .home-bottom-nav {
-        height: calc(2rem + env(safe-area-inset-bottom));
+        height: calc(3.1875rem + env(safe-area-inset-bottom));
     }
 
     .home-bottom-nav svg {

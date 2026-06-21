@@ -90,7 +90,7 @@ class HomePageTest extends TestCase
 
         $this->assertDoesNotMatchRegularExpression('/\.home-bottom-nav\s*\{[^}]*display\s*:\s*none\s*;/s', $css);
         $this->assertMatchesRegularExpression(
-            '/\.home-bottom-nav\s*\{[^}]*height\s*:\s*calc\(2rem \+ env\(safe-area-inset-bottom\)\);/s',
+            '/\.home-bottom-nav\s*\{[^}]*height\s*:\s*calc\(3\.1875rem \+ env\(safe-area-inset-bottom\)\);/s',
             $css
         );
     }
