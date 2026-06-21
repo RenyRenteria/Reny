@@ -94,6 +94,7 @@ class StorePageTest extends TestCase
             ->assertSee('images/store/rosa-dorada.png')
             ->assertSee('data-buy="listening"', false)
             ->assertSee('data-buy-price-value="15.00"', false)
+            ->assertSee('data-buy-url="'.route('store.checkout', ['product' => 'listening']).'"', false)
             ->assertSee('data-auto-open-checkout="true"', false)
             ->assertSee('data-copy-url="'.route('store.checkout', ['product' => 'listening']).'"', false)
             ->assertSee('id="bagLayer"', false)
@@ -115,7 +116,8 @@ class StorePageTest extends TestCase
     {
         $js = file_get_contents(resource_path('js/app.js'));
 
-        $this->assertStringContainsString("openCheckoutModal(button.dataset.buy, { source: 'buy_button' })", $js);
+        $this->assertStringContainsString('startCheckoutFromBuyButton(button);', $js);
+        $this->assertStringContainsString("startCheckoutFromBuyButton(button, { source: 'shareable_checkout' });", $js);
         $this->assertStringContainsString("openCheckoutModal(autoOpenButton.dataset.buy, { source: 'dedicated_checkout_url' })", $js);
         $this->assertStringContainsString('initializeVisiblePayPalCheckout();', $js);
         $this->assertStringContainsString('customer_name', $js);
