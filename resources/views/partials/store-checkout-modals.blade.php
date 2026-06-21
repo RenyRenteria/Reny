@@ -9,7 +9,7 @@
             <div class="store-detail-copy">
                 <p id="detailText"></p>
                 <div class="store-detail-grid" id="detailGrid"></div>
-                <button class="store-button" id="detailBuy" type="button">Add to bag</button>
+                <button class="store-button" id="detailBuy" type="button">Checkout with PayPal</button>
             </div>
         </div>
     </div>
@@ -42,7 +42,7 @@
                 </div>
             </div>
             <div class="store-checkout-panel" id="checkoutPanel">
-                <h3>PayPal</h3>
+                <h3>PayPal Checkout</h3>
                 <div class="store-payments" role="radiogroup" aria-label="Payment method">
                     <button class="is-active" type="button" data-payment-method="paypal" data-provider-available="true" role="radio" aria-checked="true">PayPal</button>
                 </div>
@@ -55,7 +55,6 @@
                     data-capture-endpoint="{{ route('checkout.paypal') }}"
                 ></div>
                 <p class="store-checkout-note" id="paymentStatus">Add a product to enable PayPal checkout.</p>
-                <button class="store-button" id="completePurchase" type="button">Load PayPal checkout</button>
             </div>
         </div>
     </div>

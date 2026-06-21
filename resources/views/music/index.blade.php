@@ -110,9 +110,9 @@
                                             class="album-deluxe-button"
                                             type="button"
                                             data-buy="deluxe"
-                                            data-buy-name="Deluxe - {{ $album['title'] }}"
+                                            data-buy-name="Deluxe Digital Album"
                                             data-buy-type="Album"
-                                            data-buy-summary="{{ $album['title'] }} deluxe album checkout"
+                                            data-buy-summary="Unlock {{ $album['title'] }} and the deluxe music package."
                                             data-buy-url="{{ $deluxeUrl }}"
                                             aria-label="Buy Deluxe - {{ $album['title'] }}"
                                         >Buy Deluxe</button>
@@ -191,7 +191,7 @@
             </main>
         </div>
 
-        @include('partials.music-player-modal')
         @include('partials.store-checkout-modals')
+        @include('partials.music-player-modal')
     </body>
 </html>

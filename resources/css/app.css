@@ -5710,8 +5710,43 @@ body.has-modal-open {
 
 .store-bag-item {
     display: flex;
+    align-items: flex-start;
     justify-content: space-between;
     gap: 1rem;
+}
+
+.store-bag-copy {
+    display: grid;
+    min-width: 0;
+    gap: 0.25rem;
+}
+
+.store-bag-copy strong {
+    color: var(--ink);
+    font-size: 0.9375rem;
+    font-weight: 500;
+    line-height: 1.2;
+}
+
+.store-bag-copy span {
+    color: var(--muted);
+    font-size: 0.625rem;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    line-height: 1.1;
+    text-transform: uppercase;
+}
+
+.store-bag-copy p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.8125rem;
+    line-height: 1.35;
+}
+
+.store-bag-price {
+    flex: 0 0 auto;
+    white-space: nowrap;
 }
 
 .store-contact-grid,
@@ -5783,13 +5818,6 @@ body.has-modal-open {
 .store-paypal-buttons {
     min-height: 3.25rem;
     margin-top: 1rem;
-}
-
-#completePurchase {
-    width: 100%;
-    margin-top: 1rem;
-    background: var(--ink);
-    color: #ffffff;
 }
 
 .store-certificate-card {
