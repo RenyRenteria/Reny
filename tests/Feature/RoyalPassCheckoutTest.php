@@ -1067,10 +1067,12 @@ class RoyalPassCheckoutTest extends TestCase
             ->assertOk()
             ->assertSee('Every completed purchase activates Royal Pass for 1 month')
             ->assertSee('PayPal checkout is charged in USD')
-            ->assertSee('Load PayPal checkout')
+            ->assertSee('PayPal Checkout')
+            ->assertSee('id="paypalButtons"', false)
             ->assertSee(route('checkout.paypal.orders'))
             ->assertSee(route('checkout.paypal.orders.cancel'))
             ->assertSee(route('checkout.paypal'))
+            ->assertDontSee('Load PayPal checkout')
             ->assertDontSee('Submit a bank/Yappy receipt')
             ->assertDontSee(route('checkout.local'));
     }
