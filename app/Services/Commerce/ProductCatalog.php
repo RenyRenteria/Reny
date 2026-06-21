@@ -4,6 +4,7 @@ namespace App\Services\Commerce;
 
 use App\Enums\ContentType;
 use App\Models\EditorialContent;
+use App\Models\MediaAsset;
 use App\Models\User;
 use Illuminate\Support\Collection;
 
@@ -83,6 +84,7 @@ class ProductCatalog
         }
 
         $content = EditorialContent::query()
+            ->with(['mediaAssets'])
             ->visibleFor($user)
             ->whereIn('type', [
                 ContentType::Product->value,
@@ -177,6 +179,8 @@ class ProductCatalog
             'unlock_type' => $this->unlockType($content),
             'source_type' => $this->sourceType($content),
             'source_id' => (string) $content->id,
+            'image_url' => $this->contentImageUrl($content),
+            'image_alt' => $this->contentImageAlt($content),
             'event' => $this->event($content),
         ];
     }
@@ -236,6 +240,36 @@ class ProductCatalog
             ContentType::Product, ContentType::Drop, ContentType::Exclusive => 'editorial_content',
             default => 'order',
         };
+    }
+
+    private function contentImageUrl(EditorialContent $content): ?string
+    {
+        return $this->contentImageAsset($content)?->publicUrl();
+    }
+
+    private function contentImageAlt(EditorialContent $content): string
+    {
+        $asset = $this->contentImageAsset($content);
+
+        return (string) ($asset?->alt_text ?: $content->title);
+    }
+
+    private function contentImageAsset(EditorialContent $content): ?MediaAsset
+    {
+        $assetId = collect(['image_asset_id', 'cover_asset_id'])
+            ->map(fn (string $key): mixed => data_get($content->metadata, $key))
+            ->filter()
+            ->first();
+
+        $asset = $content->mediaAssets
+            ->when($assetId, fn (Collection $assets): Collection => $assets->where('id', (int) $assetId))
+            ->first();
+
+        if (! $asset instanceof MediaAsset) {
+            $asset = $content->mediaAssets->first();
+        }
+
+        return $asset;
     }
 
     /**

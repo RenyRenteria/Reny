@@ -154,6 +154,7 @@
                                 data-buy-name="{{ $royalPass['emphasis'] ?? 'Royal Pass' }}"
                                 data-buy-type="Membership"
                                 data-buy-summary="Monthly membership with exclusive content, community and more."
+                                data-buy-image="{{ asset('images/store/crown-collection.png') }}"
                                 data-buy-url="{{ route('store.checkout', ['product' => $royalPass['product_key'] ?? 'royal']) }}"
                             >
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
@@ -254,6 +255,7 @@
                                                 data-buy-name="{{ $event['title'] }}"
                                                 data-buy-type="Event"
                                                 data-buy-summary="{{ str_replace("\n", ' - ', $event['description'] ?? '') }}"
+                                                data-buy-image="{{ $slotImage($event) }}"
                                                 data-buy-url="{{ route('store.checkout', ['product' => $eventKey]) }}"
                                             >{{ $event['cta_label'] ?? 'GET TICKETS' }}</button>
                                         @endif
@@ -310,6 +312,7 @@
                                         data-buy-name="{{ $albumTitle }}"
                                         data-buy-type="Album"
                                         data-buy-summary="{{ $album['summary'] ?? 'Deluxe album checkout' }}"
+                                        data-buy-image="{{ $albumImage }}"
                                         data-buy-url="{{ route('store.checkout', ['product' => $albumProductKey]) }}"
                                     >Buy Deluxe</button>
                                 </div>

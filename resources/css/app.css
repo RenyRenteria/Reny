@@ -5715,6 +5715,16 @@ body.has-modal-open {
     gap: 1rem;
 }
 
+.store-bag-image {
+    flex: 0 0 4.25rem;
+    width: 4.25rem;
+    aspect-ratio: 245 / 301;
+    border: 1px solid var(--line);
+    border-radius: 0.375rem;
+    background: #ffffff;
+    object-fit: contain;
+}
+
 .store-bag-copy {
     display: grid;
     min-width: 0;
@@ -6110,6 +6120,11 @@ body.has-modal-open {
 
     .checkout-detail-grid {
         grid-template-columns: 1fr;
+    }
+
+    .store-bag-image {
+        flex-basis: 3.75rem;
+        width: 3.75rem;
     }
 
     .store-cms-slot-grid {
