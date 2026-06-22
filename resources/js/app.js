@@ -531,11 +531,28 @@ const formatMediaTime = (seconds) => {
     return `${minutes}:${remaining}`;
 };
 
+const musicPlayableTitleFromButton = (button) => {
+    const title = button.dataset.analyticsLabel
+        || button.dataset.name
+        || button.closest('[data-title]')?.dataset.title
+        || analyticsText(button.closest('article')?.querySelector('h4, h3, h2, strong'));
+
+    if (title) {
+        return String(title).trim() || 'Music item';
+    }
+
+    const fallback = elementAnalyticsLabel(button);
+
+    return String(fallback || 'Music item').replace(/^play\s+/i, '').trim() || 'Music item';
+};
+
+const isPlayableMusicTrack = (track) => Boolean(track?.audio_url || track?.play_url);
+
 const musicTrackFromButton = (button) => ({
     button,
-    key: button.dataset.playUrl || button.dataset.analyticsId || elementAnalyticsLabel(button),
+    key: button.dataset.playUrl || button.dataset.analyticsId || musicPlayableTitleFromButton(button),
     id: button.dataset.analyticsId || '',
-    title: elementAnalyticsLabel(button),
+    title: musicPlayableTitleFromButton(button),
     play_url: button.dataset.playUrl || '',
     detail_url: button.dataset.detailUrl || window.location.href,
     image_url: button.dataset.imageUrl || '',
@@ -614,7 +631,7 @@ const setMusicQueue = (tracks = [], currentTrack = null) => {
     const seen = new Set();
     musicQueue = tracks
         .map((track, index) => normalizeMusicTrack(track, index))
-        .filter((track) => track.audio_url || track.play_url || track.state)
+        .filter((track) => isPlayableMusicTrack(track))
         .filter((track) => {
             if (seen.has(track.key)) {
                 return false;
@@ -636,7 +653,7 @@ const setMusicQueue = (tracks = [], currentTrack = null) => {
 
 const buildMusicQueueFromPage = (currentButton = null) => {
     const buttons = Array.from(document.querySelectorAll('[data-music-play]'))
-        .filter((button) => button.dataset.playUrl || button.dataset.accessState);
+        .filter((button) => button.dataset.playUrl);
 
     if (!buttons.length) {
         return;
@@ -780,7 +797,7 @@ const setMusicLoadingState = (button, options = {}) => {
         buildMusicQueueFromPage(button);
     }
 
-    musicPlayerTitle.textContent = elementAnalyticsLabel(button);
+    musicPlayerTitle.textContent = musicPlayableTitleFromButton(button);
     musicPlayerState.hidden = false;
     musicPlayerState.textContent = 'Loading';
     musicPlayerMessage.hidden = false;
