@@ -5,7 +5,9 @@ namespace Tests\Feature;
 use App\Enums\ContentType;
 use App\Enums\EditorialStatus;
 use App\Models\EditorialContent;
+use App\Models\SitePageSetting;
 use App\Models\User;
+use App\Services\StorefrontSettingsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
@@ -148,6 +150,45 @@ class HomePageTest extends TestCase
             ->assertDontSee('class="home-royal-pass"', false);
     }
 
+    public function test_home_prefers_current_storefront_events_over_legacy_cached_events(): void
+    {
+        SitePageSetting::create([
+            'page' => StorefrontSettingsService::PAGE,
+            'section' => StorefrontSettingsService::SECTION,
+            'status' => SitePageSetting::STATUS_PUBLISHED,
+            'payload' => [
+                'slots' => [
+                    'event_primary' => [
+                        'title' => 'Current Published Event',
+                        'description' => "Current venue\nNov 15 - 8:00 PM",
+                        'cta_label' => 'CURRENT CTA',
+                        'product_key' => 'current-published-event',
+                    ],
+                ],
+            ],
+            'published_at' => now(),
+        ]);
+
+        $this->view('home', [
+            'publicCms' => [
+                'events' => [
+                    [
+                        'title' => 'Stale Cached Event',
+                        'description' => "Old venue\nOct 1 - 7:00 PM",
+                        'cta_label' => 'OLD CTA',
+                        'product_key' => 'stale-cached-event',
+                    ],
+                ],
+            ],
+            'rsvpTickets' => [],
+        ])
+            ->assertSee('Current Published Event')
+            ->assertSee('CURRENT CTA')
+            ->assertSee('data-rsvp="current-published-event"', false)
+            ->assertDontSee('Stale Cached Event')
+            ->assertDontSee('OLD CTA');
+    }
+
     public function test_home_payload_is_available_from_public_cms_endpoint(): void
     {
         $this->publishedContent(ContentType::Song, [
@@ -159,6 +200,7 @@ class HomePageTest extends TestCase
             ->assertJsonPath('_cms_source', 'cms')
             ->assertJsonPath('singles.0.title', 'Payload Single')
             ->assertJsonPath('events.0.title', 'Reny Renteria en Concierto')
+            ->assertJsonPath('storefront.slots.event_primary.title', 'Reny Renteria en Concierto')
             ->assertJsonPath('royal_pass.product_key', 'royal');
     }
 

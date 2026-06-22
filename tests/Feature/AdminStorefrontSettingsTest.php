@@ -103,6 +103,59 @@ class AdminStorefrontSettingsTest extends TestCase
             ->assertSee('data-buy="home-deluxe"', false);
     }
 
+    public function test_storefront_event_update_syncs_to_cms_and_public_home_and_store(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+
+        $this->actingAsAdmin($admin);
+
+        $this->get('/')->assertOk()->assertSee('Reny Renteria en Concierto');
+
+        $this->post(route('admin.site-editor.storefront.update'), $this->storefrontPayload([
+            'return_page' => 'store',
+            'slots' => [
+                'event_primary' => [
+                    'title' => 'Synced Storefront Show',
+                    'description' => "Teatro Nacional\nDec 24 - 8:30 PM",
+                    'price_label' => 'FREE',
+                    'cta_label' => 'JOIN LIST',
+                    'countdown_at' => '2026-12-24T20:30',
+                    'action_type' => 'rsvp',
+                    'product_key' => 'synced-storefront-show',
+                ],
+            ],
+        ]))->assertRedirect(route('admin.site-editor.show', ['page' => 'store']));
+
+        $this->get(route('admin.site-editor.show', ['page' => 'home']))
+            ->assertOk()
+            ->assertSee('Synced Storefront Show')
+            ->assertSee('synced-storefront-show');
+
+        $this->get(route('admin.site-editor.show', ['page' => 'store']))
+            ->assertOk()
+            ->assertSee('Synced Storefront Show')
+            ->assertSee('synced-storefront-show');
+
+        $this->get('/store')
+            ->assertOk()
+            ->assertSee('Synced Storefront Show')
+            ->assertSee('JOIN LIST')
+            ->assertSee('data-rsvp="synced-storefront-show"', false)
+            ->assertDontSee('Reny Renteria en Concierto');
+
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('Synced Storefront Show')
+            ->assertSee('JOIN LIST')
+            ->assertSee('data-rsvp="synced-storefront-show"', false)
+            ->assertDontSee('Reny Renteria en Concierto');
+
+        $this->getJson(route('public-content.payload', 'home'))
+            ->assertOk()
+            ->assertJsonPath('storefront.slots.event_primary.title', 'Synced Storefront Show')
+            ->assertJsonPath('events.0.title', 'Synced Storefront Show');
+    }
+
     public function test_published_storefront_settings_feed_public_store(): void
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
