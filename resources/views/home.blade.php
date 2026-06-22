@@ -71,7 +71,7 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body data-analytics-screen="home">
-        <div class="store-shell home-shell">
+        <div class="store-shell home-shell" data-public-page-root>
             <aside class="sidebar" aria-label="Primary navigation">
                 <div>
                     <a class="brand-link" href="{{ route('home') }}" aria-label="Reny Renteria home">

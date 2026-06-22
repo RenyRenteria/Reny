@@ -25,8 +25,11 @@
 
     if ($errors->any()) {
         $erroredType = old('type');
+        $musicFormKey = (string) old('_music_form_key', '');
 
-        if ($erroredType === 'song') {
+        if ($musicFormKey !== '' && ! str_ends_with($musicFormKey, '-new')) {
+            $musicInitialTab = 'manage';
+        } elseif ($erroredType === 'song') {
             $musicInitialTab = 'song';
         } elseif (in_array($erroredType, ['musical_album', 'deluxe_album'], true)) {
             $musicInitialTab = 'album';
@@ -53,6 +56,7 @@
                     <button type="button" class="music-cms-tab" role="tab" data-music-tab="album">Add Album</button>
                     <button type="button" class="music-cms-tab" role="tab" data-music-tab="song">Add Song</button>
                     <button type="button" class="music-cms-tab" role="tab" data-music-tab="playlist">Add Playlist</button>
+                    <button type="button" class="music-cms-tab" role="tab" data-music-tab="manage">Manage Music</button>
                 </nav>
 
                 <div class="music-cms-panel" data-music-panel="banner">
@@ -81,6 +85,7 @@
                             @include('admin.site-editor.music-add-album', [
                                 'visibilityAudiences' => $musicContentForm['visibilityAudiences'],
                                 'mediaAssets' => $musicContentForm['mediaAssets'],
+                                'formKey' => 'music-album-new',
                             ])
                         </section>
                     </div>
@@ -105,6 +110,7 @@
                             @include('admin.site-editor.music-add-song', [
                                 'visibilityAudiences' => $musicContentForm['visibilityAudiences'],
                                 'mediaAssets' => $musicContentForm['mediaAssets'],
+                                'formKey' => 'music-song-new',
                             ])
                         </section>
                     </div>
@@ -130,8 +136,28 @@
                                 'visibilityAudiences' => $musicContentForm['visibilityAudiences'],
                                 'mediaAssets' => $musicContentForm['mediaAssets'],
                                 'trackOptions' => $musicContentForm['trackOptions'],
+                                'formKey' => 'music-playlist-new',
                             ])
                         </section>
+                    </div>
+                </div>
+
+                <div class="music-cms-panel" data-music-panel="manage">
+                    <div class="music-banner-cms">
+                        <div class="admin-page-heading music-banner-heading">
+                            <div>
+                                <h1>Manage Music</h1>
+                                <p>Music / edita o elimina canciones, albumes y playlists.</p>
+                            </div>
+                            <a class="admin-button admin-button-ghost" href="{{ $publicUrl }}" target="_blank" rel="noreferrer">Ver website</a>
+                        </div>
+
+                        @include('admin.site-editor.music-manage', [
+                            'contents' => $musicContentForm['contents'],
+                            'visibilityAudiences' => $musicContentForm['visibilityAudiences'],
+                            'mediaAssets' => $musicContentForm['mediaAssets'],
+                            'trackOptions' => $musicContentForm['trackOptions'],
+                        ])
                     </div>
                 </div>
             </div>

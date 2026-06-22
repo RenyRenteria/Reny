@@ -15,7 +15,7 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body data-analytics-screen="community_club">
-        <div class="community-shell">
+        <div class="community-shell" data-public-page-root>
             <aside class="sidebar" aria-label="Primary navigation">
                 <div>
                     <a class="brand-link" href="{{ url('/') }}" aria-label="Reny Renteria home">
@@ -99,5 +99,6 @@
         </div>
 
         <div class="community-toast" id="communityToast" role="status" aria-live="polite"></div>
+        @include('partials.music-player-modal')
     </body>
 </html>

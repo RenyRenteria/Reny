@@ -65,7 +65,7 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body data-analytics-screen="store">
-        <div class="store-shell">
+        <div class="store-shell" data-public-page-root>
             <aside class="sidebar" aria-label="Primary navigation">
                 <div>
                     <a class="brand-link" href="{{ url('/') }}" aria-label="Reny Renteria home">
@@ -289,5 +289,6 @@
         </div>
 
         @include('partials.store-checkout-modals')
+        @include('partials.music-player-modal')
     </body>
 </html>

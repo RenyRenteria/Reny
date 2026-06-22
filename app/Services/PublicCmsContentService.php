@@ -844,6 +844,11 @@ class PublicCmsContentService
             'summary' => $content->summary ?: $content->body ?: '',
             'detail_url' => route('public.content.show', $content),
             'play_url' => route('music.play', $content),
+            'image_url' => match ($content->type) {
+                ContentType::Song => $this->mediaUrl($content, ['artwork_asset_id', 'cover_asset_id', 'image_asset_id']),
+                ContentType::MusicalAlbum, ContentType::DeluxeAlbum => $this->mediaUrl($content, ['album_artwork_asset_id', 'cover_asset_id', 'image_asset_id']),
+                default => $this->mediaUrl($content, ['image_asset_id', 'cover_asset_id']),
+            },
             'tracks' => $this->tracklist($content),
             'has_audio_source' => $this->audioUrl($content) !== null,
             ...$access,

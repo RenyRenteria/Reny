@@ -86,6 +86,23 @@ class EditorialContentController extends Controller
         return $this->persist($request, $workflow, $library, $content);
     }
 
+    public function destroy(Request $request, EditorialContent $content): RedirectResponse
+    {
+        abort_unless($request->user()?->canPublishContent(), 403);
+        abort_unless(in_array($content->type, [
+            ContentType::Song,
+            ContentType::MusicalAlbum,
+            ContentType::MusicPlaylist,
+        ], true), 404);
+
+        $title = $content->title;
+        $content->delete();
+
+        return redirect()
+            ->route('admin.site-editor.show', ['page' => 'music'])
+            ->with('status', sprintf('"%s" eliminado de Music.', $title));
+    }
+
     public function preview(EditorialContent $content): Response
     {
         $content->load(['mediaAssets', 'taxonomies', 'releaseWindows', 'createdBy', 'updatedBy']);
@@ -149,6 +166,12 @@ class EditorialContentController extends Controller
 
         if ($request->expectsJson()) {
             return response()->json($this->responsePayload($content, $message), $isNewContent ? 201 : 200);
+        }
+
+        if ($request->boolean('return_to_music_editor')) {
+            return redirect()
+                ->route('admin.site-editor.show', ['page' => 'music'])
+                ->with('status', $message);
         }
 
         return redirect()

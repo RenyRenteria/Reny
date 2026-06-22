@@ -15,6 +15,7 @@
     data-access-message="{{ $item['access_message'] ?? 'This music item is not connected to playback yet.' }}"
     data-cta-label="{{ $item['cta_label'] ?? '' }}"
     data-cta-url="{{ $item['cta_url'] ?? '' }}"
+    data-image-url="{{ $item['image_url'] ?? '' }}"
     data-analytics-id="{{ $item['id'] ?? \Illuminate\Support\Str::slug($title) }}"
     data-analytics-type="{{ $itemType }}"
     aria-label="Play {{ $title }}"
