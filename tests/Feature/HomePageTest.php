@@ -119,17 +119,40 @@ class HomePageTest extends TestCase
         );
     }
 
-    public function test_home_hides_royal_pass_for_authenticated_users(): void
+    public function test_home_preserves_guest_content_for_authenticated_users(): void
     {
-        $user = User::factory()->create();
+        $this->publishedContent(ContentType::Song, [
+            'title' => 'Authenticated Single',
+            'metadata' => [
+                'audio_url' => 'https://audio.test/authenticated-single.mp3',
+            ],
+        ]);
 
-        $this->actingAs($user)
+        $user = User::factory()->create();
+        $guestHtml = $this->get('/')
+            ->assertOk()
+            ->assertSee('Authenticated Single')
+            ->getContent();
+
+        $memberResponse = $this->actingAs($user)
             ->get('/')
             ->assertOk()
-            ->assertDontSee('class="home-royal-pass"', false)
+            ->assertSee('class="home-royal-pass"', false)
+            ->assertSee('data-buy="royal"', false)
             ->assertSee('Reny Renteria en Concierto')
             ->assertSee('Festival de la Rosa Dorada')
-            ->assertSee('Watch more');
+            ->assertSee('Watch more')
+            ->assertSee('Latest Singles')
+            ->assertSee('Authenticated Single')
+            ->assertSee('class="single music-item"', false)
+            ->assertSee('class="mini-play"', false);
+
+        $memberHtml = $memberResponse->getContent();
+
+        foreach (['home-royal-pass', 'home-video-hero', 'home-shows', 'home-music', 'home-singles'] as $class) {
+            $this->assertStringContainsString($class, $guestHtml);
+            $this->assertStringContainsString($class, $memberHtml);
+        }
     }
 
     public function test_home_falls_back_to_storefront_events_when_payload_events_are_empty(): void
@@ -147,7 +170,7 @@ class HomePageTest extends TestCase
             ->assertSee('Upcoming Shows')
             ->assertSee('Reny Renteria en Concierto')
             ->assertSee('Festival de la Rosa Dorada')
-            ->assertDontSee('class="home-royal-pass"', false);
+            ->assertSee('class="home-royal-pass"', false);
     }
 
     public function test_home_prefers_current_storefront_events_over_legacy_cached_events(): void
@@ -236,6 +259,29 @@ class HomePageTest extends TestCase
         $this->assertSame(2, substr_count($singlesHtml, 'class="single music-item"'));
         $this->assertSame(2, substr_count($singlesHtml, 'class="mini-play"'));
         $this->assertStringContainsString('/music/play/', $singlesHtml);
+    }
+
+    public function test_authenticated_home_single_playback_is_ready(): void
+    {
+        $single = $this->publishedContent(ContentType::Song, [
+            'title' => 'Member Play Single',
+            'metadata' => [
+                'audio_url' => 'https://audio.test/member-play-single.mp3',
+            ],
+        ]);
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->get('/')
+            ->assertOk()
+            ->assertSee('Member Play Single')
+            ->assertSee('data-play-url="'.route('music.play', $single).'"', false);
+
+        $this->actingAs($user)
+            ->getJson(route('music.play', $single))
+            ->assertOk()
+            ->assertJsonPath('state', 'ready')
+            ->assertJsonPath('audio_url', 'https://audio.test/member-play-single.mp3');
     }
 
     /**
