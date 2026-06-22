@@ -501,8 +501,24 @@ let musicQueue = [];
 let musicQueueIndex = -1;
 let isShuffleActive = false;
 let repeatMode = 'off';
+let musicPlaybackRequestId = 0;
+let handledMusicFailureRequestId = 0;
+let musicAutoAdvanceAttempts = 0;
+let previousMusicClickTimer = null;
+let isMusicPlayerLoading = false;
+
+const previousMusicClickWindowMs = 350;
 
 const trapMusicFocus = () => {};
+
+const nextMusicRequestId = () => {
+    musicPlaybackRequestId += 1;
+    handledMusicFailureRequestId = 0;
+
+    return musicPlaybackRequestId;
+};
+
+const isCurrentMusicRequest = (requestId) => requestId === musicPlaybackRequestId;
 
 const formatMediaTime = (seconds) => {
     if (!Number.isFinite(seconds) || seconds < 0) {
@@ -641,27 +657,15 @@ const syncMusicQueueIndex = (track) => {
     }
 };
 
-const canNavigateMusicQueue = (direction) => {
-    if (musicQueue.length < 2) {
-        return false;
-    }
-
-    if (isShuffleActive || repeatMode === 'all') {
-        return true;
-    }
-
-    return direction > 0
-        ? musicQueueIndex >= 0 && musicQueueIndex < musicQueue.length - 1
-        : musicQueueIndex > 0;
-};
+const canNavigateMusicQueue = () => musicQueue.length > 0;
 
 const updateMusicQueueControls = (playbackEnabled = Boolean(musicPlayerAudio?.src)) => {
     if (musicPlayerPrevious) {
-        musicPlayerPrevious.disabled = !playbackEnabled || !canNavigateMusicQueue(-1);
+        musicPlayerPrevious.disabled = !playbackEnabled || !canNavigateMusicQueue();
     }
 
     if (musicPlayerNext) {
-        musicPlayerNext.disabled = !playbackEnabled || !canNavigateMusicQueue(1);
+        musicPlayerNext.disabled = !playbackEnabled || !canNavigateMusicQueue();
     }
 
     if (musicPlayerShuffle) {
@@ -693,7 +697,7 @@ const setMusicControlsEnabled = (enabled) => {
         musicPlayerProgress.disabled = !enabled;
     }
 
-    updateMusicQueueControls(enabled);
+    updateMusicQueueControls(enabled || musicQueue.length > 0);
 };
 
 const updateMusicToggle = () => {
@@ -702,7 +706,7 @@ const updateMusicToggle = () => {
     musicPlayerLayer?.classList.toggle('is-playing', isPlaying);
     musicPlayerToggle?.setAttribute('aria-label', isPlaying ? 'Pause' : 'Play');
     musicPlayerToggleIcon?.classList.toggle('is-playing', isPlaying);
-    updateMusicQueueControls(Boolean(musicPlayerAudio?.src));
+    updateMusicQueueControls(Boolean(musicPlayerAudio?.src) || musicQueue.length > 0);
 };
 
 const updateMusicProgress = () => {
@@ -766,6 +770,9 @@ const closeMusicPlayer = () => {
 };
 
 const setMusicLoadingState = (button, options = {}) => {
+    const requestId = nextMusicRequestId();
+
+    isMusicPlayerLoading = true;
     activeMusicButton = button;
     activeMusicTrack = normalizeMusicTrack(musicTrackFromButton(button));
 
@@ -774,7 +781,9 @@ const setMusicLoadingState = (button, options = {}) => {
     }
 
     musicPlayerTitle.textContent = elementAnalyticsLabel(button);
+    musicPlayerState.hidden = false;
     musicPlayerState.textContent = 'Loading';
+    musicPlayerMessage.hidden = false;
     musicPlayerMessage.textContent = 'Checking access and audio availability.';
     musicPlayerLoading.hidden = false;
     musicPlayerTracks.hidden = true;
@@ -789,6 +798,8 @@ const setMusicLoadingState = (button, options = {}) => {
     updateMusicProgress();
     updateMusicToggle();
     openMusicPlayer();
+
+    return requestId;
 };
 
 const renderMusicTracks = (tracks = []) => {
@@ -838,9 +849,13 @@ const resolveMusicPlaybackPayload = (payload, button, options = {}) => {
         return {
             ...payload,
             ...queuedTrack,
+            audio_url: queuedTrack.audio_url || payload.audio_url || '',
+            image_url: queuedTrack.image_url || payload.image_url || '',
+            detail_url: queuedTrack.detail_url || payload.detail_url || '',
+            play_url: queuedTrack.play_url || payload.play_url || '',
             state: payload.state || queuedTrack.state || 'ready',
             access_label: payload.access_label || queuedTrack.access_label,
-            message: payload.message || queuedTrack.message,
+            message: payload.message || queuedTrack.message || queuedTrack.title || payload.title,
             cta_label: payload.cta_label || queuedTrack.cta_label,
             cta_url: payload.cta_url || queuedTrack.cta_url,
         };
@@ -850,8 +865,15 @@ const resolveMusicPlaybackPayload = (payload, button, options = {}) => {
 };
 
 const renderMusicPlayerPayload = (payload, button, options = {}) => {
+    const requestId = options.requestId || nextMusicRequestId();
+
+    if (!isCurrentMusicRequest(requestId)) {
+        return false;
+    }
+
     const playbackPayload = resolveMusicPlaybackPayload(payload, button, options);
     const state = playbackPayload.state || button.dataset.accessState || 'playback_error';
+    const playableState = state === 'ready' && !playbackPayload.audio_url ? 'playback_error' : state;
     const stateLabel = playbackPayload.access_label || button.dataset.accessLabel || state.replace(/_/g, ' ');
     const message = playbackPayload.message || playbackPayload.access_message || button.dataset.accessMessage || 'Playback is not available.';
     const trackList = playbackPayload.tracks || musicQueue.map((track) => track.title);
@@ -863,10 +885,13 @@ const renderMusicPlayerPayload = (payload, button, options = {}) => {
         button,
     });
 
+    isMusicPlayerLoading = false;
     musicPlayerLoading.hidden = true;
     musicPlayerTitle.textContent = playbackPayload.title || elementAnalyticsLabel(button);
-    musicPlayerState.textContent = stateLabel;
-    musicPlayerMessage.textContent = message;
+    musicPlayerState.hidden = playableState === 'ready';
+    musicPlayerState.textContent = playableState === 'ready' ? '' : stateLabel;
+    musicPlayerMessage.hidden = playableState === 'ready';
+    musicPlayerMessage.textContent = playableState === 'ready' ? '' : message;
     setMusicArtwork(playbackPayload.image_url || button.dataset.imageUrl);
     renderMusicTracks(trackList);
 
@@ -879,7 +904,7 @@ const renderMusicPlayerPayload = (payload, button, options = {}) => {
         musicPlayerCta.removeAttribute('href');
     }
 
-    if (state === 'ready' && playbackPayload.audio_url) {
+    if (playableState === 'ready' && playbackPayload.audio_url) {
         if (musicPlayerAudio.src !== playbackPayload.audio_url) {
             musicPlayerAudio.src = playbackPayload.audio_url;
             musicPlayerAudio.load();
@@ -887,13 +912,18 @@ const renderMusicPlayerPayload = (payload, button, options = {}) => {
 
         setMusicControlsEnabled(true);
         musicPlayerAudio.play().catch(() => {
-            musicPlayerMessage.textContent = 'Tap play to start playback.';
+            handleMusicPlaybackFailure('play_rejected', requestId);
         }).finally(updateMusicToggle);
         trackElementEvent(button, 'music_play_ready', {
             item_type: button.dataset.analyticsType,
             result: 'ready',
         });
-        return;
+        return true;
+    }
+
+    if (options.autoAdvance) {
+        handleMusicPlaybackFailure(playableState, requestId);
+        return false;
     }
 
     musicPlayerAudio.pause();
@@ -903,16 +933,22 @@ const renderMusicPlayerPayload = (payload, button, options = {}) => {
     updateMusicProgress();
     updateMusicToggle();
 
-    trackElementEvent(button, state === 'playback_error' ? 'music_play_failed' : 'music_access_blocked', {
+    trackElementEvent(button, playableState === 'playback_error' ? 'music_play_failed' : 'music_access_blocked', {
         item_type: button.dataset.analyticsType,
-        reason: state,
-        result: state === 'playback_error' ? 'failed' : 'blocked',
+        reason: playableState,
+        result: playableState === 'playback_error' ? 'failed' : 'blocked',
     });
+
+    return false;
 };
 
 const nextMusicQueueIndex = (direction = 1) => {
-    if (musicQueue.length < 2) {
+    if (!musicQueue.length) {
         return -1;
+    }
+
+    if (musicQueue.length === 1) {
+        return 0;
     }
 
     if (musicQueueIndex === -1) {
@@ -929,18 +965,10 @@ const nextMusicQueueIndex = (direction = 1) => {
 
     const candidate = musicQueueIndex + direction;
 
-    if (candidate >= 0 && candidate < musicQueue.length) {
-        return candidate;
-    }
-
-    if (repeatMode === 'all') {
-        return direction > 0 ? 0 : musicQueue.length - 1;
-    }
-
-    return -1;
+    return (candidate + musicQueue.length) % musicQueue.length;
 };
 
-const playMusicQueueIndex = async (index) => {
+const playMusicQueueIndex = async (index, options = {}) => {
     const track = musicQueue[index];
 
     if (!track || !musicPlayerLayer || !musicPlayerAudio) {
@@ -951,21 +979,24 @@ const playMusicQueueIndex = async (index) => {
     const source = musicTrackSourceElement(track);
 
     if (track.audio_url) {
-        renderMusicPlayerPayload({
+        return renderMusicPlayerPayload({
             ...track,
             state: track.state || 'ready',
-            access_label: track.access_label || 'Ready to play',
-            message: track.message || 'Playback is ready.',
-        }, source, { preserveQueue: true });
-        return true;
+            access_label: track.access_label || '',
+            message: track.message || track.title,
+        }, source, { preserveQueue: true, autoAdvance: options.autoAdvance });
     }
 
     if (!track.play_url) {
-        updateMusicQueueControls(Boolean(musicPlayerAudio?.src));
+        if (options.autoAdvance) {
+            handleMusicPlaybackFailure('missing_play_url', musicPlaybackRequestId);
+        } else {
+            updateMusicQueueControls(Boolean(musicPlayerAudio?.src) || musicQueue.length > 0);
+        }
         return false;
     }
 
-    setMusicLoadingState(source, { preserveQueue: true });
+    const requestId = setMusicLoadingState(source, { preserveQueue: true });
 
     try {
         const response = await fetch(track.play_url, {
@@ -975,28 +1006,94 @@ const playMusicQueueIndex = async (index) => {
         });
         const payload = await response.json().catch(() => ({}));
 
-        renderMusicPlayerPayload(payload, source, { preserveQueue: true });
-        return true;
+        if (!isCurrentMusicRequest(requestId)) {
+            return false;
+        }
+
+        return renderMusicPlayerPayload(payload, source, {
+            preserveQueue: true,
+            autoAdvance: options.autoAdvance,
+            requestId,
+        });
     } catch (error) {
         console.error(error);
-        renderMusicPlayerPayload({
+        if (!isCurrentMusicRequest(requestId)) {
+            return false;
+        }
+
+        return renderMusicPlayerPayload({
             state: 'playback_error',
             access_label: 'Playback error',
             message: 'Playback could not load. Try again in a moment.',
-        }, source, { preserveQueue: true });
-        return false;
+        }, source, { preserveQueue: true, autoAdvance: options.autoAdvance, requestId });
     }
 };
 
-const playAdjacentMusicTrack = (direction) => {
+const playAdjacentMusicTrack = (direction, options = {}) => {
     const index = nextMusicQueueIndex(direction);
 
     if (index === -1) {
-        updateMusicQueueControls(Boolean(musicPlayerAudio?.src));
+        updateMusicQueueControls(Boolean(musicPlayerAudio?.src) || musicQueue.length > 0);
         return;
     }
 
-    playMusicQueueIndex(index);
+    playMusicQueueIndex(index, options);
+};
+
+const handleMusicPlaybackFailure = (reason = 'playback_error', requestId = musicPlaybackRequestId) => {
+    if (!isCurrentMusicRequest(requestId) || handledMusicFailureRequestId === requestId) {
+        return;
+    }
+
+    handledMusicFailureRequestId = requestId;
+    trackElementEvent(activeMusicButton || musicTrackSourceElement(activeMusicTrack), 'music_play_failed', {
+        item_type: activeMusicButton?.dataset.analyticsType || activeMusicTrack?.item_type || 'track',
+        reason,
+        result: 'failed',
+    });
+
+    if (musicQueue.length && musicAutoAdvanceAttempts < Math.max(musicQueue.length, 1)) {
+        musicAutoAdvanceAttempts += 1;
+        playAdjacentMusicTrack(1, { autoAdvance: true });
+        return;
+    }
+
+    musicAutoAdvanceAttempts = 0;
+    musicPlayerState.hidden = false;
+    musicPlayerState.textContent = 'Playback error';
+    musicPlayerMessage.hidden = false;
+    musicPlayerMessage.textContent = 'Skipping was not able to find a playable track.';
+    setMusicControlsEnabled(Boolean(musicPlayerAudio?.src) || musicQueue.length > 0);
+    updateMusicToggle();
+};
+
+const restartCurrentMusicTrack = () => {
+    if (!musicPlayerAudio?.src) {
+        return;
+    }
+
+    musicPlayerAudio.currentTime = 0;
+    updateMusicProgress();
+
+    if (musicPlayerAudio.paused || musicPlayerAudio.ended) {
+        const requestId = musicPlaybackRequestId;
+        musicPlayerAudio.play().catch(() => handleMusicPlaybackFailure('restart_rejected', requestId));
+    }
+};
+
+const handlePreviousMusicClick = () => {
+    if (previousMusicClickTimer) {
+        window.clearTimeout(previousMusicClickTimer);
+        previousMusicClickTimer = null;
+        musicAutoAdvanceAttempts = 0;
+        playAdjacentMusicTrack(-1, { autoAdvance: true });
+        return;
+    }
+
+    previousMusicClickTimer = window.setTimeout(() => {
+        previousMusicClickTimer = null;
+        restartCurrentMusicTrack();
+    }, previousMusicClickWindowMs);
 };
 
 document.addEventListener('click', async (event) => {
@@ -1013,7 +1110,8 @@ document.addEventListener('click', async (event) => {
         result: 'clicked',
     });
 
-    setMusicLoadingState(button);
+    musicAutoAdvanceAttempts = 0;
+    const requestId = setMusicLoadingState(button);
 
     if (!button.dataset.playUrl) {
         renderMusicPlayerPayload({
@@ -1022,7 +1120,7 @@ document.addEventListener('click', async (event) => {
             message: button.dataset.accessMessage || 'This music item is not connected to playback yet.',
             cta_label: button.dataset.ctaLabel,
             cta_url: button.dataset.ctaUrl,
-        }, button);
+        }, button, { requestId });
         return;
     }
 
@@ -1034,18 +1132,27 @@ document.addEventListener('click', async (event) => {
         });
         const payload = await response.json().catch(() => ({}));
 
-        renderMusicPlayerPayload(payload, button);
+        if (!isCurrentMusicRequest(requestId)) {
+            return;
+        }
+
+        renderMusicPlayerPayload(payload, button, { requestId });
     } catch (error) {
         console.error(error);
+        if (!isCurrentMusicRequest(requestId)) {
+            return;
+        }
+
         renderMusicPlayerPayload({
             state: 'playback_error',
             access_label: 'Playback error',
             message: 'Playback could not load. Try again in a moment.',
-        }, button);
+        }, button, { requestId });
     }
 });
 
 musicPlayerAudio?.addEventListener('play', () => {
+    musicAutoAdvanceAttempts = 0;
     updateMusicToggle();
 
     if (!activeMusicButton) {
@@ -1063,30 +1170,23 @@ musicPlayerAudio?.addEventListener('ended', () => {
     updateMusicToggle();
 
     if (repeatMode === 'one') {
+        const requestId = musicPlaybackRequestId;
         musicPlayerAudio.currentTime = 0;
-        musicPlayerAudio.play().catch(() => {
-            musicPlayerMessage.textContent = 'Playback could not restart. Try again.';
-        });
+        musicPlayerAudio.play().catch(() => handleMusicPlaybackFailure('repeat_rejected', requestId));
         return;
     }
 
-    playAdjacentMusicTrack(1);
+    playAdjacentMusicTrack(1, { autoAdvance: true });
 });
 musicPlayerAudio?.addEventListener('loadedmetadata', updateMusicProgress);
 musicPlayerAudio?.addEventListener('timeupdate', updateMusicProgress);
 
 musicPlayerAudio?.addEventListener('error', () => {
-    if (!activeMusicButton) {
+    if (!activeMusicButton || isMusicPlayerLoading || !musicPlayerAudio.src) {
         return;
     }
 
-    musicPlayerState.textContent = 'Playback error';
-    musicPlayerMessage.textContent = 'The audio source could not be played.';
-    trackElementEvent(activeMusicButton, 'music_play_failed', {
-        item_type: activeMusicButton.dataset.analyticsType,
-        reason: 'audio_element_error',
-        result: 'failed',
-    });
+    handleMusicPlaybackFailure('audio_element_error', musicPlaybackRequestId);
 });
 
 musicPlayerToggle?.addEventListener('click', () => {
@@ -1095,20 +1195,24 @@ musicPlayerToggle?.addEventListener('click', () => {
     }
 
     if (musicPlayerAudio.paused || musicPlayerAudio.ended) {
+        const requestId = musicPlaybackRequestId;
         musicPlayerAudio.play().catch(() => {
-            musicPlayerMessage.textContent = 'Playback could not start. Try again.';
+            handleMusicPlaybackFailure('play_rejected', requestId);
         });
     } else {
         musicPlayerAudio.pause();
     }
 });
 
-musicPlayerPrevious?.addEventListener('click', () => playAdjacentMusicTrack(-1));
-musicPlayerNext?.addEventListener('click', () => playAdjacentMusicTrack(1));
+musicPlayerPrevious?.addEventListener('click', handlePreviousMusicClick);
+musicPlayerNext?.addEventListener('click', () => {
+    musicAutoAdvanceAttempts = 0;
+    playAdjacentMusicTrack(1, { autoAdvance: true });
+});
 
 musicPlayerShuffle?.addEventListener('click', () => {
     isShuffleActive = !isShuffleActive;
-    updateMusicQueueControls(Boolean(musicPlayerAudio?.src));
+    updateMusicQueueControls(Boolean(musicPlayerAudio?.src) || musicQueue.length > 0);
 });
 
 musicPlayerRepeat?.addEventListener('click', () => {
@@ -1117,7 +1221,7 @@ musicPlayerRepeat?.addEventListener('click', () => {
         all: 'one',
         one: 'off',
     }[repeatMode] || 'off';
-    updateMusicQueueControls(Boolean(musicPlayerAudio?.src));
+    updateMusicQueueControls(Boolean(musicPlayerAudio?.src) || musicQueue.length > 0);
 });
 
 musicPlayerProgress?.addEventListener('input', () => {

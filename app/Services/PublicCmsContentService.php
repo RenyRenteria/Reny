@@ -222,8 +222,8 @@ class PublicCmsContentService
             'payload' => [
                 ...$basePayload,
                 'state' => 'ready',
-                'access_label' => 'Ready to play',
-                'message' => 'Playback is ready.',
+                'access_label' => '',
+                'message' => $queue[0]['title'] ?? $content->title,
                 'audio_url' => $audioUrl,
                 'queue' => $queue,
             ],
@@ -981,8 +981,8 @@ class PublicCmsContentService
             'detail_url' => route('public.content.show', $content),
             'item_type' => $itemType,
             'state' => 'ready',
-            'access_label' => 'Ready to play',
-            'message' => 'Playback is ready.',
+            'access_label' => '',
+            'message' => $title,
         ];
     }
 
