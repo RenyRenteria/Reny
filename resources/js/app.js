@@ -1745,6 +1745,7 @@ function initializePublicPage(root = document) {
     initializeVideoInteractions(root);
     initializePhotoInteractions(root);
     initializeCommunityInteractions(root);
+    initializeStoreInteractions(root);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -1790,14 +1791,21 @@ document.querySelectorAll('.access-gate-button').forEach((link) => {
     });
 });
 
-const storeShell = document.querySelector('.store-shell');
-const storeCheckoutLayer = document.getElementById('bagLayer');
-const commerceRoot = storeShell
-    || storeCheckoutLayer
-    || document.querySelector('[data-buy]')
-    || document.querySelector('[data-rsvp]');
+const initializeStoreInteractions = (root = document) => {
+    const scope = root === document ? document : root;
+    const storeShell = scope.querySelector?.('.store-shell') || document.querySelector('.store-shell');
+    const storeCheckoutLayer = document.getElementById('bagLayer');
+    const commerceRoot = storeShell
+        || storeCheckoutLayer
+        || scope.querySelector?.('[data-buy]')
+        || scope.querySelector?.('[data-rsvp]')
+        || document.querySelector('[data-buy]')
+        || document.querySelector('[data-rsvp]');
 
-if (commerceRoot) {
+    if (!commerceRoot) {
+        return;
+    }
+
     const prices = {
         deluxe: 24,
         singles: 8,
@@ -1932,7 +1940,8 @@ if (commerceRoot) {
 
     if (countdownNodes.length > 0) {
         renderCountdowns();
-        window.setInterval(renderCountdowns, 60000);
+        window.clearInterval(window.renyStoreCountdownInterval);
+        window.renyStoreCountdownInterval = window.setInterval(renderCountdowns, 60000);
     }
 
     const money = (value, suffix = '') => {
@@ -2861,6 +2870,8 @@ if (commerceRoot) {
         button.addEventListener('click', () => closeStoreLayer(button.dataset.close));
     });
 
+    window.renyStoreKeydownAbort?.abort();
+    window.renyStoreKeydownAbort = new AbortController();
     document.addEventListener('keydown', (event) => {
         const openLayerId = ['bagLayer', 'detailLayer'].find((id) => {
             const layer = document.getElementById(id);
@@ -2878,7 +2889,7 @@ if (commerceRoot) {
         } else if (event.key === 'Escape') {
             closeStoreLayer(openLayerId);
         }
-    });
+    }, { signal: window.renyStoreKeydownAbort.signal });
 
     selectPaymentMethod('paypal', { track: false });
     updateStorePrices();
@@ -2895,7 +2906,7 @@ if (commerceRoot) {
     });
     openRequestedCheckout();
     openAutoCheckout();
-}
+};
 
 const adminSectionThemes = {
     dashboard: 'neutral',

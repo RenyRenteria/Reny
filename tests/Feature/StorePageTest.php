@@ -188,6 +188,19 @@ class StorePageTest extends TestCase
         $this->assertStringNotContainsString('Load PayPal checkout', $js);
     }
 
+    public function test_store_checkout_rehydrates_after_persistent_public_navigation(): void
+    {
+        $js = file_get_contents(resource_path('js/app.js'));
+
+        $this->assertStringContainsString('const initializeStoreInteractions = (root = document) => {', $js);
+        $this->assertStringContainsString('initializeStoreInteractions(root);', $js);
+        $this->assertStringContainsString('scope.querySelector?.(\'[data-buy]\')', $js);
+        $this->assertStringContainsString('document.getElementById(\'openBag\')?.addEventListener', $js);
+        $this->assertStringContainsString('document.querySelectorAll(\'[data-close]\')', $js);
+        $this->assertStringContainsString('paymentButtons.forEach((button) =>', $js);
+        $this->assertStringContainsString('window.renyStoreKeydownAbort?.abort();', $js);
+    }
+
     public function test_checkout_screen_rejects_unknown_product(): void
     {
         $this->get('/store/checkout/not-real')
