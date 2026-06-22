@@ -6614,53 +6614,6 @@ body.has-modal-open {
     gap: 0.75rem;
 }
 
-.home-single-row {
-    display: grid;
-    grid-template-columns: 3.125rem minmax(0, 1fr) auto;
-    align-items: center;
-    min-height: 4rem;
-    padding: 0.5rem 0.75rem;
-    background: rgba(255, 255, 255, 0.74);
-    gap: 0.75rem;
-}
-
-.home-single-art {
-    display: block;
-    width: 3.125rem;
-    aspect-ratio: 1;
-    object-fit: cover;
-}
-
-.home-single-row strong {
-    overflow: hidden;
-    color: #000000;
-    font-size: 0.875rem;
-    font-weight: 300;
-    line-height: 1.15;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.home-single-play {
-    display: grid;
-    place-items: center;
-    width: 2.375rem;
-    aspect-ratio: 1;
-    border: 0.1875rem solid #000000;
-    border-radius: 999px;
-    background: #ffffff;
-    cursor: pointer;
-}
-
-.home-single-play span {
-    width: 0;
-    height: 0;
-    margin-left: 0.1875rem;
-    border-top: 0.5rem solid transparent;
-    border-bottom: 0.5rem solid transparent;
-    border-left: 0.6875rem solid #000000;
-}
-
 @media (max-width: 75rem) {
     .home-video-hero {
         grid-template-columns: minmax(17rem, 0.7fr) minmax(20rem, 1fr);
@@ -6886,10 +6839,6 @@ body.has-modal-open {
     .home-buy-deluxe {
         background: #ecd582;
         color: #000000;
-    }
-
-    .home-singles {
-        display: none;
     }
 
     .home-royal-pass {
