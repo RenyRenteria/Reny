@@ -167,19 +167,21 @@ class EditorialDomainWorkflowTest extends TestCase
             ->exists());
     }
 
-    private function readyAsset(): MediaAsset
+    private function readyAsset(string $type = MediaAssetType::Image->value): MediaAsset
     {
+        $isAudio = $type === MediaAssetType::Audio->value;
+
         return MediaAsset::create([
-            'type' => MediaAssetType::Image->value,
+            'type' => $type,
             'title' => 'Reusable editorial asset',
             'disk' => 'public',
-            'path' => 'media/editorial.jpg',
-            'original_filename' => 'editorial.jpg',
-            'mime_type' => 'image/jpeg',
-            'extension' => 'jpg',
+            'path' => $isAudio ? 'media/editorial.mp3' : 'media/editorial.jpg',
+            'original_filename' => $isAudio ? 'editorial.mp3' : 'editorial.jpg',
+            'mime_type' => $isAudio ? 'audio/mpeg' : 'image/jpeg',
+            'extension' => $isAudio ? 'mp3' : 'jpg',
             'size_bytes' => 1024,
             'is_public' => true,
-            'alt_text' => 'Reusable editorial asset',
+            'alt_text' => $isAudio ? null : 'Reusable editorial asset',
             'processing_status' => MediaProcessingStatus::Ready->value,
         ]);
     }
@@ -198,6 +200,8 @@ class EditorialDomainWorkflowTest extends TestCase
             ContentType::Song => [
                 ...$base,
                 'metadata' => [
+                    'audio_asset_id' => $this->readyAsset(MediaAssetType::Audio->value)->id,
+                    'artwork_asset_id' => $this->readyAsset(MediaAssetType::Thumbnail->value)->id,
                     'release_date_member_view' => '2026-07-01T10:00',
                     'release_date_open_view' => '2026-07-02T10:00',
                 ],
@@ -205,10 +209,14 @@ class EditorialDomainWorkflowTest extends TestCase
             ContentType::MusicalAlbum => [
                 ...$base,
                 'metadata' => [
+                    'album_artwork_asset_id' => $this->readyAsset(MediaAssetType::Thumbnail->value)->id,
                     'release_date_member_view' => '2026-07-01T10:00',
                     'release_date_open_view' => '2026-07-02T10:00',
                     'tracks' => [
-                        ['track_name' => 'Intro'],
+                        [
+                            'track_name' => 'Intro',
+                            'track_audio_asset_id' => $this->readyAsset(MediaAssetType::Audio->value)->id,
+                        ],
                     ],
                 ],
             ],
@@ -223,7 +231,8 @@ class EditorialDomainWorkflowTest extends TestCase
             ContentType::MusicPlaylist => [
                 ...$base,
                 'metadata' => [
-                    'tracks' => ['song:1'],
+                    'playlist_cover_asset_id' => $this->readyAsset(MediaAssetType::Thumbnail->value)->id,
+                    'tracks' => [$this->firstMusicTrackReference()],
                 ],
             ],
             ContentType::Video => [
@@ -290,6 +299,13 @@ class EditorialDomainWorkflowTest extends TestCase
                 ],
             ],
         };
+    }
+
+    private function firstMusicTrackReference(): string
+    {
+        return 'song:'.EditorialContent::query()
+            ->where('type', ContentType::Song->value)
+            ->value('id');
     }
 
     private function actingAsAdmin(User $user): void

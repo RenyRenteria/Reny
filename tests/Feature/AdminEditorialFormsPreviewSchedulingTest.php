@@ -167,7 +167,7 @@ class AdminEditorialFormsPreviewSchedulingTest extends TestCase
             'title' => 'Incomplete song',
         ])
             ->assertUnprocessable()
-            ->assertJsonValidationErrors(['metadata.release_date_member_view', 'metadata.release_date_open_view', 'media_asset_ids']);
+            ->assertJsonValidationErrors(['metadata.release_date_member_view', 'metadata.release_date_open_view']);
 
         $this->postJson(route('admin.editorial.drafts.store'), [
             'type' => ContentType::Poll->value,
@@ -182,19 +182,44 @@ class AdminEditorialFormsPreviewSchedulingTest extends TestCase
             ->assertJsonValidationErrors(['metadata.options']);
     }
 
-    private function readyAsset(): MediaAsset
+    public function test_legacy_draft_endpoint_rejects_old_song_media_asset_flow(): void
     {
+        $editor = User::factory()->create(['role' => User::ROLE_EDITOR]);
+        $asset = $this->readyAsset();
+
+        $this->actingAsAdmin($editor);
+
+        $this->postJson(route('admin.editorial.drafts.store'), [
+            'type' => ContentType::Song->value,
+            'title' => 'Old song flow',
+            'visibility' => VisibilityAudience::Open->value,
+            'media_asset_ids' => [$asset->id],
+            'metadata' => [
+                'release_date_member_view' => '2026-07-01T10:00',
+                'release_date_open_view' => '2026-07-02T10:00',
+            ],
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['audio_file', 'artwork']);
+
+        $this->assertDatabaseCount('editorial_contents', 0);
+    }
+
+    private function readyAsset(string $type = MediaAssetType::Image->value): MediaAsset
+    {
+        $isAudio = $type === MediaAssetType::Audio->value;
+
         return MediaAsset::create([
-            'type' => MediaAssetType::Image->value,
+            'type' => $type,
             'title' => 'Reusable campaign asset',
             'disk' => 'public',
-            'path' => 'media/reusable.jpg',
-            'original_filename' => 'reusable.jpg',
-            'mime_type' => 'image/jpeg',
-            'extension' => 'jpg',
+            'path' => $isAudio ? 'media/reusable.mp3' : 'media/reusable.jpg',
+            'original_filename' => $isAudio ? 'reusable.mp3' : 'reusable.jpg',
+            'mime_type' => $isAudio ? 'audio/mpeg' : 'image/jpeg',
+            'extension' => $isAudio ? 'mp3' : 'jpg',
             'size_bytes' => 1024,
             'is_public' => true,
-            'alt_text' => 'Reusable campaign asset',
+            'alt_text' => $isAudio ? null : 'Reusable campaign asset',
             'processing_status' => MediaProcessingStatus::Ready->value,
         ]);
     }
@@ -213,6 +238,8 @@ class AdminEditorialFormsPreviewSchedulingTest extends TestCase
             ContentType::Song => [
                 ...$base,
                 'metadata' => [
+                    'audio_asset_id' => $this->readyAsset(MediaAssetType::Audio->value)->id,
+                    'artwork_asset_id' => $this->readyAsset(MediaAssetType::Thumbnail->value)->id,
                     'release_date_member_view' => '2026-07-01T10:00',
                     'release_date_open_view' => '2026-07-02T10:00',
                 ],
@@ -220,10 +247,14 @@ class AdminEditorialFormsPreviewSchedulingTest extends TestCase
             ContentType::MusicalAlbum => [
                 ...$base,
                 'metadata' => [
+                    'album_artwork_asset_id' => $this->readyAsset(MediaAssetType::Thumbnail->value)->id,
                     'release_date_member_view' => '2026-07-01T10:00',
                     'release_date_open_view' => '2026-07-02T10:00',
                     'tracks' => [
-                        ['track_name' => 'Intro'],
+                        [
+                            'track_name' => 'Intro',
+                            'track_audio_asset_id' => $this->readyAsset(MediaAssetType::Audio->value)->id,
+                        ],
                     ],
                 ],
             ],
@@ -238,7 +269,8 @@ class AdminEditorialFormsPreviewSchedulingTest extends TestCase
             ContentType::MusicPlaylist => [
                 ...$base,
                 'metadata' => [
-                    'tracks' => ['song:1'],
+                    'playlist_cover_asset_id' => $this->readyAsset(MediaAssetType::Thumbnail->value)->id,
+                    'tracks' => [$this->firstMusicTrackReference()],
                 ],
             ],
             ContentType::Video => [
@@ -316,6 +348,13 @@ class AdminEditorialFormsPreviewSchedulingTest extends TestCase
                 ],
             ],
         };
+    }
+
+    private function firstMusicTrackReference(): string
+    {
+        return 'song:'.EditorialContent::query()
+            ->where('type', ContentType::Song->value)
+            ->value('id');
     }
 
     private function actingAsAdmin(User $user): void
