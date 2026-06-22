@@ -30,6 +30,8 @@
             $musicInitialTab = 'song';
         } elseif (in_array($erroredType, ['musical_album', 'deluxe_album'], true)) {
             $musicInitialTab = 'album';
+        } elseif ($erroredType === 'music_playlist') {
+            $musicInitialTab = 'playlist';
         }
     }
 @endphp
@@ -50,6 +52,7 @@
                     <button type="button" class="music-cms-tab" role="tab" data-music-tab="banner">Edit Banner</button>
                     <button type="button" class="music-cms-tab" role="tab" data-music-tab="album">Add Album</button>
                     <button type="button" class="music-cms-tab" role="tab" data-music-tab="song">Add Song</button>
+                    <button type="button" class="music-cms-tab" role="tab" data-music-tab="playlist">Add Playlist</button>
                 </nav>
 
                 <div class="music-cms-panel" data-music-panel="banner">
@@ -102,6 +105,31 @@
                             @include('admin.site-editor.music-add-song', [
                                 'visibilityAudiences' => $musicContentForm['visibilityAudiences'],
                                 'mediaAssets' => $musicContentForm['mediaAssets'],
+                            ])
+                        </section>
+                    </div>
+                </div>
+
+                <div class="music-cms-panel" data-music-panel="playlist">
+                    <div class="music-banner-cms">
+                        <div class="admin-page-heading music-banner-heading">
+                            <div>
+                                <h1>Add Playlist</h1>
+                                <p>Music / agrega una playlist al website publico.</p>
+                            </div>
+                            <a class="admin-button admin-button-ghost" href="{{ $publicUrl }}" target="_blank" rel="noreferrer">Ver website</a>
+                        </div>
+                        <section class="music-banner-editor admin-panel" aria-label="Formulario para agregar playlist">
+                            <div class="music-banner-panel-head">
+                                <div>
+                                    <p class="admin-kicker">Nueva playlist</p>
+                                    <h2>Campos de la playlist</h2>
+                                </div>
+                            </div>
+                            @include('admin.site-editor.music-add-playlist', [
+                                'visibilityAudiences' => $musicContentForm['visibilityAudiences'],
+                                'mediaAssets' => $musicContentForm['mediaAssets'],
+                                'trackOptions' => $musicContentForm['trackOptions'],
                             ])
                         </section>
                     </div>

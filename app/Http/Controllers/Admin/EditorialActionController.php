@@ -181,6 +181,10 @@ class EditorialActionController extends Controller
     {
         if (isset($payload['metadata'])) {
             $payload['metadata'] = $this->cleanMetadata($payload['metadata']);
+            $payload['metadata'] = $this->approvedMetadataForType(
+                $payload['metadata'],
+                (string) ($payload['type'] ?? '')
+            );
         }
 
         if (array_key_exists('scheduled_at', $payload) && $payload['scheduled_at'] !== null) {
@@ -238,5 +242,36 @@ class EditorialActionController extends Controller
                 return $value === null || $value === '';
             })
             ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $metadata
+     * @return array<string, mixed>
+     */
+    private function approvedMetadataForType(array $metadata, string $type): array
+    {
+        return match ($type) {
+            ContentType::Song->value => collect($metadata)
+                ->only(['audio_asset_id', 'artwork_asset_id', 'release_date_member_view', 'release_date_open_view'])
+                ->all(),
+            ContentType::MusicalAlbum->value => [
+                ...collect($metadata)
+                    ->only(['album_artwork_asset_id', 'release_date_member_view', 'release_date_open_view'])
+                    ->all(),
+                'tracks' => collect($metadata['tracks'] ?? [])
+                    ->map(fn (array $track): array => collect($track)
+                        ->only(['track_name', 'track_audio_asset_id', 'release_date_member_view'])
+                        ->all())
+                    ->values()
+                    ->all(),
+            ],
+            ContentType::MusicPlaylist->value => [
+                ...collect($metadata)
+                    ->only(['playlist_cover_asset_id'])
+                    ->all(),
+                'tracks' => collect($metadata['tracks'] ?? [])->filter()->values()->all(),
+            ],
+            default => $metadata,
+        };
     }
 }

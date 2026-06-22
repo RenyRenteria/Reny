@@ -198,15 +198,18 @@ class EditorialDomainWorkflowTest extends TestCase
             ContentType::Song => [
                 ...$base,
                 'metadata' => [
-                    'duration_seconds' => 180,
-                    'release_date' => '2026-07-01',
+                    'release_date_member_view' => '2026-07-01T10:00',
+                    'release_date_open_view' => '2026-07-02T10:00',
                 ],
             ],
             ContentType::MusicalAlbum => [
                 ...$base,
                 'metadata' => [
-                    'track_count' => 8,
-                    'release_cycle' => 'campaign',
+                    'release_date_member_view' => '2026-07-01T10:00',
+                    'release_date_open_view' => '2026-07-02T10:00',
+                    'tracks' => [
+                        ['track_name' => 'Intro'],
+                    ],
                 ],
             ],
             ContentType::DeluxeAlbum => [
@@ -215,6 +218,12 @@ class EditorialDomainWorkflowTest extends TestCase
                 'metadata' => [
                     'package_title' => 'Deluxe draft',
                     'package_notes' => 'Draft notes',
+                ],
+            ],
+            ContentType::MusicPlaylist => [
+                ...$base,
+                'metadata' => [
+                    'tracks' => ['song:1'],
                 ],
             ],
             ContentType::Video => [

@@ -74,8 +74,48 @@ class SiteEditorController extends Controller
         return [
             'visibilityAudiences' => VisibilityAudience::cases(),
             'mediaAssets' => MediaAsset::query()->ready()->latest()->limit(100)->get(),
+            'trackOptions' => $this->musicTrackOptions(),
             'defaultType' => ContentType::MusicalAlbum->value,
         ];
+    }
+
+    /**
+     * @return array<int, array{value: string, label: string, group: string}>
+     */
+    private function musicTrackOptions(): array
+    {
+        return EditorialContent::query()
+            ->whereIn('type', [ContentType::Song->value, ContentType::MusicalAlbum->value])
+            ->latest()
+            ->limit(100)
+            ->get()
+            ->flatMap(function (EditorialContent $content) {
+                if ($content->type === ContentType::Song) {
+                    return [[
+                        'value' => 'song:'.$content->id,
+                        'label' => $content->title,
+                        'group' => 'Singles',
+                    ]];
+                }
+
+                $tracks = collect($content->metadata['tracks'] ?? []);
+
+                if ($tracks->isEmpty() && filled($content->metadata['tracklist'] ?? null)) {
+                    $tracks = collect(preg_split('/\R/', (string) $content->metadata['tracklist']) ?: [])
+                        ->map(fn (string $trackName): array => ['track_name' => trim($trackName)])
+                        ->filter(fn (array $track): bool => filled($track['track_name']));
+                }
+
+                return $tracks
+                    ->values()
+                    ->map(fn (array $track, int $index): array => [
+                        'value' => 'album:'.$content->id.':'.$index,
+                        'label' => $content->title.' - '.($track['track_name'] ?? 'Track '.($index + 1)),
+                        'group' => 'Album tracks',
+                    ]);
+            })
+            ->values()
+            ->all();
     }
 
     /**

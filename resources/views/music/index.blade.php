@@ -1,7 +1,8 @@
 @php
     $items = $publicCms['items'] ?? [];
     $isAlbums = $section === 'albums';
-    $title = $isAlbums ? 'Albums' : 'Singles';
+    $isPlaylists = $section === 'playlists';
+    $title = $isAlbums ? 'Albums' : ($isPlaylists ? 'Playlists' : 'Singles');
     $deluxeUrl = route('store.checkout', ['product' => 'deluxe']);
 @endphp
 
@@ -120,6 +121,28 @@
                                     </article>
                                 @endforeach
                             </div>
+                        @elseif ($isPlaylists)
+                            <div class="music-playlists music-list-grid">
+                                @foreach ($items as $playlist)
+                                    <article class="playlist-card music-item" data-access-state="{{ $playlist['access_state'] ?? 'ready' }}">
+                                        <div
+                                            class="playlist-stack"
+                                            @if (! empty($playlist['image_url'])) style="--thumb-url: url('{{ $playlist['image_url'] }}');" @endif
+                                            aria-hidden="true"
+                                        ></div>
+                                        <div class="playlist-copy">
+                                            <div>
+                                                <span>{{ $playlist['meta'] }}</span>
+                                                <h4><a href="{{ $playlist['detail_url'] }}">{{ $playlist['title'] }}</a></h4>
+                                                <p>{{ collect($playlist['tracks'] ?? [])->take(5)->implode(' / ') }}</p>
+                                            </div>
+                                            @if (($playlist['access_state'] ?? 'ready') !== 'ready')
+                                                <em class="music-inline-state">{{ $playlist['access_label'] }}</em>
+                                            @endif
+                                        </div>
+                                    </article>
+                                @endforeach
+                            </div>
                         @else
                             <div class="singles music-list-grid">
                                 @foreach ($items as $single)
@@ -131,7 +154,6 @@
                                         ></div>
                                         <div>
                                             <strong><a href="{{ $single['detail_url'] }}">{{ $single['title'] }}</a></strong>
-                                            <span>{{ $single['artist'] }}</span>
                                             @if (($single['access_state'] ?? 'ready') !== 'ready')
                                                 <em class="music-inline-state">{{ $single['access_label'] }}</em>
                                             @endif

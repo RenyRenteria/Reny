@@ -16,6 +16,7 @@
     ];
     $cmsAlbums = $publicCms['albums'] ?? [];
     $cmsSingles = $publicCms['singles'] ?? [];
+    $cmsPlaylists = $publicCms['playlists'] ?? [];
     $deluxeUrl = route('store.checkout', ['product' => 'deluxe']);
     $fallbackPlayState = [
         'access_state' => 'playback_error',
@@ -32,9 +33,9 @@
         [...$fallbackPlayState, 'id' => 'live-cuts', 'kind' => 'album', 'title' => 'Live Cuts', 'meta' => '6 tracks', 'cover_class' => 'cover-d'],
     ];
     $fallbackSingles = [
-        [...$fallbackPlayState, 'id' => 'biggest-launch', 'kind' => 'single', 'title' => 'Biggest Launch', 'artist' => 'Reny Renteria'],
-        [...$fallbackPlayState, 'id' => 'comeback-album', 'kind' => 'single', 'title' => 'Comeback Album', 'artist' => 'Reny Renteria'],
-        [...$fallbackPlayState, 'id' => 'first-drop', 'kind' => 'single', 'title' => 'First Drop', 'artist' => 'Reny Renteria'],
+        [...$fallbackPlayState, 'id' => 'biggest-launch', 'kind' => 'single', 'title' => 'Biggest Launch'],
+        [...$fallbackPlayState, 'id' => 'comeback-album', 'kind' => 'single', 'title' => 'Comeback Album'],
+        [...$fallbackPlayState, 'id' => 'first-drop', 'kind' => 'single', 'title' => 'First Drop'],
     ];
 @endphp
 
@@ -243,7 +244,6 @@
                                         ></div>
                                         <div>
                                             <strong><a href="{{ $single['detail_url'] }}">{{ $single['title'] }}</a></strong>
-                                            <span>{{ $single['artist'] }}</span>
                                             @if (($single['access_state'] ?? 'ready') !== 'ready')
                                                 <em class="music-inline-state">{{ $single['access_label'] }}</em>
                                             @endif
@@ -257,7 +257,6 @@
                                         <div class="single-art" aria-hidden="true"></div>
                                         <div>
                                             <strong>{{ $single['title'] }}</strong>
-                                            <span>{{ $single['artist'] }}</span>
                                             <em class="music-inline-state">{{ $single['access_label'] }}</em>
                                         </div>
                                         @include('partials.music-play-button', ['item' => $single, 'class' => 'mini-play', 'type' => 'single'])
@@ -272,7 +271,6 @@
                                         <div class="single-art" aria-hidden="true"></div>
                                         <div>
                                             <strong>VIP Mix</strong>
-                                            <span>Royal-only audio stream</span>
                                         </div>
                                         @include('partials.music-play-button', [
                                             'item' => [
@@ -288,6 +286,42 @@
                                 </x-access-gate>
                             @endif
                         </div>
+                    </section>
+
+                    <section class="content-section" aria-labelledby="playlists-title">
+                        <div class="section-head">
+                            <h3 id="playlists-title">Playlists</h3>
+                            <a class="view-all" href="{{ route('music.playlists') }}">VIEW ALL</a>
+                        </div>
+
+                        @if ($cmsPlaylists)
+                            <div class="music-playlists">
+                                @foreach ($cmsPlaylists as $playlist)
+                                    <article class="playlist-card music-item" data-access-state="{{ $playlist['access_state'] ?? 'ready' }}">
+                                        <div
+                                            class="playlist-stack"
+                                            @if (! empty($playlist['image_url'])) style="--thumb-url: url('{{ $playlist['image_url'] }}');" @endif
+                                            aria-hidden="true"
+                                        ></div>
+                                        <div class="playlist-copy">
+                                            <div>
+                                                <span>{{ $playlist['meta'] }}</span>
+                                                <h4><a href="{{ $playlist['detail_url'] }}">{{ $playlist['title'] }}</a></h4>
+                                                <p>{{ collect($playlist['tracks'] ?? [])->take(3)->implode(' / ') }}</p>
+                                            </div>
+                                            @if (($playlist['access_state'] ?? 'ready') !== 'ready')
+                                                <em class="music-inline-state">{{ $playlist['access_label'] }}</em>
+                                            @endif
+                                        </div>
+                                    </article>
+                                @endforeach
+                            </div>
+                        @else
+                            <div class="music-empty-state">
+                                <span>Empty</span>
+                                <strong>No published playlists yet.</strong>
+                            </div>
+                        @endif
                     </section>
                 </section>
 

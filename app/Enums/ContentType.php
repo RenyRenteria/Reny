@@ -7,6 +7,7 @@ enum ContentType: string
     case Song = 'song';
     case MusicalAlbum = 'musical_album';
     case DeluxeAlbum = 'deluxe_album';
+    case MusicPlaylist = 'music_playlist';
     case Video = 'video';
     case Photo = 'photo';
     case Gallery = 'gallery';

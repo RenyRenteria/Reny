@@ -167,7 +167,7 @@ class AdminEditorialFormsPreviewSchedulingTest extends TestCase
             'title' => 'Incomplete song',
         ])
             ->assertUnprocessable()
-            ->assertJsonValidationErrors(['metadata.duration_seconds', 'metadata.release_date', 'media_asset_ids']);
+            ->assertJsonValidationErrors(['metadata.release_date_member_view', 'metadata.release_date_open_view', 'media_asset_ids']);
 
         $this->postJson(route('admin.editorial.drafts.store'), [
             'type' => ContentType::Poll->value,
@@ -213,18 +213,18 @@ class AdminEditorialFormsPreviewSchedulingTest extends TestCase
             ContentType::Song => [
                 ...$base,
                 'metadata' => [
-                    'duration_seconds' => 210,
-                    'release_date' => '2026-07-01',
-                    'lyrics' => 'Hook and verse',
-                    'credits' => 'Reny Renteria',
+                    'release_date_member_view' => '2026-07-01T10:00',
+                    'release_date_open_view' => '2026-07-02T10:00',
                 ],
             ],
             ContentType::MusicalAlbum => [
                 ...$base,
                 'metadata' => [
-                    'track_count' => 10,
-                    'release_cycle' => 'summer',
-                    'narrative' => 'Album story',
+                    'release_date_member_view' => '2026-07-01T10:00',
+                    'release_date_open_view' => '2026-07-02T10:00',
+                    'tracks' => [
+                        ['track_name' => 'Intro'],
+                    ],
                 ],
             ],
             ContentType::DeluxeAlbum => [
@@ -233,6 +233,12 @@ class AdminEditorialFormsPreviewSchedulingTest extends TestCase
                 'metadata' => [
                     'package_title' => 'Deluxe room',
                     'package_notes' => 'Exclusive extras',
+                ],
+            ],
+            ContentType::MusicPlaylist => [
+                ...$base,
+                'metadata' => [
+                    'tracks' => ['song:1'],
                 ],
             ],
             ContentType::Video => [

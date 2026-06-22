@@ -27,6 +27,11 @@ class MusicController extends Controller
         return $this->collection($request, $cms, 'singles');
     }
 
+    public function playlists(Request $request, PublicCmsContentService $cms): View
+    {
+        return $this->collection($request, $cms, 'playlists');
+    }
+
     public function play(Request $request, PublicCmsContentService $cms, EditorialContent $content): JsonResponse
     {
         $response = $cms->musicPlayback($content, $request->user());

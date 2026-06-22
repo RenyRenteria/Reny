@@ -20,6 +20,7 @@ class AdminCmsSections
                     ContentType::Song->value,
                     ContentType::MusicalAlbum->value,
                     ContentType::DeluxeAlbum->value,
+                    ContentType::MusicPlaylist->value,
                     ContentType::Exclusive->value,
                 ],
             ],

@@ -40,6 +40,13 @@ class PublicCmsContentService
         ContentType::Exclusive,
     ];
 
+    /**
+     * @var array<int, ContentType>
+     */
+    private const MUSIC_PLAYLIST_TYPES = [
+        ContentType::MusicPlaylist,
+    ];
+
     public function __construct(
         private readonly MusicBannerSettingsService $musicBannerSettings,
         private readonly StorefrontSettingsService $storefrontSettings,
@@ -109,10 +116,18 @@ class PublicCmsContentService
                 ->map(fn (EditorialContent $content): array => $this->singlePayload($content, $user))
                 ->all();
 
+            $playlists = $this->listableMusicContents('playlists')
+                ->limit(6)
+                ->get()
+                ->values()
+                ->map(fn (EditorialContent $content): array => $this->playlistPayload($content, $user))
+                ->all();
+
             return [
                 'banner' => $this->musicBannerSettings->publicPayload(),
                 'albums' => $albums,
                 'singles' => $singles,
+                'playlists' => $playlists,
                 'featured' => $this->featuredMusicPayload(
                     $this->listableMusicContents('all')->first()
                 ),
@@ -125,16 +140,18 @@ class PublicCmsContentService
      */
     public function musicCollection(?User $user, string $section): array
     {
-        abort_unless(in_array($section, ['albums', 'singles'], true), 404);
+        abort_unless(in_array($section, ['albums', 'singles', 'playlists'], true), 404);
 
         return $this->page("music-{$section}", $user, function () use ($user, $section): array {
             $items = $this->listableMusicContents($section)
                 ->limit(48)
                 ->get()
                 ->values()
-                ->map(fn (EditorialContent $content, int $index): array => $section === 'albums'
-                    ? $this->albumPayload($content, $index, $user)
-                    : $this->singlePayload($content, $user))
+                ->map(fn (EditorialContent $content, int $index): array => match ($section) {
+                    'albums' => $this->albumPayload($content, $index, $user),
+                    'playlists' => $this->playlistPayload($content, $user),
+                    default => $this->singlePayload($content, $user),
+                })
                 ->all();
 
             return [
@@ -507,11 +524,9 @@ class PublicCmsContentService
         return [
             ...$this->musicBasePayload($content, $user),
             'title' => $content->title,
-            'meta' => $this->metadata($content, 'track_count')
-                ? $this->metadata($content, 'track_count').' tracks'
-                : $this->lineCount((string) $this->metadata($content, 'tracklist')).' tracks',
+            'meta' => count($this->tracklist($content)).' tracks',
             'cover_class' => ['cover-a', 'cover-b', 'cover-c', 'cover-d'][$index % 4],
-            'image_url' => $this->mediaUrl($content, ['cover_asset_id', 'image_asset_id']),
+            'image_url' => $this->mediaUrl($content, ['album_artwork_asset_id', 'cover_asset_id', 'image_asset_id']),
             'kind' => 'album',
         ];
     }
@@ -524,9 +539,29 @@ class PublicCmsContentService
         return [
             ...$this->musicBasePayload($content, $user),
             'title' => $content->title,
-            'artist' => $this->metadata($content, 'artist', 'Reny Renteria'),
-            'image_url' => $this->mediaUrl($content, ['cover_asset_id', 'image_asset_id']),
+            'image_url' => $this->mediaUrl($content, ['artwork_asset_id', 'cover_asset_id', 'image_asset_id']),
             'kind' => 'single',
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function playlistPayload(EditorialContent $content, ?User $user = null): array
+    {
+        $tracks = $this->playlistTracks($content);
+
+        return [
+            'id' => (string) $content->getKey(),
+            'visibility' => $content->visibility->value,
+            'summary' => $content->summary ?: '',
+            'detail_url' => route('public.content.show', $content),
+            'title' => $content->title,
+            'meta' => count($tracks).' tracks',
+            'tracks' => $tracks,
+            'image_url' => $this->mediaUrl($content, ['playlist_cover_asset_id', 'image_asset_id']),
+            'kind' => 'playlist',
+            ...$this->musicAccessPayload($content, $user),
         ];
     }
 
@@ -720,7 +755,12 @@ class PublicCmsContentService
             }
         }
 
-        $assetId = $this->metadata($content, 'audio_asset_id');
+        $assetId = $this->metadata($content, 'audio_asset_id')
+            ?: collect($this->metadata($content, 'tracks', []))
+                ->pluck('track_audio_asset_id')
+                ->filter()
+                ->first();
+
         $asset = $content->mediaAssets
             ->when($assetId, fn (Collection $assets): Collection => $assets->where('id', (int) $assetId))
             ->first(fn (MediaAsset $asset): bool => $asset->type === MediaAssetType::Audio);
@@ -733,7 +773,8 @@ class PublicCmsContentService
         $types = match ($section) {
             'albums' => self::MUSIC_ALBUM_TYPES,
             'singles' => self::MUSIC_SINGLE_TYPES,
-            default => [...self::MUSIC_ALBUM_TYPES, ...self::MUSIC_SINGLE_TYPES],
+            'playlists' => self::MUSIC_PLAYLIST_TYPES,
+            default => [...self::MUSIC_ALBUM_TYPES, ...self::MUSIC_SINGLE_TYPES, ...self::MUSIC_PLAYLIST_TYPES],
         };
 
         return EditorialContent::query()
@@ -878,11 +919,74 @@ class PublicCmsContentService
      */
     private function tracklist(EditorialContent $content): array
     {
+        $tracks = collect($this->metadata($content, 'tracks', []))
+            ->map(fn (mixed $track): string => is_array($track) ? trim((string) ($track['track_name'] ?? '')) : trim((string) $track))
+            ->filter()
+            ->values();
+
+        if ($tracks->isNotEmpty()) {
+            return $tracks->all();
+        }
+
         return collect(preg_split('/\R/', (string) $this->metadata($content, 'tracklist', '')) ?: [])
             ->map(fn (string $line): string => trim($line))
             ->filter()
             ->values()
             ->all();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function playlistTracks(EditorialContent $content): array
+    {
+        return collect($this->metadata($content, 'tracks', []))
+            ->map(fn (mixed $reference): ?string => is_string($reference) ? $this->playlistTrackLabel($reference) : null)
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    private function playlistTrackLabel(string $reference): ?string
+    {
+        $parts = explode(':', $reference);
+
+        if (count($parts) < 2) {
+            return null;
+        }
+
+        if ($parts[0] === 'song') {
+            return EditorialContent::query()
+                ->whereKey((int) $parts[1])
+                ->where('type', ContentType::Song->value)
+                ->value('title');
+        }
+
+        if ($parts[0] !== 'album' || count($parts) !== 3) {
+            return null;
+        }
+
+        $album = EditorialContent::query()
+            ->whereKey((int) $parts[1])
+            ->where('type', ContentType::MusicalAlbum->value)
+            ->first();
+
+        if (! $album) {
+            return null;
+        }
+
+        $index = (int) $parts[2];
+        $trackName = data_get($album->metadata ?? [], "tracks.{$index}.track_name");
+
+        if (blank($trackName)) {
+            $trackName = collect(preg_split('/\R/', (string) data_get($album->metadata ?? [], 'tracklist', '')) ?: [])
+                ->map(fn (string $line): string => trim($line))
+                ->filter()
+                ->values()
+                ->get($index);
+        }
+
+        return filled($trackName) ? $album->title.' - '.$trackName : null;
     }
 
     private function metadata(EditorialContent $content, string $key, mixed $default = null): mixed

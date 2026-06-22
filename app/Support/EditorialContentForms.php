@@ -16,24 +16,20 @@ class EditorialContentForms
         return [
             ContentType::Song->value => [
                 'label' => 'Song',
-                'description' => 'Audio, cover, duration, lyrics, credits, and release date.',
+                'description' => 'Required audio, artwork, and member/open release dates.',
                 'media_required' => true,
                 'fields' => [
-                    ['name' => 'duration_seconds', 'label' => 'Duration seconds', 'type' => 'number', 'required' => true],
-                    ['name' => 'release_date', 'label' => 'Release date', 'type' => 'date', 'required' => true],
-                    ['name' => 'lyrics', 'label' => 'Lyrics', 'type' => 'textarea'],
-                    ['name' => 'credits', 'label' => 'Credits', 'type' => 'text'],
+                    ['name' => 'release_date_member_view', 'label' => 'Member release date', 'type' => 'datetime-local', 'required' => true],
+                    ['name' => 'release_date_open_view', 'label' => 'Open release date', 'type' => 'datetime-local', 'required' => true],
                 ],
             ],
             ContentType::MusicalAlbum->value => [
                 'label' => 'Musical album',
-                'description' => 'Track count, cover, narrative, assets, optional price, and cycle.',
+                'description' => 'Required album artwork, member/open release dates, and tracks.',
                 'media_required' => true,
                 'fields' => [
-                    ['name' => 'track_count', 'label' => 'Track count', 'type' => 'number', 'required' => true],
-                    ['name' => 'release_cycle', 'label' => 'Release cycle', 'type' => 'text', 'required' => true],
-                    ['name' => 'narrative', 'label' => 'Narrative', 'type' => 'textarea'],
-                    ['name' => 'price', 'label' => 'Optional price', 'type' => 'number', 'step' => '0.01'],
+                    ['name' => 'release_date_member_view', 'label' => 'Member release date', 'type' => 'datetime-local', 'required' => true],
+                    ['name' => 'release_date_open_view', 'label' => 'Open release date', 'type' => 'datetime-local', 'required' => true],
                 ],
             ],
             ContentType::DeluxeAlbum->value => [
@@ -44,6 +40,14 @@ class EditorialContentForms
                     ['name' => 'package_title', 'label' => 'Package title', 'type' => 'text', 'required' => true],
                     ['name' => 'package_notes', 'label' => 'Package notes', 'type' => 'textarea', 'required' => true],
                     ['name' => 'price', 'label' => 'Price', 'type' => 'number', 'step' => '0.01'],
+                ],
+            ],
+            ContentType::MusicPlaylist->value => [
+                'label' => 'Music playlist',
+                'description' => 'A public music playlist built from existing songs and album tracks.',
+                'media_required' => true,
+                'fields' => [
+                    ['name' => 'tracks', 'label' => 'Tracks', 'type' => 'list', 'required' => true],
                 ],
             ],
             ContentType::Video->value => [
@@ -167,22 +171,25 @@ class EditorialContentForms
             ...$rules,
             ...match ($type) {
                 ContentType::Song => [
-                    'metadata.duration_seconds' => ['required', 'integer', 'min:1'],
-                    'metadata.release_date' => ['required', 'date'],
-                    'metadata.lyrics' => ['nullable', 'string'],
-                    'metadata.credits' => ['nullable', 'string', 'max:500'],
+                    'metadata.release_date_member_view' => ['required', 'date'],
+                    'metadata.release_date_open_view' => ['required', 'date', 'after_or_equal:metadata.release_date_member_view'],
                 ],
                 ContentType::MusicalAlbum => [
-                    'metadata.track_count' => ['required', 'integer', 'min:1'],
-                    'metadata.release_cycle' => ['required', 'string', 'max:120'],
-                    'metadata.narrative' => ['nullable', 'string'],
-                    'metadata.price' => ['nullable', 'numeric', 'min:0'],
+                    'metadata.release_date_member_view' => ['required', 'date'],
+                    'metadata.release_date_open_view' => ['required', 'date', 'after_or_equal:metadata.release_date_member_view'],
+                    'metadata.tracks' => ['required', 'array', 'min:1'],
+                    'metadata.tracks.*.track_name' => ['required', 'string', 'max:160'],
+                    'metadata.tracks.*.release_date_member_view' => ['nullable', 'date'],
                 ],
                 ContentType::DeluxeAlbum => [
                     'purchase_key' => ['required', 'string', 'max:120'],
                     'metadata.package_title' => ['required', 'string', 'max:160'],
                     'metadata.package_notes' => ['required', 'string'],
                     'metadata.price' => ['nullable', 'numeric', 'min:0'],
+                ],
+                ContentType::MusicPlaylist => [
+                    'metadata.tracks' => ['required', 'array', 'min:1'],
+                    'metadata.tracks.*' => ['required', 'string', 'max:80'],
                 ],
                 ContentType::Video => [
                     'metadata.video_url' => ['required', 'url', 'max:500'],
