@@ -77,6 +77,10 @@
             </aside>
 
             <main class="main-content account-content" id="account">
+                @if (session('login_success'))
+                    <div class="auth-success-box" role="status" aria-live="polite">{{ session('login_success') }}</div>
+                @endif
+
                 <header class="mobile-header">
                     <div class="mobile-brand">
                         <a class="brand-link" href="{{ route('home') }}" aria-label="Reny Renteria home">

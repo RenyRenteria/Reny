@@ -126,6 +126,31 @@ class OpenInAuthTest extends TestCase
             ->assertDontSee('VIP MEMBER');
     }
 
+    public function test_successful_login_shows_one_success_box_on_account_screen(): void
+    {
+        User::factory()->create([
+            'email' => 'success-member@example.com',
+            'password' => Hash::make('password'),
+        ]);
+
+        $this->get('/login')
+            ->assertOk()
+            ->assertDontSee('Login successful.');
+
+        $response = $this->followingRedirects()->post('/login', [
+            'identifier' => 'success-member@example.com',
+            'password' => 'password',
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertSee('Login successful.')
+            ->assertSee('auth-success-box', false)
+            ->assertDontSee('auth-status', false);
+
+        $this->assertSame(1, substr_count($response->getContent(), 'auth-success-box'));
+    }
+
     public function test_expired_user_keeps_account_but_sees_reactivation_state(): void
     {
         $user = User::factory()->expiredRoyal()->create([

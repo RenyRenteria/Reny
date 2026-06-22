@@ -175,6 +175,7 @@
 }
 
 .auth-status,
+.auth-success-box,
 .account-state {
     margin-bottom: 1rem;
     padding: 0.875rem;
@@ -185,6 +186,12 @@
     font-size: 0.875rem;
     font-weight: 800;
     line-height: 1.4;
+}
+
+.auth-success-box {
+    border-color: rgba(22, 138, 90, 0.35);
+    background: #e7f5ef;
+    color: #126a46;
 }
 
 .account-state {
@@ -8283,6 +8290,11 @@ body.admin-cms-body[data-theme="royal"] {
     padding: 0;
 }
 
+.music-content-editor {
+    width: min(100%, 56rem);
+    margin-inline: auto;
+}
+
 .music-banner-panel-head,
 .music-banner-preview-toolbar,
 .music-banner-publish-strip {
@@ -8312,7 +8324,7 @@ body.admin-cms-body[data-theme="royal"] {
 .music-banner-form {
     display: grid;
     gap: 0.875rem;
-    padding: 1rem;
+    padding: 1.5rem;
 }
 
 .music-banner-form label {

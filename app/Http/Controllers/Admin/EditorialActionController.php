@@ -413,11 +413,6 @@ class EditorialActionController extends Controller
         }
 
         $payload['visibility'] = VisibilityAudience::Open->value;
-
-        if (! array_key_exists('scheduled_at', $payload) || blank($payload['scheduled_at'])) {
-            $payload['scheduled_at'] = $memberRelease;
-        }
-
         $payload['release_windows'] = [
             [
                 'audience' => VisibilityAudience::Member->value,

@@ -41,7 +41,9 @@ class AuthenticatedSessionController extends Controller
         Auth::login($user, $request->boolean('remember'));
         $request->session()->regenerate();
 
-        return redirect()->intended(route('account.show'));
+        return redirect()
+            ->intended(route('account.show'))
+            ->with('login_success', 'Login successful.');
     }
 
     public function destroy(Request $request): RedirectResponse
