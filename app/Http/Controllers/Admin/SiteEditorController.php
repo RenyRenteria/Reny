@@ -75,8 +75,30 @@ class SiteEditorController extends Controller
             'visibilityAudiences' => VisibilityAudience::cases(),
             'mediaAssets' => MediaAsset::query()->ready()->latest()->limit(100)->get(),
             'trackOptions' => $this->musicTrackOptions(),
+            'contents' => $this->manageableMusicContents(),
             'defaultType' => ContentType::MusicalAlbum->value,
         ];
+    }
+
+    /**
+     * @return Collection<int, EditorialContent>
+     */
+    private function manageableMusicContents(): Collection
+    {
+        return EditorialContent::query()
+            ->with([
+                'mediaAssets' => fn ($query) => $query->orderBy('content_media_assets.sort_order'),
+                'releaseWindows',
+            ])
+            ->whereIn('type', [
+                ContentType::Song->value,
+                ContentType::MusicalAlbum->value,
+                ContentType::MusicPlaylist->value,
+            ])
+            ->orderByRaw("CASE type WHEN 'song' THEN 0 WHEN 'musical_album' THEN 1 WHEN 'music_playlist' THEN 2 ELSE 3 END")
+            ->latest()
+            ->limit(150)
+            ->get();
     }
 
     /**

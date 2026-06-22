@@ -435,6 +435,7 @@ document.querySelectorAll('.album-deluxe-button').forEach((link) => {
 
 const musicPlayerLayer = document.getElementById('musicPlayerLayer');
 const musicPlayerAudio = document.getElementById('musicPlayerAudio');
+const musicPlayerArtwork = document.getElementById('musicPlayerArtwork');
 const musicPlayerTitle = document.getElementById('musicPlayerTitle');
 const musicPlayerState = document.getElementById('musicPlayerState');
 const musicPlayerMessage = document.getElementById('musicPlayerMessage');
@@ -442,28 +443,81 @@ const musicPlayerLoading = document.getElementById('musicPlayerLoading');
 const musicPlayerTracks = document.getElementById('musicPlayerTracks');
 const musicPlayerDetail = document.getElementById('musicPlayerDetail');
 const musicPlayerCta = document.getElementById('musicPlayerCta');
-let focusedBeforeMusicPlayer = null;
+const musicPlayerToggle = document.getElementById('musicPlayerToggle');
+const musicPlayerToggleIcon = document.getElementById('musicPlayerToggleIcon');
+const musicPlayerProgress = document.getElementById('musicPlayerProgress');
+const musicPlayerCurrentTime = document.getElementById('musicPlayerCurrentTime');
+const musicPlayerDuration = document.getElementById('musicPlayerDuration');
 let activeMusicButton = null;
+let isSeekingMusic = false;
 
-const getMusicFocusable = () => [...(musicPlayerLayer?.querySelectorAll('button, [href], audio, [tabindex]:not([tabindex="-1"])') || [])]
-    .filter((node) => !node.disabled && node.offsetParent !== null);
+const trapMusicFocus = () => {};
 
-const trapMusicFocus = (event) => {
-    const focusable = getMusicFocusable();
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
+const formatMediaTime = (seconds) => {
+    if (!Number.isFinite(seconds) || seconds < 0) {
+        return '0:00';
+    }
 
-    if (!first || !last) {
+    const minutes = Math.floor(seconds / 60);
+    const remaining = Math.floor(seconds % 60).toString().padStart(2, '0');
+
+    return `${minutes}:${remaining}`;
+};
+
+const setMusicControlsEnabled = (enabled) => {
+    if (musicPlayerToggle) {
+        musicPlayerToggle.disabled = !enabled;
+    }
+
+    if (musicPlayerProgress) {
+        musicPlayerProgress.disabled = !enabled;
+    }
+};
+
+const updateMusicToggle = () => {
+    const isPlaying = Boolean(musicPlayerAudio && !musicPlayerAudio.paused && !musicPlayerAudio.ended);
+
+    musicPlayerLayer?.classList.toggle('is-playing', isPlaying);
+    musicPlayerToggle?.setAttribute('aria-label', isPlaying ? 'Pause' : 'Play');
+    musicPlayerToggleIcon?.classList.toggle('is-playing', isPlaying);
+};
+
+const updateMusicProgress = () => {
+    if (!musicPlayerAudio || isSeekingMusic) {
         return;
     }
 
-    if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
+    const duration = musicPlayerAudio.duration;
+    const current = musicPlayerAudio.currentTime;
+
+    if (musicPlayerCurrentTime) {
+        musicPlayerCurrentTime.textContent = formatMediaTime(current);
     }
+
+    if (musicPlayerDuration) {
+        musicPlayerDuration.textContent = formatMediaTime(duration);
+    }
+
+    if (musicPlayerProgress) {
+        musicPlayerProgress.value = Number.isFinite(duration) && duration > 0
+            ? String((current / duration) * 100)
+            : '0';
+    }
+};
+
+const setMusicArtwork = (url) => {
+    if (!musicPlayerArtwork) {
+        return;
+    }
+
+    if (!url) {
+        musicPlayerArtwork.style.removeProperty('background-image');
+        musicPlayerArtwork.classList.remove('has-artwork');
+        return;
+    }
+
+    musicPlayerArtwork.style.backgroundImage = `url(${JSON.stringify(url)})`;
+    musicPlayerArtwork.classList.add('has-artwork');
 };
 
 const openMusicPlayer = () => {
@@ -471,11 +525,9 @@ const openMusicPlayer = () => {
         return;
     }
 
-    focusedBeforeMusicPlayer = document.activeElement;
     musicPlayerLayer.hidden = false;
     musicPlayerLayer.removeAttribute('inert');
-    document.body.classList.add('has-modal-open');
-    getMusicFocusable()[0]?.focus();
+    document.body.classList.add('has-music-player');
 };
 
 const closeMusicPlayer = () => {
@@ -486,8 +538,8 @@ const closeMusicPlayer = () => {
     musicPlayerAudio?.pause();
     musicPlayerLayer.hidden = true;
     musicPlayerLayer.setAttribute('inert', '');
-    document.body.classList.remove('has-modal-open');
-    focusedBeforeMusicPlayer?.focus();
+    document.body.classList.remove('has-music-player');
+    updateMusicToggle();
 };
 
 const setMusicLoadingState = (button) => {
@@ -500,8 +552,13 @@ const setMusicLoadingState = (button) => {
     musicPlayerTracks.replaceChildren();
     musicPlayerCta.hidden = true;
     musicPlayerCta.removeAttribute('href');
-    musicPlayerAudio.hidden = true;
+    setMusicControlsEnabled(false);
+    setMusicArtwork(button.dataset.imageUrl);
+    musicPlayerAudio.pause();
     musicPlayerAudio.removeAttribute('src');
+    musicPlayerAudio.load();
+    updateMusicProgress();
+    updateMusicToggle();
     musicPlayerDetail.href = button.dataset.detailUrl || window.location.href;
     openMusicPlayer();
 };
@@ -535,6 +592,7 @@ const renderMusicPlayerPayload = (payload, button) => {
     musicPlayerState.textContent = stateLabel;
     musicPlayerMessage.textContent = message;
     musicPlayerDetail.href = payload.detail_url || button.dataset.detailUrl || window.location.href;
+    setMusicArtwork(payload.image_url || button.dataset.imageUrl);
     renderMusicTracks(payload.tracks || []);
 
     if (payload.cta_url || button.dataset.ctaUrl) {
@@ -547,9 +605,15 @@ const renderMusicPlayerPayload = (payload, button) => {
     }
 
     if (state === 'ready' && payload.audio_url) {
-        musicPlayerAudio.src = payload.audio_url;
-        musicPlayerAudio.hidden = false;
-        musicPlayerAudio.load();
+        if (musicPlayerAudio.src !== payload.audio_url) {
+            musicPlayerAudio.src = payload.audio_url;
+            musicPlayerAudio.load();
+        }
+
+        setMusicControlsEnabled(true);
+        musicPlayerAudio.play().catch(() => {
+            musicPlayerMessage.textContent = 'Tap play to start playback.';
+        }).finally(updateMusicToggle);
         trackElementEvent(button, 'music_play_ready', {
             item_type: button.dataset.analyticsType,
             result: 'ready',
@@ -557,8 +621,12 @@ const renderMusicPlayerPayload = (payload, button) => {
         return;
     }
 
-    musicPlayerAudio.hidden = true;
+    musicPlayerAudio.pause();
     musicPlayerAudio.removeAttribute('src');
+    musicPlayerAudio.load();
+    setMusicControlsEnabled(false);
+    updateMusicProgress();
+    updateMusicToggle();
 
     trackElementEvent(button, state === 'playback_error' ? 'music_play_failed' : 'music_access_blocked', {
         item_type: button.dataset.analyticsType,
@@ -567,47 +635,55 @@ const renderMusicPlayerPayload = (payload, button) => {
     });
 };
 
-document.querySelectorAll('[data-music-play]').forEach((button) => {
-    button.addEventListener('click', async () => {
-        trackElementEvent(button, 'music_play_clicked', {
-            item_type: button.dataset.analyticsType || (button.classList.contains('mini-play') ? 'single' : 'album'),
-            result: 'clicked',
-        });
+document.addEventListener('click', async (event) => {
+    const button = event.target.closest('[data-music-play]');
 
-        setMusicLoadingState(button);
+    if (!button || !musicPlayerLayer || !musicPlayerAudio) {
+        return;
+    }
 
-        if (!button.dataset.playUrl) {
-            renderMusicPlayerPayload({
-                state: button.dataset.accessState || 'playback_error',
-                access_label: button.dataset.accessLabel || 'Audio unavailable',
-                message: button.dataset.accessMessage || 'This music item is not connected to playback yet.',
-                cta_label: button.dataset.ctaLabel,
-                cta_url: button.dataset.ctaUrl,
-            }, button);
-            return;
-        }
+    event.preventDefault();
 
-        try {
-            const response = await fetch(button.dataset.playUrl, {
-                headers: {
-                    'Accept': 'application/json',
-                },
-            });
-            const payload = await response.json().catch(() => ({}));
-
-            renderMusicPlayerPayload(payload, button);
-        } catch (error) {
-            console.error(error);
-            renderMusicPlayerPayload({
-                state: 'playback_error',
-                access_label: 'Playback error',
-                message: 'Playback could not load. Try again in a moment.',
-            }, button);
-        }
+    trackElementEvent(button, 'music_play_clicked', {
+        item_type: button.dataset.analyticsType || (button.classList.contains('mini-play') ? 'single' : 'album'),
+        result: 'clicked',
     });
+
+    setMusicLoadingState(button);
+
+    if (!button.dataset.playUrl) {
+        renderMusicPlayerPayload({
+            state: button.dataset.accessState || 'playback_error',
+            access_label: button.dataset.accessLabel || 'Audio unavailable',
+            message: button.dataset.accessMessage || 'This music item is not connected to playback yet.',
+            cta_label: button.dataset.ctaLabel,
+            cta_url: button.dataset.ctaUrl,
+        }, button);
+        return;
+    }
+
+    try {
+        const response = await fetch(button.dataset.playUrl, {
+            headers: {
+                'Accept': 'application/json',
+            },
+        });
+        const payload = await response.json().catch(() => ({}));
+
+        renderMusicPlayerPayload(payload, button);
+    } catch (error) {
+        console.error(error);
+        renderMusicPlayerPayload({
+            state: 'playback_error',
+            access_label: 'Playback error',
+            message: 'Playback could not load. Try again in a moment.',
+        }, button);
+    }
 });
 
 musicPlayerAudio?.addEventListener('play', () => {
+    updateMusicToggle();
+
     if (!activeMusicButton) {
         return;
     }
@@ -617,6 +693,11 @@ musicPlayerAudio?.addEventListener('play', () => {
         result: 'started',
     });
 }, { once: false });
+
+musicPlayerAudio?.addEventListener('pause', updateMusicToggle);
+musicPlayerAudio?.addEventListener('ended', updateMusicToggle);
+musicPlayerAudio?.addEventListener('loadedmetadata', updateMusicProgress);
+musicPlayerAudio?.addEventListener('timeupdate', updateMusicProgress);
 
 musicPlayerAudio?.addEventListener('error', () => {
     if (!activeMusicButton) {
@@ -632,14 +713,37 @@ musicPlayerAudio?.addEventListener('error', () => {
     });
 });
 
-document.querySelectorAll('[data-music-player-close]').forEach((button) => {
-    button.addEventListener('click', closeMusicPlayer);
+musicPlayerToggle?.addEventListener('click', () => {
+    if (!musicPlayerAudio?.src) {
+        return;
+    }
+
+    if (musicPlayerAudio.paused || musicPlayerAudio.ended) {
+        musicPlayerAudio.play().catch(() => {
+            musicPlayerMessage.textContent = 'Playback could not start. Try again.';
+        });
+    } else {
+        musicPlayerAudio.pause();
+    }
 });
 
-musicPlayerLayer?.addEventListener('click', (event) => {
-    if (event.target === musicPlayerLayer) {
-        closeMusicPlayer();
+musicPlayerProgress?.addEventListener('input', () => {
+    isSeekingMusic = true;
+});
+
+musicPlayerProgress?.addEventListener('change', () => {
+    if (!musicPlayerAudio || !Number.isFinite(musicPlayerAudio.duration) || musicPlayerAudio.duration <= 0) {
+        isSeekingMusic = false;
+        return;
     }
+
+    musicPlayerAudio.currentTime = (Number(musicPlayerProgress.value) / 100) * musicPlayerAudio.duration;
+    isSeekingMusic = false;
+    updateMusicProgress();
+});
+
+document.querySelectorAll('[data-music-player-close]').forEach((button) => {
+    button.addEventListener('click', closeMusicPlayer);
 });
 
 musicPlayerCta?.addEventListener('click', () => {
@@ -652,6 +756,111 @@ musicPlayerCta?.addEventListener('click', () => {
         destination: musicPlayerCta.href,
         result: 'clicked',
     });
+});
+
+const publicPageRoot = () => document.querySelector('[data-public-page-root]');
+
+const isPersistentPublicPath = (url) => {
+    const paths = new Set([
+        '/',
+        '/music',
+        '/music/albums',
+        '/music/singles',
+        '/music/playlists',
+        '/videos',
+        '/photos',
+        '/community',
+        '/store',
+    ]);
+
+    return paths.has(url.pathname) || url.pathname.startsWith('/community/clubs/');
+};
+
+const navigatePublicPage = async (url, { push = true } = {}) => {
+    const root = publicPageRoot();
+
+    if (!root) {
+        return false;
+    }
+
+    try {
+        const response = await fetch(url.href, {
+            headers: {
+                'Accept': 'text/html',
+                'X-Requested-With': 'fetch',
+            },
+        });
+
+        if (!response.ok) {
+            return false;
+        }
+
+        const html = await response.text();
+        const nextDocument = new DOMParser().parseFromString(html, 'text/html');
+        const nextRoot = nextDocument.querySelector('[data-public-page-root]');
+
+        if (!nextRoot) {
+            return false;
+        }
+
+        root.replaceWith(nextRoot);
+        document.title = nextDocument.title;
+
+        const nextScreen = nextDocument.body?.dataset.analyticsScreen;
+        if (nextScreen) {
+            document.body.dataset.analyticsScreen = nextScreen;
+        }
+
+        if (push) {
+            window.history.pushState({}, '', url.href);
+        }
+
+        window.scrollTo({ top: 0, behavior: 'auto' });
+        trackEvent('page_view', {
+            title: document.title,
+            referrer: null,
+            result: 'viewed',
+        });
+
+        return true;
+    } catch (error) {
+        console.warn(error);
+        return false;
+    }
+};
+
+document.addEventListener('click', async (event) => {
+    const link = event.target.closest('a[href]');
+
+    if (!link || event.defaultPrevented || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+        return;
+    }
+
+    if (link.target || link.hasAttribute('download')) {
+        return;
+    }
+
+    const url = new URL(link.href, window.location.href);
+
+    if (url.origin !== window.location.origin || url.hash || !isPersistentPublicPath(url) || !publicPageRoot()) {
+        return;
+    }
+
+    event.preventDefault();
+
+    const navigated = await navigatePublicPage(url);
+
+    if (!navigated) {
+        window.location.assign(url.href);
+    }
+});
+
+window.addEventListener('popstate', () => {
+    const url = new URL(window.location.href);
+
+    if (isPersistentPublicPath(url)) {
+        navigatePublicPage(url, { push: false }).catch(() => {});
+    }
 });
 
 document.addEventListener('keydown', (event) => {

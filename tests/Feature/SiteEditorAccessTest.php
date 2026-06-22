@@ -2,6 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ContentType;
+use App\Enums\EditorialStatus;
+use App\Enums\MediaAssetType;
+use App\Enums\MediaProcessingStatus;
+use App\Enums\VisibilityAudience;
+use App\Models\EditorialContent;
+use App\Models\MediaAsset;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -37,6 +44,104 @@ class SiteEditorAccessTest extends TestCase
             ->assertSee('Reny Site Editor')
             ->assertSee('Banner')
             ->assertSee('Guardar y publicar');
+    }
+
+    public function test_music_site_editor_manage_music_lists_edit_and_delete_actions(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $audio = $this->mediaAsset(MediaAssetType::Audio->value);
+        $artwork = $this->mediaAsset(MediaAssetType::Thumbnail->value);
+        $song = $this->musicContent(ContentType::Song, 'Manage Single', [
+            'audio_asset_id' => $audio->id,
+            'artwork_asset_id' => $artwork->id,
+            'release_date_member_view' => '2026-07-01T10:00',
+            'release_date_open_view' => '2026-07-02T10:00',
+        ]);
+        $album = $this->musicContent(ContentType::MusicalAlbum, 'Manage Album', [
+            'album_artwork_asset_id' => $artwork->id,
+            'release_date_member_view' => '2026-07-01T10:00',
+            'release_date_open_view' => '2026-07-02T10:00',
+            'tracks' => [
+                [
+                    'track_name' => 'Track One',
+                    'track_audio_asset_id' => $audio->id,
+                ],
+            ],
+        ]);
+        $playlist = $this->musicContent(ContentType::MusicPlaylist, 'Manage Playlist', [
+            'playlist_cover_asset_id' => $artwork->id,
+            'tracks' => ['song:'.$song->id, 'album:'.$album->id.':0'],
+        ]);
+
+        $this->actingAsAdmin($admin);
+
+        $this->get(route('admin.site-editor.show', ['page' => 'music']))
+            ->assertOk()
+            ->assertSee('Manage Music')
+            ->assertSee('Manage Single')
+            ->assertSee('Manage Album')
+            ->assertSee('Manage Playlist')
+            ->assertSee(route('admin.content.update', $song), false)
+            ->assertSee(route('admin.content.update', $album), false)
+            ->assertSee(route('admin.content.update', $playlist), false)
+            ->assertSee(route('admin.content.destroy', $song), false)
+            ->assertSee('Current audio kept if no new file is uploaded.')
+            ->assertSee('Current artwork kept if no new file is uploaded.');
+    }
+
+    public function test_music_manage_edit_reuses_existing_assets_without_new_uploads(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $audio = $this->mediaAsset(MediaAssetType::Audio->value);
+        $artwork = $this->mediaAsset(MediaAssetType::Thumbnail->value);
+        $song = $this->musicContent(ContentType::Song, 'Original Single', [
+            'audio_asset_id' => $audio->id,
+            'artwork_asset_id' => $artwork->id,
+            'release_date_member_view' => '2026-07-01T10:00',
+            'release_date_open_view' => '2026-07-02T10:00',
+        ]);
+
+        $this->actingAsAdmin($admin);
+
+        $this->patch(route('admin.content.update', $song), [
+            'return_to_music_editor' => '1',
+            '_music_form_key' => 'music-songs-'.$song->id,
+            'action' => 'publish',
+            'type' => ContentType::Song->value,
+            'title' => 'Edited Single',
+            'visibility' => VisibilityAudience::Open->value,
+            'metadata' => [
+                'audio_asset_id' => $audio->id,
+                'artwork_asset_id' => $artwork->id,
+                'release_date_member_view' => '2026-07-03T10:00',
+                'release_date_open_view' => '2026-07-04T10:00',
+            ],
+        ])
+            ->assertRedirect(route('admin.site-editor.show', ['page' => 'music']));
+
+        $song->refresh();
+
+        $this->assertSame('Edited Single', $song->title);
+        $this->assertSame($audio->id, data_get($song->metadata, 'audio_asset_id'));
+        $this->assertSame($artwork->id, data_get($song->metadata, 'artwork_asset_id'));
+    }
+
+    public function test_music_manage_delete_removes_music_content(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $song = $this->musicContent(ContentType::Song, 'Delete Me', [
+            'audio_asset_id' => $this->mediaAsset(MediaAssetType::Audio->value)->id,
+            'artwork_asset_id' => $this->mediaAsset(MediaAssetType::Thumbnail->value)->id,
+            'release_date_member_view' => '2026-07-01T10:00',
+            'release_date_open_view' => '2026-07-02T10:00',
+        ]);
+
+        $this->actingAsAdmin($admin);
+
+        $this->delete(route('admin.content.destroy', $song))
+            ->assertRedirect(route('admin.site-editor.show', ['page' => 'music']));
+
+        $this->assertDatabaseMissing('editorial_contents', ['id' => $song->id]);
     }
 
     public function test_admin_site_editor_routes_stay_on_enter_screen_when_cms_is_disabled(): void
@@ -95,6 +200,37 @@ class SiteEditorAccessTest extends TestCase
     {
         $this->actingAs($user)->withSession([
             'admin_authenticated_at' => now()->timestamp,
+        ]);
+    }
+
+    private function musicContent(ContentType $type, string $title, array $metadata): EditorialContent
+    {
+        return EditorialContent::factory()->create([
+            'type' => $type->value,
+            'title' => $title,
+            'status' => EditorialStatus::Published->value,
+            'visibility' => VisibilityAudience::Open->value,
+            'published_at' => now(),
+            'metadata' => $metadata,
+        ]);
+    }
+
+    private function mediaAsset(string $type): MediaAsset
+    {
+        $isAudio = $type === MediaAssetType::Audio->value;
+
+        return MediaAsset::create([
+            'type' => $type,
+            'title' => "Reusable {$type}",
+            'disk' => 'public',
+            'path' => $isAudio ? "media/{$type}/asset.mp3" : "media/{$type}/asset.jpg",
+            'original_filename' => $isAudio ? "asset-{$type}.mp3" : "asset-{$type}.jpg",
+            'mime_type' => $isAudio ? 'audio/mpeg' : 'image/jpeg',
+            'extension' => $isAudio ? 'mp3' : 'jpg',
+            'size_bytes' => 1024,
+            'processing_status' => MediaProcessingStatus::Ready->value,
+            'is_public' => true,
+            'alt_text' => $isAudio ? null : 'Reusable asset alt text',
         ]);
     }
 

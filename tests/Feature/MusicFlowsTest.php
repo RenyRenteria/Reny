@@ -88,7 +88,9 @@ class MusicFlowsTest extends TestCase
         foreach (['/videos', '/photos', '/community', '/store'] as $path) {
             $this->get($path)
                 ->assertOk()
-                ->assertSee('href="'.route('music').'"', false);
+                ->assertSee('href="'.route('music').'"', false)
+                ->assertSee('data-public-page-root', false)
+                ->assertSee('id="musicPlayerLayer"', false);
         }
     }
 
@@ -212,7 +214,9 @@ class MusicFlowsTest extends TestCase
             'release_date_member_view' => '2026-07-01T10:00',
             'release_date_open_view' => '2026-07-02T10:00',
             'audio_url' => 'https://audio.test/open.mp3',
+            'artwork_asset_id' => $this->mediaAsset(MediaAssetType::Thumbnail->value)->id,
         ]);
+        $open->mediaAssets()->attach(data_get($open->metadata, 'artwork_asset_id'), ['role' => 'artwork', 'sort_order' => 0]);
 
         $missingAudio = $this->publishedMusic(ContentType::Song, 'Missing Audio', [
             'release_date_member_view' => '2026-07-01T10:00',
@@ -247,7 +251,8 @@ class MusicFlowsTest extends TestCase
         $this->getJson(route('music.play', $open))
             ->assertOk()
             ->assertJsonPath('state', 'ready')
-            ->assertJsonPath('audio_url', 'https://audio.test/open.mp3');
+            ->assertJsonPath('audio_url', 'https://audio.test/open.mp3')
+            ->assertJsonPath('image_url', $open->mediaAssets->first()->publicUrl());
 
         $this->getJson(route('music.play', $missingAudio))
             ->assertStatus(422)

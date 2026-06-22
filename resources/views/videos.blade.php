@@ -122,7 +122,7 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body data-analytics-screen="videos">
-        <div class="videos-shell">
+        <div class="videos-shell" data-public-page-root>
             <aside class="sidebar" aria-label="Primary navigation">
                 <div>
                     <a class="brand-link" href="{{ url('/') }}" aria-label="Reny Renteria home">
@@ -351,5 +351,6 @@
         </div>
 
         @include('partials.video-player-modal')
+        @include('partials.music-player-modal')
     </body>
 </html>

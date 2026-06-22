@@ -54,7 +54,7 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body data-analytics-screen="music">
-        <div class="music-shell">
+        <div class="music-shell" data-public-page-root>
             <aside class="sidebar" aria-label="Primary navigation">
                 <div>
                     <a class="brand-link" href="/" aria-label="Reny Renteria home">

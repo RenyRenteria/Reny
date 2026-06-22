@@ -80,6 +80,7 @@ Route::prefix(config('admin.path', 'admin'))->name('admin.')->group(function () 
         Route::post('/content', [EditorialContentController::class, 'store'])->middleware('admin.cms')->name('content.store');
         Route::get('/content/{content}/edit', [AdminLoginController::class, 'create'])->name('content.edit');
         Route::match(['put', 'patch'], '/content/{content}', [EditorialContentController::class, 'update'])->middleware('admin.cms')->name('content.update');
+        Route::delete('/content/{content}', [EditorialContentController::class, 'destroy'])->middleware('admin.cms')->name('content.destroy');
         Route::get('/content/{content}/preview', [AdminLoginController::class, 'create'])->name('content.preview');
         Route::get('/media', [AdminLoginController::class, 'create'])->name('media.index');
         Route::post('/media', [MediaLibraryController::class, 'store'])->middleware('admin.cms')->name('media.store');
