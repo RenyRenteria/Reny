@@ -17,6 +17,7 @@
     data-cta-url="{{ $item['cta_url'] ?? '' }}"
     data-image-url="{{ $item['image_url'] ?? '' }}"
     data-analytics-id="{{ $item['id'] ?? \Illuminate\Support\Str::slug($title) }}"
+    data-analytics-label="{{ $title }}"
     data-analytics-type="{{ $itemType }}"
     aria-label="Play {{ $title }}"
 >

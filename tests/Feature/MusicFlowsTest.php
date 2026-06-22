@@ -223,8 +223,12 @@ class MusicFlowsTest extends TestCase
             ->assertJsonPath('audio_url', $singleAudio->publicUrl())
             ->assertJsonCount(2, 'queue')
             ->assertJsonPath('queue.0.title', 'Playable Playlist Single')
+            ->assertJsonPath('queue.0.message', 'Playable Playlist Single')
+            ->assertJsonPath('queue.0.access_label', '')
             ->assertJsonPath('queue.1.title', 'Playable Playlist Album - Queued Track')
-            ->assertJsonPath('queue.1.audio_url', $albumAudio->publicUrl());
+            ->assertJsonPath('queue.1.audio_url', $albumAudio->publicUrl())
+            ->assertJsonMissingExact(['message' => 'Playback is ready.'])
+            ->assertJsonMissingExact(['access_label' => 'Ready to play']);
     }
 
     public function test_music_route_lists_cms_single_even_when_release_dates_are_future(): void
@@ -299,7 +303,11 @@ class MusicFlowsTest extends TestCase
             ->assertOk()
             ->assertJsonPath('state', 'ready')
             ->assertJsonPath('audio_url', 'https://audio.test/open.mp3')
-            ->assertJsonPath('image_url', $open->mediaAssets->first()->publicUrl());
+            ->assertJsonPath('image_url', $open->mediaAssets->first()->publicUrl())
+            ->assertJsonPath('message', 'Open Audio')
+            ->assertJsonPath('access_label', '')
+            ->assertJsonMissingExact(['message' => 'Playback is ready.'])
+            ->assertJsonMissingExact(['access_label' => 'Ready to play']);
 
         $this->getJson(route('music.play', $missingAudio))
             ->assertStatus(422)

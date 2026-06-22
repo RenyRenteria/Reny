@@ -311,6 +311,7 @@
                                             data-cta-label="{{ $album['cta_label'] ?? '' }}"
                                             data-cta-url="{{ $album['cta_url'] ?? '' }}"
                                             data-analytics-id="{{ $album['id'] ?? \Illuminate\Support\Str::slug($albumTitle) }}"
+                                            data-analytics-label="{{ $albumTitle }}"
                                             data-analytics-type="album"
                                             aria-label="Play {{ $albumTitle }}"
                                         >Play Here</button>
