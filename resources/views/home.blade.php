@@ -43,8 +43,6 @@
     $singles = collect($publicCms['singles'] ?? [])->take(3)->values();
     $royalPass = $publicCms['royal_pass'] ?? [];
     $rsvpTickets = $rsvpTickets ?? [];
-    $isGuestPreview = (bool) request()->attributes->get('site_editor_guest_preview', false);
-    $shouldShowRoyalPass = $isGuestPreview || auth()->guest();
     $slotImage = fn (array $slot): string => $slot['image_url'] ?? asset($slot['image'] ?? 'images/store/work-in-progress.png');
     $eventLines = fn (array $event): array => array_values(array_filter(
         preg_split('/\r\n|\r|\n/', (string) ($event['description'] ?? '')),
@@ -157,35 +155,33 @@
                 </header>
 
                 <div class="home-stack">
-                    @if ($shouldShowRoyalPass)
-                        <section class="home-royal-pass" aria-label="Royal Pass">
-                            <div class="home-royal-pass-copy">
-                                <span>{{ $royalPass['copy_before'] ?? 'Get your' }} <strong>{{ $royalPass['emphasis'] ?? 'Royal Pass' }}</strong></span>
-                                <p>{{ $royalPass['copy_after'] ?? 'Unlock community, exclusive content and more...' }}</p>
-                            </div>
-                            <button
-                                class="store-button home-unlock-button"
-                                type="button"
-                                data-buy="{{ $royalPass['product_key'] ?? 'royal' }}"
-                                data-buy-name="{{ $royalPass['emphasis'] ?? 'Royal Pass' }}"
-                                data-buy-type="Membership"
-                                data-buy-summary="Monthly membership with exclusive content, community and more."
-                                data-buy-image="{{ asset('images/store/crown-collection.png') }}"
-                                data-buy-url="{{ route('store.checkout', ['product' => $royalPass['product_key'] ?? 'royal']) }}"
-                            >
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                                    <path d="M7 17 17 7"></path>
-                                    <path d="M8 7h9v9"></path>
-                                </svg>
-                                Unlock
-                            </button>
-                            <div class="home-royal-pass-images" aria-hidden="true">
-                                @foreach ($royalImages as $image)
-                                    <img src="{{ $image }}" alt="">
-                                @endforeach
-                            </div>
-                        </section>
-                    @endif
+                    <section class="home-royal-pass" aria-label="Royal Pass">
+                        <div class="home-royal-pass-copy">
+                            <span>{{ $royalPass['copy_before'] ?? 'Get your' }} <strong>{{ $royalPass['emphasis'] ?? 'Royal Pass' }}</strong></span>
+                            <p>{{ $royalPass['copy_after'] ?? 'Unlock community, exclusive content and more...' }}</p>
+                        </div>
+                        <button
+                            class="store-button home-unlock-button"
+                            type="button"
+                            data-buy="{{ $royalPass['product_key'] ?? 'royal' }}"
+                            data-buy-name="{{ $royalPass['emphasis'] ?? 'Royal Pass' }}"
+                            data-buy-type="Membership"
+                            data-buy-summary="Monthly membership with exclusive content, community and more."
+                            data-buy-image="{{ asset('images/store/crown-collection.png') }}"
+                            data-buy-url="{{ route('store.checkout', ['product' => $royalPass['product_key'] ?? 'royal']) }}"
+                        >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                                <path d="M7 17 17 7"></path>
+                                <path d="M8 7h9v9"></path>
+                            </svg>
+                            Unlock
+                        </button>
+                        <div class="home-royal-pass-images" aria-hidden="true">
+                            @foreach ($royalImages as $image)
+                                <img src="{{ $image }}" alt="">
+                            @endforeach
+                        </div>
+                    </section>
 
                     <section class="video-hero home-video-hero" aria-label="Featured video">
                         <div class="hero-content">
