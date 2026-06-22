@@ -2057,6 +2057,15 @@ if (commerceRoot) {
             price.className = 'store-bag-price';
             price.textContent = money(prices[priceKey] || 0, priceKey === 'royal' ? '/mo' : '');
 
+            if (product.image) {
+                const image = document.createElement('img');
+                image.className = 'store-bag-image';
+                image.src = product.image;
+                image.alt = '';
+                image.decoding = 'async';
+                item.append(image);
+            }
+
             copy.append(name, meta, summary);
             item.append(copy, price);
             bagList.append(item);

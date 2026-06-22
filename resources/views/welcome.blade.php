@@ -194,6 +194,7 @@
                                             data-buy-name="Deluxe Digital Album"
                                             data-buy-type="Album"
                                             data-buy-summary="Unlock {{ $album['title'] }} and the deluxe music package."
+                                            data-buy-image="{{ $album['image_url'] ?? asset('images/store/work-in-progress.png') }}"
                                             data-buy-url="{{ $deluxeUrl }}"
                                             aria-label="Buy Deluxe - {{ $album['title'] }}"
                                         >Buy Deluxe</button>
@@ -215,6 +216,7 @@
                                             data-buy-name="Deluxe Digital Album"
                                             data-buy-type="Album"
                                             data-buy-summary="Unlock {{ $album['title'] }} and the deluxe music package."
+                                            data-buy-image="{{ asset('images/store/work-in-progress.png') }}"
                                             data-buy-url="{{ $deluxeUrl }}"
                                             aria-label="Buy Deluxe - {{ $album['title'] }}"
                                         >Buy Deluxe</button>

@@ -163,8 +163,8 @@ class PublicContentController extends Controller
             'amount' => ((int) ($product['amount_cents'] ?? 0)) / 100,
             'currency' => (string) ($product['currency'] ?? 'USD'),
             'type_label' => $typeLabel,
-            'image_url' => $this->checkoutProductImage($slot, $kind),
-            'image_alt' => (string) ($slot['image_alt'] ?? $slot['title'] ?? $product['title'] ?? 'Store product'),
+            'image_url' => $this->checkoutProductImage($slot, $product, $kind),
+            'image_alt' => (string) ($slot['image_alt'] ?? $product['image_alt'] ?? $slot['title'] ?? $product['title'] ?? 'Store product'),
             'cta_label' => (string) ($slot['cta_label'] ?? ($kind === 'ticket' ? 'GET TICKETS' : 'CONTINUE TO CHECKOUT')),
             'details' => $details,
             'bullets' => $this->checkoutProductBullets($kind),
@@ -178,6 +178,7 @@ class PublicContentController extends Controller
     private function storefrontSlotForProduct(array $storefront, string $productKey): ?array
     {
         $slot = collect(data_get($storefront, 'slots', []))
+            ->filter(fn (mixed $slot): bool => is_array($slot))
             ->first(fn (array $slot): bool => (string) ($slot['product_key'] ?? $slot['key'] ?? '') === $productKey);
 
         if (is_array($slot)) {
@@ -213,11 +214,16 @@ class PublicContentController extends Controller
 
     /**
      * @param  array<string, mixed>|null  $slot
+     * @param  array<string, mixed>  $product
      */
-    private function checkoutProductImage(?array $slot, string $kind): string
+    private function checkoutProductImage(?array $slot, array $product, string $kind): string
     {
         if (filled($slot['image_url'] ?? null)) {
             return (string) $slot['image_url'];
+        }
+
+        if (filled($product['image_url'] ?? null)) {
+            return (string) $product['image_url'];
         }
 
         if (filled($slot['image'] ?? null)) {

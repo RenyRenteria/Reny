@@ -2,13 +2,27 @@
 
 namespace Tests\Feature;
 
+use App\Enums\MediaAssetType;
+use App\Enums\MediaProcessingStatus;
+use App\Models\MediaAsset;
+use App\Models\SitePageSetting;
 use App\Models\User;
+use App\Services\StorefrontSettingsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
 class StorePageTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config()->set('public_cms.cache_store', 'array');
+        Cache::store('array')->flush();
+    }
 
     public function test_store_page_matches_four_slot_mockup_for_guest(): void
     {
@@ -39,6 +53,7 @@ class StorePageTest extends TestCase
         $response->assertSee('data-buy="listening"', false);
         $response->assertSee('data-buy="deluxe"', false);
         $response->assertSee('data-buy="merch"', false);
+        $response->assertSee('data-buy-image="'.asset('images/store/rosa-dorada.png').'"', false);
         $response->assertSee('data-buy-url="'.route('store.checkout', ['product' => 'listening']).'"', false);
         $response->assertSee('data-buy-url="'.route('store.checkout', ['product' => 'deluxe']).'"', false);
         $response->assertSee('data-buy-url="'.route('store.checkout', ['product' => 'merch']).'"', false);
@@ -93,6 +108,7 @@ class StorePageTest extends TestCase
             ->assertSee('$15')
             ->assertSee('images/store/rosa-dorada.png')
             ->assertSee('data-buy="listening"', false)
+            ->assertSee('data-buy-image="'.asset('images/store/rosa-dorada.png').'"', false)
             ->assertSee('data-buy-price-value="15.00"', false)
             ->assertSee('data-buy-url="'.route('store.checkout', ['product' => 'listening']).'"', false)
             ->assertSee('data-auto-open-checkout="true"', false)
@@ -112,6 +128,50 @@ class StorePageTest extends TestCase
             ->assertSee('GET TICKETS');
     }
 
+    public function test_checkout_screen_uses_published_event_image_for_page_and_modal_data(): void
+    {
+        $asset = MediaAsset::create([
+            'type' => MediaAssetType::Image->value,
+            'title' => 'CMS checkout poster',
+            'disk' => 'public',
+            'path' => 'store/cms-checkout-poster.png',
+            'original_filename' => 'cms-checkout-poster.png',
+            'mime_type' => 'image/png',
+            'extension' => 'png',
+            'size_bytes' => 100,
+            'is_public' => true,
+            'alt_text' => 'CMS checkout poster',
+            'processing_status' => MediaProcessingStatus::Ready->value,
+        ]);
+
+        SitePageSetting::create([
+            'page' => StorefrontSettingsService::PAGE,
+            'section' => StorefrontSettingsService::SECTION,
+            'status' => SitePageSetting::STATUS_PUBLISHED,
+            'payload' => [
+                'slots' => [
+                    'event_secondary' => [
+                        'product_key' => 'listening',
+                        'image_asset_id' => $asset->id,
+                    ],
+                ],
+            ],
+            'published_at' => now(),
+        ]);
+
+        $assetUrl = $asset->publicUrl();
+
+        $this->get(route('store.checkout', ['product' => 'listening']))
+            ->assertOk()
+            ->assertSee('src="'.$assetUrl.'"', false)
+            ->assertSee('alt="CMS checkout poster"', false)
+            ->assertSee('data-buy-image="'.$assetUrl.'"', false);
+
+        $this->get('/store')
+            ->assertOk()
+            ->assertSee('data-buy-image="'.$assetUrl.'"', false);
+    }
+
     public function test_checkout_frontend_opens_paypal_without_redundant_button(): void
     {
         $js = file_get_contents(resource_path('js/app.js'));
@@ -120,6 +180,7 @@ class StorePageTest extends TestCase
         $this->assertStringContainsString("startCheckoutFromBuyButton(button, { source: 'shareable_checkout' });", $js);
         $this->assertStringContainsString("openCheckoutModal(autoOpenButton.dataset.buy, { source: 'dedicated_checkout_url' })", $js);
         $this->assertStringContainsString('initializeVisiblePayPalCheckout();', $js);
+        $this->assertStringContainsString("image.className = 'store-bag-image';", $js);
         $this->assertStringContainsString('customer_name', $js);
         $this->assertStringContainsString('customer_country', $js);
         $this->assertStringContainsString('Add a valid international phone number.', $js);
