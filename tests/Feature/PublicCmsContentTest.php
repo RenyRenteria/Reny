@@ -31,14 +31,19 @@ class PublicCmsContentTest extends TestCase
             'title' => 'CMS Deluxe Album',
             'summary' => 'CMS album summary',
             'metadata' => [
-                'tracklist' => "Intro\nSingle\nFinale",
+                'tracks' => [
+                    ['track_name' => 'Intro'],
+                    ['track_name' => 'Single'],
+                    ['track_name' => 'Finale'],
+                ],
             ],
         ]);
 
         $this->publishedContent(ContentType::Song, [
             'title' => 'CMS Lead Single',
             'metadata' => [
-                'artist' => 'Reny CMS',
+                'release_date_member_view' => '2026-07-01T10:00',
+                'release_date_open_view' => '2026-07-02T10:00',
             ],
         ]);
 

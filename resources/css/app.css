@@ -2057,6 +2057,12 @@ button {
     gap: 0.875rem 1.125rem;
 }
 
+.music-playlists {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(16rem, 1fr));
+    gap: 1rem;
+}
+
 .single {
     display: grid;
     grid-template-columns: 3.375rem minmax(0, 1fr) auto;
@@ -2169,6 +2175,10 @@ button {
 
 .music-list-grid.singles {
     max-width: none;
+}
+
+.music-list-grid.music-playlists {
+    grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
 }
 
 .music-empty-state {
@@ -3101,7 +3111,8 @@ button {
     }
 
     .albums,
-    .singles {
+    .singles,
+    .music-playlists {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
@@ -3211,7 +3222,8 @@ button {
         display: block;
     }
 
-    .singles {
+    .singles,
+    .music-playlists {
         grid-template-columns: 1fr;
     }
 
@@ -8194,8 +8206,8 @@ body.admin-cms-body[data-theme="royal"] {
 
 .music-cms-tabs {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 1.25rem;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.75rem;
 }
 
 .music-cms-tabs .music-cms-tab {
@@ -8203,7 +8215,7 @@ body.admin-cms-body[data-theme="royal"] {
     align-items: center;
     justify-content: center;
     min-height: 2.875rem;
-    padding: 0.75rem 1.25rem;
+    padding: 0.75rem 0.875rem;
     border: 1px solid transparent;
     border-radius: 0.625rem;
     background: #f3e3d4;
@@ -8341,6 +8353,33 @@ body.admin-cms-body[data-theme="royal"] {
 
 .music-banner-form-grid.two {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.music-track-builder {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.music-track-builder-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.music-track-builder-head > span {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    font-weight: 900;
+}
+
+.music-track-row {
+    display: grid;
+    gap: 0.625rem;
+    padding: 0.75rem;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.55);
 }
 
 .music-banner-actions {

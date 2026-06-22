@@ -27,6 +27,7 @@ Route::get('/', [PublicContentController::class, 'home'])->name('home');
 Route::get('/music', [MusicController::class, 'index'])->name('music');
 Route::get('/music/albums', [MusicController::class, 'albums'])->name('music.albums');
 Route::get('/music/singles', [MusicController::class, 'singles'])->name('music.singles');
+Route::get('/music/playlists', [MusicController::class, 'playlists'])->name('music.playlists');
 Route::get('/music/play/{content}', [MusicController::class, 'play'])->name('music.play');
 Route::get('/videos', [PublicContentController::class, 'videos'])->name('videos');
 Route::get('/photos', [PublicContentController::class, 'photos']);

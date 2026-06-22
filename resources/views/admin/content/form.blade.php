@@ -24,6 +24,11 @@
     while ($pollOptions->count() < 4) {
         $pollOptions->push('');
     }
+    $albumTracks = collect($metaValue('tracks', [['track_name' => '', 'release_date_member_view' => '']]))->values();
+    if ($albumTracks->isEmpty()) {
+        $albumTracks->push(['track_name' => '', 'release_date_member_view' => '']);
+    }
+    $selectedPlaylistTracks = collect($metaValue('tracks', []))->map(fn ($track): string => (string) $track)->all();
 @endphp
 
 @extends('admin.layout')
@@ -51,6 +56,7 @@
             class="admin-content-form"
             method="POST"
             action="{{ $isEditing ? route('admin.content.update', $content) : route('admin.content.store') }}"
+            enctype="multipart/form-data"
         >
             @csrf
             @if ($isEditing)
@@ -131,29 +137,92 @@
                 <fieldset class="admin-fieldset" data-type-fieldset="song">
                     <legend>Song</legend>
                     <div class="admin-form-grid">
-                        <label><span>Duration seconds</span><input name="metadata[duration_seconds]" type="number" min="1" max="7200" value="{{ $metaValue('duration_seconds') }}"></label>
-                        <label><span>Release date</span><input name="metadata[release_date]" type="date" value="{{ $metaValue('release_date') }}"></label>
-                        <label><span>Credits</span><input name="metadata[credits]" type="text" maxlength="2000" value="{{ $metaValue('credits') }}"></label>
-                        <label><span>Audio asset</span>@include('admin.partials.asset-select', ['name' => 'metadata[audio_asset_id]', 'selected' => $metaValue('audio_asset_id'), 'mediaAssets' => $mediaAssets, 'types' => ['audio']])</label>
-                        <label><span>Cover asset</span>@include('admin.partials.asset-select', ['name' => 'metadata[cover_asset_id]', 'selected' => $metaValue('cover_asset_id'), 'mediaAssets' => $mediaAssets, 'types' => ['image', 'thumbnail']])</label>
-                        <label><span>Preview visibility</span>@include('admin.partials.visibility-select', ['name' => 'metadata[preview_visibility]', 'selected' => $metaValue('preview_visibility', 'open'), 'visibilityAudiences' => $visibilityAudiences])</label>
-                        <label><span>Full visibility</span>@include('admin.partials.visibility-select', ['name' => 'metadata[full_visibility]', 'selected' => $metaValue('full_visibility', 'member'), 'visibilityAudiences' => $visibilityAudiences])</label>
-                        <label class="admin-field-wide"><span>Lyrics</span><textarea name="metadata[lyrics]" rows="5">{{ $metaValue('lyrics') }}</textarea></label>
+                        @if ($metaValue('audio_asset_id'))
+                            <input type="hidden" name="metadata[audio_asset_id]" value="{{ $metaValue('audio_asset_id') }}">
+                        @endif
+                        @if ($metaValue('artwork_asset_id'))
+                            <input type="hidden" name="metadata[artwork_asset_id]" value="{{ $metaValue('artwork_asset_id') }}">
+                        @endif
+                        <label><span>Audio file</span><input name="audio_file" type="file" accept="audio/mpeg,audio/wav,.mp3,.wav" @if (! $metaValue('audio_asset_id')) required @endif></label>
+                        <label><span>Artwork</span><input name="artwork" type="file" accept="image/jpeg,.jpg" @if (! $metaValue('artwork_asset_id')) required @endif></label>
+                        <label><span>Member release</span><input name="metadata[release_date_member_view]" type="datetime-local" value="{{ $metaValue('release_date_member_view') }}" required></label>
+                        <label><span>Open release</span><input name="metadata[release_date_open_view]" type="datetime-local" value="{{ $metaValue('release_date_open_view') }}" required></label>
                     </div>
                 </fieldset>
 
-                @foreach (['musical_album' => 'Musical album', 'deluxe_album' => 'Deluxe album'] as $albumType => $albumLabel)
-                    <fieldset class="admin-fieldset" data-type-fieldset="{{ $albumType }}">
-                        <legend>{{ $albumLabel }}</legend>
-                        <div class="admin-form-grid">
-                            <label><span>Release cycle</span><input name="metadata[release_cycle]" type="text" maxlength="160" value="{{ $metaValue('release_cycle') }}"></label>
-                            <label><span>Price cents</span><input name="metadata[price_cents]" type="number" min="0" value="{{ $metaValue('price_cents') }}"></label>
-                            <label><span>Cover asset</span>@include('admin.partials.asset-select', ['name' => 'metadata[cover_asset_id]', 'selected' => $metaValue('cover_asset_id'), 'mediaAssets' => $mediaAssets, 'types' => ['image', 'thumbnail']])</label>
-                            <label class="admin-field-wide"><span>Tracklist</span><textarea name="metadata[tracklist]" rows="6">{{ $metaValue('tracklist') }}</textarea></label>
-                            <label class="admin-field-wide"><span>Narrative</span><textarea name="metadata[narrative]" rows="6">{{ $metaValue('narrative') }}</textarea></label>
+                <fieldset class="admin-fieldset" data-type-fieldset="musical_album">
+                    <legend>Musical album</legend>
+                    <div class="admin-form-grid">
+                        @if ($metaValue('album_artwork_asset_id'))
+                            <input type="hidden" name="metadata[album_artwork_asset_id]" value="{{ $metaValue('album_artwork_asset_id') }}">
+                        @endif
+                        <label><span>Album artwork</span><input name="album_artwork" type="file" accept="image/jpeg,.jpg" @if (! $metaValue('album_artwork_asset_id')) required @endif></label>
+                        <label><span>Member release</span><input name="metadata[release_date_member_view]" type="datetime-local" value="{{ $metaValue('release_date_member_view') }}" required></label>
+                        <label><span>Open release</span><input name="metadata[release_date_open_view]" type="datetime-local" value="{{ $metaValue('release_date_open_view') }}" required></label>
+                    </div>
+                    <div class="music-track-builder" data-album-tracks>
+                        <div class="music-track-builder-head">
+                            <span>Tracks</span>
+                            <button class="admin-button admin-button-soft" type="button" data-add-track>Agregar track</button>
                         </div>
-                    </fieldset>
-                @endforeach
+
+                        <div data-track-list>
+                            @foreach ($albumTracks as $index => $track)
+                                <div class="music-track-row" data-track-row>
+                                    @if ($track['track_audio_asset_id'] ?? null)
+                                        <input type="hidden" name="metadata[tracks][{{ $index }}][track_audio_asset_id]" value="{{ $track['track_audio_asset_id'] }}">
+                                    @endif
+                                    <div class="admin-form-grid">
+                                        <label><span>Track name</span><input name="metadata[tracks][{{ $index }}][track_name]" type="text" maxlength="160" value="{{ $track['track_name'] ?? '' }}" required></label>
+                                        <label><span>Track audio file</span><input name="track_audio_files[{{ $index }}]" type="file" accept="audio/mpeg,audio/wav,.mp3,.wav" @if (! ($track['track_audio_asset_id'] ?? null)) required @endif></label>
+                                        <label><span>Track member release override</span><input name="metadata[tracks][{{ $index }}][release_date_member_view]" type="datetime-local" value="{{ $track['release_date_member_view'] ?? '' }}"></label>
+                                        <button class="admin-button admin-button-ghost" type="button" data-remove-track @disabled($albumTracks->count() === 1)>Eliminar track</button>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+
+                        <template data-track-template>
+                            <div class="music-track-row" data-track-row>
+                                <div class="admin-form-grid">
+                                    <label><span>Track name</span><input data-track-name type="text" maxlength="160" required></label>
+                                    <label><span>Track audio file</span><input data-track-audio type="file" accept="audio/mpeg,audio/wav,.mp3,.wav" required></label>
+                                    <label><span>Track member release override</span><input data-track-release type="datetime-local"></label>
+                                    <button class="admin-button admin-button-ghost" type="button" data-remove-track>Eliminar track</button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </fieldset>
+
+                <fieldset class="admin-fieldset" data-type-fieldset="deluxe_album">
+                    <legend>Album / deluxe</legend>
+                    <div class="admin-form-grid">
+                        <label><span>Package title</span><input name="metadata[package_title]" type="text" maxlength="160" value="{{ $metaValue('package_title') }}"></label>
+                        <label><span>Price</span><input name="metadata[price]" type="number" min="0" step="0.01" value="{{ $metaValue('price') }}"></label>
+                        <label class="admin-field-wide"><span>Package notes</span><textarea name="metadata[package_notes]" rows="5">{{ $metaValue('package_notes') }}</textarea></label>
+                    </div>
+                </fieldset>
+
+                <fieldset class="admin-fieldset" data-type-fieldset="music_playlist">
+                    <legend>Music playlist</legend>
+                    <div class="admin-form-grid">
+                        @if ($metaValue('playlist_cover_asset_id'))
+                            <input type="hidden" name="metadata[playlist_cover_asset_id]" value="{{ $metaValue('playlist_cover_asset_id') }}">
+                        @endif
+                        <label><span>Cover image</span><input name="playlist_cover" type="file" accept="image/jpeg,.jpg" @if (! $metaValue('playlist_cover_asset_id')) required @endif></label>
+                        <label class="admin-field-wide">
+                            <span>Tracks</span>
+                            <select name="metadata[tracks][]" multiple size="8" required>
+                                @foreach ($trackOptions as $track)
+                                    <option value="{{ $track['value'] }}" @selected(in_array($track['value'], $selectedPlaylistTracks, true))>
+                                        {{ $track['group'] }} - {{ $track['label'] }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </label>
+                    </div>
+                </fieldset>
 
                 <fieldset class="admin-fieldset" data-type-fieldset="video">
                     <legend>Video</legend>
@@ -308,4 +377,45 @@
             </div>
         </form>
     </section>
+
+    <script>
+        (() => {
+            const root = document.querySelector('[data-album-tracks]');
+            if (!root) return;
+
+            const list = root.querySelector('[data-track-list]');
+            const template = root.querySelector('[data-track-template]');
+
+            const syncRows = () => {
+                const rows = Array.from(list.querySelectorAll('[data-track-row]'));
+                rows.forEach((row, index) => {
+                    const name = row.querySelector('[name$="[track_name]"], [data-track-name]');
+                    const audio = row.querySelector('[name^="track_audio_files"], [data-track-audio]');
+                    const release = row.querySelector('[name$="[release_date_member_view]"], [data-track-release]');
+                    const asset = row.querySelector('[name$="[track_audio_asset_id]"]');
+                    if (name) name.name = `metadata[tracks][${index}][track_name]`;
+                    if (audio) audio.name = `track_audio_files[${index}]`;
+                    if (release) release.name = `metadata[tracks][${index}][release_date_member_view]`;
+                    if (asset) asset.name = `metadata[tracks][${index}][track_audio_asset_id]`;
+                    const remove = row.querySelector('[data-remove-track]');
+                    if (remove) remove.disabled = rows.length === 1;
+                });
+            };
+
+            root.querySelector('[data-add-track]')?.addEventListener('click', () => {
+                list.append(template.content.cloneNode(true));
+                syncRows();
+            });
+
+            root.addEventListener('click', (event) => {
+                const button = event.target.closest('[data-remove-track]');
+                if (!button) return;
+
+                button.closest('[data-track-row]')?.remove();
+                syncRows();
+            });
+
+            syncRows();
+        })();
+    </script>
 @endsection

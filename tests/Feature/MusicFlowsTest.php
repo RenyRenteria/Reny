@@ -27,23 +27,25 @@ class MusicFlowsTest extends TestCase
     public function test_home_music_buttons_have_real_play_and_checkout_actions(): void
     {
         $album = $this->publishedMusic(ContentType::MusicalAlbum, 'Launch Album', [
-            'tracklist' => "Intro\nSingle",
-            'narrative' => 'Album narrative',
-            'release_cycle' => 'Launch',
+            'release_date_member_view' => '2026-07-01T10:00',
+            'release_date_open_view' => '2026-07-02T10:00',
+            'tracks' => [
+                ['track_name' => 'Intro'],
+                ['track_name' => 'Single'],
+            ],
         ]);
         $this->publishedMusic(ContentType::MusicalAlbum, 'Launch Album Two', [
-            'tracklist' => "Intro\nFinale",
-            'narrative' => 'Second album narrative',
-            'release_cycle' => 'Launch',
+            'release_date_member_view' => '2026-07-01T10:00',
+            'release_date_open_view' => '2026-07-02T10:00',
+            'tracks' => [
+                ['track_name' => 'Intro'],
+                ['track_name' => 'Finale'],
+            ],
         ]);
 
         $single = $this->publishedMusic(ContentType::Song, 'Launch Single', [
-            'artist' => 'Reny CMS',
-            'duration_seconds' => 210,
-            'release_date' => '2026-07-01',
-            'credits' => 'Reny',
-            'preview_visibility' => VisibilityAudience::Open->value,
-            'full_visibility' => VisibilityAudience::Open->value,
+            'release_date_member_view' => '2026-07-01T10:00',
+            'release_date_open_view' => '2026-07-02T10:00',
             'audio_url' => 'https://audio.test/launch-single.mp3',
         ]);
 
@@ -77,7 +79,8 @@ class MusicFlowsTest extends TestCase
             ->assertSee('Comeback Album!')
             ->assertSee('href="'.route('music').'"', false)
             ->assertSee('href="'.route('music.albums').'"', false)
-            ->assertSee('href="'.route('music.singles').'"', false);
+            ->assertSee('href="'.route('music.singles').'"', false)
+            ->assertSee('href="'.route('music.playlists').'"', false);
 
         foreach (['/videos', '/photos', '/community', '/store'] as $path) {
             $this->get($path)
@@ -90,11 +93,8 @@ class MusicFlowsTest extends TestCase
     {
         $this->publishedMusic(ContentType::Song, 'Royal Preview Single', [
             'visibility' => VisibilityAudience::Royal->value,
-            'duration_seconds' => 180,
-            'release_date' => '2026-07-01',
-            'credits' => 'Reny',
-            'preview_visibility' => VisibilityAudience::Open->value,
-            'full_visibility' => VisibilityAudience::Royal->value,
+            'release_date_member_view' => '2026-07-01T10:00',
+            'release_date_open_view' => '2026-07-02T10:00',
             'audio_url' => 'https://audio.test/royal-preview.mp3',
         ]);
 
@@ -109,9 +109,12 @@ class MusicFlowsTest extends TestCase
     {
         $deluxeUrl = route('store.checkout', ['product' => 'deluxe']);
         $this->publishedMusic(ContentType::MusicalAlbum, 'Full Album One', [
-            'tracklist' => "Intro\nFinale",
-            'narrative' => 'Album narrative',
-            'release_cycle' => 'Launch',
+            'release_date_member_view' => '2026-07-01T10:00',
+            'release_date_open_view' => '2026-07-02T10:00',
+            'tracks' => [
+                ['track_name' => 'Intro'],
+                ['track_name' => 'Finale'],
+            ],
         ]);
 
         $response = $this->get('/music/albums');
@@ -133,44 +136,69 @@ class MusicFlowsTest extends TestCase
         $this->get('/music/singles')
             ->assertOk()
             ->assertSee('No published singles yet.');
+
+        $this->get('/music/playlists')
+            ->assertOk()
+            ->assertSee('No published playlists yet.');
+    }
+
+    public function test_music_route_renders_playlists_from_existing_tracks(): void
+    {
+        $single = $this->publishedMusic(ContentType::Song, 'Playlist Single', [
+            'release_date_member_view' => '2026-07-01T10:00',
+            'release_date_open_view' => '2026-07-02T10:00',
+        ]);
+        $album = $this->publishedMusic(ContentType::MusicalAlbum, 'Playlist Album', [
+            'release_date_member_view' => '2026-07-01T10:00',
+            'release_date_open_view' => '2026-07-02T10:00',
+            'tracks' => [
+                ['track_name' => 'Album Track'],
+            ],
+        ]);
+
+        $this->publishedMusic(ContentType::MusicPlaylist, 'CMS Playlist', [
+            'tracks' => [
+                'song:'.$single->id,
+                'album:'.$album->id.':0',
+            ],
+        ]);
+
+        $this->get(route('music'))
+            ->assertOk()
+            ->assertSee('Playlists')
+            ->assertSee('CMS Playlist')
+            ->assertSee('Playlist Single')
+            ->assertSee('Playlist Album - Album Track');
+
+        $this->get(route('music.playlists'))
+            ->assertOk()
+            ->assertSee('CMS Playlist');
     }
 
     public function test_music_playback_endpoint_returns_ready_error_and_access_states(): void
     {
         $open = $this->publishedMusic(ContentType::Song, 'Open Audio', [
-            'duration_seconds' => 180,
-            'release_date' => '2026-07-01',
-            'credits' => 'Reny',
-            'preview_visibility' => VisibilityAudience::Open->value,
-            'full_visibility' => VisibilityAudience::Open->value,
+            'release_date_member_view' => '2026-07-01T10:00',
+            'release_date_open_view' => '2026-07-02T10:00',
             'audio_url' => 'https://audio.test/open.mp3',
         ]);
 
         $missingAudio = $this->publishedMusic(ContentType::Song, 'Missing Audio', [
-            'duration_seconds' => 180,
-            'release_date' => '2026-07-01',
-            'credits' => 'Reny',
-            'preview_visibility' => VisibilityAudience::Open->value,
-            'full_visibility' => VisibilityAudience::Open->value,
+            'release_date_member_view' => '2026-07-01T10:00',
+            'release_date_open_view' => '2026-07-02T10:00',
         ]);
 
         $member = $this->publishedMusic(ContentType::Song, 'Member Audio', [
             'visibility' => VisibilityAudience::Member->value,
-            'duration_seconds' => 180,
-            'release_date' => '2026-07-01',
-            'credits' => 'Reny',
-            'preview_visibility' => VisibilityAudience::Open->value,
-            'full_visibility' => VisibilityAudience::Member->value,
+            'release_date_member_view' => '2026-07-01T10:00',
+            'release_date_open_view' => '2026-07-02T10:00',
             'audio_url' => 'https://audio.test/member.mp3',
         ]);
 
         $royal = $this->publishedMusic(ContentType::Song, 'Royal Audio', [
             'visibility' => VisibilityAudience::Royal->value,
-            'duration_seconds' => 180,
-            'release_date' => '2026-07-01',
-            'credits' => 'Reny',
-            'preview_visibility' => VisibilityAudience::Open->value,
-            'full_visibility' => VisibilityAudience::Royal->value,
+            'release_date_member_view' => '2026-07-01T10:00',
+            'release_date_open_view' => '2026-07-02T10:00',
             'audio_url' => 'https://audio.test/royal.mp3',
         ]);
 

@@ -26,7 +26,8 @@ class EntitlementGateTest extends TestCase
         $this->actingAs($user)
             ->get('/music')
             ->assertOk()
-            ->assertSee('Royal-only audio stream')
+            ->assertSee('VIP Mix')
+            ->assertDontSee('Get your Royal Pass')
             ->assertDontSee('Open users can see the drop');
     }
 

@@ -184,6 +184,9 @@ class AdminEditorialFormsTest extends TestCase
             'summary' => "Summary for {$type}",
             'body' => "Body for {$type}",
             'visibility' => VisibilityAudience::Open->value,
+            'purchase_key' => in_array($type, [ContentType::DeluxeAlbum->value, ContentType::Product->value], true)
+                ? "purchase-{$type}"
+                : null,
             'metadata' => $this->metadataForType($type),
         ];
     }
@@ -192,18 +195,30 @@ class AdminEditorialFormsTest extends TestCase
     {
         return match ($type) {
             ContentType::Song->value => [
-                'duration_seconds' => 214,
-                'release_date' => '2026-07-01',
-                'credits' => 'Written and produced by Reny.',
-                'preview_visibility' => VisibilityAudience::Open->value,
-                'full_visibility' => VisibilityAudience::Member->value,
-                'lyrics' => 'Test lyrics.',
+                'audio_asset_id' => $this->mediaAsset(MediaAssetType::Audio->value)->id,
+                'artwork_asset_id' => $this->mediaAsset(MediaAssetType::Thumbnail->value)->id,
+                'release_date_member_view' => '2026-07-01T10:00',
+                'release_date_open_view' => '2026-07-02T10:00',
             ],
-            ContentType::MusicalAlbum->value, ContentType::DeluxeAlbum->value => [
-                'tracklist' => "Track 1\nTrack 2",
-                'narrative' => 'Album story.',
-                'release_cycle' => 'lead-single',
-                'price_cents' => 1299,
+            ContentType::MusicalAlbum->value => [
+                'album_artwork_asset_id' => $this->mediaAsset(MediaAssetType::Thumbnail->value)->id,
+                'release_date_member_view' => '2026-07-01T10:00',
+                'release_date_open_view' => '2026-07-02T10:00',
+                'tracks' => [
+                    [
+                        'track_name' => 'Track 1',
+                        'track_audio_asset_id' => $this->mediaAsset(MediaAssetType::Audio->value)->id,
+                    ],
+                ],
+            ],
+            ContentType::DeluxeAlbum->value => [
+                'package_title' => 'Deluxe package',
+                'package_notes' => 'Album story.',
+                'price' => 12.99,
+            ],
+            ContentType::MusicPlaylist->value => [
+                'playlist_cover_asset_id' => $this->mediaAsset(MediaAssetType::Thumbnail->value)->id,
+                'tracks' => [$this->firstMusicTrackReference()],
             ],
             ContentType::Video->value => [
                 'youtube_url' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
@@ -263,19 +278,30 @@ class AdminEditorialFormsTest extends TestCase
 
     private function mediaAsset(string $type): MediaAsset
     {
+        $isAudio = $type === MediaAssetType::Audio->value;
+
         return MediaAsset::create([
             'type' => $type,
             'title' => "Reusable {$type}",
             'disk' => 'public',
-            'path' => "media/{$type}/asset.jpg",
-            'original_filename' => "asset-{$type}.jpg",
-            'mime_type' => 'image/jpeg',
-            'extension' => 'jpg',
+            'path' => $isAudio ? "media/{$type}/asset.mp3" : "media/{$type}/asset.jpg",
+            'original_filename' => $isAudio ? "asset-{$type}.mp3" : "asset-{$type}.jpg",
+            'mime_type' => $isAudio ? 'audio/mpeg' : 'image/jpeg',
+            'extension' => $isAudio ? 'mp3' : 'jpg',
             'size_bytes' => 1024,
             'processing_status' => MediaProcessingStatus::Ready->value,
             'is_public' => true,
-            'alt_text' => 'Reusable asset alt text',
+            'alt_text' => $isAudio ? null : 'Reusable asset alt text',
         ]);
+    }
+
+    private function firstMusicTrackReference(): string
+    {
+        $songId = EditorialContent::query()
+            ->where('type', ContentType::Song->value)
+            ->value('id');
+
+        return 'song:'.$songId;
     }
 
     private function actingAsAdmin(User $user): void
