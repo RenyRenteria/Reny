@@ -12,9 +12,25 @@
     $featuredVideo['title'] = $featuredVideo['title'] ?? $defaultVideo['title'];
     $featuredVideo['meta'] = $featuredVideo['meta'] ?? $defaultVideo['meta'];
 
-    $events = collect($publicCms['events'] ?? [])
+    $storefrontSettings = app(\App\Services\StorefrontSettingsService::class);
+    $storefront = $publicCms['storefront'] ?? null;
+
+    if (! is_array($storefront)) {
+        try {
+            $storefront = $storefrontSettings->publicPayload();
+        } catch (\Throwable) {
+            $storefront = $storefrontSettings->defaults();
+        }
+    }
+
+    $storefrontEvents = collect(['event_primary', 'event_secondary'])
+        ->map(fn (string $key): array => data_get($storefront, "slots.{$key}", []))
+        ->filter(fn (array $event): bool => filled($event['title'] ?? null))
+        ->values();
+    $payloadEvents = collect($publicCms['events'] ?? [])
         ->filter(fn (mixed $event): bool => is_array($event) && filled($event['title'] ?? null))
         ->values();
+    $events = $storefrontEvents->isNotEmpty() ? $storefrontEvents : $payloadEvents;
 
     if ($events->isEmpty()) {
         $storefrontFallback = app(\App\Services\StorefrontSettingsService::class)->defaults();

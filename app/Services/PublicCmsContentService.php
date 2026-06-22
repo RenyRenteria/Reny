@@ -71,6 +71,7 @@ class PublicCmsContentService
 
             return [
                 'featured_video' => $featuredVideo,
+                'storefront' => $storefront,
                 'events' => collect(['event_primary', 'event_secondary'])
                     ->map(fn (string $key): array => data_get($storefront, "slots.{$key}", []))
                     ->filter()
