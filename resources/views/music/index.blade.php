@@ -146,20 +146,7 @@
                         @else
                             <div class="singles music-list-grid">
                                 @foreach ($items as $single)
-                                    <article class="single music-item" data-access-state="{{ $single['access_state'] ?? 'ready' }}">
-                                        <div
-                                            class="single-art"
-                                            aria-hidden="true"
-                                            @if (! empty($single['image_url'])) style="background-image: url('{{ $single['image_url'] }}'); background-size: cover; background-position: center;" @endif
-                                        ></div>
-                                        <div>
-                                            <strong><a href="{{ $single['detail_url'] }}">{{ $single['title'] }}</a></strong>
-                                            @if (($single['access_state'] ?? 'ready') !== 'ready')
-                                                <em class="music-inline-state">{{ $single['access_label'] }}</em>
-                                            @endif
-                                        </div>
-                                        @include('partials.music-play-button', ['item' => $single, 'class' => 'mini-play', 'type' => 'single'])
-                                    </article>
+                                    @include('partials.music-single-card', ['single' => $single])
                                 @endforeach
                             </div>
                         @endif

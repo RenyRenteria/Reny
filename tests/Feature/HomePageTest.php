@@ -204,6 +204,40 @@ class HomePageTest extends TestCase
             ->assertJsonPath('royal_pass.product_key', 'royal');
     }
 
+    public function test_home_renders_latest_singles_with_music_tab_card(): void
+    {
+        $this->publishedContent(ContentType::Song, [
+            'title' => 'I swear',
+            'published_at' => now()->subMinute(),
+            'metadata' => [
+                'audio_url' => 'https://audio.test/i-swear.mp3',
+            ],
+        ]);
+        $this->publishedContent(ContentType::Song, [
+            'title' => 'Aguita de coco',
+            'published_at' => now()->subMinutes(2),
+            'metadata' => [
+                'audio_url' => 'https://audio.test/aguita-de-coco.mp3',
+            ],
+        ]);
+
+        $response = $this->get('/')
+            ->assertOk()
+            ->assertSeeInOrder(['Latest Singles', 'I swear', 'Aguita de coco'])
+            ->assertSee('data-music-play', false)
+            ->assertSee('class="mini-play"', false)
+            ->assertSee('class="single music-item"', false)
+            ->assertDontSee('home-single-row', false)
+            ->assertDontSee('home-single-play', false);
+
+        preg_match('/<section class="home-singles".*?<\/section>/s', $response->getContent(), $matches);
+        $singlesHtml = $matches[0] ?? '';
+
+        $this->assertSame(2, substr_count($singlesHtml, 'class="single music-item"'));
+        $this->assertSame(2, substr_count($singlesHtml, 'class="mini-play"'));
+        $this->assertStringContainsString('/music/play/', $singlesHtml);
+    }
+
     /**
      * @param  array<string, mixed>  $overrides
      */

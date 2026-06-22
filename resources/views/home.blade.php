@@ -338,17 +338,7 @@
                                 <h2 id="home-singles-title">Latest Singles</h2>
                                 <div class="home-single-list">
                                     @foreach ($singles as $single)
-                                        <article class="home-single-row music-item" data-access-state="{{ $single['access_state'] ?? 'ready' }}">
-                                            <img
-                                                class="home-single-art"
-                                                src="{{ $single['image_url'] ?? $albumImage }}"
-                                                alt=""
-                                                loading="lazy"
-                                                decoding="async"
-                                            >
-                                            <strong>{{ $single['title'] }}</strong>
-                                            @include('partials.music-play-button', ['item' => $single, 'class' => 'home-single-play', 'type' => 'single'])
-                                        </article>
+                                        @include('partials.music-single-card', ['single' => $single])
                                     @endforeach
                                 </div>
                             </section>
