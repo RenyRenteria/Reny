@@ -194,7 +194,8 @@ class PublicCmsContentService
             ];
         }
 
-        $audioUrl = $this->audioUrl($content);
+        $queue = $this->musicPlaybackQueue($content, $user);
+        $audioUrl = $queue[0]['audio_url'] ?? $this->audioUrl($content);
         $basePayload = $this->musicBasePayload($content, $user);
 
         if ($audioUrl === null) {
@@ -204,9 +205,11 @@ class PublicCmsContentService
                     ...$basePayload,
                     'state' => 'playback_error',
                     'access_label' => 'Audio unavailable',
-                    'message' => in_array($content->type, self::MUSIC_SINGLE_TYPES, true)
-                        ? 'This single is published, but its audio source is not connected yet.'
-                        : 'This album is published, but a playable audio source is not connected yet.',
+                    'message' => match (true) {
+                        in_array($content->type, self::MUSIC_SINGLE_TYPES, true) => 'This single is published, but its audio source is not connected yet.',
+                        in_array($content->type, self::MUSIC_PLAYLIST_TYPES, true) => 'This playlist is published, but none of its tracks can be played yet.',
+                        default => 'This album is published, but a playable audio source is not connected yet.',
+                    },
                     'cta_label' => 'Open details',
                     'cta_url' => route('public.content.show', $content),
                 ],
@@ -221,6 +224,7 @@ class PublicCmsContentService
                 'access_label' => 'Ready to play',
                 'message' => 'Playback is ready.',
                 'audio_url' => $audioUrl,
+                'queue' => $queue,
             ],
         ];
     }
@@ -556,6 +560,7 @@ class PublicCmsContentService
             'visibility' => $content->visibility->value,
             'summary' => $content->summary ?: '',
             'detail_url' => route('public.content.show', $content),
+            'play_url' => route('music.play', $content),
             'title' => $content->title,
             'meta' => count($tracks).' tracks',
             'tracks' => $tracks,
@@ -768,6 +773,218 @@ class PublicCmsContentService
         return $asset?->publicUrl();
     }
 
+    /**
+     * @return array<int, array<string, string>>
+     */
+    private function musicPlaybackQueue(EditorialContent $content, ?User $user): array
+    {
+        if (in_array($content->type, self::MUSIC_PLAYLIST_TYPES, true)) {
+            return $this->playlistPlaybackQueue($content, $user);
+        }
+
+        if (in_array($content->type, self::MUSIC_ALBUM_TYPES, true)) {
+            return $this->albumPlaybackQueue($content);
+        }
+
+        $track = $this->singlePlaybackQueueTrack($content);
+
+        return $track === null ? [] : [$track];
+    }
+
+    /**
+     * @return array<int, array<string, string>>
+     */
+    private function albumPlaybackQueue(EditorialContent $content): array
+    {
+        $imageUrl = $this->mediaUrl($content, ['album_artwork_asset_id', 'cover_asset_id', 'image_asset_id']);
+        $tracks = collect($this->metadata($content, 'tracks', []))
+            ->values()
+            ->map(function (mixed $track, int $index) use ($content, $imageUrl): ?array {
+                if (! is_array($track)) {
+                    return null;
+                }
+
+                $title = trim((string) ($track['track_name'] ?? '')) ?: 'Track '.($index + 1);
+                $audioUrl = $this->audioAssetUrl($content, data_get($track, 'track_audio_asset_id'))
+                    ?: ($index === 0 ? $this->audioUrl($content) : null);
+
+                if ($audioUrl === null) {
+                    return null;
+                }
+
+                return $this->queueTrackPayload(
+                    content: $content,
+                    id: $content->getKey().':'.$index,
+                    title: $content->title.' - '.$title,
+                    audioUrl: $audioUrl,
+                    imageUrl: $imageUrl,
+                    itemType: 'track',
+                );
+            })
+            ->filter()
+            ->values()
+            ->all();
+
+        if ($tracks !== []) {
+            return $tracks;
+        }
+
+        $track = $this->singlePlaybackQueueTrack(
+            content: $content,
+            title: $content->title,
+            imageUrl: $imageUrl,
+            itemType: 'album',
+        );
+
+        return $track === null ? [] : [$track];
+    }
+
+    private function singlePlaybackQueueTrack(
+        EditorialContent $content,
+        ?string $title = null,
+        ?string $imageUrl = null,
+        string $itemType = 'single',
+    ): ?array {
+        $audioUrl = $this->audioUrl($content);
+
+        if ($audioUrl === null) {
+            return null;
+        }
+
+        return $this->queueTrackPayload(
+            content: $content,
+            id: (string) $content->getKey(),
+            title: $title ?: $content->title,
+            audioUrl: $audioUrl,
+            imageUrl: $imageUrl ?: $this->mediaUrl($content, ['artwork_asset_id', 'cover_asset_id', 'image_asset_id']),
+            itemType: $itemType,
+        );
+    }
+
+    /**
+     * @return array<int, array<string, string>>
+     */
+    private function playlistPlaybackQueue(EditorialContent $content, ?User $user): array
+    {
+        return collect($this->metadata($content, 'tracks', []))
+            ->map(fn (mixed $reference): ?array => is_string($reference)
+                ? $this->playlistPlaybackTrack($reference, $user)
+                : null)
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    private function playlistPlaybackTrack(string $reference, ?User $user): ?array
+    {
+        $parts = explode(':', $reference);
+
+        if (count($parts) < 2) {
+            return null;
+        }
+
+        if ($parts[0] === 'song') {
+            $song = $this->playbackReferenceContent((int) $parts[1], self::MUSIC_SINGLE_TYPES);
+
+            if (! $song || ! $this->canPlayReferencedMusic($song, $user)) {
+                return null;
+            }
+
+            return $this->singlePlaybackQueueTrack($song);
+        }
+
+        if ($parts[0] !== 'album' || count($parts) !== 3) {
+            return null;
+        }
+
+        $album = $this->playbackReferenceContent((int) $parts[1], self::MUSIC_ALBUM_TYPES);
+
+        if (! $album || ! $this->canPlayReferencedMusic($album, $user)) {
+            return null;
+        }
+
+        $index = (int) $parts[2];
+        $track = data_get($album->metadata ?? [], "tracks.{$index}");
+
+        if (! is_array($track)) {
+            return null;
+        }
+
+        $title = trim((string) ($track['track_name'] ?? '')) ?: 'Track '.($index + 1);
+        $audioUrl = $this->audioAssetUrl($album, data_get($track, 'track_audio_asset_id'));
+
+        if ($audioUrl === null) {
+            return null;
+        }
+
+        return $this->queueTrackPayload(
+            content: $album,
+            id: $album->getKey().':'.$index,
+            title: $album->title.' - '.$title,
+            audioUrl: $audioUrl,
+            imageUrl: $this->mediaUrl($album, ['album_artwork_asset_id', 'cover_asset_id', 'image_asset_id']),
+            itemType: 'track',
+        );
+    }
+
+    /**
+     * @param  array<int, ContentType>  $types
+     */
+    private function playbackReferenceContent(int $id, array $types): ?EditorialContent
+    {
+        return EditorialContent::query()
+            ->with([
+                'mediaAssets' => fn ($query) => $query->orderBy('content_media_assets.sort_order'),
+                'releaseWindows',
+            ])
+            ->whereKey($id)
+            ->whereIn('type', array_map(fn (ContentType $type): string => $type->value, $types))
+            ->first();
+    }
+
+    private function canPlayReferencedMusic(EditorialContent $content, ?User $user): bool
+    {
+        return $this->isPubliclyListable($content)
+            && ($this->musicAccessPayload($content, $user)['state'] ?? null) === 'ready';
+    }
+
+    private function audioAssetUrl(EditorialContent $content, mixed $assetId): ?string
+    {
+        if (blank($assetId)) {
+            return null;
+        }
+
+        $asset = $content->mediaAssets
+            ->where('id', (int) $assetId)
+            ->first(fn (MediaAsset $asset): bool => $asset->type === MediaAssetType::Audio);
+
+        return $asset?->publicUrl();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function queueTrackPayload(
+        EditorialContent $content,
+        string $id,
+        string $title,
+        string $audioUrl,
+        ?string $imageUrl,
+        string $itemType,
+    ): array {
+        return [
+            'id' => $id,
+            'title' => $title,
+            'audio_url' => $audioUrl,
+            'image_url' => $imageUrl ?: '',
+            'detail_url' => route('public.content.show', $content),
+            'item_type' => $itemType,
+            'state' => 'ready',
+            'access_label' => 'Ready to play',
+            'message' => 'Playback is ready.',
+        ];
+    }
+
     private function listableMusicContents(string $section): Builder
     {
         $types = match ($section) {
@@ -813,7 +1030,7 @@ class PublicCmsContentService
 
     private function isMusicContent(EditorialContent $content): bool
     {
-        return in_array($content->type, [...self::MUSIC_ALBUM_TYPES, ...self::MUSIC_SINGLE_TYPES], true);
+        return in_array($content->type, [...self::MUSIC_ALBUM_TYPES, ...self::MUSIC_SINGLE_TYPES, ...self::MUSIC_PLAYLIST_TYPES], true);
     }
 
     private function isPubliclyListable(EditorialContent $content): bool
@@ -847,9 +1064,10 @@ class PublicCmsContentService
             'image_url' => match ($content->type) {
                 ContentType::Song => $this->mediaUrl($content, ['artwork_asset_id', 'cover_asset_id', 'image_asset_id']),
                 ContentType::MusicalAlbum, ContentType::DeluxeAlbum => $this->mediaUrl($content, ['album_artwork_asset_id', 'cover_asset_id', 'image_asset_id']),
+                ContentType::MusicPlaylist => $this->mediaUrl($content, ['playlist_cover_asset_id', 'image_asset_id', 'cover_asset_id']),
                 default => $this->mediaUrl($content, ['image_asset_id', 'cover_asset_id']),
             },
-            'tracks' => $this->tracklist($content),
+            'tracks' => $content->type === ContentType::MusicPlaylist ? $this->playlistTracks($content) : $this->tracklist($content),
             'has_audio_source' => $this->audioUrl($content) !== null,
             ...$access,
         ];

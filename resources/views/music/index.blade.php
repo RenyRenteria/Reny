@@ -128,8 +128,9 @@
                                         <div
                                             class="playlist-stack"
                                             @if (! empty($playlist['image_url'])) style="--thumb-url: url('{{ $playlist['image_url'] }}');" @endif
-                                            aria-hidden="true"
-                                        ></div>
+                                        >
+                                            @include('partials.music-play-button', ['item' => $playlist, 'class' => 'playlist-play-button', 'type' => 'playlist'])
+                                        </div>
                                         <div class="playlist-copy">
                                             <div>
                                                 <span>{{ $playlist['meta'] }}</span>

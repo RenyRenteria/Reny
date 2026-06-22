@@ -83,7 +83,13 @@ class MusicFlowsTest extends TestCase
             ->assertSee('href="'.route('music').'"', false)
             ->assertSee('href="'.route('music.albums').'"', false)
             ->assertSee('href="'.route('music.singles').'"', false)
-            ->assertSee('href="'.route('music.playlists').'"', false);
+            ->assertSee('href="'.route('music.playlists').'"', false)
+            ->assertSee('id="musicPlayerPrevious"', false)
+            ->assertSee('id="musicPlayerNext"', false)
+            ->assertSee('id="musicPlayerShuffle"', false)
+            ->assertSee('id="musicPlayerRepeat"', false)
+            ->assertSee('data-music-player-close', false)
+            ->assertDontSee('id="musicPlayerDetail"', false);
 
         foreach (['/videos', '/photos', '/community', '/store'] as $path) {
             $this->get($path)
@@ -161,7 +167,7 @@ class MusicFlowsTest extends TestCase
             ],
         ]);
 
-        $this->publishedMusic(ContentType::MusicPlaylist, 'CMS Playlist', [
+        $playlist = $this->publishedMusic(ContentType::MusicPlaylist, 'CMS Playlist', [
             'tracks' => [
                 'song:'.$single->id,
                 'album:'.$album->id.':0',
@@ -172,12 +178,53 @@ class MusicFlowsTest extends TestCase
             ->assertOk()
             ->assertSee('Playlists')
             ->assertSee('CMS Playlist')
+            ->assertSee(route('music.play', $single), false)
+            ->assertSee(route('music.play', $album), false)
+            ->assertSee(route('music.play', $playlist), false)
             ->assertSee('Playlist Single')
             ->assertSee('Playlist Album - Album Track');
 
         $this->get(route('music.playlists'))
             ->assertOk()
             ->assertSee('CMS Playlist');
+    }
+
+    public function test_playlist_playback_endpoint_returns_playable_track_queue(): void
+    {
+        $singleAudio = $this->mediaAsset(MediaAssetType::Audio->value);
+        $albumAudio = $this->mediaAsset(MediaAssetType::Audio->value);
+
+        $single = $this->publishedMusic(ContentType::Song, 'Playable Playlist Single', [
+            'audio_asset_id' => $singleAudio->id,
+            'release_date_member_view' => '2026-07-01T10:00',
+            'release_date_open_view' => '2026-07-02T10:00',
+        ]);
+        $single->mediaAssets()->attach($singleAudio->id, ['role' => 'audio', 'sort_order' => 0]);
+
+        $album = $this->publishedMusic(ContentType::MusicalAlbum, 'Playable Playlist Album', [
+            'release_date_member_view' => '2026-07-01T10:00',
+            'release_date_open_view' => '2026-07-02T10:00',
+            'tracks' => [
+                ['track_name' => 'Queued Track', 'track_audio_asset_id' => $albumAudio->id],
+            ],
+        ]);
+        $album->mediaAssets()->attach($albumAudio->id, ['role' => 'track_audio', 'sort_order' => 0]);
+
+        $playlist = $this->publishedMusic(ContentType::MusicPlaylist, 'Playable CMS Playlist', [
+            'tracks' => [
+                'song:'.$single->id,
+                'album:'.$album->id.':0',
+            ],
+        ]);
+
+        $this->getJson(route('music.play', $playlist))
+            ->assertOk()
+            ->assertJsonPath('state', 'ready')
+            ->assertJsonPath('audio_url', $singleAudio->publicUrl())
+            ->assertJsonCount(2, 'queue')
+            ->assertJsonPath('queue.0.title', 'Playable Playlist Single')
+            ->assertJsonPath('queue.1.title', 'Playable Playlist Album - Queued Track')
+            ->assertJsonPath('queue.1.audio_url', $albumAudio->publicUrl());
     }
 
     public function test_music_route_lists_cms_single_even_when_release_dates_are_future(): void
