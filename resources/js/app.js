@@ -146,6 +146,25 @@ const sectionAnalyticsKey = (element) => normalizeAnalyticsKey(
     || elementAnalyticsLabel(element),
 );
 
+const boundInteractions = new WeakMap();
+
+const bindOnce = (element, key, type, handler, options = undefined) => {
+    if (!element) {
+        return;
+    }
+
+    const boundKeys = boundInteractions.get(element) || new Set();
+    const interactionKey = `${key}:${type}`;
+
+    if (boundKeys.has(interactionKey)) {
+        return;
+    }
+
+    element.addEventListener(type, handler, options);
+    boundKeys.add(interactionKey);
+    boundInteractions.set(element, boundKeys);
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     trackEvent('page_view', {
         title: document.title,
@@ -205,18 +224,20 @@ document.addEventListener('DOMContentLoaded', () => {
     activateTab(tabFromHash());
 });
 
-const videoPlayerLayer = document.getElementById('videoPlayerLayer');
-const videoPlayerFrame = document.getElementById('videoPlayerFrame');
-const videoPlayerTitle = document.getElementById('videoPlayerTitle');
-const videoPlayerState = document.getElementById('videoPlayerState');
-const videoPlayerMessage = document.getElementById('videoPlayerMessage');
-const videoPlayerError = document.getElementById('videoPlayerError');
-const videoPlayerExternal = document.getElementById('videoPlayerExternal');
-const videoPlayerDetail = document.getElementById('videoPlayerDetail');
+const videoPlayerElements = () => ({
+    layer: document.getElementById('videoPlayerLayer'),
+    frame: document.getElementById('videoPlayerFrame'),
+    title: document.getElementById('videoPlayerTitle'),
+    state: document.getElementById('videoPlayerState'),
+    message: document.getElementById('videoPlayerMessage'),
+    error: document.getElementById('videoPlayerError'),
+    external: document.getElementById('videoPlayerExternal'),
+    detail: document.getElementById('videoPlayerDetail'),
+});
 let focusedBeforeVideoPlayer = null;
 let activeVideoButton = null;
 
-const getVideoFocusable = () => [...(videoPlayerLayer?.querySelectorAll('button, [href], iframe, [tabindex]:not([tabindex="-1"])') || [])]
+const getVideoFocusable = () => [...(videoPlayerElements().layer?.querySelectorAll('button, [href], iframe, [tabindex]:not([tabindex="-1"])') || [])]
     .filter((node) => !node.disabled && node.offsetParent !== null);
 
 const trapVideoFocus = (event) => {
@@ -238,58 +259,65 @@ const trapVideoFocus = (event) => {
 };
 
 const closeVideoPlayer = () => {
-    if (!videoPlayerLayer) {
+    const { layer, frame } = videoPlayerElements();
+
+    if (!layer) {
         return;
     }
 
-    videoPlayerLayer.hidden = true;
-    videoPlayerLayer.setAttribute('inert', '');
-    videoPlayerFrame?.replaceChildren();
-    videoPlayerFrame?.setAttribute('hidden', '');
+    layer.hidden = true;
+    layer.setAttribute('inert', '');
+    frame?.replaceChildren();
+    frame?.setAttribute('hidden', '');
     document.body.classList.remove('has-modal-open');
     focusedBeforeVideoPlayer?.focus();
     activeVideoButton = null;
 };
 
 const openVideoPlayerLayer = (button) => {
-    if (!videoPlayerLayer) {
+    const { layer } = videoPlayerElements();
+
+    if (!layer) {
         return;
     }
 
     focusedBeforeVideoPlayer = document.activeElement;
     activeVideoButton = button;
-    videoPlayerLayer.hidden = false;
-    videoPlayerLayer.removeAttribute('inert');
+    layer.hidden = false;
+    layer.removeAttribute('inert');
     document.body.classList.add('has-modal-open');
     getVideoFocusable()[0]?.focus();
 };
 
 const setVideoPlayerExternal = (button) => {
+    const { external, detail } = videoPlayerElements();
     const youtubeUrl = button.dataset.youtubeUrl;
     const detailUrl = button.dataset.detailUrl;
 
-    if (videoPlayerExternal && youtubeUrl) {
-        videoPlayerExternal.href = youtubeUrl;
-        videoPlayerExternal.hidden = false;
+    if (external && youtubeUrl) {
+        external.href = youtubeUrl;
+        external.hidden = false;
     } else {
-        videoPlayerExternal?.setAttribute('hidden', '');
+        external?.setAttribute('hidden', '');
     }
 
-    if (videoPlayerDetail && detailUrl) {
-        videoPlayerDetail.href = detailUrl;
-        videoPlayerDetail.hidden = false;
+    if (detail && detailUrl) {
+        detail.href = detailUrl;
+        detail.hidden = false;
     } else {
-        videoPlayerDetail?.setAttribute('hidden', '');
+        detail?.setAttribute('hidden', '');
     }
 };
 
 const renderVideoPlayerError = (button, reason, message) => {
-    videoPlayerState.textContent = 'Video unavailable';
-    videoPlayerMessage.textContent = message;
-    videoPlayerFrame?.replaceChildren();
-    videoPlayerFrame?.setAttribute('hidden', '');
-    videoPlayerError.textContent = message;
-    videoPlayerError.hidden = false;
+    const { state, message: messageNode, frame, error } = videoPlayerElements();
+
+    state.textContent = 'Video unavailable';
+    messageNode.textContent = message;
+    frame?.replaceChildren();
+    frame?.setAttribute('hidden', '');
+    error.textContent = message;
+    error.hidden = false;
 
     trackElementEvent(button, 'video_play_failed', {
         item_type: button.dataset.analyticsType || 'video',
@@ -299,7 +327,16 @@ const renderVideoPlayerError = (button, reason, message) => {
 };
 
 const openVideoPlayer = (button) => {
-    if (!videoPlayerLayer || !videoPlayerTitle || !videoPlayerState || !videoPlayerMessage || !videoPlayerFrame || !videoPlayerError) {
+    const {
+        layer,
+        frame,
+        title: titleNode,
+        state,
+        message,
+        error,
+    } = videoPlayerElements();
+
+    if (!layer || !titleNode || !state || !message || !frame || !error) {
         return;
     }
 
@@ -311,12 +348,12 @@ const openVideoPlayer = (button) => {
         result: 'clicked',
     });
 
-    videoPlayerTitle.textContent = title;
-    videoPlayerState.textContent = 'Loading';
-    videoPlayerMessage.textContent = 'Loading the selected video.';
-    videoPlayerError.hidden = true;
-    videoPlayerFrame.hidden = true;
-    videoPlayerFrame.replaceChildren();
+    titleNode.textContent = title;
+    state.textContent = 'Loading';
+    message.textContent = 'Loading the selected video.';
+    error.hidden = true;
+    frame.hidden = true;
+    frame.replaceChildren();
     setVideoPlayerExternal(button);
     openVideoPlayerLayer(button);
 
@@ -336,8 +373,8 @@ const openVideoPlayer = (button) => {
     iframe.allowFullscreen = true;
 
     iframe.addEventListener('load', () => {
-        videoPlayerState.textContent = 'Playing';
-        videoPlayerMessage.textContent = 'Streaming from YouTube.';
+        state.textContent = 'Playing';
+        message.textContent = 'Streaming from YouTube.';
         trackElementEvent(button, 'video_play_started', {
             item_type: button.dataset.analyticsType || 'video',
             result: 'started',
@@ -352,63 +389,67 @@ const openVideoPlayer = (button) => {
         );
     }, { once: true });
 
-    videoPlayerFrame.append(iframe);
-    videoPlayerFrame.hidden = false;
+    frame.append(iframe);
+    frame.hidden = false;
 };
 
-document.querySelectorAll('[data-video-player]').forEach((button) => {
-    button.addEventListener('click', () => openVideoPlayer(button));
-});
+const initializeVideoInteractions = (root = document) => {
+    root.querySelectorAll('[data-video-player]').forEach((button) => {
+        bindOnce(button, 'video-player-open', 'click', () => openVideoPlayer(button));
+    });
 
-document.querySelectorAll('a.youtube-pill, a.playlist-link, a.video-card-external').forEach((link) => {
-    link.addEventListener('click', () => {
-        const url = new URL(link.href, window.location.href);
+    root.querySelectorAll('a.youtube-pill, a.playlist-link, a.video-card-external').forEach((link) => {
+        bindOnce(link, 'video-external-link', 'click', () => {
+            const url = new URL(link.href, window.location.href);
 
-        trackElementEvent(link, 'video_external_opened', {
-            item_type: link.dataset.analyticsType || (link.classList.contains('playlist-link') ? 'playlist' : 'video'),
-            item_id: url.searchParams.get('v') || normalizeAnalyticsKey(link.href),
+            trackElementEvent(link, 'video_external_opened', {
+                item_type: link.dataset.analyticsType || (link.classList.contains('playlist-link') ? 'playlist' : 'video'),
+                item_id: url.searchParams.get('v') || normalizeAnalyticsKey(link.href),
+                destination: url.hostname,
+                result: 'external_opened',
+            });
+        });
+    });
+
+    const { external, detail, layer } = videoPlayerElements();
+
+    bindOnce(external, 'video-external-modal-link', 'click', () => {
+        if (!activeVideoButton) {
+            return;
+        }
+
+        const url = new URL(external.href, window.location.href);
+
+        trackElementEvent(activeVideoButton, 'video_external_opened', {
+            item_type: activeVideoButton.dataset.analyticsType || 'video',
+            item_id: url.searchParams.get('v') || normalizeAnalyticsKey(external.href),
             destination: url.hostname,
             result: 'external_opened',
         });
     });
-});
 
-videoPlayerExternal?.addEventListener('click', () => {
-    if (!activeVideoButton) {
-        return;
-    }
+    bindOnce(detail, 'video-detail-modal-link', 'click', () => {
+        if (!activeVideoButton) {
+            return;
+        }
 
-    const url = new URL(videoPlayerExternal.href, window.location.href);
-
-    trackElementEvent(activeVideoButton, 'video_external_opened', {
-        item_type: activeVideoButton.dataset.analyticsType || 'video',
-        item_id: url.searchParams.get('v') || normalizeAnalyticsKey(videoPlayerExternal.href),
-        destination: url.hostname,
-        result: 'external_opened',
+        trackElementEvent(activeVideoButton, 'video_detail_opened', {
+            item_type: activeVideoButton.dataset.analyticsType || 'video',
+            destination: detail.href,
+            result: 'clicked',
+        });
     });
-});
 
-videoPlayerDetail?.addEventListener('click', () => {
-    if (!activeVideoButton) {
-        return;
-    }
-
-    trackElementEvent(activeVideoButton, 'video_detail_opened', {
-        item_type: activeVideoButton.dataset.analyticsType || 'video',
-        destination: videoPlayerDetail.href,
-        result: 'clicked',
+    (layer || root).querySelectorAll('[data-video-player-close]').forEach((button) => {
+        bindOnce(button, 'video-player-close', 'click', closeVideoPlayer);
     });
-});
 
-document.querySelectorAll('[data-video-player-close]').forEach((button) => {
-    button.addEventListener('click', closeVideoPlayer);
-});
-
-videoPlayerLayer?.addEventListener('click', (event) => {
-    if (event.target === videoPlayerLayer) {
-        closeVideoPlayer();
-    }
-});
+    bindOnce(layer, 'video-player-layer-close', 'click', (event) => {
+        if (event.target === layer) {
+            closeVideoPlayer();
+        }
+    });
+};
 
 document.querySelectorAll('.view-all').forEach((button) => {
     button.addEventListener('click', () => {
@@ -425,9 +466,11 @@ document.querySelectorAll('.view-all').forEach((button) => {
 
 document.querySelectorAll('.album-deluxe-button').forEach((link) => {
     link.addEventListener('click', () => {
+        const url = new URL(link.href, window.location.href);
+
         trackElementEvent(link, 'music_deluxe_clicked', {
             item_type: 'album',
-            destination: new URL(link.href, window.location.href).pathname,
+            destination: url.pathname,
             result: 'clicked',
         });
     });
@@ -760,6 +803,63 @@ musicPlayerCta?.addEventListener('click', () => {
 
 const publicPageRoot = () => document.querySelector('[data-public-page-root]');
 
+const publicPageFragmentIds = [
+    'photoLightbox',
+    'videoPlayerLayer',
+    'communityNoteModal',
+    'createGroupModal',
+    'communityToast',
+    'detailLayer',
+    'bagLayer',
+    'storeToast',
+];
+
+const persistentMusicPlayer = () => document.querySelector('[data-global-music-player]');
+
+const updateHeadMeta = (nextDocument, selector) => {
+    const nextMeta = nextDocument.head?.querySelector(selector);
+    const currentMeta = document.head?.querySelector(selector);
+
+    if (!nextMeta) {
+        return;
+    }
+
+    if (currentMeta) {
+        currentMeta.setAttribute('content', nextMeta.getAttribute('content') || '');
+        return;
+    }
+
+    document.head.append(nextMeta.cloneNode(true));
+};
+
+const syncPublicPageFragments = (nextDocument) => {
+    publicPageFragmentIds.forEach((id) => {
+        const current = document.getElementById(id);
+        const next = nextDocument.getElementById(id);
+
+        if (!next) {
+            current?.remove();
+            return;
+        }
+
+        if (current) {
+            current.replaceWith(next);
+            return;
+        }
+
+        const player = persistentMusicPlayer();
+
+        if (player) {
+            player.before(next);
+        } else {
+            document.body.append(next);
+        }
+    });
+
+    updateHeadMeta(nextDocument, 'meta[name="csrf-token"]');
+    document.body.classList.remove('has-modal-open');
+};
+
 const isPersistentPublicPath = (url) => {
     const paths = new Set([
         '/',
@@ -804,6 +904,7 @@ const navigatePublicPage = async (url, { push = true } = {}) => {
         }
 
         root.replaceWith(nextRoot);
+        syncPublicPageFragments(nextDocument);
         document.title = nextDocument.title;
 
         const nextScreen = nextDocument.body?.dataset.analyticsScreen;
@@ -821,6 +922,7 @@ const navigatePublicPage = async (url, { push = true } = {}) => {
             referrer: null,
             result: 'viewed',
         });
+        initializePublicPage(nextRoot);
 
         return true;
     } catch (error) {
@@ -864,7 +966,9 @@ window.addEventListener('popstate', () => {
 });
 
 document.addEventListener('keydown', (event) => {
-    if (videoPlayerLayer && !videoPlayerLayer.hidden) {
+    const currentVideoPlayerLayer = videoPlayerElements().layer;
+
+    if (currentVideoPlayerLayer && !currentVideoPlayerLayer.hidden) {
         if (event.key === 'Tab') {
             trapVideoFocus(event);
         } else if (event.key === 'Escape') {
@@ -885,23 +989,27 @@ document.addEventListener('keydown', (event) => {
     }
 });
 
-const photoTiles = document.querySelectorAll('.photo-tile');
-const photoLightbox = document.getElementById('photoLightbox');
-const photoLightboxImage = document.getElementById('photoLightboxImage');
-const photoLightboxType = document.getElementById('photoLightboxType');
-const photoLightboxTitle = document.getElementById('photoLightboxTitle');
-const photoLightboxCaption = document.getElementById('photoLightboxCaption');
-const photoLightboxClose = document.getElementById('photoLightboxClose');
 let activePhotoTile = null;
 
+const photoLightboxElements = () => ({
+    layer: document.getElementById('photoLightbox'),
+    image: document.getElementById('photoLightboxImage'),
+    type: document.getElementById('photoLightboxType'),
+    title: document.getElementById('photoLightboxTitle'),
+    caption: document.getElementById('photoLightboxCaption'),
+    close: document.getElementById('photoLightboxClose'),
+});
+
 const closePhotoLightbox = () => {
-    if (!photoLightbox || !photoLightboxImage) {
+    const { layer, image } = photoLightboxElements();
+
+    if (!layer || !image) {
         return;
     }
 
-    photoLightbox.classList.remove('is-open');
-    photoLightbox.setAttribute('aria-hidden', 'true');
-    photoLightboxImage.removeAttribute('src');
+    layer.classList.remove('is-open');
+    layer.setAttribute('aria-hidden', 'true');
+    image.removeAttribute('src');
 
     if (activePhotoTile) {
         activePhotoTile.focus();
@@ -909,19 +1017,28 @@ const closePhotoLightbox = () => {
 };
 
 const openPhotoLightbox = (tile) => {
-    if (!photoLightbox || !photoLightboxImage || !photoLightboxType || !photoLightboxTitle || !photoLightboxCaption) {
+    const {
+        layer,
+        image,
+        type,
+        title,
+        caption,
+        close,
+    } = photoLightboxElements();
+
+    if (!layer || !image || !type || !title || !caption) {
         return;
     }
 
     activePhotoTile = tile;
-    photoLightboxImage.src = tile.dataset.photoSrc;
-    photoLightboxImage.alt = tile.dataset.photoTitle || '';
-    photoLightboxType.textContent = `${tile.dataset.photoType || 'Photo'} / ${tile.dataset.photoTone || 'gallery'}`;
-    photoLightboxTitle.textContent = tile.dataset.photoTitle || 'Photo';
-    photoLightboxCaption.textContent = tile.dataset.photoCaption || '';
-    photoLightbox.classList.add('is-open');
-    photoLightbox.setAttribute('aria-hidden', 'false');
-    photoLightboxClose?.focus();
+    image.src = tile.dataset.photoSrc;
+    image.alt = tile.dataset.photoTitle || '';
+    type.textContent = `${tile.dataset.photoType || 'Photo'} / ${tile.dataset.photoTone || 'gallery'}`;
+    title.textContent = tile.dataset.photoTitle || 'Photo';
+    caption.textContent = tile.dataset.photoCaption || '';
+    layer.classList.add('is-open');
+    layer.setAttribute('aria-hidden', 'false');
+    close?.focus();
 
     trackElementEvent(tile, 'photo_opened', {
         item_type: 'photo',
@@ -930,35 +1047,41 @@ const openPhotoLightbox = (tile) => {
     });
 };
 
-photoTiles.forEach((tile) => {
-    tile.addEventListener('click', () => {
-        const usesTouch = window.matchMedia('(hover: none)').matches;
+const initializePhotoInteractions = (root = document) => {
+    root.querySelectorAll('.photo-tile').forEach((tile) => {
+        bindOnce(tile, 'photo-tile-open', 'click', () => {
+            const tiles = [...document.querySelectorAll('.photo-tile')];
+            const usesTouch = window.matchMedia('(hover: none)').matches;
 
-        if (usesTouch && !tile.classList.contains('is-peeking')) {
-            photoTiles.forEach((otherTile) => otherTile.classList.remove('is-peeking'));
-            tile.classList.add('is-peeking');
+            if (usesTouch && !tile.classList.contains('is-peeking')) {
+                tiles.forEach((otherTile) => otherTile.classList.remove('is-peeking'));
+                tile.classList.add('is-peeking');
+                return;
+            }
+
+            openPhotoLightbox(tile);
+        });
+    });
+
+    const { layer, close } = photoLightboxElements();
+
+    bindOnce(close, 'photo-lightbox-close', 'click', closePhotoLightbox);
+    bindOnce(layer, 'photo-lightbox-backdrop', 'click', (event) => {
+        if (event.target === layer) {
+            closePhotoLightbox();
+        }
+    });
+
+    bindOnce(document, 'photo-lightbox-escape', 'keydown', (event) => {
+        const currentLayer = photoLightboxElements().layer;
+
+        if (event.key !== 'Escape' || !currentLayer?.classList.contains('is-open')) {
             return;
         }
 
-        openPhotoLightbox(tile);
-    });
-});
-
-photoLightboxClose?.addEventListener('click', closePhotoLightbox);
-
-photoLightbox?.addEventListener('click', (event) => {
-    if (event.target === photoLightbox) {
         closePhotoLightbox();
-    }
-});
-
-document.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape' || !photoLightbox?.classList.contains('is-open')) {
-        return;
-    }
-
-    closePhotoLightbox();
-});
+    });
+};
 
 const showCommunityToast = (message) => {
     const toast = document.getElementById('communityToast');
@@ -1023,60 +1146,64 @@ const setCommunityFormStatus = (form, message = '', isError = false) => {
     status.classList.toggle('is-error', isError);
 };
 
-document.querySelectorAll('.community-toast-trigger').forEach((button) => {
-    button.addEventListener('click', () => {
-        trackElementEvent(button, 'community_action_clicked', {
-            item_type: 'community_action',
-            result: 'clicked',
-        });
-        showCommunityToast(button.dataset.toast || 'Coming soon');
-    });
-});
-
-document.querySelectorAll('.reaction-button').forEach((button) => {
-    button.addEventListener('click', async () => {
-        const countNode = button.querySelector('.reaction-count');
-        const currentCount = Number(button.dataset.count || countNode?.textContent || 0);
-        const wasReacted = button.classList.contains('is-reacted');
-        const nextCount = wasReacted ? currentCount - 1 : currentCount + 1;
-
-        button.dataset.count = String(nextCount);
-        button.classList.toggle('is-reacted', !wasReacted);
-        button.disabled = true;
-
-        if (countNode) {
-            countNode.textContent = String(nextCount);
-        }
-
-        try {
-            if (button.dataset.endpoint) {
-                await postCommunityJson(button.dataset.endpoint);
-            }
-
-            trackElementEvent(button, 'community_like_clicked', {
-                item_type: 'reaction',
-                result: button.classList.contains('is-reacted') ? 'liked' : 'unliked',
+const initializeCommunityToastTriggers = (root = document) => {
+    root.querySelectorAll('.community-toast-trigger').forEach((button) => {
+        bindOnce(button, 'community-toast-trigger', 'click', () => {
+            trackElementEvent(button, 'community_action_clicked', {
+                item_type: 'community_action',
+                result: 'clicked',
             });
-        } catch (error) {
-            console.error(error);
-            button.dataset.count = String(currentCount);
-            button.classList.toggle('is-reacted', wasReacted);
+            showCommunityToast(button.dataset.toast || 'Coming soon');
+        });
+    });
+};
+
+const initializeCommunityReactions = (root = document) => {
+    root.querySelectorAll('.reaction-button').forEach((button) => {
+        bindOnce(button, 'community-reaction', 'click', async () => {
+            const countNode = button.querySelector('.reaction-count');
+            const currentCount = Number(button.dataset.count || countNode?.textContent || 0);
+            const wasReacted = button.classList.contains('is-reacted');
+            const nextCount = wasReacted ? currentCount - 1 : currentCount + 1;
+
+            button.dataset.count = String(nextCount);
+            button.classList.toggle('is-reacted', !wasReacted);
+            button.disabled = true;
 
             if (countNode) {
-                countNode.textContent = String(currentCount);
+                countNode.textContent = String(nextCount);
             }
 
-            showCommunityToast(error.userMessage || 'Like could not be saved.');
-            trackElementEvent(button, 'community_like_clicked', {
-                item_type: 'reaction',
-                reason: error.reason || error.message || 'like_failed',
-                result: 'failed',
-            });
-        } finally {
-            button.disabled = false;
-        }
+            try {
+                if (button.dataset.endpoint) {
+                    await postCommunityJson(button.dataset.endpoint);
+                }
+
+                trackElementEvent(button, 'community_like_clicked', {
+                    item_type: 'reaction',
+                    result: button.classList.contains('is-reacted') ? 'liked' : 'unliked',
+                });
+            } catch (error) {
+                console.error(error);
+                button.dataset.count = String(currentCount);
+                button.classList.toggle('is-reacted', wasReacted);
+
+                if (countNode) {
+                    countNode.textContent = String(currentCount);
+                }
+
+                showCommunityToast(error.userMessage || 'Like could not be saved.');
+                trackElementEvent(button, 'community_like_clicked', {
+                    item_type: 'reaction',
+                    reason: error.reason || error.message || 'like_failed',
+                    result: 'failed',
+                });
+            } finally {
+                button.disabled = false;
+            }
+        });
     });
-});
+};
 
 const normalizePollValues = (values) => {
     const total = values.reduce((sum, value) => sum + value, 0) || 1;
@@ -1099,117 +1226,117 @@ const normalizePollValues = (values) => {
     return roundedValues;
 };
 
-document.querySelectorAll('[data-community-poll], [data-poll]').forEach((poll) => {
-    const options = [...poll.querySelectorAll('.poll-option')];
-    const totalNode = poll.querySelector('[data-poll-total]');
+const initializeCommunityPolls = (root = document) => {
+    root.querySelectorAll('[data-community-poll], [data-poll]').forEach((poll) => {
+        const options = [...poll.querySelectorAll('.poll-option')];
+        const totalNode = poll.querySelector('[data-poll-total]');
 
-    options.forEach((option, selectedIndex) => {
-        if (option.tagName !== 'BUTTON') {
-            return;
-        }
-
-        option.addEventListener('click', async () => {
-            if (poll.dataset.voted === 'true') {
-                showCommunityToast('You already voted in this poll.');
+        options.forEach((option, selectedIndex) => {
+            if (option.tagName !== 'BUTTON') {
                 return;
             }
 
-            const previousValues = options.map((currentOption) => ({
-                percent: currentOption.dataset.percent,
-                voted: currentOption.classList.contains('is-voted'),
-                disabled: currentOption.disabled,
-                label: currentOption.querySelector('.poll-option-top strong')?.textContent || '',
-                width: currentOption.querySelector('.poll-meter span')?.style.width || '',
-            }));
-            const previousVoted = poll.dataset.voted;
-            const boostedValues = options.map((currentOption, index) => {
-                const currentPercent = Number(currentOption.dataset.percent || 0);
-                return index === selectedIndex ? currentPercent + 8 : Math.max(1, currentPercent - 4);
-            });
-            const nextValues = normalizePollValues(boostedValues);
-
-            options.forEach((currentOption, index) => {
-                const value = nextValues[index];
-                const percentNode = currentOption.querySelector('.poll-option-top strong');
-                const meter = currentOption.querySelector('.poll-meter span');
-
-                currentOption.dataset.percent = String(value);
-                currentOption.classList.toggle('is-voted', index === selectedIndex);
-
-                if (percentNode) {
-                    percentNode.textContent = `${value}%`;
+            bindOnce(option, 'community-poll-option', 'click', async () => {
+                if (poll.dataset.voted === 'true') {
+                    showCommunityToast('You already voted in this poll.');
+                    return;
                 }
 
-                if (meter) {
-                    meter.style.width = `${value}%`;
-                }
-            });
+                const previousValues = options.map((currentOption) => ({
+                    percent: currentOption.dataset.percent,
+                    voted: currentOption.classList.contains('is-voted'),
+                    disabled: currentOption.disabled,
+                    label: currentOption.querySelector('.poll-option-top strong')?.textContent || '',
+                    width: currentOption.querySelector('.poll-meter span')?.style.width || '',
+                }));
+                const previousVoted = poll.dataset.voted;
+                const boostedValues = options.map((currentOption, index) => {
+                    const currentPercent = Number(currentOption.dataset.percent || 0);
+                    return index === selectedIndex ? currentPercent + 8 : Math.max(1, currentPercent - 4);
+                });
+                const nextValues = normalizePollValues(boostedValues);
 
-            options.forEach((currentOption) => {
-                if (currentOption.tagName === 'BUTTON') {
-                    currentOption.disabled = true;
-                }
-            });
-            poll.dataset.voted = 'true';
+                options.forEach((currentOption, index) => {
+                    const value = nextValues[index];
+                    const percentNode = currentOption.querySelector('.poll-option-top strong');
+                    const meter = currentOption.querySelector('.poll-meter span');
 
-            try {
-                if (poll.dataset.voteEndpoint) {
-                    await postCommunityJson(poll.dataset.voteEndpoint, {
-                        option_key: option.dataset.optionKey || normalizeAnalyticsKey(analyticsText(option)),
-                        option_label: option.dataset.optionLabel || analyticsText(option),
+                    currentOption.dataset.percent = String(value);
+                    currentOption.classList.toggle('is-voted', index === selectedIndex);
+
+                    if (percentNode) {
+                        percentNode.textContent = `${value}%`;
+                    }
+
+                    if (meter) {
+                        meter.style.width = `${value}%`;
+                    }
+                });
+
+                options.forEach((currentOption) => {
+                    if (currentOption.tagName === 'BUTTON') {
+                        currentOption.disabled = true;
+                    }
+                });
+                poll.dataset.voted = 'true';
+
+                try {
+                    if (poll.dataset.voteEndpoint) {
+                        await postCommunityJson(poll.dataset.voteEndpoint, {
+                            option_key: option.dataset.optionKey || normalizeAnalyticsKey(analyticsText(option)),
+                            option_label: option.dataset.optionLabel || analyticsText(option),
+                        });
+                    }
+
+                    if (totalNode) {
+                        const currentTotal = Number((totalNode.textContent || '').replace(/[^0-9]/g, '')) || 0;
+                        totalNode.textContent = `${currentTotal + 1} total votes`;
+                    }
+
+                    showCommunityToast('Vote saved.');
+                    trackElementEvent(option, 'community_poll_voted', {
+                        item_type: 'poll_option',
+                        item_id: option.dataset.optionKey || normalizeAnalyticsKey(analyticsText(option)),
+                        result: 'voted',
+                    });
+                } catch (error) {
+                    console.error(error);
+                    if (error.status !== 409) {
+                        poll.dataset.voted = previousVoted || 'false';
+                        options.forEach((currentOption, index) => {
+                            const previous = previousValues[index];
+                            const percentNode = currentOption.querySelector('.poll-option-top strong');
+                            const meter = currentOption.querySelector('.poll-meter span');
+
+                            currentOption.dataset.percent = previous.percent;
+                            currentOption.classList.toggle('is-voted', previous.voted);
+
+                            if (currentOption.tagName === 'BUTTON') {
+                                currentOption.disabled = previous.disabled;
+                            }
+
+                            if (percentNode) {
+                                percentNode.textContent = previous.label;
+                            }
+
+                            if (meter) {
+                                meter.style.width = previous.width;
+                            }
+                        });
+                    }
+
+                    showCommunityToast(error.userMessage || 'Vote could not be saved.');
+                    trackElementEvent(option, 'community_poll_voted', {
+                        item_type: 'poll_option',
+                        item_id: option.dataset.optionKey || normalizeAnalyticsKey(analyticsText(option)),
+                        reason: error.reason || error.message || 'vote_failed',
+                        result: 'failed',
                     });
                 }
-
-                if (totalNode) {
-                    const currentTotal = Number((totalNode.textContent || '').replace(/[^0-9]/g, '')) || 0;
-                    totalNode.textContent = `${currentTotal + 1} total votes`;
-                }
-
-                showCommunityToast('Vote saved.');
-                trackElementEvent(option, 'community_poll_voted', {
-                    item_type: 'poll_option',
-                    item_id: option.dataset.optionKey || normalizeAnalyticsKey(analyticsText(option)),
-                    result: 'voted',
-                });
-            } catch (error) {
-                console.error(error);
-                if (error.status !== 409) {
-                    poll.dataset.voted = previousVoted || 'false';
-                    options.forEach((currentOption, index) => {
-                        const previous = previousValues[index];
-                        const percentNode = currentOption.querySelector('.poll-option-top strong');
-                        const meter = currentOption.querySelector('.poll-meter span');
-
-                        currentOption.dataset.percent = previous.percent;
-                        currentOption.classList.toggle('is-voted', previous.voted);
-
-                        if (currentOption.tagName === 'BUTTON') {
-                            currentOption.disabled = previous.disabled;
-                        }
-
-                        if (percentNode) {
-                            percentNode.textContent = previous.label;
-                        }
-
-                        if (meter) {
-                            meter.style.width = previous.width;
-                        }
-                    });
-                }
-
-                showCommunityToast(error.userMessage || 'Vote could not be saved.');
-                trackElementEvent(option, 'community_poll_voted', {
-                    item_type: 'poll_option',
-                    item_id: option.dataset.optionKey || normalizeAnalyticsKey(analyticsText(option)),
-                    reason: error.reason || error.message || 'vote_failed',
-                    result: 'failed',
-                });
-            }
+            });
         });
     });
-});
-
-const countryChatFeed = document.getElementById('countryChatFeed');
+};
 
 const renderChatMessage = (message, isSelf = false) => {
     const article = document.createElement('article');
@@ -1226,86 +1353,97 @@ const renderChatMessage = (message, isSelf = false) => {
     return article;
 };
 
-document.querySelectorAll('.club-card a, [data-community-club-open]').forEach((link) => {
-    link.addEventListener('click', () => {
-        trackElementEvent(link, 'community_club_opened', {
-            item_type: 'country_club',
-            item_id: link.closest('[data-club-key]')?.dataset.clubKey || normalizeAnalyticsKey(analyticsText(link)),
-            result: 'opened',
+const initializeCommunityClubLinks = (root = document) => {
+    root.querySelectorAll('.club-card a, [data-community-club-open]').forEach((link) => {
+        bindOnce(link, 'community-club-open', 'click', () => {
+            trackElementEvent(link, 'community_club_opened', {
+                item_type: 'country_club',
+                item_id: link.closest('[data-club-key]')?.dataset.clubKey || normalizeAnalyticsKey(analyticsText(link)),
+                result: 'opened',
+            });
         });
     });
-});
+};
 
-document.querySelectorAll('[data-community-club-join]').forEach((button) => {
-    button.addEventListener('click', async () => {
-        if (button.dataset.joined === 'true') {
-            showCommunityToast('You already joined this club.');
-            return;
-        }
+const initializeCommunityClubJoins = (root = document) => {
+    root.querySelectorAll('[data-community-club-join]').forEach((button) => {
+        bindOnce(button, 'community-club-join', 'click', async () => {
+            if (button.dataset.joined === 'true') {
+                showCommunityToast('You already joined this club.');
+                return;
+            }
 
-        const originalLabel = button.textContent;
-        button.disabled = true;
-        button.textContent = 'Joining...';
+            const originalLabel = button.textContent;
+            button.disabled = true;
+            button.textContent = 'Joining...';
 
-        try {
-            const payload = await postCommunityJson(button.dataset.endpoint);
-            button.dataset.joined = 'true';
-            button.textContent = 'Joined';
-            showCommunityToast(payload.message || 'Club joined.');
-            trackElementEvent(button, 'community_club_joined', {
-                item_type: 'country_club',
-                item_id: button.dataset.clubKey,
-                result: 'joined',
-            });
-        } catch (error) {
-            console.error(error);
-            button.textContent = originalLabel;
-            showCommunityToast(error.userMessage || 'Club could not be joined.');
-            trackElementEvent(button, 'community_club_joined', {
-                item_type: 'country_club',
-                item_id: button.dataset.clubKey,
-                reason: error.reason || error.message || 'join_failed',
-                result: 'failed',
-            });
-        } finally {
-            button.disabled = false;
-        }
+            try {
+                const payload = await postCommunityJson(button.dataset.endpoint);
+                button.dataset.joined = 'true';
+                button.textContent = 'Joined';
+                showCommunityToast(payload.message || 'Club joined.');
+                trackElementEvent(button, 'community_club_joined', {
+                    item_type: 'country_club',
+                    item_id: button.dataset.clubKey,
+                    result: 'joined',
+                });
+            } catch (error) {
+                console.error(error);
+                button.textContent = originalLabel;
+                showCommunityToast(error.userMessage || 'Club could not be joined.');
+                trackElementEvent(button, 'community_club_joined', {
+                    item_type: 'country_club',
+                    item_id: button.dataset.clubKey,
+                    reason: error.reason || error.message || 'join_failed',
+                    result: 'failed',
+                });
+            } finally {
+                button.disabled = false;
+            }
+        });
     });
-});
+};
 
-const createGroupModal = document.getElementById('createGroupModal');
-const openCreateGroup = document.getElementById('openCreateGroup');
-const closeCreateGroup = document.getElementById('closeCreateGroup');
-const createGroupForm = document.getElementById('createGroupForm');
-const createCountryName = document.getElementById('createCountryName');
 let previousCreateGroupFocus = null;
 
-const getCreateGroupFocusable = () => createGroupModal
-    ? [...createGroupModal.querySelectorAll('button, input, [href], select, textarea, [tabindex]:not([tabindex="-1"])')]
+const createGroupElements = () => ({
+    modal: document.getElementById('createGroupModal'),
+    open: document.getElementById('openCreateGroup'),
+    close: document.getElementById('closeCreateGroup'),
+    form: document.getElementById('createGroupForm'),
+    countryName: document.getElementById('createCountryName'),
+});
+
+const getCreateGroupFocusable = () => createGroupElements().modal
+    ? [...createGroupElements().modal.querySelectorAll('button, input, [href], select, textarea, [tabindex]:not([tabindex="-1"])')]
         .filter((node) => !node.hasAttribute('disabled'))
     : [];
 
 const closeCreateGroupModal = () => {
-    if (!createGroupModal) {
+    const { modal } = createGroupElements();
+
+    if (!modal) {
         return;
     }
 
-    createGroupModal.classList.remove('is-open');
-    createGroupModal.setAttribute('aria-hidden', 'true');
+    modal.classList.remove('is-open');
+    modal.setAttribute('aria-hidden', 'true');
     document.body.classList.remove('has-modal-open');
     previousCreateGroupFocus?.focus();
 };
 
 const openCreateGroupModal = () => {
-    if (!createGroupModal) {
+    const { modal, countryName } = createGroupElements();
+
+    if (!modal) {
         return;
     }
 
     previousCreateGroupFocus = document.activeElement;
-    createGroupModal.classList.add('is-open');
-    createGroupModal.setAttribute('aria-hidden', 'false');
+    modal.classList.add('is-open');
+    modal.setAttribute('aria-hidden', 'false');
     document.body.classList.add('has-modal-open');
-    createCountryName?.focus();
+    countryName?.focus();
 
     trackEvent('community_create_club_started', {
         item_type: 'country_club',
@@ -1313,260 +1451,305 @@ const openCreateGroupModal = () => {
     });
 };
 
-openCreateGroup?.addEventListener('click', openCreateGroupModal);
-closeCreateGroup?.addEventListener('click', closeCreateGroupModal);
+const initializeCreateGroupModal = () => {
+    const {
+        modal,
+        open,
+        close,
+        form,
+    } = createGroupElements();
 
-createGroupModal?.addEventListener('click', (event) => {
-    if (event.target === createGroupModal) {
-        closeCreateGroupModal();
-    }
-});
+    bindOnce(open, 'create-group-open', 'click', openCreateGroupModal);
+    bindOnce(close, 'create-group-close', 'click', closeCreateGroupModal);
 
-createGroupModal?.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') {
-        closeCreateGroupModal();
-        return;
-    }
-
-    if (event.key !== 'Tab') {
-        return;
-    }
-
-    const focusable = getCreateGroupFocusable();
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-
-    if (!first || !last) {
-        return;
-    }
-
-    if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-    }
-});
-
-createGroupForm?.addEventListener('submit', (event) => {
-    event.preventDefault();
-
-    const formData = new FormData(createGroupForm);
-    const country = String(formData.get('name') || '').trim();
-    const activity = String(formData.get('activity') || '').trim();
-
-    if (!country || !activity) {
-        setCommunityFormStatus(createGroupForm, 'Add a country and activity.', true);
-        return;
-    }
-
-    const submitButton = createGroupForm.querySelector('button[type="submit"]');
-    submitButton.disabled = true;
-    setCommunityFormStatus(createGroupForm, 'Creating...');
-
-    postCommunityJson(createGroupForm.dataset.endpoint, {
-        name: country,
-        activity,
-    }).then((payload) => {
-        createGroupForm.reset();
-        closeCreateGroupModal();
-        showCommunityToast(payload.message || 'Country club created.');
-        trackEvent('community_club_created', {
-            item_type: 'country_club',
-            item_id: payload.club?.key || normalizeAnalyticsKey(country),
-            item_label: payload.club?.name || country,
-            result: 'created',
-        });
-
-        if (payload.club?.detail_url) {
-            window.location.assign(payload.club.detail_url);
+    bindOnce(modal, 'create-group-backdrop', 'click', (event) => {
+        if (event.target === modal) {
+            closeCreateGroupModal();
         }
-    }).catch((error) => {
-        console.error(error);
-        setCommunityFormStatus(createGroupForm, error.userMessage || 'Country club could not be created.', true);
-        showCommunityToast(error.userMessage || 'Country club could not be created.');
-        trackEvent('community_club_created', {
-            item_type: 'country_club',
-            item_id: normalizeAnalyticsKey(country),
-            reason: error.reason || error.message || 'create_club_failed',
-            result: 'failed',
-        });
-    }).finally(() => {
-        submitButton.disabled = false;
     });
-});
 
-document.querySelectorAll('.community-content .media-cta').forEach((button) => {
-    button.addEventListener('click', () => {
-        if (button.dataset.noteOpen) {
-            const noteModal = document.getElementById('communityNoteModal');
-            const noteTitle = document.getElementById('communityNoteTitle');
-            const noteBody = document.getElementById('communityNoteBody');
+    bindOnce(modal, 'create-group-keydown', 'keydown', (event) => {
+        if (event.key === 'Escape') {
+            closeCreateGroupModal();
+            return;
+        }
 
-            if (noteModal && noteTitle && noteBody) {
-                noteTitle.textContent = button.dataset.noteTitle || 'Reny note';
-                noteBody.textContent = button.dataset.noteBody || '';
-                noteModal.classList.add('is-open');
-                noteModal.setAttribute('aria-hidden', 'false');
-                document.body.classList.add('has-modal-open');
+        if (event.key !== 'Tab') {
+            return;
+        }
+
+        const focusable = getCreateGroupFocusable();
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+
+        if (!first || !last) {
+            return;
+        }
+
+        if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+        }
+    });
+
+    bindOnce(form, 'create-group-submit', 'submit', (event) => {
+        event.preventDefault();
+
+        const formData = new FormData(form);
+        const country = String(formData.get('name') || '').trim();
+        const activity = String(formData.get('activity') || '').trim();
+
+        if (!country || !activity) {
+            setCommunityFormStatus(form, 'Add a country and activity.', true);
+            return;
+        }
+
+        const submitButton = form.querySelector('button[type="submit"]');
+        submitButton.disabled = true;
+        setCommunityFormStatus(form, 'Creating...');
+
+        postCommunityJson(form.dataset.endpoint, {
+            name: country,
+            activity,
+        }).then((payload) => {
+            form.reset();
+            closeCreateGroupModal();
+            showCommunityToast(payload.message || 'Country club created.');
+            trackEvent('community_club_created', {
+                item_type: 'country_club',
+                item_id: payload.club?.key || normalizeAnalyticsKey(country),
+                item_label: payload.club?.name || country,
+                result: 'created',
+            });
+
+            if (payload.club?.detail_url) {
+                window.location.assign(payload.club.detail_url);
             }
-        }
-
-        trackElementEvent(button, 'community_note_opened', {
-            item_type: 'reny_note',
-            result: 'opened',
+        }).catch((error) => {
+            console.error(error);
+            setCommunityFormStatus(form, error.userMessage || 'Country club could not be created.', true);
+            showCommunityToast(error.userMessage || 'Country club could not be created.');
+            trackEvent('community_club_created', {
+                item_type: 'country_club',
+                item_id: normalizeAnalyticsKey(country),
+                reason: error.reason || error.message || 'create_club_failed',
+                result: 'failed',
+            });
+        }).finally(() => {
+            submitButton.disabled = false;
         });
     });
-});
+};
 
-document.getElementById('closeCommunityNote')?.addEventListener('click', () => {
-    const noteModal = document.getElementById('communityNoteModal');
+const initializeCommunityNotes = (root = document) => {
+    root.querySelectorAll('.community-content .media-cta').forEach((button) => {
+        bindOnce(button, 'community-note-open', 'click', () => {
+            if (button.dataset.noteOpen) {
+                const noteModal = document.getElementById('communityNoteModal');
+                const noteTitle = document.getElementById('communityNoteTitle');
+                const noteBody = document.getElementById('communityNoteBody');
 
-    noteModal?.classList.remove('is-open');
-    noteModal?.setAttribute('aria-hidden', 'true');
-    document.body.classList.remove('has-modal-open');
-});
+                if (noteModal && noteTitle && noteBody) {
+                    noteTitle.textContent = button.dataset.noteTitle || 'Reny note';
+                    noteBody.textContent = button.dataset.noteBody || '';
+                    noteModal.classList.add('is-open');
+                    noteModal.setAttribute('aria-hidden', 'false');
+                    document.body.classList.add('has-modal-open');
+                }
+            }
 
-document.querySelectorAll('.community-content .share').forEach((button) => {
-    button.addEventListener('click', async () => {
-        const shareUrl = button.dataset.shareUrl || window.location.href;
-        const shareTitle = button.dataset.shareTitle || document.title;
+            trackElementEvent(button, 'community_note_opened', {
+                item_type: 'reny_note',
+                result: 'opened',
+            });
+        });
+    });
 
-        try {
-            if (navigator.share) {
-                await navigator.share({
-                    title: shareTitle,
-                    url: shareUrl,
+    bindOnce(document.getElementById('closeCommunityNote'), 'community-note-close', 'click', () => {
+        const noteModal = document.getElementById('communityNoteModal');
+
+        noteModal?.classList.remove('is-open');
+        noteModal?.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('has-modal-open');
+    });
+};
+
+const initializeCommunityShares = (root = document) => {
+    root.querySelectorAll('.community-content .share').forEach((button) => {
+        bindOnce(button, 'community-share', 'click', async () => {
+            const shareUrl = button.dataset.shareUrl || window.location.href;
+            const shareTitle = button.dataset.shareTitle || document.title;
+
+            try {
+                if (navigator.share) {
+                    await navigator.share({
+                        title: shareTitle,
+                        url: shareUrl,
+                    });
+                } else if (navigator.clipboard?.writeText) {
+                    await navigator.clipboard.writeText(shareUrl);
+                    showCommunityToast('Link copied.');
+                } else {
+                    window.prompt('Copy this link', shareUrl);
+                }
+
+                trackElementEvent(button, 'community_share_clicked', {
+                    item_type: 'post',
+                    result: 'shared',
                 });
-            } else if (navigator.clipboard?.writeText) {
-                await navigator.clipboard.writeText(shareUrl);
-                showCommunityToast('Link copied.');
-            } else {
-                window.prompt('Copy this link', shareUrl);
+            } catch (error) {
+                const canceled = error?.name === 'AbortError';
+
+                trackElementEvent(button, 'community_share_clicked', {
+                    item_type: 'post',
+                    reason: canceled ? 'share_canceled' : error.message || 'share_failed',
+                    result: canceled ? 'canceled' : 'failed',
+                });
+
+                if (!canceled) {
+                    showCommunityToast('Share failed. Try copying the URL.');
+                }
             }
-
-            trackElementEvent(button, 'community_share_clicked', {
-                item_type: 'post',
-                result: 'shared',
-            });
-        } catch (error) {
-            const canceled = error?.name === 'AbortError';
-
-            trackElementEvent(button, 'community_share_clicked', {
-                item_type: 'post',
-                reason: canceled ? 'share_canceled' : error.message || 'share_failed',
-                result: canceled ? 'canceled' : 'failed',
-            });
-
-            if (!canceled) {
-                showCommunityToast('Share failed. Try copying the URL.');
-            }
-        }
-    });
-});
-
-document.querySelectorAll('[data-community-reply-form]').forEach((form) => {
-    form.addEventListener('submit', async (event) => {
-        event.preventDefault();
-
-        const input = form.querySelector('input[name="body"]');
-        const body = input?.value.trim();
-
-        if (!body) {
-            setCommunityFormStatus(form, 'Write a reply first.', true);
-            return;
-        }
-
-        const submitButton = form.querySelector('button[type="submit"]');
-        submitButton.disabled = true;
-        setCommunityFormStatus(form, 'Posting...');
-
-        try {
-            const payload = await postCommunityJson(form.dataset.endpoint, { body });
-            const countNode = document.querySelector(`[data-reply-count="${form.dataset.postKey}"] span`);
-            const currentCount = Number((countNode?.textContent || '').replace(/[^0-9]/g, '')) || 0;
-
-            if (countNode) {
-                countNode.textContent = `${currentCount + 1} replies`;
-            }
-
-            input.value = '';
-            setCommunityFormStatus(form, payload.message || 'Reply posted.');
-            showCommunityToast(payload.message || 'Reply posted.');
-            trackEvent('community_reply_submitted', {
-                item_type: 'post_reply',
-                item_id: form.dataset.postKey,
-                result: 'submitted',
-            });
-        } catch (error) {
-            console.error(error);
-            setCommunityFormStatus(form, error.userMessage || 'Reply could not be posted.', true);
-            showCommunityToast(error.userMessage || 'Reply could not be posted.');
-            trackEvent('community_reply_submitted', {
-                item_type: 'post_reply',
-                item_id: form.dataset.postKey,
-                reason: error.reason || error.message || 'reply_failed',
-                result: 'failed',
-            });
-        } finally {
-            submitButton.disabled = false;
-        }
-    });
-});
-
-document.querySelectorAll('[data-community-club-message]').forEach((form) => {
-    form.addEventListener('submit', async (event) => {
-        event.preventDefault();
-
-        const input = form.querySelector('input[name="body"]');
-        const body = input?.value.trim();
-
-        if (!body || !countryChatFeed) {
-            setCommunityFormStatus(form, 'Write a message first.', true);
-            return;
-        }
-
-        const submitButton = form.querySelector('button[type="submit"]');
-        submitButton.disabled = true;
-        setCommunityFormStatus(form, 'Posting...');
-
-        try {
-            const payload = await postCommunityJson(form.dataset.endpoint, { body });
-            countryChatFeed.append(renderChatMessage({ author: payload.author || 'You', text: payload.text || body }, true));
-            countryChatFeed.scrollTop = countryChatFeed.scrollHeight;
-            input.value = '';
-            setCommunityFormStatus(form, payload.message || 'Message posted.');
-            showCommunityToast(payload.message || 'Message posted.');
-            trackEvent('community_reply_submitted', {
-                item_type: 'country_club_reply',
-                item_id: form.dataset.clubKey,
-                result: 'submitted',
-            });
-        } catch (error) {
-            console.error(error);
-            setCommunityFormStatus(form, error.userMessage || 'Message could not be posted.', true);
-            showCommunityToast(error.userMessage || 'Message could not be posted.');
-            trackEvent('community_reply_submitted', {
-                item_type: 'country_club_reply',
-                item_id: form.dataset.clubKey,
-                reason: error.reason || error.message || 'club_reply_failed',
-                result: 'failed',
-            });
-        } finally {
-            submitButton.disabled = false;
-        }
-    });
-});
-
-document.querySelectorAll('.vote-card .soft-button').forEach((button) => {
-    button.addEventListener('click', () => {
-        trackElementEvent(button, 'community_poll_voted', {
-            item_type: 'poll',
-            result: 'clicked',
         });
     });
-});
+};
+
+const initializeCommunityReplyForms = (root = document) => {
+    root.querySelectorAll('[data-community-reply-form]').forEach((form) => {
+        bindOnce(form, 'community-reply-submit', 'submit', async (event) => {
+            event.preventDefault();
+
+            const input = form.querySelector('input[name="body"]');
+            const body = input?.value.trim();
+
+            if (!body) {
+                setCommunityFormStatus(form, 'Write a reply first.', true);
+                return;
+            }
+
+            const submitButton = form.querySelector('button[type="submit"]');
+            submitButton.disabled = true;
+            setCommunityFormStatus(form, 'Posting...');
+
+            try {
+                const payload = await postCommunityJson(form.dataset.endpoint, { body });
+                const countNode = document.querySelector(`[data-reply-count="${form.dataset.postKey}"] span`);
+                const currentCount = Number((countNode?.textContent || '').replace(/[^0-9]/g, '')) || 0;
+
+                if (countNode) {
+                    countNode.textContent = `${currentCount + 1} replies`;
+                }
+
+                input.value = '';
+                setCommunityFormStatus(form, payload.message || 'Reply posted.');
+                showCommunityToast(payload.message || 'Reply posted.');
+                trackEvent('community_reply_submitted', {
+                    item_type: 'post_reply',
+                    item_id: form.dataset.postKey,
+                    result: 'submitted',
+                });
+            } catch (error) {
+                console.error(error);
+                setCommunityFormStatus(form, error.userMessage || 'Reply could not be posted.', true);
+                showCommunityToast(error.userMessage || 'Reply could not be posted.');
+                trackEvent('community_reply_submitted', {
+                    item_type: 'post_reply',
+                    item_id: form.dataset.postKey,
+                    reason: error.reason || error.message || 'reply_failed',
+                    result: 'failed',
+                });
+            } finally {
+                submitButton.disabled = false;
+            }
+        });
+    });
+};
+
+const initializeCommunityClubMessageForms = (root = document) => {
+    root.querySelectorAll('[data-community-club-message]').forEach((form) => {
+        bindOnce(form, 'community-club-message-submit', 'submit', async (event) => {
+            event.preventDefault();
+
+            const input = form.querySelector('input[name="body"]');
+            const body = input?.value.trim();
+            const countryChatFeed = document.getElementById('countryChatFeed');
+
+            if (!body || !countryChatFeed) {
+                setCommunityFormStatus(form, 'Write a message first.', true);
+                return;
+            }
+
+            const submitButton = form.querySelector('button[type="submit"]');
+            submitButton.disabled = true;
+            setCommunityFormStatus(form, 'Posting...');
+
+            try {
+                const payload = await postCommunityJson(form.dataset.endpoint, { body });
+                countryChatFeed.append(renderChatMessage({ author: payload.author || 'You', text: payload.text || body }, true));
+                countryChatFeed.scrollTop = countryChatFeed.scrollHeight;
+                input.value = '';
+                setCommunityFormStatus(form, payload.message || 'Message posted.');
+                showCommunityToast(payload.message || 'Message posted.');
+                trackEvent('community_reply_submitted', {
+                    item_type: 'country_club_reply',
+                    item_id: form.dataset.clubKey,
+                    result: 'submitted',
+                });
+            } catch (error) {
+                console.error(error);
+                setCommunityFormStatus(form, error.userMessage || 'Message could not be posted.', true);
+                showCommunityToast(error.userMessage || 'Message could not be posted.');
+                trackEvent('community_reply_submitted', {
+                    item_type: 'country_club_reply',
+                    item_id: form.dataset.clubKey,
+                    reason: error.reason || error.message || 'club_reply_failed',
+                    result: 'failed',
+                });
+            } finally {
+                submitButton.disabled = false;
+            }
+        });
+    });
+};
+
+const initializeCommunitySoftPollButtons = (root = document) => {
+    root.querySelectorAll('.vote-card .soft-button').forEach((button) => {
+        bindOnce(button, 'community-soft-poll', 'click', () => {
+            trackElementEvent(button, 'community_poll_voted', {
+                item_type: 'poll',
+                result: 'clicked',
+            });
+        });
+    });
+};
+
+const initializeCommunityInteractions = (root = document) => {
+    initializeCommunityToastTriggers(root);
+    initializeCommunityReactions(root);
+    initializeCommunityPolls(root);
+    initializeCommunityClubLinks(root);
+    initializeCommunityClubJoins(root);
+    initializeCreateGroupModal();
+    initializeCommunityNotes(root);
+    initializeCommunityShares(root);
+    initializeCommunityReplyForms(root);
+    initializeCommunityClubMessageForms(root);
+    initializeCommunitySoftPollButtons(root);
+};
+
+function initializePublicPage(root = document) {
+    activateTab(tabFromHash());
+    initializeVideoInteractions(root);
+    initializePhotoInteractions(root);
+    initializeCommunityInteractions(root);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    initializePublicPage();
+}, { once: true });
 
 document.querySelectorAll('.auth-form').forEach((form) => {
     form.addEventListener('submit', () => {
