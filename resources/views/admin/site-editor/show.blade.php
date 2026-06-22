@@ -71,7 +71,7 @@
                             </div>
                             <a class="admin-button admin-button-ghost" href="{{ $publicUrl }}" target="_blank" rel="noreferrer">Ver website</a>
                         </div>
-                        <section class="music-banner-editor admin-panel" aria-label="Formulario para agregar album">
+                        <section class="music-banner-editor music-content-editor admin-panel" aria-label="Formulario para agregar album">
                             <div class="music-banner-panel-head">
                                 <div>
                                     <p class="admin-kicker">Nuevo album</p>
@@ -95,7 +95,7 @@
                             </div>
                             <a class="admin-button admin-button-ghost" href="{{ $publicUrl }}" target="_blank" rel="noreferrer">Ver website</a>
                         </div>
-                        <section class="music-banner-editor admin-panel" aria-label="Formulario para agregar cancion">
+                        <section class="music-banner-editor music-content-editor admin-panel" aria-label="Formulario para agregar cancion">
                             <div class="music-banner-panel-head">
                                 <div>
                                     <p class="admin-kicker">Nueva cancion</p>
@@ -119,7 +119,7 @@
                             </div>
                             <a class="admin-button admin-button-ghost" href="{{ $publicUrl }}" target="_blank" rel="noreferrer">Ver website</a>
                         </div>
-                        <section class="music-banner-editor admin-panel" aria-label="Formulario para agregar playlist">
+                        <section class="music-banner-editor music-content-editor admin-panel" aria-label="Formulario para agregar playlist">
                             <div class="music-banner-panel-head">
                                 <div>
                                     <p class="admin-kicker">Nueva playlist</p>

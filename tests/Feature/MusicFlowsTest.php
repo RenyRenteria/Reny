@@ -4,8 +4,11 @@ namespace Tests\Feature;
 
 use App\Enums\ContentType;
 use App\Enums\EditorialStatus;
+use App\Enums\MediaAssetType;
+use App\Enums\MediaProcessingStatus;
 use App\Enums\VisibilityAudience;
 use App\Models\EditorialContent;
+use App\Models\MediaAsset;
 use App\Models\User;
 use App\Models\UserUnlock;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -175,6 +178,34 @@ class MusicFlowsTest extends TestCase
             ->assertSee('CMS Playlist');
     }
 
+    public function test_music_route_lists_cms_single_even_when_release_dates_are_future(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $audio = $this->mediaAsset(MediaAssetType::Audio->value);
+        $artwork = $this->mediaAsset(MediaAssetType::Thumbnail->value);
+
+        $this->actingAsAdmin($admin);
+
+        $this->postJson(route('admin.content.store'), [
+            'action' => 'publish',
+            'type' => ContentType::Song->value,
+            'title' => 'Future CMS Single',
+            'visibility' => VisibilityAudience::Open->value,
+            'metadata' => [
+                'audio_asset_id' => $audio->id,
+                'artwork_asset_id' => $artwork->id,
+                'release_date_member_view' => '2030-07-01T10:00',
+                'release_date_open_view' => '2030-07-02T10:00',
+            ],
+        ])
+            ->assertCreated()
+            ->assertJsonPath('scheduled_at', null);
+
+        $this->get(route('music'))
+            ->assertOk()
+            ->assertSee('Future CMS Single');
+    }
+
     public function test_music_playback_endpoint_returns_ready_error_and_access_states(): void
     {
         $open = $this->publishedMusic(ContentType::Song, 'Open Audio', [
@@ -283,5 +314,33 @@ class MusicFlowsTest extends TestCase
         ];
 
         return EditorialContent::factory()->create($attributes);
+    }
+
+    private function mediaAsset(string $type): MediaAsset
+    {
+        $isAudio = $type === MediaAssetType::Audio->value;
+
+        return MediaAsset::create([
+            'type' => $type,
+            'title' => "Reusable {$type}",
+            'disk' => 'public',
+            'path' => $isAudio ? "media/{$type}/asset.mp3" : "media/{$type}/asset.jpg",
+            'original_filename' => $isAudio ? "asset-{$type}.mp3" : "asset-{$type}.jpg",
+            'mime_type' => $isAudio ? 'audio/mpeg' : 'image/jpeg',
+            'extension' => $isAudio ? 'mp3' : 'jpg',
+            'size_bytes' => 1024,
+            'processing_status' => MediaProcessingStatus::Ready->value,
+            'is_public' => true,
+            'alt_text' => $isAudio ? null : 'Reusable asset alt text',
+        ]);
+    }
+
+    private function actingAsAdmin(User $user): void
+    {
+        config(['admin.cms_enabled' => true]);
+
+        $this->actingAs($user)->withSession([
+            'admin_authenticated_at' => now()->timestamp,
+        ]);
     }
 }

@@ -435,7 +435,6 @@ class EditorialContentController extends Controller
         }
 
         $payload['visibility'] = VisibilityAudience::Open->value;
-        $payload['scheduled_at'] ??= $memberRelease;
         $payload['release_windows'] = [
             [
                 'audience' => VisibilityAudience::Member->value,
