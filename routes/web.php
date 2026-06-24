@@ -120,6 +120,10 @@ Route::middleware('guest')->group(function () {
 
 Route::middleware('auth')->group(function () {
     Route::get('/account', [AccountController::class, 'show'])->name('account.show');
+    Route::patch('/account/profile', [AccountController::class, 'updateProfile'])->name('account.profile.update');
+    Route::post('/account/avatar', [AccountController::class, 'updateAvatar'])->name('account.avatar.update');
+    Route::patch('/account/preferences', [AccountController::class, 'updatePreferences'])->name('account.preferences.update');
+    Route::post('/account/subscription/pause', [AccountController::class, 'pauseSubscription'])->name('account.subscription.pause');
     Route::get('/points', [PointsController::class, 'index'])->name('points.index');
     Route::post('/store/rsvp', StoreRsvpController::class)->name('store.rsvp');
     Route::post('/tickets/check-in', [TicketCheckInController::class, 'store'])->name('tickets.check-in');

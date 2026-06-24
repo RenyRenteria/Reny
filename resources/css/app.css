@@ -26,6 +26,8 @@
 
 @import './features/checkout.css';
 
+@import './features/account-hub.css';
+
 @import './features/home.css';
 
 @import './features/music-detail.css';

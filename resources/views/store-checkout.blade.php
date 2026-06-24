@@ -17,7 +17,7 @@
         <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;500&display=swap" rel="stylesheet">
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body data-analytics-screen="store_checkout">
+    <body data-analytics-screen="store_checkout" data-preferred-currency="{{ auth()->user()?->preferred_currency ?? 'USD' }}">
         <div class="store-shell">
             <aside class="sidebar" aria-label="Primary navigation">
                 <div>

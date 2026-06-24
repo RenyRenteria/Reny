@@ -161,8 +161,8 @@ class OpenInAuthTest extends TestCase
             ->get('/account')
             ->assertOk()
             ->assertSee('Expired Member')
-            ->assertSee('Royal Expired')
-            ->assertSee('Reactivate Royal Pass');
+            ->assertSee('ROYAL EXPIRED')
+            ->assertSee('Reactivate subscription');
     }
 
     public function test_protected_route_preserves_intended_redirect_after_login(): void

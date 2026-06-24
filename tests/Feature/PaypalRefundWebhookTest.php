@@ -6,6 +6,7 @@ use App\Models\Order;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 class PaypalRefundWebhookTest extends TestCase
@@ -167,7 +168,7 @@ class PaypalRefundWebhookTest extends TestCase
     /**
      * @param  array<string, mixed>  $resource
      */
-    private function postRefund(array $resource): \Illuminate\Testing\TestResponse
+    private function postRefund(array $resource): TestResponse
     {
         return $this->postJson('/paypal/refund', [
             'event_type' => 'PAYMENT.CAPTURE.REFUNDED',
