@@ -14,6 +14,8 @@ use App\Models\Taxonomy;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class AdminEditorialFormsTest extends TestCase
@@ -150,6 +152,86 @@ class AdminEditorialFormsTest extends TestCase
 
         $this->assertTrue($content->mediaAssets()->whereKey($asset)->exists());
         $this->assertTrue($content->taxonomies()->whereKey($taxonomy)->exists());
+    }
+
+    public function test_admin_can_upload_album_track_audio_individually(): void
+    {
+        Storage::fake('public');
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+
+        $this->actingAsAdmin($admin);
+
+        $response = $this->post(route('admin.content.album-track-audio.store'), [
+            'album_title' => 'Work In Progress',
+            'track_name' => 'Intro',
+            'track_index' => 0,
+            'track_audio_file' => UploadedFile::fake()->create('intro.mp3', 1024, 'audio/mpeg'),
+        ], ['Accept' => 'application/json']);
+
+        $response
+            ->assertCreated()
+            ->assertJsonPath('asset.filename', 'intro.mp3');
+
+        $asset = MediaAsset::query()->firstOrFail();
+
+        $this->assertSame(MediaAssetType::Audio, $asset->type);
+        $this->assertSame('Work In Progress - Intro audio', $asset->title);
+        $this->assertSame($admin->id, $asset->uploaded_by_id);
+        Storage::disk('public')->assertExists($asset->path);
+    }
+
+    public function test_album_track_audio_upload_rejects_files_over_50mb(): void
+    {
+        Storage::fake('public');
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+
+        $this->actingAsAdmin($admin);
+
+        $this->post(route('admin.content.album-track-audio.store'), [
+            'album_title' => 'Work In Progress',
+            'track_name' => 'Too Big',
+            'track_index' => 0,
+            'track_audio_file' => UploadedFile::fake()->create('too-big.mp3', 51201, 'audio/mpeg'),
+        ], ['Accept' => 'application/json'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('track_audio_file');
+
+        $this->assertDatabaseCount('media_assets', 0);
+    }
+
+    public function test_album_payload_rejects_more_than_30_tracks(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $artwork = $this->mediaAsset(MediaAssetType::Thumbnail->value);
+        $audio = $this->mediaAsset(MediaAssetType::Audio->value);
+
+        $this->actingAsAdmin($admin);
+
+        $tracks = collect(range(1, 31))
+            ->map(fn (int $index): array => [
+                'track_name' => "Track {$index}",
+                'track_audio_asset_id' => $audio->id,
+            ])
+            ->all();
+
+        $this->postJson(route('admin.content.store'), [
+            'action' => 'publish',
+            'type' => ContentType::MusicalAlbum->value,
+            'title' => 'Too Many Tracks',
+            'visibility' => VisibilityAudience::Open->value,
+            'metadata' => [
+                'album_artwork_asset_id' => $artwork->id,
+                'release_date_member_view' => '2026-07-01T10:00',
+                'release_date_open_view' => '2026-07-02T10:00',
+                'tracks' => $tracks,
+            ],
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('metadata.tracks');
+
+        $this->assertDatabaseMissing('editorial_contents', [
+            'title' => 'Too Many Tracks',
+        ]);
     }
 
     public function test_type_specific_validation_rejects_incomplete_poll_payload(): void

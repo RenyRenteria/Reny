@@ -85,6 +85,7 @@ Route::prefix(config('admin.path', 'admin'))->name('admin.')->group(function () 
         Route::get('/content', [AdminLoginController::class, 'create'])->name('content.index');
         Route::get('/content/create', [AdminLoginController::class, 'create'])->name('content.create');
         Route::post('/content', [EditorialContentController::class, 'store'])->middleware('admin.cms')->name('content.store');
+        Route::post('/content/album-track-audio', [EditorialContentController::class, 'storeAlbumTrackAudio'])->middleware('admin.cms')->name('content.album-track-audio.store');
         Route::get('/content/{content}/edit', [AdminLoginController::class, 'create'])->name('content.edit');
         Route::match(['put', 'patch'], '/content/{content}', [EditorialContentController::class, 'update'])->middleware('admin.cms')->name('content.update');
         Route::delete('/content/{content}', [EditorialContentController::class, 'destroy'])->middleware('admin.cms')->name('content.destroy');

@@ -28,6 +28,10 @@ use Illuminate\View\View;
 
 class EditorialContentController extends Controller
 {
+    private const int ALBUM_MAX_TRACKS = 30;
+
+    private const int MUSIC_AUDIO_MAX_KB = 51200;
+
     public function index(Request $request): View
     {
         $status = $request->query('status');
@@ -84,6 +88,49 @@ class EditorialContentController extends Controller
         EditorialContent $content
     ): JsonResponse|RedirectResponse {
         return $this->persist($request, $workflow, $library, $content);
+    }
+
+    public function storeAlbumTrackAudio(Request $request, MediaLibraryService $library): JsonResponse
+    {
+        $validated = Validator::make($request->all(), [
+            'album_title' => ['nullable', 'string', 'max:160'],
+            'track_name' => ['nullable', 'string', 'max:160'],
+            'track_index' => ['nullable', 'integer', 'min:0', 'max:'.(self::ALBUM_MAX_TRACKS - 1)],
+            'track_audio_file' => ['required', 'file', 'mimes:mp3,wav', 'max:'.self::MUSIC_AUDIO_MAX_KB],
+        ], [
+            'track_audio_file.max' => 'Each track audio file must be 50MB or less.',
+            'track_audio_file.mimes' => 'Track audio files must be MP3 or WAV.',
+            'track_index.max' => 'Albums can have up to 30 tracks.',
+        ])->validate();
+
+        $audio = $this->uploadedFile($request, 'track_audio_file');
+
+        if (! $audio) {
+            return response()->json(['message' => 'Track audio file is required.'], 422);
+        }
+
+        $albumTitle = trim((string) ($validated['album_title'] ?? 'Album'));
+        $trackName = trim((string) ($validated['track_name'] ?? 'track'));
+
+        try {
+            $asset = $library->storeUploads($request->user(), [
+                'type' => MediaAssetType::Audio->value,
+                'title' => ($albumTitle !== '' ? $albumTitle : 'Album').' - '.($trackName !== '' ? $trackName : 'track').' audio',
+                'is_public' => true,
+            ], [$audio])->first();
+        } catch (MediaUploadException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 503);
+        }
+
+        return response()->json([
+            'message' => 'Track audio uploaded.',
+            'asset' => [
+                'id' => $asset?->id,
+                'title' => $asset?->title,
+                'filename' => $asset?->original_filename,
+                'size_bytes' => $asset?->size_bytes,
+            ],
+        ], 201);
     }
 
     public function destroy(Request $request, EditorialContent $content): RedirectResponse
@@ -224,6 +271,11 @@ class EditorialContentController extends Controller
             'taxonomy_ids' => ['nullable', 'array'],
             'taxonomy_ids.*' => ['integer', Rule::exists('taxonomies', 'id')],
             ...$this->metadataRulesFor($type),
+        ], [
+            'audio_file.max' => 'Audio file must be 50MB or less.',
+            'metadata.tracks.max' => 'Albums can have up to 30 tracks.',
+            'track_audio_files.max' => 'Albums can have up to 30 track files.',
+            'track_audio_files.*.max' => 'Each track audio file must be 50MB or less.',
         ]);
 
         $validator->after(function ($validator) use ($request, $input, $type): void {
@@ -251,20 +303,20 @@ class EditorialContentController extends Controller
                 'metadata.artwork_asset_id' => $assetRule,
                 'metadata.release_date_member_view' => ['required', 'date'],
                 'metadata.release_date_open_view' => ['required', 'date', 'after_or_equal:metadata.release_date_member_view'],
-                'audio_file' => ['nullable', 'file', 'mimes:mp3,wav', 'max:102400'],
+                'audio_file' => ['nullable', 'file', 'mimes:mp3,wav', 'max:'.self::MUSIC_AUDIO_MAX_KB],
                 'artwork' => ['nullable', 'file', 'mimes:jpg', 'max:20480'],
             ],
             ContentType::MusicalAlbum->value => [
                 'metadata.album_artwork_asset_id' => $assetRule,
                 'metadata.release_date_member_view' => ['required', 'date'],
                 'metadata.release_date_open_view' => ['required', 'date', 'after_or_equal:metadata.release_date_member_view'],
-                'metadata.tracks' => ['required', 'array', 'min:1'],
+                'metadata.tracks' => ['required', 'array', 'min:1', 'max:'.self::ALBUM_MAX_TRACKS],
                 'metadata.tracks.*.track_name' => ['required', 'string', 'max:160'],
                 'metadata.tracks.*.track_audio_asset_id' => $assetRule,
                 'metadata.tracks.*.release_date_member_view' => ['nullable', 'date'],
                 'album_artwork' => ['nullable', 'file', 'mimes:jpg', 'max:20480'],
-                'track_audio_files' => ['nullable', 'array'],
-                'track_audio_files.*' => ['nullable', 'file', 'mimes:mp3,wav', 'max:102400'],
+                'track_audio_files' => ['nullable', 'array', 'max:'.self::ALBUM_MAX_TRACKS],
+                'track_audio_files.*' => ['nullable', 'file', 'mimes:mp3,wav', 'max:'.self::MUSIC_AUDIO_MAX_KB],
             ],
             ContentType::DeluxeAlbum->value => [
                 'purchase_key' => ['required', 'string', 'max:120'],
