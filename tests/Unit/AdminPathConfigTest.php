@@ -8,7 +8,7 @@ use Symfony\Component\Process\Process;
 
 class AdminPathConfigTest extends TestCase
 {
-    private const DEFAULT_ADMIN_PATH = 'admin';
+    private const DEFAULT_ADMIN_PATH = '7YDX5h38a6Q2sfrsW2pRv9CoU59RA5YWD2R7K3AuMA';
 
     #[DataProvider('blankAdminPathProvider')]
     public function test_blank_admin_path_env_values_fall_back_to_default_admin_path(string $adminPath): void
@@ -21,7 +21,7 @@ class AdminPathConfigTest extends TestCase
             $this->assertStringStartsWith(self::DEFAULT_ADMIN_PATH, $route['uri']);
         }
 
-        $this->assertNotEmpty($this->routeList(['--path=admin'], $adminPath));
+        $this->assertNotEmpty($this->routeList(['--path='.self::DEFAULT_ADMIN_PATH], $adminPath));
     }
 
     public static function blankAdminPathProvider(): array

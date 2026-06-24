@@ -1,6 +1,9 @@
 <?php
 
-$defaultAdminPath = 'admin';
+// Private-by-default admin path. Overridable per environment via ADMIN_PATH so the
+// secret can be rotated without a code deploy. Kept off the predictable /admin prefix
+// to avoid automated /admin scanners; the login + access middleware remain the real lock.
+$defaultAdminPath = '7YDX5h38a6Q2sfrsW2pRv9CoU59RA5YWD2R7K3AuMA';
 $adminPath = trim(trim((string) env('ADMIN_PATH', $defaultAdminPath)), '/');
 $cmsEnabled = env('ADMIN_CMS_ENABLED');
 
