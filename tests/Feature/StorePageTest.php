@@ -49,7 +49,7 @@ class StorePageTest extends TestCase
         $response->assertSee('images/store/work-in-progress.png');
         $response->assertSee('images/store/crown-collection.png');
         $response->assertSee('Selected currency is a reference. PayPal checkout is charged in USD.');
-        $response->assertSee('data-rsvp="concert"', false);
+        $response->assertSee('data-free-event-rsvp="concert"', false);
         $response->assertSee('data-buy="listening"', false);
         $response->assertSee('data-buy="deluxe"', false);
         $response->assertSee('data-buy="merch"', false);
@@ -65,8 +65,10 @@ class StorePageTest extends TestCase
         $response->assertSee('href="'.url('/store').'"', false);
         $response->assertSee('data-payment-method="paypal"', false);
         $response->assertSee('role="radio"', false);
-        $response->assertSee('data-rsvp-endpoint="'.route('store.rsvp').'"', false);
-        $response->assertSee('Free RSVP confirms a reservation on this account.');
+        $response->assertSee('data-free-event-rsvp-endpoint="'.route('community.free-event-rsvp.store').'"', false);
+        $response->assertSee('id="freeEventRsvpForm"', false);
+        $response->assertSee('Correo electrónico');
+        $response->assertSee('País');
 
         $html = $response->getContent();
 

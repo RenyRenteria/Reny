@@ -10,6 +10,15 @@
     $shouldShowRoyalPass = $isGuestPreview || auth()->guest();
     $slotImage = fn (array $slot): string => $slot['image_url'] ?? asset($slot['image'] ?? 'images/store/work-in-progress.png');
     $slotType = fn (array $slot): string => $slot['eyebrow'] ?: str($slot['kind'] ?? 'product')->headline()->toString();
+    $isFreeEventPrice = function (string $price): bool {
+        if (preg_match('/(^|[^a-z])free([^a-z]|$)/i', $price) === 1) {
+            return true;
+        }
+
+        $numeric = preg_replace('/[^0-9.]/', '', $price);
+
+        return in_array($numeric, ['0', '0.0', '0.00'], true);
+    };
     $storeTimezone = config('admin.publishing_timezone', config('app.timezone', 'UTC'));
     $slotCountdownTarget = function (?string $value) use ($storeTimezone) {
         if (! filled($value)) {
@@ -161,6 +170,8 @@
                                 $slotKey = $slot['key'] ?? 'slot-'.$loop->index;
                                 $slotProductKey = $slot['product_key'] ?? $slotKey;
                                 $slotActionType = $slot['action_type'] ?? 'buy';
+                                $slotVisiblePrice = trim((string) ($slot['price_label'] ?? ''));
+                                $isFreeLeadEvent = ($slot['kind'] ?? '') === 'event' && $isFreeEventPrice($slotVisiblePrice);
                                 $slotStatusId = 'rsvp-status-' . \Illuminate\Support\Str::slug($slotProductKey);
                                 $rsvpTicket = $rsvpTickets[$slotProductKey] ?? null;
                                 $countdownTarget = ($slot['kind'] ?? '') === 'event'
@@ -186,12 +197,21 @@
                                     @endif
                                     <h2>{{ $slot['title'] }}</h2>
                                     <p>{!! nl2br(e($slot['description'] ?? '')) !!}</p>
-                                    @if (filled($slot['price_label'] ?? null))
-                                        <strong class="storefront-price">{{ $slot['price_label'] }}</strong>
+                                    @if (filled($slotVisiblePrice))
+                                        <strong class="storefront-price">{{ $slotVisiblePrice }}</strong>
                                     @endif
 
                                     <div class="storefront-action-row">
-                                        @if ($slotActionType === 'rsvp')
+                                        @if ($isFreeLeadEvent)
+                                            <button
+                                                class="store-button store-button-light"
+                                                type="button"
+                                                data-free-event-rsvp="{{ $slotProductKey }}"
+                                                data-free-event-name="{{ $slot['title'] }}"
+                                                data-free-event-price="{{ $slotVisiblePrice }}"
+                                                data-free-event-rsvp-endpoint="{{ route('community.free-event-rsvp.store') }}"
+                                            >{{ $slot['cta_label'] ?? 'GET TICKETS' }}</button>
+                                        @elseif ($slotActionType === 'rsvp')
                                             <button
                                                 class="store-button store-button-light"
                                                 type="button"
@@ -227,7 +247,7 @@
                                         @endif
                                     </div>
 
-                                    @if ($slotActionType === 'rsvp')
+                                    @if ($slotActionType === 'rsvp' && ! $isFreeLeadEvent)
                                         <p
                                             class="storefront-rsvp-status sr-only {{ $rsvpTicket ? 'is-confirmed' : '' }}"
                                             id="{{ $slotStatusId }}"
@@ -235,7 +255,7 @@
                                             @if ($rsvpTicket)
                                                 Reserved - {{ str_replace('_', ' ', $rsvpTicket['status']) }} - Code {{ $rsvpTicket['code'] }}
                                             @else
-                                                Free RSVP confirms a reservation on this account.
+                                                RSVP confirms a reservation on this account.
                                             @endif
                                         </p>
                                     @endif

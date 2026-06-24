@@ -108,6 +108,7 @@ const analyticsText = (node) => String(node?.textContent || '').replace(/\s+/g, 
 const elementAnalyticsLabel = (element) => element.dataset.analyticsLabel
     || element.dataset.youtubeTitle
     || element.dataset.photoTitle
+    || element.dataset.freeEventName
     || element.dataset.buyName
     || element.dataset.rsvpName
     || element.dataset.name
@@ -124,6 +125,7 @@ const elementAnalyticsPayload = (element, overrides = {}) => {
         item_id: element.dataset.analyticsId
             || element.dataset.youtubeId
             || element.dataset.detail
+            || element.dataset.freeEventRsvp
             || element.dataset.buy
             || element.dataset.rsvp
             || normalizeAnalyticsKey(label),
@@ -2268,8 +2270,10 @@ const initializeStoreInteractions = (root = document) => {
     const storeCheckoutLayer = document.getElementById('bagLayer');
     const commerceRoot = storeShell
         || storeCheckoutLayer
+        || scope.querySelector?.('[data-free-event-rsvp]')
         || scope.querySelector?.('[data-buy]')
         || scope.querySelector?.('[data-rsvp]')
+        || document.querySelector('[data-free-event-rsvp]')
         || document.querySelector('[data-buy]')
         || document.querySelector('[data-rsvp]');
 
@@ -2300,6 +2304,7 @@ const initializeStoreInteractions = (root = document) => {
     const settlementCurrency = 'usd';
     let bag = [];
     let activeProduct = null;
+    let activeFreeEventButton = null;
     let focusedBeforeStoreModal = null;
 
     const storeToast = document.getElementById('storeToast');
@@ -2310,9 +2315,19 @@ const initializeStoreInteractions = (root = document) => {
     const emailField = document.getElementById('emailField');
     const phoneField = document.getElementById('phoneField');
     const countryField = document.getElementById('countryField');
+    const freeEventRsvpLayer = document.getElementById('freeEventRsvpLayer');
+    const freeEventRsvpForm = document.getElementById('freeEventRsvpForm');
+    const freeEventRsvpTitle = document.getElementById('freeEventRsvpTitle');
+    const freeEventRsvpEventName = document.getElementById('freeEventRsvpEventName');
+    const freeEventRsvpName = document.getElementById('freeEventRsvpName');
+    const freeEventRsvpEmail = document.getElementById('freeEventRsvpEmail');
+    const freeEventRsvpCountry = document.getElementById('freeEventRsvpCountry');
+    const freeEventRsvpSubmit = document.getElementById('freeEventRsvpSubmit');
+    const freeEventRsvpStatus = document.getElementById('freeEventRsvpStatus');
     const paypalButtons = document.getElementById('paypalButtons');
     const paymentStatus = document.getElementById('paymentStatus');
     const paymentButtons = [...document.querySelectorAll('.store-payments button[data-payment-method]')];
+    const freeEventRsvpButtons = [...document.querySelectorAll('[data-free-event-rsvp]')];
     const rsvpButtons = [...document.querySelectorAll('[data-rsvp]')];
     const countdownNodes = [...document.querySelectorAll('[data-countdown-at]')];
     const tierLabel = document.getElementById('tierLabel');
@@ -2606,6 +2621,30 @@ const initializeStoreInteractions = (root = document) => {
                 : response.status === 419
                     ? 'Refresh this page and try RSVP again.'
                     : 'RSVP could not be saved. Try again.';
+
+            throw rsvpError(validationMessage || payload.message || fallback, payload.message || response.status);
+        }
+
+        return payload;
+    };
+
+    const postFreeEventRsvpJson = async (url, body) => {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+            },
+            body: JSON.stringify(body),
+        });
+        const payload = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            const validationMessage = Object.values(payload.errors || {})[0]?.[0];
+            const fallback = response.status === 419
+                ? 'Refresh this page and try again.'
+                : 'Registration could not be saved. Try again.';
 
             throw rsvpError(validationMessage || payload.message || fallback, payload.message || response.status);
         }
@@ -3229,6 +3268,139 @@ const initializeStoreInteractions = (root = document) => {
         });
     };
 
+    const setFreeEventRsvpStatus = (message, isError = false) => {
+        if (!freeEventRsvpStatus) {
+            return;
+        }
+
+        freeEventRsvpStatus.textContent = message || '';
+        freeEventRsvpStatus.classList.toggle('is-error', isError);
+    };
+
+    const resetFreeEventRsvpForm = () => {
+        freeEventRsvpForm?.reset();
+        setFreeEventRsvpStatus('');
+        [freeEventRsvpName, freeEventRsvpEmail, freeEventRsvpCountry].forEach((field) => markFieldValidity(field, true));
+    };
+
+    const openFreeEventRsvpModal = (button) => {
+        if (!freeEventRsvpLayer || !freeEventRsvpForm) {
+            return false;
+        }
+
+        activeFreeEventButton = button;
+        resetFreeEventRsvpForm();
+        freeEventRsvpForm.dataset.eventKey = button.dataset.freeEventRsvp || '';
+        freeEventRsvpForm.dataset.eventName = button.dataset.freeEventName || elementAnalyticsLabel(button);
+
+        if (freeEventRsvpTitle) {
+            freeEventRsvpTitle.textContent = button.dataset.freeEventName || 'Get Tickets';
+        }
+
+        if (freeEventRsvpEventName) {
+            freeEventRsvpEventName.textContent = button.dataset.freeEventName || '';
+        }
+
+        openStoreLayer('freeEventRsvpLayer');
+
+        return true;
+    };
+
+    const freeEventRsvpPayload = () => {
+        const name = freeEventRsvpName?.value?.trim() || '';
+        const email = freeEventRsvpEmail?.value?.trim() || '';
+        const country = freeEventRsvpCountry?.value?.trim() || '';
+
+        if (!name) {
+            markFieldValidity(freeEventRsvpName, false);
+            throw rsvpError('Agrega tu nombre.', 'missing_name');
+        }
+
+        if (!isValidEmail(email)) {
+            markFieldValidity(freeEventRsvpEmail, false);
+            throw rsvpError('Agrega un correo válido.', 'invalid_email');
+        }
+
+        if (!country) {
+            markFieldValidity(freeEventRsvpCountry, false);
+            throw rsvpError('Selecciona tu país.', 'missing_country');
+        }
+
+        return {
+            event_key: freeEventRsvpForm?.dataset.eventKey || '',
+            event_name: freeEventRsvpForm?.dataset.eventName || '',
+            name,
+            email,
+            country,
+        };
+    };
+
+    freeEventRsvpButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+            trackElementEvent(button, 'free_event_rsvp_started', {
+                item_type: 'event',
+                item_id: button.dataset.freeEventRsvp,
+                result: 'started',
+            });
+
+            openFreeEventRsvpModal(button);
+        });
+    });
+
+    freeEventRsvpForm?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        if (!activeFreeEventButton) {
+            return;
+        }
+
+        const endpoint = activeFreeEventButton.dataset.freeEventRsvpEndpoint
+            || freeEventRsvpForm.dataset.freeEventRsvpEndpoint;
+        const originalLabel = freeEventRsvpSubmit?.textContent || 'Registrarme';
+
+        try {
+            const payload = freeEventRsvpPayload();
+            [freeEventRsvpName, freeEventRsvpEmail, freeEventRsvpCountry].forEach((field) => markFieldValidity(field, true));
+
+            if (freeEventRsvpSubmit) {
+                freeEventRsvpSubmit.disabled = true;
+                freeEventRsvpSubmit.textContent = 'Guardando...';
+            }
+
+            const response = await postFreeEventRsvpJson(endpoint, payload);
+            const message = response.message || 'Te has registrado con éxito! Te esperamos.';
+
+            activeFreeEventButton.textContent = response.status === 'already_registered' ? 'Ya registrado' : 'Registrado';
+            setFreeEventRsvpStatus(message);
+            showStoreToast(message);
+            trackElementEvent(activeFreeEventButton, 'free_event_rsvp_succeeded', {
+                item_type: 'event',
+                item_id: activeFreeEventButton.dataset.freeEventRsvp,
+                rsvp_status: response.status,
+                result: 'succeeded',
+            });
+
+            window.setTimeout(() => closeStoreLayer('freeEventRsvpLayer'), 900);
+        } catch (error) {
+            console.error(error);
+            const message = error.userMessage || 'Registration could not be saved. Try again.';
+
+            setFreeEventRsvpStatus(message, true);
+            showStoreToast(message);
+            trackElementEvent(activeFreeEventButton, 'free_event_rsvp_failed', {
+                item_type: 'event',
+                item_id: activeFreeEventButton.dataset.freeEventRsvp,
+                reason: error.reason || error.message || 'free_event_rsvp_failed',
+                result: 'failed',
+            });
+        } finally {
+            if (freeEventRsvpSubmit) {
+                freeEventRsvpSubmit.disabled = false;
+                freeEventRsvpSubmit.textContent = originalLabel;
+            }
+        }
+    });
+
     rsvpButtons.forEach((button) => {
         button.addEventListener('click', async () => {
             const originalLabel = button.textContent;
@@ -3344,7 +3516,7 @@ const initializeStoreInteractions = (root = document) => {
     window.renyStoreKeydownAbort?.abort();
     window.renyStoreKeydownAbort = new AbortController();
     document.addEventListener('keydown', (event) => {
-        const openLayerId = ['bagLayer', 'detailLayer'].find((id) => {
+        const openLayerId = ['bagLayer', 'detailLayer', 'freeEventRsvpLayer'].find((id) => {
             const layer = document.getElementById(id);
             return layer && !layer.hidden;
         });
@@ -3365,14 +3537,20 @@ const initializeStoreInteractions = (root = document) => {
     selectPaymentMethod('paypal', { track: false });
     updateStorePrices();
     renderBag();
-    [nameField, emailField, phoneField, countryField].forEach((field) => {
+    [nameField, emailField, phoneField, countryField, freeEventRsvpName, freeEventRsvpEmail, freeEventRsvpCountry].forEach((field) => {
         field?.addEventListener('input', () => {
             markFieldValidity(field, true);
             refreshCheckoutControls();
+            if ([freeEventRsvpName, freeEventRsvpEmail, freeEventRsvpCountry].includes(field)) {
+                setFreeEventRsvpStatus('');
+            }
         });
         field?.addEventListener('change', () => {
             markFieldValidity(field, true);
             refreshCheckoutControls();
+            if ([freeEventRsvpName, freeEventRsvpEmail, freeEventRsvpCountry].includes(field)) {
+                setFreeEventRsvpStatus('');
+            }
         });
     });
     openRequestedCheckout();

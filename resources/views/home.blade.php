@@ -53,6 +53,15 @@
 
         return strcasecmp($price, 'free') === 0 ? '$ FREE' : $price;
     };
+    $isFreeEventPrice = function (string $price): bool {
+        if (preg_match('/(^|[^a-z])free([^a-z]|$)/i', $price) === 1) {
+            return true;
+        }
+
+        $numeric = preg_replace('/[^0-9.]/', '', $price);
+
+        return in_array($numeric, ['0', '0.0', '0.00'], true);
+    };
     $royalImages = collect($publicCms['royal_visuals'] ?? [])
         ->merge([
             asset('images/photos/capri.jpg'),
@@ -232,6 +241,8 @@
                                     $eventLinesForSlot = $eventLines($event);
                                     $eventKey = $event['product_key'] ?? $event['key'] ?? 'event-'.$loop->index;
                                     $eventAction = $event['action_type'] ?? 'buy';
+                                    $eventVisiblePrice = $priceLabel($event);
+                                    $isFreeLeadEvent = $isFreeEventPrice($eventVisiblePrice);
                                     $eventStatusId = 'home-rsvp-status-' . \Illuminate\Support\Str::slug($eventKey);
                                     $rsvpTicket = $rsvpTickets[$eventKey] ?? null;
                                 @endphp
@@ -242,11 +253,20 @@
                                         @foreach ($eventLinesForSlot as $line)
                                             <p>{{ $line }}</p>
                                         @endforeach
-                                        @if (filled($priceLabel($event)))
-                                            <p>{{ $priceLabel($event) }}</p>
+                                        @if (filled($eventVisiblePrice))
+                                            <p>{{ $eventVisiblePrice }}</p>
                                         @endif
 
-                                        @if ($eventAction === 'rsvp')
+                                        @if ($isFreeLeadEvent)
+                                            <button
+                                                class="home-pill-button"
+                                                type="button"
+                                                data-free-event-rsvp="{{ $eventKey }}"
+                                                data-free-event-name="{{ $event['title'] }}"
+                                                data-free-event-price="{{ $eventVisiblePrice }}"
+                                                data-free-event-rsvp-endpoint="{{ route('community.free-event-rsvp.store') }}"
+                                            >{{ $event['cta_label'] ?? 'GET TICKETS' }}</button>
+                                        @elseif ($eventAction === 'rsvp')
                                             <button
                                                 class="home-pill-button"
                                                 type="button"
@@ -272,12 +292,12 @@
                                             >{{ $event['cta_label'] ?? 'GET TICKETS' }}</button>
                                         @endif
 
-                                        @if ($eventAction === 'rsvp')
+                                        @if ($eventAction === 'rsvp' && ! $isFreeLeadEvent)
                                             <p class="storefront-rsvp-status sr-only {{ $rsvpTicket ? 'is-confirmed' : '' }}" id="{{ $eventStatusId }}">
                                                 @if ($rsvpTicket)
                                                     Reserved - {{ str_replace('_', ' ', $rsvpTicket['status']) }} - Code {{ $rsvpTicket['code'] }}
                                                 @else
-                                                    Free RSVP confirms a reservation on this account.
+                                                    RSVP confirms a reservation on this account.
                                                 @endif
                                             </p>
                                         @endif

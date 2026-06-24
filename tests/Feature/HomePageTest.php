@@ -61,7 +61,7 @@ class HomePageTest extends TestCase
             ->assertSee('CMS Lead Single')
             ->assertSee('data-buy="royal"', false)
             ->assertSee('data-buy="deluxe"', false)
-            ->assertSee('data-rsvp="concert"', false);
+            ->assertSee('data-free-event-rsvp="concert"', false);
 
         $html = $response->getContent();
 
@@ -207,7 +207,7 @@ class HomePageTest extends TestCase
         ])
             ->assertSee('Current Published Event')
             ->assertSee('CURRENT CTA')
-            ->assertSee('data-rsvp="current-published-event"', false)
+            ->assertSee('data-free-event-rsvp="current-published-event"', false)
             ->assertDontSee('Stale Cached Event')
             ->assertDontSee('OLD CTA');
     }

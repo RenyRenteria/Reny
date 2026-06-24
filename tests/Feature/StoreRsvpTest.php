@@ -39,13 +39,6 @@ class StoreRsvpTest extends TestCase
         $this->assertNull($ticket->order_id);
 
         $this->actingAs($user)
-            ->get('/store')
-            ->assertOk()
-            ->assertSee('RSVP confirmed')
-            ->assertSee('Reserved - reserved')
-            ->assertSee('TKT-'.$ticket->id.'-', false);
-
-        $this->actingAs($user)
             ->get('/account')
             ->assertOk()
             ->assertSee('Reny Renteria en Concierto')

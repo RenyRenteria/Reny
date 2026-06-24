@@ -8,6 +8,7 @@ use App\Enums\VisibilityAudience;
 use App\Http\Controllers\Controller;
 use App\Models\EditorialContent;
 use App\Models\MediaAsset;
+use App\Models\Rsvp;
 use App\Models\SitePageSetting;
 use App\Models\User;
 use App\Services\Media\MediaLibraryService;
@@ -58,6 +59,9 @@ class SiteEditorController extends Controller
                 : null,
             'storefrontForm' => $usesStorefrontEditor
                 ? $this->storefrontFormData()
+                : null,
+            'communityRsvps' => $page === 'community'
+                ? $this->communityRsvpData($request)
                 : null,
             'blocks' => $this->blocksFor($pageConfig['blocks']),
             'timezone' => config('admin.publishing_timezone', 'America/Panama'),
@@ -153,6 +157,41 @@ class SiteEditorController extends Controller
                 ->latest()
                 ->limit(100)
                 ->get(),
+        ];
+    }
+
+    /**
+     * @return array{events: Collection<int, object>, selected_event_key: string, registrations: Collection<int, Rsvp>, export_url: string|null}
+     */
+    private function communityRsvpData(Request $request): array
+    {
+        $events = Rsvp::query()
+            ->select(['event_key', 'event_name'])
+            ->selectRaw('COUNT(*) as total')
+            ->selectRaw('MAX(created_at) as latest_at')
+            ->groupBy('event_key', 'event_name')
+            ->orderByDesc('latest_at')
+            ->get();
+        $selectedEventKey = trim((string) $request->query('rsvp_event'));
+
+        if ($selectedEventKey === '' || ! $events->contains('event_key', $selectedEventKey)) {
+            $selectedEventKey = (string) ($events->first()->event_key ?? '');
+        }
+
+        $registrations = $selectedEventKey === ''
+            ? collect()
+            : Rsvp::query()
+                ->where('event_key', $selectedEventKey)
+                ->latest('created_at')
+                ->get();
+
+        return [
+            'events' => $events,
+            'selected_event_key' => $selectedEventKey,
+            'registrations' => $registrations,
+            'export_url' => $selectedEventKey === ''
+                ? null
+                : route('admin.site-editor.community-rsvps.export', ['event' => $selectedEventKey]),
         ];
     }
 

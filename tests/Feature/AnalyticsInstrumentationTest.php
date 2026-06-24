@@ -89,6 +89,9 @@ class AnalyticsInstrumentationTest extends TestCase
             'store_rsvp_started',
             'store_rsvp_succeeded',
             'store_rsvp_failed',
+            'free_event_rsvp_started',
+            'free_event_rsvp_succeeded',
+            'free_event_rsvp_failed',
             'photo_opened',
         ] as $eventName) {
             $this->assertStringContainsString($eventName, $script);
