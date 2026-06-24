@@ -7,23 +7,40 @@ use App\Models\Order;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class RoyalPassService
 {
-    public function findOrCreateCustomer(string $identifier): User
+    public function findOrCreateCustomer(string $identifier, bool $allowExisting = false): User
     {
-        $identifier = trim($identifier);
-        $email = filter_var($identifier, FILTER_VALIDATE_EMAIL) ? strtolower($identifier) : null;
-        $phone = $email ? null : $this->normalizePhone($identifier);
+        $user = $this->findCustomer($identifier);
 
-        $user = User::query()
+        if ($user && $allowExisting) {
+            return $user;
+        }
+
+        if ($user) {
+            throw ValidationException::withMessages([
+                'identifier' => 'Log in to checkout with this email or phone.',
+            ]);
+        }
+
+        return $this->createCustomer($identifier);
+    }
+
+    public function findCustomer(string $identifier): ?User
+    {
+        ['email' => $email, 'phone' => $phone] = $this->contactFromIdentifier($identifier);
+
+        return User::query()
             ->when($email, fn ($query) => $query->where('email', $email))
             ->when($phone, fn ($query) => $query->where('phone', $phone))
             ->first();
+    }
 
-        if ($user) {
-            return $user;
-        }
+    public function createCustomer(string $identifier): User
+    {
+        ['email' => $email, 'phone' => $phone] = $this->contactFromIdentifier($identifier);
 
         return User::create([
             'name' => 'Royal Member',
@@ -100,5 +117,20 @@ class RoyalPassService
     private function normalizePhone(string $value): string
     {
         return preg_replace('/\D+/', '', $value) ?? '';
+    }
+
+    /**
+     * @return array{email: string|null, phone: string|null}
+     */
+    private function contactFromIdentifier(string $identifier): array
+    {
+        $identifier = trim($identifier);
+        $email = filter_var($identifier, FILTER_VALIDATE_EMAIL) ? strtolower($identifier) : null;
+        $phone = $email ? null : $this->normalizePhone($identifier);
+
+        return [
+            'email' => $email,
+            'phone' => $phone,
+        ];
     }
 }
