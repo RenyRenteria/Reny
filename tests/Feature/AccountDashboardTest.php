@@ -6,18 +6,21 @@ use App\Models\BillingProfile;
 use App\Models\FanEvent;
 use App\Models\Order;
 use App\Models\PointLedgerEntry;
+use App\Models\Rsvp;
 use App\Models\Ticket;
 use App\Models\User;
-use App\Models\UserUnlock;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class AccountDashboardTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_account_dashboard_renders_profile_events_library_billing_points_and_purchases(): void
+    public function test_account_dashboard_renders_minimal_user_hub_sections(): void
     {
+        $renewalDate = now()->addMonth();
         $user = User::factory()->royal()->create([
             'name' => 'Reny Member',
             'username' => 'renyfan',
@@ -44,6 +47,10 @@ class AccountDashboardTest extends TestCase
             'timezone' => 'America/Panama',
             'starts_at' => now()->addDays(5),
             'status' => 'scheduled',
+            'metadata' => [
+                'source' => 'paypal_checkout',
+                'store_event_key' => 'listening',
+            ],
         ]);
 
         BillingProfile::create([
@@ -53,29 +60,26 @@ class AccountDashboardTest extends TestCase
             'provider_subscription_id' => 'SUB-DASH-100',
             'status' => 'active',
             'payment_method_summary' => 'PayPal',
-            'current_period_ends_at' => now()->addMonth(),
+            'current_period_ends_at' => $renewalDate,
             'last_synced_at' => now(),
         ]);
-        UserUnlock::create([
-            'user_id' => $user->id,
-            'order_id' => $order->id,
-            'unlock_type' => 'album',
-            'product_key' => 'deluxe',
-            'title' => 'Deluxe Album',
-            'source_type' => 'order',
-            'source_id' => $order->provider_order_id,
-            'status' => 'available',
-            'unlocked_at' => now(),
-        ]);
-        $ticket = Ticket::create([
+        Ticket::create([
             'user_id' => $user->id,
             'event_id' => $event->id,
+            'order_id' => $order->id,
             'ticket_code_hash' => hash('sha256', 'dash-ticket'),
             'ticket_code_preview' => 'TCKT100',
             'holder_name' => $user->name,
             'status' => 'confirmed',
             'rsvp_status' => 'confirmed',
             'purchased_at' => now(),
+        ]);
+        Rsvp::create([
+            'event_key' => 'concert',
+            'event_name' => 'Reny Renteria en Concierto',
+            'name' => $user->name,
+            'email' => $user->email,
+            'country' => 'Panama',
         ]);
         PointLedgerEntry::create([
             'user_id' => $user->id,
@@ -93,27 +97,36 @@ class AccountDashboardTest extends TestCase
         $this->actingAs($user)
             ->get('/account')
             ->assertOk()
-            ->assertSee('Reny Member')
-            ->assertSee('@renyfan')
-            ->assertSee('Active Royal Member')
-            ->assertSee('TKT-'.$ticket->id.'-', false)
+            ->assertSee('data-preferred-currency="USD"', false)
             ->assertSeeInOrder([
+                'Profile',
+                'Display Name',
                 'Upcoming Events',
+                'Registered / Purchased',
                 'Royal Listening Session',
-                'Library',
-                'Deluxe Album',
-                'Billing',
-                'active',
+                'Reny Renteria en Concierto',
+                'Available Upcoming',
+                'No new events',
                 'Points',
-                '15',
+                '15 pts',
                 'Purchases',
-                'Deluxe',
+                'Deluxe Digital Album',
+                'Billing',
+                'Next payment date',
+                $renewalDate->timezone('America/Panama')->format('F d, Y'),
+                '$4.99',
+                'Pause subscription',
                 'Settings',
-                'Manual request',
-            ]);
+                'Language preference',
+                'Currency preference',
+                'Change payment method',
+            ])
+            ->assertDontSee('Library')
+            ->assertDontSee('Manual request')
+            ->assertDontSee('Account state');
     }
 
-    public function test_account_dashboard_shows_clear_empty_states_for_new_open_user(): void
+    public function test_account_dashboard_shows_discovery_events_and_reactivate_for_open_user(): void
     {
         $user = User::factory()->create([
             'name' => 'New Fan',
@@ -124,56 +137,76 @@ class AccountDashboardTest extends TestCase
             ->get('/account')
             ->assertOk()
             ->assertSee('New Fan')
-            ->assertSee('Registered Account')
-            ->assertSee('Account state')
-            ->assertSee('Get your Royal Pass')
             ->assertSee('No upcoming events')
+            ->assertSee('Available Upcoming')
+            ->assertSee('Reny Renteria en Concierto')
+            ->assertSee('Festival de la Rosa Dorada')
+            ->assertSee('Available')
+            ->assertSee('Buy Now')
+            ->assertSee('0 pts')
             ->assertSee('No purchases yet')
-            ->assertSee('No billing profile')
-            ->assertSee('No points yet')
-            ->assertSee('Manual request');
+            ->assertSee('Reactivate subscription');
     }
 
-    public function test_account_dashboard_shows_refunded_and_payment_failed_states(): void
+    public function test_user_can_update_profile_preferences_and_avatar(): void
     {
-        $refunded = User::factory()->refundedRoyal()->create([
-            'name' => 'Refunded Member',
+        Storage::fake('public');
+        $user = User::factory()->create([
+            'name' => 'Original Name',
+            'locale' => 'en',
+            'preferred_currency' => 'USD',
         ]);
+
+        $this->actingAs($user)
+            ->patch(route('account.profile.update'), [
+                'name' => 'Updated Name',
+            ])
+            ->assertRedirect();
+
+        $this->assertSame('Updated Name', $user->fresh()->name);
+
+        $this->actingAs($user)
+            ->patch(route('account.preferences.update'), [
+                'locale' => 'es',
+                'preferred_currency' => 'DOP',
+            ])
+            ->assertRedirect();
+
+        $user->refresh();
+        $this->assertSame('es', $user->locale);
+        $this->assertSame('DOP', $user->preferred_currency);
+
+        $response = $this->actingAs($user)
+            ->postJson(route('account.avatar.update'), [
+                'avatar' => UploadedFile::fake()->image('avatar.jpg'),
+            ])
+            ->assertOk()
+            ->assertJsonPath('message', 'Avatar updated.');
+
+        $avatarPath = str_replace('storage/', '', $response->json('avatar_path'));
+        Storage::disk('public')->assertExists($avatarPath);
+        $this->assertStringStartsWith('storage/avatars/', $user->fresh()->avatar_path);
+    }
+
+    public function test_user_can_pause_local_subscription_state_without_paypal_subscription_id(): void
+    {
+        $user = User::factory()->royal()->create();
         BillingProfile::create([
-            'user_id' => $refunded->id,
+            'user_id' => $user->id,
             'provider' => 'paypal',
-            'status' => 'refunded',
+            'status' => 'active',
             'payment_method_summary' => 'PayPal',
+            'current_period_ends_at' => now()->addMonth(),
             'last_synced_at' => now(),
         ]);
 
-        $this->actingAs($refunded)
-            ->get('/account')
-            ->assertOk()
-            ->assertSee('Refunded Member')
-            ->assertSee('Refunded')
-            ->assertSee('Reactivate Royal Pass')
-            ->assertSee('data-access-state="refunded"', false);
+        $this->actingAs($user)
+            ->post(route('account.subscription.pause'))
+            ->assertRedirect();
 
-        $failed = User::factory()->paymentFailedRoyal()->create([
-            'name' => 'Payment Failed Member',
-        ]);
-        BillingProfile::create([
-            'user_id' => $failed->id,
-            'provider' => 'paypal',
-            'status' => 'past_due',
-            'payment_method_summary' => 'PayPal',
-            'failed_payment_at' => now()->subDay(),
-            'last_synced_at' => now(),
-        ]);
-
-        $this->actingAs($failed)
-            ->get('/account')
-            ->assertOk()
-            ->assertSee('Payment Failed Member')
-            ->assertSee('Payment Failed')
-            ->assertSee('past due')
-            ->assertSee('Reactivate Royal Pass')
-            ->assertSee('data-access-state="payment_failed"', false);
+        $profile = $user->billingProfile()->firstOrFail();
+        $this->assertSame('paused', $profile->status);
+        $this->assertSame('account_hub', $profile->metadata['pause_source']);
+        $this->assertSame('royal_active', $user->fresh()->royal_status);
     }
 }

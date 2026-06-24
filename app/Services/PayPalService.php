@@ -124,6 +124,17 @@ class PayPalService
         ];
     }
 
+    public function suspendSubscription(string $subscriptionId, string $reason): void
+    {
+        $response = $this->paypal()
+            ->withToken($this->accessToken())
+            ->post($this->url("/v1/billing/subscriptions/{$subscriptionId}/suspend"), [
+                'reason' => Str::limit($reason, 128, ''),
+            ]);
+
+        $this->ensureOk($response, 'PayPal subscription pause failed.');
+    }
+
     public function verifyWebhook(Request $request): bool
     {
         $webhookId = config('services.paypal.webhook_id');

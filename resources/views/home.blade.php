@@ -93,7 +93,7 @@
         <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body data-analytics-screen="home">
+    <body data-analytics-screen="home" data-preferred-currency="{{ auth()->user()?->preferred_currency ?? 'USD' }}">
         <div class="store-shell home-shell" data-public-page-root>
             <aside class="sidebar" aria-label="Primary navigation">
                 <div>
@@ -243,6 +243,8 @@
                                     $eventAction = $event['action_type'] ?? 'buy';
                                     $eventVisiblePrice = $priceLabel($event);
                                     $isFreeLeadEvent = $isFreeEventPrice($eventVisiblePrice);
+                                    $eventPriceValue = (float) preg_replace('/[^0-9.]/', '', $eventVisiblePrice);
+                                    $eventHasExchangeablePrice = filled($eventVisiblePrice) && ! $isFreeLeadEvent && $eventPriceValue > 0;
                                     $eventStatusId = 'home-rsvp-status-' . \Illuminate\Support\Str::slug($eventKey);
                                     $rsvpTicket = $rsvpTickets[$eventKey] ?? null;
                                 @endphp
@@ -254,7 +256,12 @@
                                             <p>{{ $line }}</p>
                                         @endforeach
                                         @if (filled($eventVisiblePrice))
-                                            <p>{{ $eventVisiblePrice }}</p>
+                                            <p
+                                                @if ($eventHasExchangeablePrice)
+                                                    data-price="{{ $eventKey }}"
+                                                    data-price-value="{{ number_format($eventPriceValue, 2, '.', '') }}"
+                                                @endif
+                                            >{{ $eventVisiblePrice }}</p>
                                         @endif
 
                                         @if ($isFreeLeadEvent)

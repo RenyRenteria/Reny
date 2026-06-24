@@ -42,7 +42,9 @@ class StoreRsvpTest extends TestCase
             ->get('/account')
             ->assertOk()
             ->assertSee('Reny Renteria en Concierto')
-            ->assertSee('TKT-'.$ticket->id.'-', false);
+            ->assertSee('Registered')
+            ->assertSee('View Details')
+            ->assertDontSee('/store/checkout/concert', false);
     }
 
     public function test_store_rsvp_is_idempotent_for_same_user_and_event(): void

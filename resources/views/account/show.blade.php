@@ -1,6 +1,7 @@
 @php
-    $accountState = \App\Support\AccountStateView::for($user);
-    $accountTimezone = $user->timezone ?: config('app.timezone');
+    $avatarUrl = $user->avatar_path ? asset($user->avatar_path) : null;
+    $selectedLocale = old('locale', $user->locale ?: 'en');
+    $selectedCurrency = old('preferred_currency', strtoupper($user->preferred_currency ?: 'USD'));
 @endphp
 
 <!DOCTYPE html>
@@ -8,16 +9,17 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="csrf-token" content="{{ csrf_token() }}">
 
         <title>Account | Reny Renteria</title>
 
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;500&display=swap" rel="stylesheet">
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body data-analytics-screen="account" data-access-state="{{ $accountState['state'] }}">
-        <div class="music-shell">
+    <body data-analytics-screen="account" data-preferred-currency="{{ $selectedCurrency }}">
+        <div class="store-shell account-shell">
             <aside class="sidebar" aria-label="Primary navigation">
                 <div>
                     <a class="brand-link" href="{{ route('home') }}" aria-label="Reny Renteria home">
@@ -33,7 +35,7 @@
                             </svg>
                             <span>MUSIC</span>
                         </a>
-                        <a class="tab" href="{{ url('/videos') }}">
+                        <a class="tab" href="{{ route('videos') }}">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                                 <path d="m22 8-6 4 6 4V8Z"></path>
                                 <rect x="2" y="6" width="14" height="12" rx="2"></rect>
@@ -54,7 +56,7 @@
                             </svg>
                             <span>COMMUNITY</span>
                         </a>
-                        <a class="tab" href="{{ url('/store') }}">
+                        <a class="tab" href="{{ route('store') }}">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                                 <path d="M4 10h16"></path>
                                 <path d="M5 10l1.5-5h11L19 10"></path>
@@ -76,11 +78,7 @@
                 <x-member-card />
             </aside>
 
-            <main class="main-content account-content" id="account">
-                @if (session('login_success'))
-                    <div class="auth-success-box" role="status" aria-live="polite">{{ session('login_success') }}</div>
-                @endif
-
+            <main class="main-content store-content account-content" id="account">
                 <header class="mobile-header">
                     <div class="mobile-brand">
                         <a class="brand-link" href="{{ route('home') }}" aria-label="Reny Renteria home">
@@ -89,205 +87,233 @@
                     </div>
                 </header>
 
-                <section class="account-hero" aria-labelledby="account-title">
-                    <div class="account-profile">
-                        <div class="account-avatar" aria-hidden="true">
-                            @if ($user->avatar_path)
-                                <img src="{{ asset($user->avatar_path) }}" alt="">
-                            @else
-                                <span>{{ $initials ?: 'RR' }}</span>
+                <div class="account-stack">
+                    @if (session('login_success'))
+                        <div class="auth-success-box" role="status" aria-live="polite">{{ session('login_success') }}</div>
+                    @endif
+
+                    @if (session('account_profile_status') || session('account_preferences_status') || session('account_billing_status'))
+                        <div class="account-status" role="status" aria-live="polite">
+                            {{ session('account_profile_status') ?? session('account_preferences_status') ?? session('account_billing_status') }}
+                        </div>
+                    @endif
+
+                    <section class="account-section account-profile-section" aria-labelledby="account-profile-title">
+                        <div class="account-section-head">
+                            <h1 id="account-profile-title">Profile</h1>
+                        </div>
+
+                        <div class="account-profile-grid">
+                            <form
+                                class="account-avatar-form"
+                                method="POST"
+                                action="{{ route('account.avatar.update') }}"
+                                enctype="multipart/form-data"
+                                data-account-avatar-form
+                            >
+                                @csrf
+                                <label class="account-avatar-button" for="accountAvatarInput">
+                                    @if ($avatarUrl)
+                                        <img src="{{ $avatarUrl }}" alt="" data-account-avatar-preview>
+                                    @else
+                                        <span data-account-avatar-preview>{{ $initials ?: 'RR' }}</span>
+                                    @endif
+                                    <input id="accountAvatarInput" name="avatar" type="file" accept="image/png,image/jpeg,image/webp" data-account-avatar-input>
+                                </label>
+                                <p class="account-avatar-status" data-account-avatar-status>Click image to upload</p>
+                                @error('avatar')
+                                    <p class="account-field-error">{{ $message }}</p>
+                                @enderror
+                            </form>
+
+                            <form class="account-form" method="POST" action="{{ route('account.profile.update') }}" data-account-dirty-form>
+                                @csrf
+                                @method('PATCH')
+                                <label class="account-field" for="accountDisplayName">
+                                    <span>Display Name</span>
+                                    <input
+                                        id="accountDisplayName"
+                                        class="store-input"
+                                        name="name"
+                                        type="text"
+                                        value="{{ old('name', $user->name) }}"
+                                        autocomplete="name"
+                                        required
+                                    >
+                                </label>
+                                @error('name')
+                                    <p class="account-field-error">{{ $message }}</p>
+                                @enderror
+                                <button class="store-button account-save-button" type="submit" data-account-dirty-submit @if (! $errors->has('name')) hidden @endif>Save Changes</button>
+                            </form>
+                        </div>
+                    </section>
+
+                    <section class="account-section account-upcoming-section" aria-labelledby="account-events-title">
+                        <div class="account-section-head">
+                            <h2 id="account-events-title">Upcoming Events</h2>
+                        </div>
+
+                        <div class="account-event-row">
+                            <div class="account-event-group">
+                                <div class="account-event-group-head">
+                                    <span>Registered / Purchased</span>
+                                </div>
+
+                                <div class="account-event-list">
+                                    @forelse ($registeredEvents as $eventCard)
+                                        @include('account.partials.event-card', ['eventCard' => $eventCard])
+                                    @empty
+                                        <div class="account-empty">
+                                            <strong>No upcoming events</strong>
+                                            <span>Your tickets and RSVPs will appear here.</span>
+                                        </div>
+                                    @endforelse
+                                </div>
+                            </div>
+
+                            <div class="account-event-group">
+                                <div class="account-event-group-head">
+                                    <span>Available Upcoming</span>
+                                </div>
+
+                                <div class="account-event-list">
+                                    @forelse ($availableEvents as $eventCard)
+                                        @include('account.partials.event-card', ['eventCard' => $eventCard])
+                                    @empty
+                                        <div class="account-empty">
+                                            <strong>No new events</strong>
+                                            <span>Discovery events will show here when available.</span>
+                                        </div>
+                                    @endforelse
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="account-section account-points-section" aria-labelledby="account-points-title">
+                        <div class="account-section-head">
+                            <h2 id="account-points-title">Points</h2>
+                        </div>
+                        <div class="account-points-total">
+                            <strong>{{ number_format($pointBalance) }} pts</strong>
+                            <span>Total accumulated points</span>
+                        </div>
+                    </section>
+
+                    <section class="account-section" aria-labelledby="account-purchases-title">
+                        <div class="account-section-head">
+                            <h2 id="account-purchases-title">Purchases</h2>
+                        </div>
+
+                        <div class="account-row-list">
+                            @forelse ($purchases as $purchase)
+                                <div class="account-row">
+                                    <div>
+                                        <strong>{{ $purchase['name'] }}</strong>
+                                        <span>{{ $purchase['date'] }}</span>
+                                    </div>
+                                    <small>{{ $purchase['status'] }}</small>
+                                </div>
+                            @empty
+                                <div class="account-empty">
+                                    <strong>No purchases yet</strong>
+                                    <span>Products you buy will appear here.</span>
+                                </div>
+                            @endforelse
+                        </div>
+                    </section>
+
+                    <section class="account-section" aria-labelledby="account-billing-title">
+                        <div class="account-section-head">
+                            <h2 id="account-billing-title">Billing</h2>
+                        </div>
+
+                        <dl class="account-billing-grid">
+                            <div>
+                                <dt>Next payment date</dt>
+                                <dd>{{ $billingSummary['next_payment_date'] ?? 'Not scheduled' }}</dd>
+                            </div>
+                            <div>
+                                <dt>Next charge</dt>
+                                <dd>{{ $billingSummary['amount'] }}</dd>
+                            </div>
+                        </dl>
+
+                        @if ($billingSummary['active'])
+                            <button class="account-ghost-button" type="button" data-account-modal-open="pauseSubscriptionModal">Pause subscription</button>
+                        @else
+                            <a class="account-ghost-button" href="{{ $billingSummary['reactivate_url'] }}">Reactivate subscription</a>
+                        @endif
+                    </section>
+
+                    <section class="account-section" aria-labelledby="account-settings-title">
+                        <div class="account-section-head">
+                            <h2 id="account-settings-title">Settings</h2>
+                        </div>
+
+                        <form class="account-form account-preferences-form" method="POST" action="{{ route('account.preferences.update') }}" data-account-dirty-form>
+                            @csrf
+                            @method('PATCH')
+                            <label class="account-field" for="accountLocale">
+                                <span>Language preference</span>
+                                <select id="accountLocale" class="store-input" name="locale">
+                                    @foreach ($languages as $value => $label)
+                                        <option value="{{ $value }}" @selected($selectedLocale === $value)>{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                            </label>
+
+                            <label class="account-field" for="accountCurrency">
+                                <span>Currency preference</span>
+                                <select id="accountCurrency" class="store-input" name="preferred_currency">
+                                    @foreach ($currencies as $value => $currency)
+                                        <option value="{{ $value }}" @selected($selectedCurrency === $value)>{{ $value }} - {{ $currency['label'] }}</option>
+                                    @endforeach
+                                </select>
+                            </label>
+
+                            @if ($errors->has('locale') || $errors->has('preferred_currency'))
+                                <p class="account-field-error">{{ $errors->first('locale') ?: $errors->first('preferred_currency') }}</p>
                             @endif
-                        </div>
-                        <div>
-                            <p class="account-kicker">User hub</p>
-                            <h1 id="account-title">{{ $user->name }}</h1>
-                            <p class="account-username">{{ $user->username ? '@'.$user->username : 'Username pending' }}</p>
-                        </div>
-                    </div>
 
-                    <div class="account-membership">
-                        <span class="account-badge {{ $accountState['badge_class'] }}">{{ $accountState['badge'] }}</span>
-                        <p>{{ $accountState['description'] }}</p>
-
-                        <dl class="account-state-details">
-                            <div>
-                                <dt>Account state</dt>
-                                <dd>{{ $accountState['status_label'] }}</dd>
+                            <div class="account-settings-actions">
+                                <button class="account-ghost-button" type="button" data-account-modal-open="paymentMethodModal">Change payment method</button>
+                                <button class="store-button account-save-button" type="submit" data-account-dirty-submit @if (! $errors->has('locale') && ! $errors->has('preferred_currency')) hidden @endif>Save Preferences</button>
                             </div>
-                            <div>
-                                <dt>Billing status</dt>
-                                <dd>{{ $billingProfile?->status ? str_replace('_', ' ', $billingProfile->status) : 'None' }}</dd>
-                            </div>
-                            <div>
-                                <dt>Pass date</dt>
-                                <dd>{{ $user->royal_ends_at?->timezone($accountTimezone)->format('M j, Y') ?? 'Not active' }}</dd>
-                            </div>
-                        </dl>
-
-                        @if ($accountState['action_label'] && $accountState['action_url'])
-                            <a
-                                class="account-action"
-                                href="{{ $accountState['action_url'] }}"
-                                data-analytics-id="{{ $accountState['analytics_id'] }}"
-                                data-analytics-type="account_state_cta"
-                            >{{ $accountState['action_label'] }}</a>
-                        @endif
-                    </div>
-                </section>
-
-                <section class="account-grid" aria-label="Account dashboard">
-                    <article class="account-section account-section-wide">
-                        <div class="account-section-head">
-                            <h2>Upcoming Events</h2>
-                            <span>{{ $upcomingTickets->count() }} active</span>
-                        </div>
-
-                        @forelse ($upcomingTickets as $ticket)
-                            <div class="account-row">
-                                <div>
-                                    <strong>{{ $ticket->event->title }}</strong>
-                                    <span>{{ $ticket->event->starts_at->timezone($ticket->event->timezone)->format('M j, Y g:i A') }} · {{ $ticket->event->venue ?: 'Venue pending' }}</span>
-                                    <small>{{ $ticket->event->address ?: 'Address pending' }}</small>
-                                </div>
-                                <div class="account-row-meta">
-                                    <span>{{ str_replace('_', ' ', $ticket->status) }}</span>
-                                    <code>{{ $ticketDisplayCodes[$ticket->id] ?? $ticket->ticket_code_preview ?? 'QR' }}</code>
-                                </div>
-                            </div>
-                        @empty
-                            <div class="account-empty">
-                                <strong>No upcoming events</strong>
-                                <span>Your tickets and RSVP status will appear here.</span>
-                            </div>
-                        @endforelse
-                    </article>
-
-                    <article class="account-section">
-                        <div class="account-section-head">
-                            <h2>Library</h2>
-                            <span>{{ $unlocks->count() }} unlocked</span>
-                        </div>
-
-                        @forelse ($unlocks as $unlock)
-                            <div class="account-row account-row-compact">
-                                <div>
-                                    <strong>{{ $unlock->title }}</strong>
-                                    <span>{{ ucfirst($unlock->unlock_type) }} · {{ ucfirst($unlock->status) }}</span>
-                                </div>
-                            </div>
-                        @empty
-                            <div class="account-empty">
-                                <strong>No purchases yet</strong>
-                                <span>Albums, videos and drops you buy will stay available here.</span>
-                            </div>
-                        @endforelse
-                    </article>
-
-                    <article class="account-section">
-                        <div class="account-section-head">
-                            <h2>Billing</h2>
-                            <span>{{ $billingProfile?->provider ? strtoupper($billingProfile->provider) : 'None' }}</span>
-                        </div>
-
-                        @if ($billingProfile)
-                            <dl class="account-facts">
-                                <div>
-                                    <dt>Status</dt>
-                                    <dd>{{ str_replace('_', ' ', $billingProfile->status) }}</dd>
-                                </div>
-                                <div>
-                                    <dt>Method</dt>
-                                    <dd>{{ $billingProfile->payment_method_summary ?: 'PayPal' }}</dd>
-                                </div>
-                                <div>
-                                    <dt>Renews</dt>
-                                    <dd>{{ $billingProfile->current_period_ends_at?->timezone($user->timezone)->format('M j, Y') ?? 'Not scheduled' }}</dd>
-                                </div>
-                            </dl>
-                        @else
-                            <div class="account-empty">
-                                <strong>No billing profile</strong>
-                                <span>PayPal-backed billing details will appear after checkout.</span>
-                            </div>
-                        @endif
-                    </article>
-
-                    <article class="account-section">
-                        <div class="account-section-head">
-                            <h2>Points</h2>
-                            <span>{{ number_format($pointBalance) }}</span>
-                        </div>
-
-                        @if ($leaderboard->isNotEmpty())
-                            <ol class="account-leaderboard">
-                                @foreach ($leaderboard as $entry)
-                                    <li>
-                                        <span>{{ $entry->user?->username ? '@'.$entry->user->username : $entry->user?->name }}</span>
-                                        <strong>{{ number_format($entry->points) }}</strong>
-                                    </li>
-                                @endforeach
-                            </ol>
-                        @else
-                            <div class="account-empty">
-                                <strong>No points yet</strong>
-                                <span>Activity points will count toward the leaderboard.</span>
-                            </div>
-                        @endif
-                    </article>
-
-                    <article class="account-section">
-                        <div class="account-section-head">
-                            <h2>Purchases</h2>
-                            <span>{{ $recentOrders->count() }} recent</span>
-                        </div>
-
-                        @forelse ($recentOrders as $order)
-                            <div class="account-row account-row-compact">
-                                <div>
-                                    <strong>{{ ucfirst($order->product_key) }}</strong>
-                                    <span>{{ strtoupper($order->currency) }} {{ number_format($order->amount_cents / 100, 2) }} · {{ ucfirst($order->status) }}</span>
-                                </div>
-                            </div>
-                        @empty
-                            <div class="account-empty">
-                                <strong>No recent purchases</strong>
-                                <span>Completed orders will appear here after PayPal confirmation.</span>
-                            </div>
-                        @endforelse
-                    </article>
-
-                    <article class="account-section">
-                        <div class="account-section-head">
-                            <h2>Settings</h2>
-                            <span>{{ strtoupper($user->preferred_currency ?? 'USD') }}</span>
-                        </div>
-
-                        <dl class="account-facts">
-                            <div>
-                                <dt>Country</dt>
-                                <dd>{{ $user->country_code ?: 'Pending' }}</dd>
-                            </div>
-                            <div>
-                                <dt>Language</dt>
-                                <dd>{{ $user->locale ?: 'en' }}</dd>
-                            </div>
-                            <div>
-                                <dt>Timezone</dt>
-                                <dd>{{ $user->timezone ?: 'America/Panama' }}</dd>
-                            </div>
-                            <div>
-                                <dt>Data requests</dt>
-                                <dd>Manual request</dd>
-                            </div>
-                        </dl>
-                    </article>
-                </section>
-
-                <form method="POST" action="{{ route('logout') }}" class="account-logout">
-                    @csrf
-                    <button class="auth-secondary-button" type="submit">Log out</button>
-                </form>
+                        </form>
+                    </section>
+                </div>
             </main>
         </div>
+
+        <section class="account-modal-layer" id="pauseSubscriptionModal" hidden inert>
+            <div class="account-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="pauseSubscriptionTitle">
+                <div class="store-dialog-head">
+                    <h2 id="pauseSubscriptionTitle">Pause subscription</h2>
+                    <button class="store-icon-button" type="button" data-account-modal-close="pauseSubscriptionModal" aria-label="Close pause subscription modal">Close</button>
+                </div>
+                <div class="account-modal-body">
+                    <p>Your Royal Pass access stays active until the current paid period ends. Future PayPal renewals will be paused when a PayPal subscription ID is connected.</p>
+                    <form method="POST" action="{{ route('account.subscription.pause') }}">
+                        @csrf
+                        <button class="store-button" type="submit">Confirm Pause</button>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <section class="account-modal-layer" id="paymentMethodModal" hidden inert>
+            <div class="account-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="paymentMethodTitle">
+                <div class="store-dialog-head">
+                    <h2 id="paymentMethodTitle">Payment method</h2>
+                    <button class="store-icon-button" type="button" data-account-modal-close="paymentMethodModal" aria-label="Close payment method modal">Close</button>
+                </div>
+                <div class="account-modal-body">
+                    <p>PayPal manages payment methods for subscriptions from Automatic Payments. Use PayPal to update the funding source tied to this subscription.</p>
+                    <a class="store-button" href="{{ $billingSummary['paypal_manage_url'] }}" target="_blank" rel="noreferrer">Open PayPal</a>
+                </div>
+            </div>
+        </section>
     </body>
 </html>
