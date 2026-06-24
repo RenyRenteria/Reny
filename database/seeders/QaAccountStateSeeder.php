@@ -7,11 +7,10 @@ use App\Models\Order;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use RuntimeException;
 
 class QaAccountStateSeeder extends Seeder
 {
-    public const PASSWORD = 'RenyQA!2026';
-
     /**
      * @var array<int, array<string, mixed>>
      */
@@ -76,6 +75,8 @@ class QaAccountStateSeeder extends Seeder
             return;
         }
 
+        $password = $this->qaPassword();
+
         foreach ($this->accounts as $account) {
             $user = User::updateOrCreate([
                 'email' => $account['email'],
@@ -86,7 +87,7 @@ class QaAccountStateSeeder extends Seeder
                 'locale' => 'en',
                 'timezone' => 'America/Panama',
                 'preferred_currency' => 'USD',
-                'password' => Hash::make(self::PASSWORD),
+                'password' => Hash::make($password),
                 'role' => User::ROLE_FAN,
                 'royal_status' => $account['royal_status'],
                 'royal_ends_at' => $this->date($account['royal_ends_at']),
@@ -125,6 +126,17 @@ class QaAccountStateSeeder extends Seeder
                 ]);
             }
         }
+    }
+
+    private function qaPassword(): string
+    {
+        $password = (string) env('RENY_QA_PASSWORD', '');
+
+        if (trim($password) === '') {
+            throw new RuntimeException('RENY_QA_PASSWORD is required to seed QA accounts.');
+        }
+
+        return $password;
     }
 
     private function date(?string $relative): mixed
