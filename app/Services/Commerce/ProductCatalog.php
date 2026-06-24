@@ -11,99 +11,27 @@ use Illuminate\Support\Collection;
 class ProductCatalog
 {
     /**
-     * @var array<string, array<string, mixed>>
-     */
-    private const STATIC_PRODUCTS = [
-        'deluxe' => [
-            'title' => 'Deluxe Digital Album',
-            'amount_cents' => 2400,
-            'kind' => 'digital',
-            'unlock_type' => 'album',
-        ],
-        'singles' => [
-            'title' => 'Singles / Digital Pack',
-            'amount_cents' => 800,
-            'kind' => 'digital',
-            'unlock_type' => 'album',
-        ],
-        'royal' => [
-            'title' => 'Royal Pass',
-            'amount_cents' => 499,
-            'kind' => 'subscription',
-            'unlock_type' => null,
-        ],
-        'merch' => [
-            'title' => 'Signature Merch',
-            'amount_cents' => 4800,
-            'kind' => 'merch',
-            'unlock_type' => null,
-        ],
-        'print' => [
-            'title' => 'Numbered Art Print',
-            'amount_cents' => 8600,
-            'kind' => 'art_drop',
-            'unlock_type' => 'drop',
-        ],
-        'concert' => [
-            'title' => 'Reny Live - Studio Night',
-            'amount_cents' => 4200,
-            'kind' => 'ticket',
-            'unlock_type' => null,
-            'event' => [
-                'title' => 'Reny Live - Studio Night',
-                'venue' => 'Panama City',
-                'address' => 'Panama City',
-                'starts_at' => '2026-08-24 20:00:00',
-                'timezone' => 'America/Panama',
-            ],
-        ],
-        'listening' => [
-            'title' => 'Festival de la Rosa Dorada',
-            'amount_cents' => 1500,
-            'kind' => 'ticket',
-            'unlock_type' => null,
-            'event' => [
-                'title' => 'Festival de la Rosa Dorada',
-                'venue' => 'Rock & Folk Pty, Ciudad de Panama',
-                'address' => 'Rock & Folk Pty, Ciudad de Panama',
-                'starts_at' => '2026-12-19 19:30:00',
-                'timezone' => 'America/Panama',
-            ],
-        ],
-    ];
-
-    /**
      * @return array<string, mixed>|null
      */
     public function find(string $productKey, ?User $user = null): ?array
     {
         $productKey = trim($productKey);
 
-        if (isset(self::STATIC_PRODUCTS[$productKey])) {
-            return $this->normalizeStaticProduct($productKey, self::STATIC_PRODUCTS[$productKey]);
-        }
-
-        $content = EditorialContent::query()
-            ->with(['mediaAssets'])
-            ->visibleFor($user)
-            ->whereIn('type', [
-                ContentType::Product->value,
-                ContentType::Drop->value,
-                ContentType::Exclusive->value,
-                ContentType::Event->value,
-            ])
-            ->where(function ($query) use ($productKey): void {
-                $query
-                    ->where('purchase_key', $productKey)
-                    ->orWhere('slug', $productKey);
-            })
-            ->first();
-
-        if (! $content) {
+        if ($productKey === '') {
             return null;
         }
 
-        return $this->normalizeCmsProduct($content, $productKey);
+        $content = $this->cmsProduct($productKey, $user);
+
+        if ($content instanceof EditorialContent) {
+            return $this->normalizeCmsProduct($content, $productKey);
+        }
+
+        $configuredProduct = $this->configuredProduct($productKey);
+
+        return $configuredProduct
+            ? $this->normalizeConfiguredProduct($productKey, $configuredProduct)
+            : null;
     }
 
     /**
@@ -139,18 +67,87 @@ class ProductCatalog
      * @param  array<string, mixed>  $product
      * @return array<string, mixed>
      */
-    private function normalizeStaticProduct(string $key, array $product): array
+    private function normalizeConfiguredProduct(string $key, array $product): array
     {
         return [
             'key' => $key,
-            'title' => $product['title'],
-            'amount_cents' => $product['amount_cents'],
-            'currency' => 'USD',
-            'kind' => $product['kind'],
-            'unlock_type' => $product['unlock_type'] ?? null,
+            'title' => $this->stringValue($product['title']) ?? str($key)->headline()->toString(),
+            'amount_cents' => (int) $product['amount_cents'],
+            'currency' => strtoupper($this->stringValue($product['currency'] ?? null) ?? 'USD'),
+            'kind' => $this->stringValue($product['kind']) ?? 'product',
+            'unlock_type' => $this->stringValue($product['unlock_type'] ?? null),
             'source_type' => 'order',
-            'event' => $product['event'] ?? null,
+            'event' => $this->configuredEvent($product['event'] ?? null),
         ];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function configuredProduct(string $productKey): ?array
+    {
+        $products = config('reny_catalog.products', []);
+        $product = is_array($products) ? ($products[$productKey] ?? null) : null;
+
+        if (! is_array($product)) {
+            return null;
+        }
+
+        if (
+            $this->stringValue($product['title'] ?? null) === null
+            || ! is_numeric($product['amount_cents'] ?? null)
+            || (int) $product['amount_cents'] <= 0
+            || $this->stringValue($product['kind'] ?? null) === null
+        ) {
+            return null;
+        }
+
+        return $product;
+    }
+
+    /**
+     * @return array<string, string>|null
+     */
+    private function configuredEvent(mixed $event): ?array
+    {
+        if (! is_array($event)) {
+            return null;
+        }
+
+        $title = $this->stringValue($event['title'] ?? null);
+        $venue = $this->stringValue($event['venue'] ?? null);
+        $startsAt = $this->stringValue($event['starts_at'] ?? null);
+
+        if ($title === null || $venue === null || $startsAt === null) {
+            return null;
+        }
+
+        return [
+            'title' => $title,
+            'venue' => $venue,
+            'address' => $this->stringValue($event['address'] ?? null) ?? $venue,
+            'starts_at' => $startsAt,
+            'timezone' => $this->stringValue($event['timezone'] ?? null) ?? 'America/Panama',
+        ];
+    }
+
+    private function cmsProduct(string $productKey, ?User $user): ?EditorialContent
+    {
+        return EditorialContent::query()
+            ->with(['mediaAssets'])
+            ->visibleFor($user)
+            ->whereIn('type', [
+                ContentType::Product->value,
+                ContentType::Drop->value,
+                ContentType::Exclusive->value,
+                ContentType::Event->value,
+            ])
+            ->where(function ($query) use ($productKey): void {
+                $query
+                    ->where('purchase_key', $productKey)
+                    ->orWhere('slug', $productKey);
+            })
+            ->first();
     }
 
     /**
@@ -288,5 +285,16 @@ class ProductCatalog
             'starts_at' => (string) data_get($content->metadata, 'starts_at', now()->addMonth()->toDateTimeString()),
             'timezone' => (string) data_get($content->metadata, 'timezone', 'America/Panama'),
         ];
+    }
+
+    private function stringValue(mixed $value): ?string
+    {
+        if (! is_scalar($value)) {
+            return null;
+        }
+
+        $value = trim((string) $value);
+
+        return $value === '' ? null : $value;
     }
 }

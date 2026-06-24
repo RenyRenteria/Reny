@@ -17,77 +17,6 @@ use Illuminate\Validation\ValidationException;
 
 class CommunityInteractionService
 {
-    private const FALLBACK_POSTS = [
-        [
-            'key' => 'studio-note-from-reny',
-            'title' => 'Studio note from Reny',
-            'time' => 'Today',
-            'body' => 'Finishing the next release window with final vocal edits, choreography notes, and visuals for the fan club first.',
-            'full_body' => 'Finishing the next release window with final vocal edits, choreography notes, and visuals for the fan club first. I am keeping the first look inside the community because the next chapter should feel close, early, and built with the people who keep showing up.',
-            'image_url' => 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=1400&q=80',
-            'image_alt' => 'Warm recording studio with microphone and instruments',
-            'base_likes' => 284,
-            'base_replies' => 38,
-        ],
-        [
-            'key' => 'capri-photo-drop',
-            'title' => 'Capri photo drop',
-            'time' => 'This week',
-            'body' => 'A few frames from the travel archive are moving into the Photos tab. More country-specific drops coming next.',
-            'full_body' => 'A few frames from the travel archive are moving into the Photos tab. More country-specific drops coming next, especially where fans have been organizing watch parties and meetups.',
-            'image_url' => 'https://images.unsplash.com/photo-1533105079780-92b9be482077?auto=format&fit=crop&w=1400&q=80',
-            'image_alt' => 'Capri coastline and turquoise sea',
-            'base_likes' => 319,
-            'base_replies' => 51,
-        ],
-    ];
-
-    private const FALLBACK_POLL = [
-        'key' => 'which-drop-should-go-first',
-        'question' => 'Which drop should go first?',
-        'options' => [
-            ['key' => 'studio-photos', 'label' => 'Studio photos', 'votes' => 524],
-            ['key' => 'performance-stills', 'label' => 'Performance stills', 'votes' => 424],
-            ['key' => 'travel-archive', 'label' => 'Travel archive', 'votes' => 300],
-        ],
-    ];
-
-    private const DEFAULT_CLUBS = [
-        [
-            'key' => 'dominican-republic',
-            'name' => 'Dominican Republic',
-            'flag_label' => 'DO',
-            'base_members' => 8400,
-            'activity' => 'Planning Santo Domingo party',
-            'messages' => [
-                ['author' => 'Mia', 'text' => 'Who is going to the first meetup?'],
-                ['author' => 'Luis', 'text' => 'We should pin a date after the next Reny post.'],
-            ],
-        ],
-        [
-            'key' => 'panama',
-            'name' => 'Panama',
-            'flag_label' => 'PA',
-            'base_members' => 6900,
-            'activity' => 'Sharing radio clips',
-            'messages' => [
-                ['author' => 'Ana', 'text' => 'Radio clips thread is ready for the next drop.'],
-                ['author' => 'Marco', 'text' => 'Panama City listening party list is almost full.'],
-            ],
-        ],
-        [
-            'key' => 'colombia',
-            'name' => 'Colombia',
-            'flag_label' => 'CO',
-            'base_members' => 4200,
-            'activity' => 'Building the Bogota map',
-            'messages' => [
-                ['author' => 'Sofia', 'text' => 'Bogota map is open for venue ideas.'],
-                ['author' => 'Leo', 'text' => 'Medellin fans should get a second pin too.'],
-            ],
-        ],
-    ];
-
     /**
      * @param  array<string, mixed>  $publicCms
      * @return array<string, mixed>
@@ -309,25 +238,27 @@ class CommunityInteractionService
      */
     private function posts(?User $user, array $cmsPosts): array
     {
-        $sourcePosts = collect($cmsPosts ?: self::FALLBACK_POSTS)
+        $sourcePosts = collect($cmsPosts ?: $this->fallbackPosts())
+            ->filter(fn (mixed $post): bool => is_array($post))
             ->take(2)
             ->values()
             ->map(function (array $post, int $index): array {
-                $title = (string) ($post['title'] ?? 'Community post '.($index + 1));
-                $key = $post['key'] ?? $this->normalizeKey($title);
+                $title = $this->stringValue($post['title'] ?? null) ?? 'Community post '.($index + 1);
+                $body = $this->stringValue($post['body'] ?? null) ?? '';
+                $key = $this->stringValue($post['key'] ?? null) ?? $this->normalizeKey($title);
 
                 return [
                     'key' => $key,
                     'title' => $title,
-                    'time' => $post['time'] ?? 'Published',
-                    'body' => $post['body'] ?? '',
-                    'full_body' => $post['full_body'] ?? $post['body'] ?? '',
-                    'image_url' => $post['image_url'] ?? null,
-                    'image_alt' => $post['image_alt'] ?? $title,
-                    'cta' => $post['cta'] ?? 'View Reny note',
-                    'url' => $post['url'] ?? null,
-                    'base_likes' => (int) ($post['base_likes'] ?? 0),
-                    'base_replies' => (int) ($post['base_replies'] ?? 0),
+                    'time' => $this->stringValue($post['time'] ?? null) ?? 'Published',
+                    'body' => $body,
+                    'full_body' => $this->stringValue($post['full_body'] ?? null) ?? $body,
+                    'image_url' => $this->stringValue($post['image_url'] ?? null),
+                    'image_alt' => $this->stringValue($post['image_alt'] ?? null) ?? $title,
+                    'cta' => $this->stringValue($post['cta'] ?? null) ?? 'View Reny note',
+                    'url' => $this->stringValue($post['url'] ?? null),
+                    'base_likes' => is_numeric($post['base_likes'] ?? null) ? (int) $post['base_likes'] : 0,
+                    'base_replies' => is_numeric($post['base_replies'] ?? null) ? (int) $post['base_replies'] : 0,
                 ];
             });
 
@@ -351,13 +282,18 @@ class CommunityInteractionService
 
     /**
      * @param  array<string, mixed>|null  $cmsPoll
-     * @return array<string, mixed>
+     * @return array<string, mixed>|null
      */
-    private function poll(?User $user, ?array $cmsPoll): array
+    private function poll(?User $user, ?array $cmsPoll): ?array
     {
-        $source = $cmsPoll ?: self::FALLBACK_POLL;
-        $question = (string) ($source['question'] ?? 'Fan vote');
-        $pollKey = $this->normalizeKey($source['key'] ?? $question);
+        $source = $cmsPoll ?: $this->fallbackPoll();
+
+        if ($source === []) {
+            return null;
+        }
+
+        $question = $this->stringValue($source['question'] ?? null) ?? 'Fan vote';
+        $pollKey = $this->normalizeKey($this->stringValue($source['key'] ?? null) ?? $question);
         $voteCounts = $this->pollVoteCounts($pollKey);
         $userVote = $user && Schema::hasTable('community_poll_votes')
             ? CommunityPollVote::query()
@@ -367,11 +303,13 @@ class CommunityInteractionService
             : null;
 
         $options = collect($source['options'] ?? [])
+            ->filter(fn (mixed $option): bool => is_array($option))
             ->values()
             ->map(function (array $option, int $index) use ($pollKey, $userVote, $voteCounts): array {
-                $label = (string) ($option['label'] ?? 'Option '.($index + 1));
-                $optionKey = $this->normalizeKey($option['key'] ?? $label);
-                $baseVotes = (int) ($option['votes'] ?? $option['count'] ?? $option['percent'] ?? 0);
+                $label = $this->stringValue($option['label'] ?? null) ?? 'Option '.($index + 1);
+                $optionKey = $this->normalizeKey($this->stringValue($option['key'] ?? null) ?? $label);
+                $votes = $option['votes'] ?? $option['count'] ?? $option['percent'] ?? null;
+                $baseVotes = is_numeric($votes) ? (int) $votes : 0;
 
                 return [
                     'key' => $optionKey,
@@ -381,6 +319,10 @@ class CommunityInteractionService
                     'vote_endpoint' => route('community.polls.vote', $pollKey),
                 ];
             });
+
+        if ($options->isEmpty()) {
+            return null;
+        }
 
         $percentages = $this->percentages($options->pluck('votes')->all());
         $totalVotes = (int) $options->sum('votes');
@@ -435,9 +377,10 @@ class CommunityInteractionService
                 ->all()
             : [];
 
-        $defaultKeys = collect(self::DEFAULT_CLUBS)->pluck('key')->all();
+        $defaultClubs = $this->defaultClubs();
+        $defaultKeys = collect($defaultClubs)->pluck('key')->all();
 
-        return collect(self::DEFAULT_CLUBS)
+        return collect($defaultClubs)
             ->map(fn (array $source): array => $this->clubPayload($source, $persisted->get($source['key']), $joinedKeys))
             ->merge(
                 $persisted
@@ -463,8 +406,14 @@ class CommunityInteractionService
      */
     private function clubPayload(array $source, ?CommunityCountryClub $club, array $joinedKeys): array
     {
-        $key = $this->normalizeKey($source['key'] ?? $source['name']);
-        $baseMessages = collect($source['messages'] ?? []);
+        $key = $this->normalizeKey((string) ($source['key'] ?? $source['name']));
+        $baseMessages = collect($source['messages'] ?? [])
+            ->filter(fn (mixed $message): bool => is_array($message))
+            ->map(fn (array $message): array => [
+                'author' => $this->stringValue($message['author'] ?? null) ?? 'Member',
+                'text' => $this->stringValue($message['text'] ?? null) ?? '',
+            ])
+            ->filter(fn (array $message): bool => $message['text'] !== '');
         $persistedMessages = $club
             ? $club->messages->map(fn (CommunityCountryClubMessage $message): array => [
                 'author' => $message->user?->name ?? $message->user?->username ?? 'Member',
@@ -489,9 +438,9 @@ class CommunityInteractionService
 
         return [
             'key' => $key,
-            'name' => (string) ($source['name'] ?? $club?->name ?? 'Country club'),
-            'flag_label' => (string) ($source['flag_label'] ?? $club?->flag_label ?? strtoupper(substr($key, 0, 2))),
-            'activity' => (string) ($source['activity'] ?? $club?->activity ?? 'New country club'),
+            'name' => $this->stringValue($club?->name) ?? $this->stringValue($source['name'] ?? null) ?? 'Country club',
+            'flag_label' => $this->stringValue($club?->flag_label) ?? $this->stringValue($source['flag_label'] ?? null) ?? strtoupper(substr($key, 0, 2)),
+            'activity' => $this->stringValue($club?->activity) ?? $this->stringValue($source['activity'] ?? null) ?? 'New country club',
             'members_count' => $memberCount,
             'members_label' => $this->compactCount($memberCount).' members',
             'joined' => in_array($key, $joinedKeys, true),
@@ -505,7 +454,7 @@ class CommunityInteractionService
     private function resolveClub(string $clubKey): CommunityCountryClub
     {
         $key = $this->normalizeKey($clubKey);
-        $default = collect(self::DEFAULT_CLUBS)->firstWhere('key', $key);
+        $default = collect($this->defaultClubs())->firstWhere('key', $key);
 
         if (! $default && ! CommunityCountryClub::query()->where('key', $key)->exists()) {
             abort(404);
@@ -514,9 +463,9 @@ class CommunityInteractionService
         return CommunityCountryClub::query()->firstOrCreate([
             'key' => $key,
         ], [
-            'name' => (string) ($default['name'] ?? str($key)->replace('-', ' ')->headline()),
-            'flag_label' => (string) ($default['flag_label'] ?? strtoupper(substr($key, 0, 2))),
-            'activity' => (string) ($default['activity'] ?? 'New country club'),
+            'name' => $this->stringValue($default['name'] ?? null) ?? str($key)->replace('-', ' ')->headline()->toString(),
+            'flag_label' => $this->stringValue($default['flag_label'] ?? null) ?? strtoupper(substr($key, 0, 2)),
+            'activity' => $this->stringValue($default['activity'] ?? null) ?? 'New country club',
             'status' => 'active',
             'metadata' => ['source' => $default ? 'community_default' : 'community'],
         ]);
@@ -663,5 +612,63 @@ class CommunityInteractionService
         }
 
         return (string) $count;
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function fallbackPosts(): array
+    {
+        $posts = config('reny_catalog.community.posts', []);
+
+        return is_array($posts) ? $posts : [];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function fallbackPoll(): array
+    {
+        $poll = config('reny_catalog.community.poll', []);
+
+        return is_array($poll) ? $poll : [];
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function defaultClubs(): array
+    {
+        $clubs = config('reny_catalog.community.clubs', []);
+
+        if (! is_array($clubs)) {
+            return [];
+        }
+
+        return collect($clubs)
+            ->filter(fn (mixed $club): bool => is_array($club))
+            ->map(function (array $club): array {
+                $key = $this->stringValue($club['key'] ?? null)
+                    ?? $this->stringValue($club['name'] ?? null);
+
+                return [
+                    ...$club,
+                    'key' => $this->normalizeKey($key ?? ''),
+                ];
+            })
+            ->filter(fn (array $club): bool => $club['key'] !== 'community-item')
+            ->values()
+            ->all();
+    }
+
+    private function stringValue(mixed $value): ?string
+    {
+        if (! is_scalar($value)) {
+            return null;
+        }
+
+        $value = trim((string) $value);
+
+        return $value === '' ? null : $value;
     }
 }
