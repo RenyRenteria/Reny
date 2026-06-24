@@ -1,0 +1,38 @@
+.public-content-shell {
+    min-height: 100vh;
+    padding: 2rem;
+    background: #0b0b0b;
+    color: #f8f4ea;
+}
+
+.public-content-card {
+    width: min(48rem, 100%);
+    margin: 4rem auto 0;
+    padding: 2rem;
+    border: 1px solid rgba(248, 244, 234, 0.16);
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.public-content-card span {
+    display: block;
+    margin-bottom: 1rem;
+    color: #d8c38a;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0;
+}
+
+.public-content-card h1 {
+    margin: 0;
+    font-size: clamp(2.25rem, 6vw, 4.5rem);
+    letter-spacing: 0;
+    line-height: 0.95;
+}
+
+.public-content-card p,
+.public-content-body {
+    margin-top: 1.25rem;
+    color: rgba(248, 244, 234, 0.78);
+    font-size: 1rem;
+    line-height: 1.7;
+}

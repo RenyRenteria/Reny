@@ -1,0 +1,59 @@
+:root {
+    --paper: #fbf6ef;
+    --paper-deep: #efe4d3;
+    --panel: #fffaf3;
+    --panel-bright: #fffdf9;
+    --line: #e8ddd0;
+    --ink: #121212;
+    --soft-ink: #3c2c1e;
+    --muted: #74716e;
+    --accent: #997332;
+    --accent-dark: #7d431d;
+    --accent-soft: #efe5d4;
+    --red: #f01437;
+    --rose: #ffe2de;
+    --purple: #7251c9;
+    --sidebar-width: 17.125rem;
+    --shadow: 0 1.125rem 3.125rem rgba(26, 21, 16, 0.08);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html {
+    min-height: 100%;
+    background: var(--paper);
+}
+
+body {
+    min-height: 100vh;
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    letter-spacing: 0;
+}
+
+a {
+    color: inherit;
+    text-decoration: none;
+}
+
+button {
+    color: inherit;
+    font: inherit;
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    clip: rect(0, 0, 0, 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+}

@@ -104,7 +104,7 @@ class HomePageTest extends TestCase
             }
         }
 
-        $css = file_get_contents(resource_path('css/app.css'));
+        $css = $this->frontendCssSource();
 
         $this->assertDoesNotMatchRegularExpression('/\.home-bottom-nav\s*\{[^}]*display\s*:\s*none\s*;/s', $css);
         $this->assertDoesNotMatchRegularExpression('/\.home-bottom-nav\s*\{[^}]*height\s*:/s', $css);
