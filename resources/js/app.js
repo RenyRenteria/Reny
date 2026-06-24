@@ -1346,7 +1346,9 @@ const isPersistentPublicPath = (url) => {
         '/store',
     ]);
 
-    return paths.has(url.pathname) || url.pathname.startsWith('/community/clubs/');
+    return paths.has(url.pathname)
+        || url.pathname.startsWith('/album/')
+        || url.pathname.startsWith('/community/clubs/');
 };
 
 const navigatePublicPage = async (url, { push = true } = {}) => {
