@@ -13,29 +13,10 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class StoreRsvpController extends Controller
 {
-    /**
-     * @var array<string, array{title: string, venue: string, address: string, starts_at: string, timezone: string}>
-     */
-    private const STATIC_RSVP_EVENTS = [
-        'concert' => [
-            'title' => 'Reny Renteria en Concierto',
-            'venue' => 'Rock & Folk Pty, Ciudad de Panama',
-            'address' => 'Rock & Folk Pty, Ciudad de Panama',
-            'starts_at' => '2026-09-21 19:30:00',
-            'timezone' => 'America/Panama',
-        ],
-        'making' => [
-            'title' => 'Making The Deluxe Album',
-            'venue' => 'Royal Stream',
-            'address' => 'Royal Stream',
-            'starts_at' => '2026-08-31 19:00:00',
-            'timezone' => 'America/Panama',
-        ],
-    ];
-
     public function __invoke(Request $request, TicketCodeService $ticketCodes): JsonResponse
     {
         $validated = $request->validate([
@@ -105,7 +86,7 @@ class StoreRsvpController extends Controller
 
     private function resolveEvent(string $eventKey, $user): FanEvent
     {
-        $source = $this->cmsEvent($eventKey, $user) ?? self::STATIC_RSVP_EVENTS[$eventKey] ?? null;
+        $source = $this->cmsEvent($eventKey, $user) ?? $this->configuredRsvpEvent($eventKey);
 
         if (! $source) {
             throw ValidationException::withMessages([
@@ -114,7 +95,14 @@ class StoreRsvpController extends Controller
         }
 
         $timezone = $source['timezone'] ?? 'America/Panama';
-        $startsAt = CarbonImmutable::parse($source['starts_at'], $timezone);
+
+        try {
+            $startsAt = CarbonImmutable::parse($source['starts_at'], $timezone);
+        } catch (Throwable) {
+            throw ValidationException::withMessages([
+                'event_key' => 'This RSVP event is not available.',
+            ]);
+        }
 
         $event = FanEvent::firstOrCreate([
             'title' => $source['title'],
@@ -178,5 +166,45 @@ class StoreRsvpController extends Controller
             'starts_at' => (string) data_get($content->metadata, 'starts_at', now()->addMonth()->toDateTimeString()),
             'timezone' => (string) data_get($content->metadata, 'timezone', 'America/Panama'),
         ];
+    }
+
+    /**
+     * @return array{title: string, venue: string, address: string, starts_at: string, timezone: string}|null
+     */
+    private function configuredRsvpEvent(string $eventKey): ?array
+    {
+        $events = config('reny_catalog.rsvp_events', []);
+        $event = is_array($events) ? ($events[$eventKey] ?? null) : null;
+
+        if (! is_array($event)) {
+            return null;
+        }
+
+        $title = $this->stringValue($event['title'] ?? null);
+        $venue = $this->stringValue($event['venue'] ?? null);
+        $startsAt = $this->stringValue($event['starts_at'] ?? null);
+
+        if ($title === null || $venue === null || $startsAt === null) {
+            return null;
+        }
+
+        return [
+            'title' => $title,
+            'venue' => $venue,
+            'address' => $this->stringValue($event['address'] ?? null) ?? $venue,
+            'starts_at' => $startsAt,
+            'timezone' => $this->stringValue($event['timezone'] ?? null) ?? 'America/Panama',
+        ];
+    }
+
+    private function stringValue(mixed $value): ?string
+    {
+        if (! is_scalar($value)) {
+            return null;
+        }
+
+        $value = trim((string) $value);
+
+        return $value === '' ? null : $value;
     }
 }
