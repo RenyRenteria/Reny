@@ -26,17 +26,17 @@ class AdminAuthRbacTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_admin_shell_uses_private_path_and_not_legacy_admin_path(): void
+    public function test_admin_shell_uses_default_admin_path_and_not_legacy_private_path(): void
     {
-        $privatePath = '/7YDX5h38a6Q2sfrsW2pRv9CoU59RA5YWD2R7K3AuMA';
+        $adminPath = '/admin';
 
-        $this->assertSame($privatePath, parse_url(route('admin.dashboard'), PHP_URL_PATH));
-        $this->assertSame($privatePath.'/login', parse_url(route('admin.login'), PHP_URL_PATH));
+        $this->assertSame($adminPath, parse_url(route('admin.dashboard'), PHP_URL_PATH));
+        $this->assertSame($adminPath.'/login', parse_url(route('admin.login'), PHP_URL_PATH));
 
-        $this->get($privatePath)
+        $this->get($adminPath)
             ->assertRedirect(route('admin.login'));
 
-        $this->get('/admin')
+        $this->get('/7YDX5h38a6Q2sfrsW2pRv9CoU59RA5YWD2R7K3AuMA')
             ->assertNotFound();
     }
 

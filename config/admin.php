@@ -1,6 +1,6 @@
 <?php
 
-$defaultAdminPath = '7YDX5h38a6Q2sfrsW2pRv9CoU59RA5YWD2R7K3AuMA';
+$defaultAdminPath = 'admin';
 $adminPath = trim(trim((string) env('ADMIN_PATH', $defaultAdminPath)), '/');
 $cmsEnabled = env('ADMIN_CMS_ENABLED');
 

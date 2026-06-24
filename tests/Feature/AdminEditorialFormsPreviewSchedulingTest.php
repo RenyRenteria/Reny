@@ -11,6 +11,8 @@ use App\Models\EditorialContent;
 use App\Models\MediaAsset;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class AdminEditorialFormsPreviewSchedulingTest extends TestCase
@@ -203,6 +205,58 @@ class AdminEditorialFormsPreviewSchedulingTest extends TestCase
             ->assertJsonValidationErrors(['audio_file', 'artwork']);
 
         $this->assertDatabaseCount('editorial_contents', 0);
+    }
+
+    public function test_legacy_draft_endpoint_uploads_song_audio_and_artwork_assets(): void
+    {
+        Storage::fake('public');
+
+        $editor = User::factory()->create(['role' => User::ROLE_EDITOR]);
+
+        $this->actingAsAdmin($editor);
+
+        $this->post(route('admin.editorial.drafts.store'), [
+            'type' => ContentType::Song->value,
+            'title' => 'Legacy uploaded single',
+            'summary' => 'Uploaded through the editorial draft endpoint.',
+            'visibility' => VisibilityAudience::Open->value,
+            'metadata' => [
+                'release_date_member_view' => '2026-07-01T10:00',
+                'release_date_open_view' => '2026-07-02T10:00',
+            ],
+            'audio_file' => UploadedFile::fake()->create('legacy-uploaded-single.mp3', 128, 'audio/mpeg'),
+            'artwork' => UploadedFile::fake()->image('legacy-uploaded-single.jpg')->size(256),
+        ], ['Accept' => 'application/json'])
+            ->assertOk()
+            ->assertJsonPath('type', ContentType::Song->value)
+            ->assertJsonPath('status', EditorialStatus::Draft->value);
+
+        $content = EditorialContent::query()->firstOrFail();
+        $audioAssetId = data_get($content->metadata, 'audio_asset_id');
+        $artworkAssetId = data_get($content->metadata, 'artwork_asset_id');
+
+        $this->assertDatabaseHas('media_assets', [
+            'id' => $audioAssetId,
+            'type' => MediaAssetType::Audio->value,
+            'title' => 'Legacy uploaded single audio',
+        ]);
+        $this->assertDatabaseHas('media_assets', [
+            'id' => $artworkAssetId,
+            'type' => MediaAssetType::Thumbnail->value,
+            'title' => 'Legacy uploaded single artwork',
+        ]);
+        $this->assertDatabaseHas('content_media_assets', [
+            'editorial_content_id' => $content->id,
+            'media_asset_id' => $artworkAssetId,
+            'role' => 'artwork',
+            'sort_order' => 0,
+        ]);
+        $this->assertDatabaseHas('content_media_assets', [
+            'editorial_content_id' => $content->id,
+            'media_asset_id' => $audioAssetId,
+            'role' => 'audio',
+            'sort_order' => 1,
+        ]);
     }
 
     private function readyAsset(string $type = MediaAssetType::Image->value): MediaAsset

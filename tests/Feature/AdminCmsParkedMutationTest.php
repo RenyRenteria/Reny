@@ -17,6 +17,35 @@ class AdminCmsParkedMutationTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_admin_content_media_and_editorial_get_routes_stay_parked_without_active_cms_ui(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $content = EditorialContent::factory()->create([
+            'title' => 'Hidden parked draft',
+            'status' => EditorialStatus::Draft->value,
+        ]);
+
+        $this->actingAsParkedAdmin($admin);
+
+        foreach ([
+            route('admin.content.index'),
+            route('admin.content.create'),
+            route('admin.content.edit', $content),
+            route('admin.content.preview', $content),
+            route('admin.media.index'),
+            route('admin.editorial.index'),
+            route('admin.editorial.edit', $content),
+            route('admin.editorial.preview', $content),
+        ] as $parkedRoute) {
+            $this->get($parkedRoute)
+                ->assertOk()
+                ->assertSee('Enter')
+                ->assertDontSee('Hidden parked draft')
+                ->assertDontSee('Crear contenido')
+                ->assertDontSee('Contenido de tu Sitio');
+        }
+    }
+
     public function test_admin_content_and_editorial_create_routes_stay_on_enter_without_creating_content(): void
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
