@@ -11,8 +11,10 @@ use App\Models\EditorialContent;
 use App\Models\MediaAsset;
 use App\Models\User;
 use App\Models\UserUnlock;
+use App\Services\PublicCmsContentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Tests\TestCase;
 
 class MusicFlowsTest extends TestCase
@@ -189,6 +191,13 @@ class MusicFlowsTest extends TestCase
             ->assertSee('No published playlists yet.');
     }
 
+    public function test_invalid_music_collection_section_still_throws_not_found(): void
+    {
+        $this->expectException(NotFoundHttpException::class);
+
+        app(PublicCmsContentService::class)->musicCollection(null, 'bad-section');
+    }
+
     public function test_music_route_renders_playlists_from_existing_tracks(): void
     {
         $single = $this->publishedMusic(ContentType::Song, 'Playlist Single', [
@@ -295,6 +304,19 @@ class MusicFlowsTest extends TestCase
             ->assertJsonPath('state', 'ready')
             ->assertJsonPath('audio_url', $singleAudio->publicUrl())
             ->assertJsonCount(2, 'queue')
+            ->assertJsonStructure([
+                'queue' => [[
+                    'id',
+                    'title',
+                    'audio_url',
+                    'image_url',
+                    'detail_url',
+                    'item_type',
+                    'state',
+                    'access_label',
+                    'message',
+                ]],
+            ])
             ->assertJsonPath('queue.0.title', 'Playable Playlist Single')
             ->assertJsonPath('queue.0.message', 'Playable Playlist Single')
             ->assertJsonPath('queue.0.access_label', '')
@@ -375,20 +397,29 @@ class MusicFlowsTest extends TestCase
         $this->getJson(route('music.play', $open))
             ->assertOk()
             ->assertJsonPath('state', 'ready')
+            ->assertJsonPath('access_state', 'ready')
             ->assertJsonPath('audio_url', 'https://audio.test/open.mp3')
             ->assertJsonPath('image_url', $open->mediaAssets->first()->publicUrl())
             ->assertJsonPath('message', 'Open Audio')
             ->assertJsonPath('access_label', '')
+            ->assertJsonPath('queue.0.id', (string) $open->id)
+            ->assertJsonPath('queue.0.detail_url', route('public.content.show', $open))
+            ->assertJsonPath('queue.0.item_type', 'single')
             ->assertJsonMissingExact(['message' => 'Playback is ready.'])
             ->assertJsonMissingExact(['access_label' => 'Ready to play']);
 
         $this->getJson(route('music.play', $missingAudio))
             ->assertStatus(422)
-            ->assertJsonPath('state', 'playback_error');
+            ->assertJsonPath('state', 'playback_error')
+            ->assertJsonPath('access_state', 'ready')
+            ->assertJsonPath('cta_label', 'Open details');
 
         $this->getJson(route('music.play', $member))
             ->assertStatus(401)
-            ->assertJsonPath('state', 'login_required');
+            ->assertJsonPath('state', 'login_required')
+            ->assertJsonPath('access_state', 'login_required')
+            ->assertJsonPath('cta_label', 'Sign in')
+            ->assertJsonPath('detail_url', route('public.content.show', $member));
 
         $this->getJson(route('music.play', $royal))
             ->assertStatus(401)
@@ -402,7 +433,9 @@ class MusicFlowsTest extends TestCase
         $this->actingAs($registered)
             ->getJson(route('music.play', $royal))
             ->assertForbidden()
-            ->assertJsonPath('state', 'royal_required');
+            ->assertJsonPath('state', 'royal_required')
+            ->assertJsonPath('access_state', 'royal_required')
+            ->assertJsonPath('cta_url', route('store'));
 
         $this->actingAs($royalUser)
             ->getJson(route('music.play', $royal))
