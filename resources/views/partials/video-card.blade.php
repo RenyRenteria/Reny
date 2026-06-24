@@ -2,7 +2,7 @@
     $youtubeId = $video['id'] ?? null;
     $title = $video['title'] ?? 'Untitled video';
     $meta = $video['meta'] ?? 'Video';
-    $safeTitle = e(strip_tags(html_entity_decode($title)));
+    $safeTitle = strip_tags($title);
     $externalUrl = $video['external_url'] ?? ($youtubeId ? "https://www.youtube.com/watch?v={$youtubeId}" : null);
     $playState = $video['play_state'] ?? ($youtubeId ? 'ready' : 'unavailable');
 @endphp

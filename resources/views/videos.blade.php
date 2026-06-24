@@ -252,7 +252,7 @@
                                 <div class="video-grid series-grid">
                                     @foreach ($videoGroups[$group] as $playlist)
                                         @php
-                                            $playlistTitle = e(strip_tags(html_entity_decode($playlist['title'])));
+                                            $playlistTitle = strip_tags($playlist['title']);
                                             $playlistUrl = $playlist['external_url'] ?? null;
                                         @endphp
                                         <article class="playlist-card" data-video-state="{{ $playlist['play_state'] }}">
