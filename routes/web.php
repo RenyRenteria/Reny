@@ -82,6 +82,9 @@ Route::prefix(config('admin.path', 'admin'))->name('admin.')->group(function () 
         Route::get('/site-editor/{page}', [SiteEditorController::class, 'show'])->middleware('admin.cms')->name('site-editor.show');
         Route::post('/site-editor/music/banner', [SiteEditorController::class, 'updateMusicBanner'])->middleware('admin.cms')->name('site-editor.music-banner.update');
         Route::post('/site-editor/store/storefront', [SiteEditorController::class, 'updateStorefront'])->middleware('admin.cms')->name('site-editor.storefront.update');
+
+        // These CMS read screens are intentionally parked until the full admin UI is released.
+        // Mutating routes below stay wired to real controllers and are gated by admin.cms.
         Route::get('/content', [AdminLoginController::class, 'create'])->name('content.index');
         Route::get('/content/create', [AdminLoginController::class, 'create'])->name('content.create');
         Route::post('/content', [EditorialContentController::class, 'store'])->middleware('admin.cms')->name('content.store');

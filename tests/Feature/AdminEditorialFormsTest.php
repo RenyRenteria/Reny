@@ -14,6 +14,8 @@ use App\Models\Taxonomy;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class AdminEditorialFormsTest extends TestCase
@@ -150,6 +152,59 @@ class AdminEditorialFormsTest extends TestCase
 
         $this->assertTrue($content->mediaAssets()->whereKey($asset)->exists());
         $this->assertTrue($content->taxonomies()->whereKey($taxonomy)->exists());
+    }
+
+    public function test_form_save_uploads_song_audio_and_artwork_assets(): void
+    {
+        Storage::fake('public');
+
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+
+        $this->actingAsAdmin($admin);
+
+        $this->post(route('admin.content.store'), [
+            'action' => 'draft',
+            'type' => ContentType::Song->value,
+            'title' => 'Uploaded single',
+            'summary' => 'Uploaded through the content form.',
+            'visibility' => VisibilityAudience::Open->value,
+            'metadata' => [
+                'release_date_member_view' => '2026-07-01T10:00',
+                'release_date_open_view' => '2026-07-02T10:00',
+            ],
+            'audio_file' => UploadedFile::fake()->create('uploaded-single.mp3', 128, 'audio/mpeg'),
+            'artwork' => UploadedFile::fake()->image('uploaded-single.jpg')->size(256),
+        ], ['Accept' => 'application/json'])
+            ->assertCreated()
+            ->assertJsonPath('type', ContentType::Song->value)
+            ->assertJsonPath('status', EditorialStatus::Draft->value);
+
+        $content = EditorialContent::query()->firstOrFail();
+        $audioAssetId = data_get($content->metadata, 'audio_asset_id');
+        $artworkAssetId = data_get($content->metadata, 'artwork_asset_id');
+
+        $this->assertDatabaseHas('media_assets', [
+            'id' => $audioAssetId,
+            'type' => MediaAssetType::Audio->value,
+            'title' => 'Uploaded single audio',
+        ]);
+        $this->assertDatabaseHas('media_assets', [
+            'id' => $artworkAssetId,
+            'type' => MediaAssetType::Thumbnail->value,
+            'title' => 'Uploaded single artwork',
+        ]);
+        $this->assertDatabaseHas('content_media_assets', [
+            'editorial_content_id' => $content->id,
+            'media_asset_id' => $artworkAssetId,
+            'role' => 'artwork',
+            'sort_order' => 0,
+        ]);
+        $this->assertDatabaseHas('content_media_assets', [
+            'editorial_content_id' => $content->id,
+            'media_asset_id' => $audioAssetId,
+            'role' => 'audio',
+            'sort_order' => 1,
+        ]);
     }
 
     public function test_type_specific_validation_rejects_incomplete_poll_payload(): void

@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\ContentType;
-use App\Enums\MediaAssetType;
 use App\Enums\VisibilityAudience;
 use App\Http\Controllers\Controller;
 use App\Models\EditorialContent;
+use App\Services\Admin\MusicContentUploadService;
 use App\Services\EditorialWorkflowService;
 use App\Services\Media\MediaLibraryService;
 use App\Services\Media\MediaUploadException;
@@ -15,7 +15,6 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -25,7 +24,10 @@ class EditorialActionController extends Controller
 
     private const STORAGE_TIMEZONE = 'UTC';
 
-    public function __construct(private readonly EditorialContentForms $forms) {}
+    public function __construct(
+        private readonly EditorialContentForms $forms,
+        private readonly MusicContentUploadService $musicContent
+    ) {}
 
     public function saveDraft(
         Request $request,
@@ -35,7 +37,7 @@ class EditorialActionController extends Controller
         $payload = $this->validatedPayload($request);
 
         try {
-            $payload = $this->payloadWithMusicUploads($request, $library, $payload);
+            $payload = $this->musicContent->payloadWithUploads($request, $library, $payload);
         } catch (MediaUploadException $exception) {
             return $this->mediaUploadFailure($request, $exception);
         }
@@ -63,7 +65,7 @@ class EditorialActionController extends Controller
         $payload = $this->validatedPayload($request, true, false, $content);
 
         try {
-            $payload = $this->payloadWithMusicUploads($request, $library, $payload, $content);
+            $payload = $this->musicContent->payloadWithUploads($request, $library, $payload, $content);
         } catch (MediaUploadException $exception) {
             return $this->mediaUploadFailure($request, $exception);
         }
@@ -92,7 +94,7 @@ class EditorialActionController extends Controller
         $payload = $this->validatedPayload($request, true);
 
         try {
-            $payload = $this->payloadWithMusicUploads($request, $library, $payload);
+            $payload = $this->musicContent->payloadWithUploads($request, $library, $payload);
         } catch (MediaUploadException $exception) {
             return $this->mediaUploadFailure($request, $exception);
         }
@@ -123,7 +125,7 @@ class EditorialActionController extends Controller
         $releaseWindows = $payload['release_windows'] ?? [];
 
         try {
-            $payload = $this->payloadWithMusicUploads($request, $library, $payload);
+            $payload = $this->musicContent->payloadWithUploads($request, $library, $payload);
         } catch (MediaUploadException $exception) {
             return $this->mediaUploadFailure($request, $exception);
         }
@@ -193,9 +195,9 @@ class EditorialActionController extends Controller
             ];
         }
 
-        $payload = $this->normalizePayload($request->validate($rules));
+        $payload = $this->normalizePayload($request->validate($rules), $type);
 
-        $this->validateMusicPayload($request, $payload, $type);
+        $this->musicContent->validate($request, $payload, $type);
 
         if (($payload['type'] ?? null) === ContentType::Poll->value && count($payload['metadata']['options'] ?? []) < 2) {
             throw ValidationException::withMessages([
@@ -203,7 +205,7 @@ class EditorialActionController extends Controller
             ]);
         }
 
-        return $this->payloadWithMusicReleaseWindows($payload, $type);
+        return $this->musicContent->payloadWithReleaseWindows($payload, $type);
     }
 
     private function contentType(Request $request, ?EditorialContent $content = null): ?ContentType
@@ -222,43 +224,11 @@ class EditorialActionController extends Controller
      */
     private function validationRulesFor(ContentType $type): array
     {
-        $assetRule = ['nullable', 'integer', Rule::exists('media_assets', 'id')];
+        if ($this->musicContent->isMusicType($type)) {
+            return $this->musicContent->rulesFor($type, requireBaseFields: true);
+        }
 
-        return match ($type) {
-            ContentType::Song => [
-                'type' => ['required', Rule::in(ContentType::values())],
-                'title' => ['required', 'string', 'max:160'],
-                'metadata.audio_asset_id' => $assetRule,
-                'metadata.artwork_asset_id' => $assetRule,
-                'metadata.release_date_member_view' => ['required', 'date'],
-                'metadata.release_date_open_view' => ['required', 'date', 'after_or_equal:metadata.release_date_member_view'],
-                'audio_file' => ['nullable', 'file', 'mimes:mp3,wav', 'max:102400'],
-                'artwork' => ['nullable', 'file', 'mimes:jpg', 'max:20480'],
-            ],
-            ContentType::MusicalAlbum => [
-                'type' => ['required', Rule::in(ContentType::values())],
-                'title' => ['required', 'string', 'max:160'],
-                'metadata.album_artwork_asset_id' => $assetRule,
-                'metadata.release_date_member_view' => ['required', 'date'],
-                'metadata.release_date_open_view' => ['required', 'date', 'after_or_equal:metadata.release_date_member_view'],
-                'metadata.tracks' => ['required', 'array', 'min:1'],
-                'metadata.tracks.*.track_name' => ['required', 'string', 'max:160'],
-                'metadata.tracks.*.track_audio_asset_id' => $assetRule,
-                'metadata.tracks.*.release_date_member_view' => ['nullable', 'date'],
-                'album_artwork' => ['nullable', 'file', 'mimes:jpg', 'max:20480'],
-                'track_audio_files' => ['nullable', 'array'],
-                'track_audio_files.*' => ['nullable', 'file', 'mimes:mp3,wav', 'max:102400'],
-            ],
-            ContentType::MusicPlaylist => [
-                'type' => ['required', Rule::in(ContentType::values())],
-                'title' => ['required', 'string', 'max:160'],
-                'metadata.playlist_cover_asset_id' => $assetRule,
-                'metadata.tracks' => ['required', 'array', 'min:1'],
-                'metadata.tracks.*' => ['required', 'string', 'max:80'],
-                'playlist_cover' => ['nullable', 'file', 'mimes:jpg', 'max:20480', 'dimensions:ratio=1/1'],
-            ],
-            default => $this->forms->validationRules($type),
-        };
+        return $this->forms->validationRules($type);
     }
 
     private function responsePayload(EditorialContent $content, string $message): array
@@ -275,14 +245,14 @@ class EditorialActionController extends Controller
         ];
     }
 
-    private function normalizePayload(array $payload): array
+    private function normalizePayload(array $payload, ContentType|string|null $type = null): array
     {
         if (isset($payload['metadata'])) {
             $payload['metadata'] = $this->cleanMetadata($payload['metadata']);
-            $payload['metadata'] = $this->approvedMetadataForType(
-                $payload['metadata'],
-                (string) ($payload['type'] ?? '')
-            );
+
+            if ($this->musicContent->isMusicType($type)) {
+                $payload['metadata'] = $this->musicContent->normalizeMetadataForType($payload['metadata'], $type);
+            }
         }
 
         if (array_key_exists('scheduled_at', $payload) && $payload['scheduled_at'] !== null) {
@@ -342,271 +312,6 @@ class EditorialActionController extends Controller
             ->all();
     }
 
-    private function validateMusicPayload(Request $request, array $payload, ?ContentType $type): void
-    {
-        $errors = [];
-
-        if ($type === ContentType::Song) {
-            if (blank(data_get($payload, 'metadata.audio_asset_id')) && ! $this->uploadedFile($request, 'audio_file')) {
-                $errors['audio_file'] = 'Audio file is required for songs.';
-            }
-
-            if (blank(data_get($payload, 'metadata.artwork_asset_id')) && ! $this->uploadedFile($request, 'artwork')) {
-                $errors['artwork'] = 'Artwork is required for songs.';
-            }
-        }
-
-        if ($type === ContentType::MusicalAlbum) {
-            if (blank(data_get($payload, 'metadata.album_artwork_asset_id')) && ! $this->uploadedFile($request, 'album_artwork')) {
-                $errors['album_artwork'] = 'Album artwork is required.';
-            }
-
-            $albumRelease = data_get($payload, 'metadata.release_date_member_view');
-
-            foreach (data_get($payload, 'metadata.tracks', []) as $index => $track) {
-                if (blank(data_get($track, 'track_audio_asset_id')) && ! $this->uploadedFile($request, "track_audio_files.{$index}")) {
-                    $errors["track_audio_files.{$index}"] = 'Track audio file is required.';
-                }
-
-                $trackRelease = data_get($track, 'release_date_member_view');
-
-                if (filled($albumRelease) && filled($trackRelease)) {
-                    try {
-                        if (CarbonImmutable::parse($trackRelease)->gt(CarbonImmutable::parse($albumRelease))) {
-                            $errors["metadata.tracks.{$index}.release_date_member_view"] = 'Track release date must be before or equal to the album member release date.';
-                        }
-                    } catch (\Throwable) {
-                        //
-                    }
-                }
-            }
-        }
-
-        if ($type === ContentType::MusicPlaylist) {
-            if (blank(data_get($payload, 'metadata.playlist_cover_asset_id')) && ! $this->uploadedFile($request, 'playlist_cover')) {
-                $errors['playlist_cover'] = 'Playlist cover is required.';
-            }
-
-            foreach (data_get($payload, 'metadata.tracks', []) as $index => $reference) {
-                if (! is_string($reference) || ! $this->playlistTrackReferenceExists($reference)) {
-                    $errors["metadata.tracks.{$index}"] = 'Select an existing single or album track.';
-                }
-            }
-        }
-
-        if ($errors !== []) {
-            throw ValidationException::withMessages($errors);
-        }
-    }
-
-    private function payloadWithMusicReleaseWindows(array $payload, ?ContentType $type): array
-    {
-        if (! in_array($type, [ContentType::Song, ContentType::MusicalAlbum], true)) {
-            return $payload;
-        }
-
-        $memberRelease = data_get($payload, 'metadata.release_date_member_view');
-        $openRelease = data_get($payload, 'metadata.release_date_open_view');
-
-        if (blank($memberRelease) || blank($openRelease)) {
-            return $payload;
-        }
-
-        $payload['visibility'] = VisibilityAudience::Open->value;
-        $payload['release_windows'] = [
-            [
-                'audience' => VisibilityAudience::Member->value,
-                'starts_at' => $memberRelease,
-            ],
-            [
-                'audience' => VisibilityAudience::Open->value,
-                'starts_at' => $openRelease,
-            ],
-        ];
-
-        return $payload;
-    }
-
-    private function payloadWithMusicUploads(
-        Request $request,
-        MediaLibraryService $library,
-        array $payload,
-        ?EditorialContent $content = null
-    ): array {
-        $type = $payload['type']
-            ?? ($content?->type instanceof ContentType ? $content->type->value : $content?->type);
-
-        return match ($type) {
-            ContentType::Song->value => $this->songPayloadWithUploads($request, $library, $payload),
-            ContentType::MusicalAlbum->value => $this->albumPayloadWithUploads($request, $library, $payload),
-            ContentType::MusicPlaylist->value => $this->playlistPayloadWithUploads($request, $library, $payload),
-            default => $payload,
-        };
-    }
-
-    private function songPayloadWithUploads(Request $request, MediaLibraryService $library, array $payload): array
-    {
-        $metadata = $payload['metadata'] ?? [];
-
-        if ($audio = $this->uploadedFile($request, 'audio_file')) {
-            $asset = $library->storeUploads($request->user(), [
-                'type' => MediaAssetType::Audio->value,
-                'title' => $payload['title'].' audio',
-                'is_public' => true,
-            ], [$audio])->first();
-
-            $metadata['audio_asset_id'] = $asset?->id;
-        }
-
-        if ($artwork = $this->uploadedFile($request, 'artwork')) {
-            $asset = $library->storeUploads($request->user(), [
-                'type' => MediaAssetType::Thumbnail->value,
-                'title' => $payload['title'].' artwork',
-                'alt_text' => $payload['title'].' artwork',
-                'is_public' => true,
-            ], [$artwork])->first();
-
-            $metadata['artwork_asset_id'] = $asset?->id;
-        }
-
-        $payload['metadata'] = $this->approvedMetadataForType($this->cleanMetadata($metadata), ContentType::Song->value);
-        $payload['media_assets'] = $this->musicMediaAssets([
-            ['id' => $payload['metadata']['artwork_asset_id'] ?? null, 'role' => 'artwork'],
-            ['id' => $payload['metadata']['audio_asset_id'] ?? null, 'role' => 'audio'],
-        ]);
-
-        return $payload;
-    }
-
-    private function albumPayloadWithUploads(Request $request, MediaLibraryService $library, array $payload): array
-    {
-        $metadata = $payload['metadata'] ?? [];
-
-        if ($artwork = $this->uploadedFile($request, 'album_artwork')) {
-            $asset = $library->storeUploads($request->user(), [
-                'type' => MediaAssetType::Thumbnail->value,
-                'title' => $payload['title'].' album artwork',
-                'alt_text' => $payload['title'].' album artwork',
-                'is_public' => true,
-            ], [$artwork])->first();
-
-            $metadata['album_artwork_asset_id'] = $asset?->id;
-        }
-
-        $metadata['tracks'] = collect($metadata['tracks'] ?? [])
-            ->map(function (array $track, int $index) use ($request, $library, $payload): array {
-                if ($audio = $this->uploadedFile($request, "track_audio_files.{$index}")) {
-                    $asset = $library->storeUploads($request->user(), [
-                        'type' => MediaAssetType::Audio->value,
-                        'title' => $payload['title'].' - '.($track['track_name'] ?? 'track').' audio',
-                        'is_public' => true,
-                    ], [$audio])->first();
-
-                    $track['track_audio_asset_id'] = $asset?->id;
-                }
-
-                return $track;
-            })
-            ->values()
-            ->all();
-
-        $payload['metadata'] = $this->approvedMetadataForType($this->cleanMetadata($metadata), ContentType::MusicalAlbum->value);
-        $payload['media_assets'] = $this->musicMediaAssets([
-            ['id' => $payload['metadata']['album_artwork_asset_id'] ?? null, 'role' => 'artwork'],
-            ...collect($payload['metadata']['tracks'] ?? [])
-                ->map(fn (array $track, int $index): array => [
-                    'id' => $track['track_audio_asset_id'] ?? null,
-                    'role' => 'track_audio',
-                    'metadata' => ['track_index' => $index],
-                ])
-                ->all(),
-        ]);
-
-        return $payload;
-    }
-
-    private function playlistPayloadWithUploads(Request $request, MediaLibraryService $library, array $payload): array
-    {
-        $metadata = $payload['metadata'] ?? [];
-
-        if ($cover = $this->uploadedFile($request, 'playlist_cover')) {
-            $asset = $library->storeUploads($request->user(), [
-                'type' => MediaAssetType::Thumbnail->value,
-                'title' => $payload['title'].' playlist cover',
-                'alt_text' => $payload['title'].' playlist cover',
-                'is_public' => true,
-            ], [$cover])->first();
-
-            $metadata['playlist_cover_asset_id'] = $asset?->id;
-        }
-
-        $payload['metadata'] = $this->approvedMetadataForType($this->cleanMetadata($metadata), ContentType::MusicPlaylist->value);
-        $payload['media_assets'] = $this->musicMediaAssets([
-            ['id' => $payload['metadata']['playlist_cover_asset_id'] ?? null, 'role' => 'cover'],
-        ]);
-
-        return $payload;
-    }
-
-    /**
-     * @param  array<int, array{id:mixed,role:string,metadata?:array<string,mixed>}>  $assets
-     * @return array<int, array{id:int,role:string,sort_order:int,metadata?:array<string,mixed>}>
-     */
-    private function musicMediaAssets(array $assets): array
-    {
-        return collect($assets)
-            ->filter(fn (array $asset): bool => filled($asset['id'] ?? null))
-            ->values()
-            ->map(fn (array $asset, int $index): array => [
-                'id' => (int) $asset['id'],
-                'role' => $asset['role'],
-                'sort_order' => $index,
-                ...(isset($asset['metadata']) ? ['metadata' => $asset['metadata']] : []),
-            ])
-            ->all();
-    }
-
-    private function uploadedFile(Request $request, string $key): ?UploadedFile
-    {
-        $file = $request->file($key);
-
-        return $file instanceof UploadedFile ? $file : null;
-    }
-
-    private function playlistTrackReferenceExists(string $reference): bool
-    {
-        $parts = explode(':', $reference);
-
-        if (count($parts) < 2) {
-            return false;
-        }
-
-        if ($parts[0] === 'song') {
-            return EditorialContent::query()
-                ->whereKey((int) $parts[1])
-                ->where('type', ContentType::Song->value)
-                ->exists();
-        }
-
-        if ($parts[0] !== 'album' || count($parts) !== 3) {
-            return false;
-        }
-
-        $album = EditorialContent::query()
-            ->whereKey((int) $parts[1])
-            ->where('type', ContentType::MusicalAlbum->value)
-            ->first();
-
-        if (! $album) {
-            return false;
-        }
-
-        $index = (int) $parts[2];
-        $tracks = $album->metadata['tracks'] ?? [];
-
-        return is_array($tracks) && filled(data_get($tracks, "{$index}.track_name"));
-    }
-
     private function mediaUploadFailure(Request $request, MediaUploadException $exception): JsonResponse|RedirectResponse
     {
         if ($request->expectsJson()) {
@@ -614,36 +319,5 @@ class EditorialActionController extends Controller
         }
 
         return back()->withErrors(['media' => $exception->getMessage()])->withInput();
-    }
-
-    /**
-     * @param  array<string, mixed>  $metadata
-     * @return array<string, mixed>
-     */
-    private function approvedMetadataForType(array $metadata, string $type): array
-    {
-        return match ($type) {
-            ContentType::Song->value => collect($metadata)
-                ->only(['audio_asset_id', 'artwork_asset_id', 'release_date_member_view', 'release_date_open_view'])
-                ->all(),
-            ContentType::MusicalAlbum->value => [
-                ...collect($metadata)
-                    ->only(['album_artwork_asset_id', 'release_date_member_view', 'release_date_open_view'])
-                    ->all(),
-                'tracks' => collect($metadata['tracks'] ?? [])
-                    ->map(fn (array $track): array => collect($track)
-                        ->only(['track_name', 'track_audio_asset_id', 'release_date_member_view'])
-                        ->all())
-                    ->values()
-                    ->all(),
-            ],
-            ContentType::MusicPlaylist->value => [
-                ...collect($metadata)
-                    ->only(['playlist_cover_asset_id'])
-                    ->all(),
-                'tracks' => collect($metadata['tracks'] ?? [])->filter()->values()->all(),
-            ],
-            default => $metadata,
-        };
     }
 }
