@@ -3,12 +3,12 @@
 Run the fixtures with:
 
 ```bash
-php artisan db:seed --class=QaAccountStateSeeder
+RENY_QA_PASSWORD="set-a-local-secret" php artisan db:seed --class=QaAccountStateSeeder
 ```
 
 In production-like environments the seeder exits unless `RENY_ALLOW_QA_FIXTURES=true` is set.
 
-All QA accounts use password `RenyQA!2026`.
+The seeder fails unless `RENY_QA_PASSWORD` is set. Use a fresh local/shared QA password for each environment.
 
 ```
 State           Email

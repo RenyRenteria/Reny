@@ -376,7 +376,6 @@ class EditorialActionController extends Controller
                             $errors["metadata.tracks.{$index}.release_date_member_view"] = 'Track release date must be before or equal to the album member release date.';
                         }
                     } catch (\Throwable) {
-                        //
                     }
                 }
             }
