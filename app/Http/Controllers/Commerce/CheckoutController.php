@@ -22,6 +22,10 @@ class CheckoutController extends Controller
 {
     private const SETTLEMENT_CURRENCY = 'USD';
 
+    private const CHECKOUT_SESSION_TOKEN_KEY = 'checkout.public_token';
+
+    private const GUEST_CUSTOMER_IDS_SESSION_KEY = 'checkout.guest_customer_ids';
+
     public function __construct(private readonly ProductCatalog $products) {}
 
     public function store(
@@ -33,11 +37,12 @@ class CheckoutController extends Controller
         $validated = $this->validateCheckout($request, requirePaypalOrder: true);
 
         $currency = $this->currency($validated);
-        $user = Auth::user() ?: $royalPass->findOrCreateCustomer($validated['identifier']);
-        Auth::login($user);
+        $authenticatedUser = Auth::user();
+        $checkoutTokenHash = $this->activeCheckoutTokenHash($request);
 
-        $pendingOrders = $this->pendingPayPalOrders($validated['paypal_order_id'], $user);
+        $pendingOrders = $this->pendingPayPalOrders($validated['paypal_order_id'], $authenticatedUser, $checkoutTokenHash);
         $this->ensurePendingPayPalOrders($validated['paypal_order_id'], $pendingOrders);
+        $user = $this->pendingOrdersUser($pendingOrders);
 
         $capture = $payPal->captureOrder(
             $validated['paypal_order_id'],
@@ -54,8 +59,8 @@ class CheckoutController extends Controller
         $this->ensureUnusedPayPalCapture($capture, $pendingOrders);
 
         try {
-            $orders = DB::transaction(function () use ($capture, $purchaseSync, $royalPass, $user, $validated) {
-                $orders = $this->pendingPayPalOrders($validated['paypal_order_id'], $user, lock: true);
+            $orders = DB::transaction(function () use ($authenticatedUser, $capture, $checkoutTokenHash, $purchaseSync, $royalPass, $user, $validated) {
+                $orders = $this->pendingPayPalOrders($validated['paypal_order_id'], $authenticatedUser, $checkoutTokenHash, lock: true);
                 $this->ensurePendingPayPalOrders($validated['paypal_order_id'], $orders);
                 $this->ensureUnusedPayPalCapture($capture, $orders);
 
@@ -83,7 +88,10 @@ class CheckoutController extends Controller
             throw $exception;
         }
 
-        $request->session()->regenerate();
+        if (! $authenticatedUser) {
+            Auth::login($user);
+            $request->session()->regenerate();
+        }
 
         return response()->json([
             'status' => 'completed',
@@ -98,13 +106,13 @@ class CheckoutController extends Controller
     {
         $validated = $this->validateCheckout($request, requireCustomerDetails: true);
         $currency = $this->currency($validated);
-        $user = Auth::user() ?: $royalPass->findOrCreateCustomer($validated['identifier']);
-        Auth::login($user);
+        $user = $this->resolveCheckoutCustomer($request, $royalPass, $validated['identifier']);
+        $checkoutTokenHash = $this->checkoutTokenHash($request);
         $products = $this->resolveProducts($validated['product_keys'], $user);
 
         $pendingReference = 'PENDING-'.Str::upper(Str::random(20));
-        $orders = DB::transaction(function () use ($currency, $pendingReference, $products, $user, $validated) {
-            return $products->map(function (array $product, int $index) use ($currency, $pendingReference, $user, $validated) {
+        $orders = DB::transaction(function () use ($checkoutTokenHash, $currency, $pendingReference, $products, $user, $validated) {
+            return $products->map(function (array $product, int $index) use ($checkoutTokenHash, $currency, $pendingReference, $user, $validated) {
                 return Order::create([
                     'user_id' => $user->id,
                     'provider' => 'paypal',
@@ -114,7 +122,7 @@ class CheckoutController extends Controller
                     'currency' => $currency,
                     'status' => 'pending',
                     'grants_royal_month' => true,
-                    'metadata' => $this->orderMetadata($product, $validated),
+                    'metadata' => $this->orderMetadata($product, $validated, $checkoutTokenHash),
                 ]);
             });
         });
@@ -153,8 +161,6 @@ class CheckoutController extends Controller
             throw $exception;
         }
 
-        $request->session()->regenerate();
-
         return response()->json([
             'status' => 'created',
             'paypal_order_id' => $order['order_id'],
@@ -169,19 +175,15 @@ class CheckoutController extends Controller
         ]);
 
         $user = Auth::user();
+        $checkoutTokenHash = $this->activeCheckoutTokenHash($request);
 
-        if (! $user) {
-            throw ValidationException::withMessages([
-                'paypal_order_id' => 'Create a PayPal order before canceling checkout.',
-            ]);
-        }
+        $pendingOrders = $this->pendingPayPalOrders($validated['paypal_order_id'], $user, $checkoutTokenHash);
+        $this->ensurePendingPayPalOrders($validated['paypal_order_id'], $pendingOrders);
 
         $updated = Order::query()
-            ->where('provider', 'paypal')
-            ->where('user_id', $user->id)
+            ->whereKey($pendingOrders->pluck('id'))
             ->where('status', 'pending')
             ->whereNull('provider_capture_id')
-            ->where('provider_order_id', 'like', "{$validated['paypal_order_id']}-%")
             ->update([
                 'status' => 'cancelled',
                 'updated_at' => now(),
@@ -207,12 +209,12 @@ class CheckoutController extends Controller
 
         $this->ensureUnusedLocalReference($reference);
 
-        $user = Auth::user() ?: $royalPass->findOrCreateCustomer($validated['identifier']);
-        Auth::login($user);
+        $user = $this->resolveCheckoutCustomer($request, $royalPass, $validated['identifier']);
+        $checkoutTokenHash = $this->checkoutTokenHash($request);
         $products = $this->resolveProducts($validated['product_keys'], $user);
 
-        $orders = DB::transaction(function () use ($currency, $products, $reference, $royalPass, $user, $validated) {
-            return $products->map(function (array $product, int $index) use ($currency, $reference, $royalPass, $user, $validated) {
+        $orders = DB::transaction(function () use ($checkoutTokenHash, $currency, $products, $reference, $royalPass, $user, $validated) {
+            return $products->map(function (array $product, int $index) use ($checkoutTokenHash, $currency, $reference, $royalPass, $user, $validated) {
                 $providerOrderId = $this->providerOrderId("LOCAL-{$reference}", $product['key'], $index);
                 $order = Order::create([
                     'user_id' => $user->id,
@@ -223,7 +225,7 @@ class CheckoutController extends Controller
                     'currency' => $currency,
                     'status' => 'pending',
                     'grants_royal_month' => false,
-                    'metadata' => $this->orderMetadata($product, $validated),
+                    'metadata' => $this->orderMetadata($product, $validated, $checkoutTokenHash),
                 ]);
 
                 $royalPass->log($user, 'purchase_pending', 'order', $providerOrderId, [
@@ -236,14 +238,17 @@ class CheckoutController extends Controller
             });
         });
 
-        $request->session()->regenerate();
-
-        return response()->json([
+        $payload = [
             'status' => 'pending',
             'message' => 'Local payment reference received. Access will update after manual confirmation.',
             'order_ids' => $orders->pluck('provider_order_id')->values(),
-            'account_url' => route('account.show'),
-        ]);
+        ];
+
+        if (Auth::check()) {
+            $payload['account_url'] = route('account.show');
+        }
+
+        return response()->json($payload);
     }
 
     /**
@@ -293,11 +298,17 @@ class CheckoutController extends Controller
      * @param  array<string, mixed>  $validated
      * @return array<string, mixed>
      */
-    private function orderMetadata(array $product, array $validated): array
+    private function orderMetadata(array $product, array $validated, ?string $checkoutTokenHash = null): array
     {
         $metadata = [
             'product' => $this->products->orderSnapshot($product),
         ];
+
+        if ($checkoutTokenHash) {
+            $metadata['checkout'] = [
+                'session_token_hash' => $checkoutTokenHash,
+            ];
+        }
 
         $customer = array_filter([
             'name' => $validated['customer_name'] ?? null,
@@ -379,11 +390,14 @@ class CheckoutController extends Controller
     /**
      * @return Collection<int, Order>
      */
-    private function pendingPayPalOrders(string $paypalOrderId, User $user, bool $lock = false): Collection
-    {
+    private function pendingPayPalOrders(
+        string $paypalOrderId,
+        ?User $user = null,
+        ?string $checkoutTokenHash = null,
+        bool $lock = false,
+    ): Collection {
         $query = Order::query()
             ->where('provider', 'paypal')
-            ->where('user_id', $user->id)
             ->where('status', 'pending')
             ->where('provider_order_id', 'like', "{$paypalOrderId}-%")
             ->orderBy('id');
@@ -392,7 +406,125 @@ class CheckoutController extends Controller
             $query->lockForUpdate();
         }
 
-        return $query->get();
+        $orders = $query->get();
+
+        if (! $checkoutTokenHash) {
+            return collect();
+        }
+
+        return $orders
+            ->filter(function (Order $order) use ($checkoutTokenHash, $user): bool {
+                if ($user && $order->user_id !== $user->id) {
+                    return false;
+                }
+
+                return hash_equals(
+                    $checkoutTokenHash,
+                    (string) data_get($order->metadata, 'checkout.session_token_hash', ''),
+                );
+            })
+            ->values();
+    }
+
+    private function pendingOrdersUser(Collection $orders): User
+    {
+        $userIds = $orders
+            ->pluck('user_id')
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($userIds->count() !== 1) {
+            throw ValidationException::withMessages([
+                'paypal_order_id' => 'This checkout is missing a valid customer account.',
+            ]);
+        }
+
+        $user = User::query()->find($userIds->first());
+
+        if (! $user) {
+            throw ValidationException::withMessages([
+                'paypal_order_id' => 'This checkout is missing a valid customer account.',
+            ]);
+        }
+
+        return $user;
+    }
+
+    private function resolveCheckoutCustomer(Request $request, RoyalPassService $royalPass, string $identifier): User
+    {
+        $authenticatedUser = Auth::user();
+
+        if ($authenticatedUser) {
+            return $authenticatedUser;
+        }
+
+        $existingCustomer = $royalPass->findCustomer($identifier);
+
+        if ($existingCustomer) {
+            if ($this->sessionOwnsGuestCustomer($request, $existingCustomer)) {
+                return $existingCustomer;
+            }
+
+            throw ValidationException::withMessages([
+                'identifier' => 'Log in to checkout with this email or phone.',
+            ]);
+        }
+
+        $user = $royalPass->createCustomer($identifier);
+        $this->rememberGuestCustomer($request, $user);
+
+        return $user;
+    }
+
+    private function checkoutTokenHash(Request $request): string
+    {
+        $token = $request->session()->get(self::CHECKOUT_SESSION_TOKEN_KEY);
+
+        if (! is_string($token) || $token === '') {
+            $token = Str::random(40);
+            $request->session()->put(self::CHECKOUT_SESSION_TOKEN_KEY, $token);
+        }
+
+        return hash('sha256', $token);
+    }
+
+    private function activeCheckoutTokenHash(Request $request): ?string
+    {
+        $token = $request->session()->get(self::CHECKOUT_SESSION_TOKEN_KEY);
+
+        if (! is_string($token) || $token === '') {
+            return null;
+        }
+
+        return hash('sha256', $token);
+    }
+
+    private function rememberGuestCustomer(Request $request, User $user): void
+    {
+        $customerIds = $request->session()->get(self::GUEST_CUSTOMER_IDS_SESSION_KEY, []);
+
+        if (! is_array($customerIds)) {
+            $customerIds = [];
+        }
+
+        $customerIds[] = $user->id;
+
+        $request->session()->put(
+            self::GUEST_CUSTOMER_IDS_SESSION_KEY,
+            collect($customerIds)->map(fn (mixed $id): int => (int) $id)->unique()->values()->all(),
+        );
+    }
+
+    private function sessionOwnsGuestCustomer(Request $request, User $user): bool
+    {
+        $customerIds = $request->session()->get(self::GUEST_CUSTOMER_IDS_SESSION_KEY, []);
+
+        if (! is_array($customerIds)) {
+            return false;
+        }
+
+        return in_array($user->id, collect($customerIds)->map(fn (mixed $id): int => (int) $id)->all(), true);
     }
 
     private function isValidIdentifier(string $value): bool

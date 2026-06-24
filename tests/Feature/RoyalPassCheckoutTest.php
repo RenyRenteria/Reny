@@ -9,10 +9,12 @@ use App\Models\Order;
 use App\Models\Ticket;
 use App\Models\User;
 use App\Models\UserUnlock;
+use App\Services\RoyalPassService;
 use App\Services\UserHubPurchaseSync;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 class RoyalPassCheckoutTest extends TestCase
@@ -144,6 +146,125 @@ class RoyalPassCheckoutTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function test_public_paypal_order_creation_requires_login_for_existing_email(): void
+    {
+        User::factory()->create([
+            'email' => 'existing@renyrenteria.com',
+        ]);
+        Http::fake();
+
+        $this->postJson('/checkout/paypal/orders', [
+            'identifier' => 'existing@renyrenteria.com',
+            'customer_name' => 'Existing Fan',
+            'customer_email' => 'existing@renyrenteria.com',
+            'customer_phone' => '+50760000006',
+            'customer_country' => 'Panama',
+            'product_keys' => ['deluxe'],
+            'currency' => 'USD',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('identifier');
+
+        $this->assertGuest();
+        $this->assertDatabaseCount('orders', 0);
+        Http::assertNothingSent();
+    }
+
+    public function test_public_paypal_order_creation_requires_login_for_existing_phone(): void
+    {
+        User::factory()->create([
+            'phone' => '50760000009',
+        ]);
+        Http::fake();
+
+        $this->postJson('/checkout/paypal/orders', [
+            'identifier' => '+507 6000-0009',
+            'customer_name' => 'Existing Phone Fan',
+            'customer_email' => 'existing-phone@renyrenteria.com',
+            'customer_phone' => '+50760000009',
+            'customer_country' => 'Panama',
+            'product_keys' => ['deluxe'],
+            'currency' => 'USD',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('identifier');
+
+        $this->assertGuest();
+        $this->assertDatabaseCount('orders', 0);
+        Http::assertNothingSent();
+    }
+
+    public function test_public_paypal_order_creation_does_not_authenticate_guest_customer(): void
+    {
+        $this->fakeCreatedOrder('PAYPAL-GUEST-NO-AUTH');
+
+        $this->postJson('/checkout/paypal/orders', [
+            'identifier' => 'guest-no-auth@renyrenteria.com',
+            'customer_name' => 'Guest Fan',
+            'customer_email' => 'guest-no-auth@renyrenteria.com',
+            'customer_phone' => '+50760000007',
+            'customer_country' => 'Panama',
+            'product_keys' => ['deluxe'],
+            'currency' => 'USD',
+        ])
+            ->assertOk()
+            ->assertJsonPath('status', 'created')
+            ->assertJsonPath('paypal_order_id', 'PAYPAL-GUEST-NO-AUTH');
+
+        $this->assertGuest();
+        $this->assertDatabaseHas('users', [
+            'email' => 'guest-no-auth@renyrenteria.com',
+        ]);
+    }
+
+    public function test_authenticated_checkout_attaches_purchase_to_logged_in_user(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'buyer@renyrenteria.com',
+            'phone' => '50761111111',
+        ]);
+        $otherUser = User::factory()->create([
+            'email' => 'other@renyrenteria.com',
+            'phone' => '50762222222',
+        ]);
+
+        $this->actingAs($user);
+        $this->fakeCreatedOrder('PAYPAL-AUTH-OWNER');
+
+        $this->postJson('/checkout/paypal/orders', [
+            'identifier' => $otherUser->email,
+            'customer_name' => 'Authenticated Buyer',
+            'customer_email' => $otherUser->email,
+            'customer_phone' => '+50762222222',
+            'customer_country' => 'Panama',
+            'product_keys' => ['deluxe'],
+            'currency' => 'USD',
+        ])
+            ->assertOk()
+            ->assertJsonPath('paypal_order_id', 'PAYPAL-AUTH-OWNER');
+
+        $this->fakeSuccessfulCapture('PAYPAL-AUTH-OWNER', '24.00', 'CAPTURE-AUTH-OWNER');
+
+        $this->postJson('/checkout/paypal', [
+            'identifier' => $otherUser->email,
+            'product_keys' => ['deluxe'],
+            'currency' => 'USD',
+            'paypal_order_id' => 'PAYPAL-AUTH-OWNER',
+        ])->assertOk();
+
+        $this->assertAuthenticatedAs($user);
+        $this->assertDatabaseHas('orders', [
+            'user_id' => $user->id,
+            'provider_order_id' => 'PAYPAL-AUTH-OWNER-1-deluxe',
+            'provider_capture_id' => 'CAPTURE-AUTH-OWNER',
+            'status' => 'completed',
+        ]);
+        $this->assertDatabaseMissing('orders', [
+            'user_id' => $otherUser->id,
+            'provider_order_id' => 'PAYPAL-AUTH-OWNER-1-deluxe',
+        ]);
+    }
+
     public function test_checkout_stores_customer_capture_details_on_pending_paypal_order(): void
     {
         $this->fakeCreatedOrder('PAYPAL-CUSTOMER-100');
@@ -169,6 +290,43 @@ class RoyalPassCheckoutTest extends TestCase
         $this->assertSame('customer@renyrenteria.com', data_get($order->metadata, 'customer.email'));
         $this->assertSame('+50760000000', data_get($order->metadata, 'customer.phone'));
         $this->assertSame('Panama', data_get($order->metadata, 'customer.country'));
+    }
+
+    public function test_guest_paypal_capture_rejects_existing_account_identifier_without_session_ownership(): void
+    {
+        $victim = User::factory()->create([
+            'email' => 'victim@renyrenteria.com',
+            'phone' => '50760000008',
+        ]);
+
+        Order::create([
+            'user_id' => $victim->id,
+            'provider' => 'paypal',
+            'provider_order_id' => 'PAYPAL-VICTIM-100-1-deluxe',
+            'product_key' => 'deluxe',
+            'amount_cents' => 2400,
+            'currency' => 'USD',
+            'status' => 'pending',
+            'grants_royal_month' => true,
+        ]);
+        Http::fake();
+
+        $this->postJson('/checkout/paypal', [
+            'identifier' => 'victim@renyrenteria.com',
+            'product_keys' => ['deluxe'],
+            'currency' => 'USD',
+            'paypal_order_id' => 'PAYPAL-VICTIM-100',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('paypal_order_id');
+
+        $this->assertGuest();
+        Http::assertNothingSent();
+        $this->assertDatabaseHas('orders', [
+            'provider_order_id' => 'PAYPAL-VICTIM-100-1-deluxe',
+            'provider_capture_id' => null,
+            'status' => 'pending',
+        ]);
     }
 
     public function test_checkout_creates_paypal_order_with_all_ticket_line_items(): void
@@ -317,6 +475,72 @@ class RoyalPassCheckoutTest extends TestCase
             'event_name' => 'purchase_pending',
             'resource_key' => 'LOCAL-ACH-20260619-1234-1-deluxe',
         ]);
+    }
+
+    public function test_public_local_checkout_requires_login_for_existing_identifier(): void
+    {
+        User::factory()->create([
+            'email' => 'local-existing@renyrenteria.com',
+        ]);
+
+        $this->postJson('/checkout/local', [
+            'identifier' => 'local-existing@renyrenteria.com',
+            'product_keys' => ['deluxe'],
+            'currency' => 'USD',
+            'local_reference' => 'ACH-20260620-4321',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('identifier');
+
+        $this->assertGuest();
+        $this->assertDatabaseCount('orders', 0);
+    }
+
+    public function test_public_local_checkout_requires_login_for_existing_phone(): void
+    {
+        User::factory()->create([
+            'phone' => '50760000010',
+        ]);
+
+        $this->postJson('/checkout/local', [
+            'identifier' => '+507 6000-0010',
+            'product_keys' => ['deluxe'],
+            'currency' => 'USD',
+            'local_reference' => 'ACH-20260620-9876',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('identifier');
+
+        $this->assertGuest();
+        $this->assertDatabaseCount('orders', 0);
+    }
+
+    public function test_royal_pass_service_does_not_return_existing_customer_by_default(): void
+    {
+        $emailUser = User::factory()->create([
+            'email' => 'service-existing@renyrenteria.com',
+        ]);
+        $phoneUser = User::factory()->create([
+            'phone' => '50760000011',
+        ]);
+        $service = app(RoyalPassService::class);
+
+        try {
+            $service->findOrCreateCustomer($emailUser->email);
+            $this->fail('Existing email customer should require verified ownership.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('identifier', $exception->errors());
+        }
+
+        try {
+            $service->findOrCreateCustomer('+507 6000-0011');
+            $this->fail('Existing phone customer should require verified ownership.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('identifier', $exception->errors());
+        }
+
+        $this->assertTrue($emailUser->is($service->findOrCreateCustomer($emailUser->email, allowExisting: true)));
+        $this->assertTrue($phoneUser->is($service->findOrCreateCustomer('+507 6000-0011', allowExisting: true)));
     }
 
     public function test_local_checkout_rejects_reused_reference(): void
@@ -797,6 +1021,48 @@ class RoyalPassCheckoutTest extends TestCase
         Http::assertNothingSent();
         $this->assertDatabaseHas('orders', [
             'provider_order_id' => 'PAYPAL-OWNER-100-1-merch',
+            'status' => 'pending',
+            'provider_capture_id' => null,
+        ]);
+    }
+
+    public function test_authenticated_paypal_capture_requires_original_checkout_session(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'session-owner@renyrenteria.com',
+        ]);
+
+        $this->actingAs($user);
+        $this->fakeCreatedOrder('PAYPAL-AUTH-SESSION');
+
+        $this->postJson('/checkout/paypal/orders', [
+            'identifier' => $user->email,
+            'customer_name' => 'Session Owner',
+            'customer_email' => $user->email,
+            'customer_phone' => '+50760000012',
+            'customer_country' => 'Panama',
+            'product_keys' => ['merch'],
+            'currency' => 'USD',
+        ])->assertOk();
+
+        Auth::logout();
+        $this->flushSession();
+        $this->actingAs($user);
+        Http::fake();
+
+        $this->postJson('/checkout/paypal', [
+            'identifier' => $user->email,
+            'product_keys' => ['merch'],
+            'currency' => 'USD',
+            'paypal_order_id' => 'PAYPAL-AUTH-SESSION',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('paypal_order_id');
+
+        Http::assertNothingSent();
+        $this->assertDatabaseHas('orders', [
+            'user_id' => $user->id,
+            'provider_order_id' => 'PAYPAL-AUTH-SESSION-1-merch',
             'status' => 'pending',
             'provider_capture_id' => null,
         ]);
