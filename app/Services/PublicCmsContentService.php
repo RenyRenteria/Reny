@@ -659,8 +659,8 @@ class PublicCmsContentService
 
         return [
             'id' => $youtubeId,
-            'title' => e($content->title),
-            'meta' => e($content->summary ?: (string) $this->metadata($content, 'playlist', 'CMS video')),
+            'title' => $content->title,
+            'meta' => $content->summary ?: (string) $this->metadata($content, 'playlist', 'CMS video'),
             'external_url' => $youtubeId ? "https://www.youtube.com/watch?v={$youtubeId}" : null,
             'group' => $group,
             'play_state' => $youtubeId ? 'ready' : 'unavailable',

@@ -30,10 +30,10 @@
     $staticVideoGroups = [
         'music_videos' => [
             ['id' => 'Ue8orNrHw9s', 'title' => 'I Swear', 'meta' => 'Official Music Video'],
-            ['id' => 'mfaOU7LFheE', 'title' => 'Ag&uuml;ita de Coco', 'meta' => 'Video Oficial'],
+            ['id' => 'mfaOU7LFheE', 'title' => 'Agüita de Coco', 'meta' => 'Video Oficial'],
             ['id' => 'GUISQgRCY44', 'title' => 'Want a man', 'meta' => 'Official Music Video'],
             ['id' => 'w-W-Szxuk_A', 'title' => 'Crossroads', 'meta' => 'Official Music Video'],
-            ['id' => 'FBw7qjIngms', 'title' => 'Nada de m&iacute;', 'meta' => 'Official Music Video'],
+            ['id' => 'FBw7qjIngms', 'title' => 'Nada de mí', 'meta' => 'Official Music Video'],
             ['id' => 'M5rPAEwICrA', 'title' => 'Lay on my shoulder', 'meta' => 'Music Video'],
         ],
         'series' => [
@@ -41,11 +41,11 @@
             ['id' => 'USfTD9rZ3o8', 'title' => 'Studio Sessions', 'meta' => 'Recording sessions, studio clips, rehearsals, and in-progress music moments.'],
         ],
         'performances' => [
-            ['id' => '6PSCI5m43wk', 'title' => 'Places', 'meta' => 'Live en Tu Ma&ntilde;ana'],
-            ['id' => 'PrOrIS-6NvE', 'title' => 'Ag&uuml;ita de Coco', 'meta' => 'En vivo en Tu Ma&ntilde;ana'],
+            ['id' => '6PSCI5m43wk', 'title' => 'Places', 'meta' => 'Live en Tu Mañana'],
+            ['id' => 'PrOrIS-6NvE', 'title' => 'Agüita de Coco', 'meta' => 'En vivo en Tu Mañana'],
             ['id' => 'q_pDpnIijWY', 'title' => 'Stamina', 'meta' => 'Live at Miss Universe Panama 2024'],
             ['id' => 'sfOvmqQjpu0', 'title' => 'You Better Run', 'meta' => 'Live at Festival de La Rosa Dorada'],
-            ['id' => 'Sb0IcEiAPbA', 'title' => 'Touch it', 'meta' => 'Live performance on Tu Ma&ntilde;ana'],
+            ['id' => 'Sb0IcEiAPbA', 'title' => 'Touch it', 'meta' => 'Live performance on Tu Mañana'],
             ['id' => '0Xvjl-s4PwI', 'title' => 'In Your Heart', 'meta' => 'Live Performance Music Video'],
         ],
         'behind_the_scenes' => [
@@ -264,8 +264,8 @@
                                             <div class="playlist-copy">
                                                 <div>
                                                     <span>Playlist</span>
-                                                    <h4>{!! $playlist['title'] !!}</h4>
-                                                    <p>{!! $playlist['meta'] !!}</p>
+                                                    <h4>{{ $playlist['title'] }}</h4>
+                                                    <p>{{ $playlist['meta'] }}</p>
                                                 </div>
                                                 @if ($playlistUrl)
                                                     <a

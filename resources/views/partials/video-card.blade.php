@@ -42,8 +42,8 @@
             @endif
         </noscript>
     </div>
-    <h4>{!! $title !!}</h4>
-    <p>{!! $meta !!}</p>
+    <h4>{{ $title }}</h4>
+    <p>{{ $meta }}</p>
     @if ($externalUrl)
         <a
             class="video-card-external"
