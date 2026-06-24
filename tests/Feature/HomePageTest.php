@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\StorefrontSettingsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class HomePageTest extends TestCase
@@ -282,6 +283,26 @@ class HomePageTest extends TestCase
             ->assertOk()
             ->assertJsonPath('state', 'ready')
             ->assertJsonPath('audio_url', 'https://audio.test/member-play-single.mp3');
+    }
+
+    public function test_authenticated_home_keeps_singles_when_home_payload_falls_back(): void
+    {
+        $this->publishedContent(ContentType::Song, [
+            'title' => 'Fallback Visible Single',
+            'metadata' => [
+                'audio_url' => 'https://audio.test/fallback-visible-single.mp3',
+            ],
+        ]);
+
+        Schema::drop('site_page_settings');
+
+        $this->actingAs(User::factory()->create())
+            ->get('/')
+            ->assertOk()
+            ->assertSee('Latest Singles')
+            ->assertSee('Fallback Visible Single')
+            ->assertSee('class="single music-item"', false)
+            ->assertSee('class="mini-play"', false);
     }
 
     /**

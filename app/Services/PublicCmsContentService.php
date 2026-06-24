@@ -57,7 +57,7 @@ class PublicCmsContentService
      */
     public function home(?User $user): array
     {
-        return $this->page('home', $user, function () use ($user): array {
+        $payload = $this->page('home', $user, function () use ($user): array {
             $storefront = $this->storefrontSettings->publicPayload();
             $featuredVideo = $this->featuredVideoPayload(
                 $this->visibleContents($user, [ContentType::Video])->first()
@@ -76,12 +76,7 @@ class PublicCmsContentService
                     $latestAlbum instanceof EditorialContent ? $this->albumPayload($latestAlbum, 0, $user) : null,
                     data_get($storefront, 'slots.album', []),
                 ),
-                'singles' => $this->listableMusicContents('singles')
-                    ->limit(3)
-                    ->get()
-                    ->values()
-                    ->map(fn (EditorialContent $content): array => $this->singlePayload($content, $user))
-                    ->all(),
+                'singles' => $this->safeHomeSinglesPayload($user),
                 'royal_pass' => $storefront['royal_pass'] ?? [],
                 'royal_visuals' => collect(['event_primary', 'album', 'event_secondary'])
                     ->map(fn (string $key): ?string => data_get($storefront, "slots.{$key}.image_url")
@@ -93,6 +88,12 @@ class PublicCmsContentService
                     ->all(),
             ];
         });
+
+        if (empty($payload['singles'])) {
+            $payload['singles'] = $this->safeHomeSinglesPayload($user);
+        }
+
+        return $payload;
     }
 
     /**
@@ -513,6 +514,41 @@ class PublicCmsContentService
             'product_key' => $storeAlbum['product_key'] ?? 'deluxe',
             'buy_label' => 'Buy Deluxe',
         ];
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function safeHomeSinglesPayload(?User $user): array
+    {
+        try {
+            return $this->homeSinglesPayload($user);
+        } catch (Throwable $exception) {
+            report($exception);
+        }
+
+        if ($user !== null) {
+            try {
+                return $this->homeSinglesPayload(null);
+            } catch (Throwable $exception) {
+                report($exception);
+            }
+        }
+
+        return [];
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function homeSinglesPayload(?User $user): array
+    {
+        return $this->listableMusicContents('singles')
+            ->limit(3)
+            ->get()
+            ->values()
+            ->map(fn (EditorialContent $content): array => $this->singlePayload($content, $user))
+            ->all();
     }
 
     /**
