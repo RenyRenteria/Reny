@@ -176,7 +176,7 @@ class StorePageTest extends TestCase
 
     public function test_checkout_frontend_opens_paypal_without_redundant_button(): void
     {
-        $js = file_get_contents(resource_path('js/app.js'));
+        $js = $this->frontendJavaScriptSource();
 
         $this->assertStringContainsString('startCheckoutFromBuyButton(button);', $js);
         $this->assertStringContainsString("startCheckoutFromBuyButton(button, { source: 'shareable_checkout' });", $js);
@@ -192,7 +192,7 @@ class StorePageTest extends TestCase
 
     public function test_store_checkout_rehydrates_after_persistent_public_navigation(): void
     {
-        $js = file_get_contents(resource_path('js/app.js'));
+        $js = $this->frontendJavaScriptSource();
 
         $this->assertStringContainsString('const initializeStoreInteractions = (root = document) => {', $js);
         $this->assertStringContainsString('initializeStoreInteractions(root);', $js);
@@ -211,7 +211,7 @@ class StorePageTest extends TestCase
 
     public function test_store_event_images_use_matching_ratio_rules(): void
     {
-        $css = file_get_contents(resource_path('css/app.css'));
+        $css = $this->frontendCssSource();
 
         $this->assertStringContainsString('.storefront-card.is-event .storefront-image', $css);
         $this->assertStringContainsString('aspect-ratio: 245 / 301;', $css);

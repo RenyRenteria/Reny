@@ -33,7 +33,7 @@ class AnalyticsInstrumentationTest extends TestCase
 
     public function test_browser_adapter_is_debuggable_and_provider_neutral(): void
     {
-        $script = file_get_contents(resource_path('js/app.js'));
+        $script = $this->frontendJavaScriptSource();
 
         $this->assertStringContainsString('window.renyAnalytics', $script);
         $this->assertStringContainsString('reny_analytics_debug', $script);
@@ -47,7 +47,7 @@ class AnalyticsInstrumentationTest extends TestCase
 
     public function test_project4_core_events_are_instrumented(): void
     {
-        $script = file_get_contents(resource_path('js/app.js'));
+        $script = $this->frontendJavaScriptSource();
 
         foreach ([
             'page_view',
