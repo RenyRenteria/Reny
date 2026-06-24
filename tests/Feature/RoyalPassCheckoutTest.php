@@ -46,7 +46,11 @@ class RoyalPassCheckoutTest extends TestCase
         $response
             ->assertOk()
             ->assertJsonPath('status', 'completed')
-            ->assertJsonPath('royal_status', 'royal_active');
+            ->assertJsonPath('royal_status', 'royal_active')
+            ->assertJsonPath('authenticated', false);
+
+        $this->assertArrayNotHasKey('account_url', $response->json());
+        $this->assertGuest();
 
         $user = User::where('phone', '15553034040')->firstOrFail();
 
@@ -102,10 +106,13 @@ class RoyalPassCheckoutTest extends TestCase
             ->assertJsonPath('order_ids.0', 'PAYPAL-CREATED-100-1-deluxe')
             ->assertJsonPath('order_ids.1', 'PAYPAL-CREATED-100-2-singles');
 
-        $user = User::where('email', 'fan@renyrenteria.com')->firstOrFail();
+        $this->assertGuest();
+        $this->assertDatabaseMissing('users', [
+            'email' => 'fan@renyrenteria.com',
+        ]);
 
         $this->assertDatabaseHas('orders', [
-            'user_id' => $user->id,
+            'user_id' => null,
             'provider' => 'paypal',
             'provider_order_id' => 'PAYPAL-CREATED-100-1-deluxe',
             'product_key' => 'deluxe',
@@ -114,12 +121,227 @@ class RoyalPassCheckoutTest extends TestCase
         ]);
 
         $this->assertDatabaseHas('orders', [
-            'user_id' => $user->id,
+            'user_id' => null,
             'provider' => 'paypal',
             'provider_order_id' => 'PAYPAL-CREATED-100-2-singles',
             'product_key' => 'singles',
             'amount_cents' => 800,
             'status' => 'pending',
+        ]);
+    }
+
+    public function test_public_paypal_order_creation_does_not_authenticate_existing_account(): void
+    {
+        $existing = User::factory()->create([
+            'email' => 'existing-paypal@renyrenteria.com',
+            'phone' => null,
+            'royal_status' => 'open',
+            'royal_ends_at' => null,
+        ]);
+
+        $this->fakeCreatedOrder('PAYPAL-EXISTING-SESSION');
+
+        $this->postJson('/checkout/paypal/orders', [
+            'identifier' => 'existing-paypal@renyrenteria.com',
+            'customer_name' => 'Existing Fan',
+            'customer_email' => 'existing-paypal@renyrenteria.com',
+            'customer_phone' => '+50760000090',
+            'customer_country' => 'Panama',
+            'product_keys' => ['merch'],
+            'currency' => 'USD',
+        ])
+            ->assertOk()
+            ->assertJsonPath('paypal_order_id', 'PAYPAL-EXISTING-SESSION');
+
+        $this->assertGuest();
+        $this->assertSame('open', $existing->fresh()->royal_status);
+        $this->assertDatabaseHas('orders', [
+            'user_id' => null,
+            'provider' => 'paypal',
+            'provider_order_id' => 'PAYPAL-EXISTING-SESSION-1-merch',
+            'status' => 'pending',
+        ]);
+    }
+
+    public function test_public_paypal_capture_with_existing_identifier_uses_guest_customer_without_logging_in(): void
+    {
+        $existing = User::factory()->create([
+            'email' => 'taken-paypal@renyrenteria.com',
+            'phone' => null,
+            'royal_status' => 'open',
+            'royal_ends_at' => null,
+        ]);
+
+        $this->fakeCreatedOrder('PAYPAL-EXISTING-CAPTURE');
+
+        $this->postJson('/checkout/paypal/orders', [
+            'identifier' => 'taken-paypal@renyrenteria.com',
+            'customer_name' => 'Taken Fan',
+            'customer_email' => 'taken-paypal@renyrenteria.com',
+            'customer_phone' => '+50760000091',
+            'customer_country' => 'Panama',
+            'product_keys' => ['merch'],
+            'currency' => 'USD',
+        ])->assertOk();
+
+        $this->fakeSuccessfulCapture('PAYPAL-EXISTING-CAPTURE', '48.00', 'CAPTURE-EXISTING-CAPTURE');
+
+        $this->postJson('/checkout/paypal', [
+            'identifier' => 'changed-at-capture@renyrenteria.com',
+            'product_keys' => ['merch'],
+            'currency' => 'USD',
+            'paypal_order_id' => 'PAYPAL-EXISTING-CAPTURE',
+        ])
+            ->assertOk()
+            ->assertJsonPath('status', 'completed')
+            ->assertJsonPath('authenticated', false);
+
+        $this->assertGuest();
+
+        $order = Order::where('provider_order_id', 'PAYPAL-EXISTING-CAPTURE-1-merch')->firstOrFail();
+        $guest = User::findOrFail($order->user_id);
+
+        $this->assertNotSame($existing->id, $guest->id);
+        $this->assertStringStartsWith('guest-', $guest->email);
+        $this->assertSame('open', $existing->fresh()->royal_status);
+        $this->assertNull($existing->fresh()->royal_ends_at);
+    }
+
+    public function test_public_paypal_capture_with_new_email_remains_guest_and_has_no_account_redirect(): void
+    {
+        $this->fakeCreatedOrder('PAYPAL-NEW-GUEST');
+
+        $this->postJson('/checkout/paypal/orders', [
+            'identifier' => 'new-guest@renyrenteria.com',
+            'customer_name' => 'New Guest',
+            'customer_email' => 'new-guest@renyrenteria.com',
+            'customer_phone' => '+50760000092',
+            'customer_country' => 'Panama',
+            'product_keys' => ['merch'],
+            'currency' => 'USD',
+        ])->assertOk();
+
+        $this->fakeSuccessfulCapture('PAYPAL-NEW-GUEST', '48.00', 'CAPTURE-NEW-GUEST');
+
+        $response = $this->postJson('/checkout/paypal', [
+            'identifier' => 'changed-new-guest@renyrenteria.com',
+            'product_keys' => ['royal'],
+            'currency' => 'USD',
+            'paypal_order_id' => 'PAYPAL-NEW-GUEST',
+        ])
+            ->assertOk()
+            ->assertJsonPath('status', 'completed')
+            ->assertJsonPath('authenticated', false);
+
+        $this->assertArrayNotHasKey('account_url', $response->json());
+        $this->assertGuest();
+
+        $user = User::where('email', 'new-guest@renyrenteria.com')->firstOrFail();
+
+        $this->assertDatabaseHas('orders', [
+            'user_id' => $user->id,
+            'provider_order_id' => 'PAYPAL-NEW-GUEST-1-merch',
+            'product_key' => 'merch',
+            'status' => 'completed',
+        ]);
+        $this->assertDatabaseMissing('orders', [
+            'provider_order_id' => 'PAYPAL-NEW-GUEST-1-royal',
+        ]);
+    }
+
+    public function test_public_paypal_capture_with_existing_phone_uses_guest_customer(): void
+    {
+        $existing = User::factory()->create([
+            'email' => 'existing-phone@renyrenteria.com',
+            'phone' => '15559990001',
+            'royal_status' => 'open',
+            'royal_ends_at' => null,
+        ]);
+
+        $this->fakeCreatedOrder('PAYPAL-EXISTING-PHONE');
+
+        $this->postJson('/checkout/paypal/orders', [
+            'identifier' => '+1 (555) 999-0001',
+            'customer_name' => 'Phone Fan',
+            'customer_email' => 'phone-checkout@renyrenteria.com',
+            'customer_phone' => '+15559990001',
+            'customer_country' => 'Panama',
+            'product_keys' => ['merch'],
+            'currency' => 'USD',
+        ])->assertOk();
+
+        $this->fakeSuccessfulCapture('PAYPAL-EXISTING-PHONE', '48.00', 'CAPTURE-EXISTING-PHONE');
+
+        $this->postJson('/checkout/paypal', [
+            'identifier' => '+1 (555) 999-0001',
+            'product_keys' => ['merch'],
+            'currency' => 'USD',
+            'paypal_order_id' => 'PAYPAL-EXISTING-PHONE',
+        ])
+            ->assertOk()
+            ->assertJsonPath('authenticated', false);
+
+        $order = Order::where('provider_order_id', 'PAYPAL-EXISTING-PHONE-1-merch')->firstOrFail();
+        $guest = User::findOrFail($order->user_id);
+
+        $this->assertGuest();
+        $this->assertNotSame($existing->id, $guest->id);
+        $this->assertStringStartsWith('guest-', $guest->email);
+        $this->assertNull($guest->phone);
+        $this->assertSame('open', $existing->fresh()->royal_status);
+    }
+
+    public function test_authenticated_paypal_checkout_stays_on_authenticated_user_and_returns_account_url(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'auth-paypal@renyrenteria.com',
+            'phone' => null,
+            'royal_status' => 'open',
+            'royal_ends_at' => null,
+        ]);
+
+        $this->actingAs($user);
+        $this->fakeCreatedOrder('PAYPAL-AUTHENTICATED');
+
+        $this->postJson('/checkout/paypal/orders', [
+            'identifier' => 'auth-paypal@renyrenteria.com',
+            'customer_name' => 'Auth Fan',
+            'customer_email' => 'auth-paypal@renyrenteria.com',
+            'customer_phone' => '+50760000093',
+            'customer_country' => 'Panama',
+            'product_keys' => ['merch'],
+            'currency' => 'USD',
+        ])
+            ->assertOk()
+            ->assertJsonPath('paypal_order_id', 'PAYPAL-AUTHENTICATED');
+
+        $this->assertAuthenticatedAs($user);
+        $this->assertDatabaseHas('orders', [
+            'user_id' => $user->id,
+            'provider_order_id' => 'PAYPAL-AUTHENTICATED-1-merch',
+            'status' => 'pending',
+        ]);
+
+        $this->fakeSuccessfulCapture('PAYPAL-AUTHENTICATED', '48.00', 'CAPTURE-AUTHENTICATED');
+
+        $this->postJson('/checkout/paypal', [
+            'identifier' => 'attacker@renyrenteria.com',
+            'product_keys' => ['royal'],
+            'currency' => 'USD',
+            'paypal_order_id' => 'PAYPAL-AUTHENTICATED',
+        ])
+            ->assertOk()
+            ->assertJsonPath('authenticated', true)
+            ->assertJsonPath('account_url', route('account.show'));
+
+        $this->assertAuthenticatedAs($user);
+        $this->assertSame(1, User::count());
+        $this->assertTrue($user->fresh()->hasRoyalAccess());
+        $this->assertDatabaseHas('orders', [
+            'user_id' => $user->id,
+            'provider_order_id' => 'PAYPAL-AUTHENTICATED-1-merch',
+            'product_key' => 'merch',
+            'status' => 'completed',
         ]);
     }
 
@@ -298,6 +520,8 @@ class RoyalPassCheckoutTest extends TestCase
             ->assertJsonPath('status', 'pending')
             ->assertJsonPath('order_ids.0', 'LOCAL-ACH-20260619-1234-1-deluxe');
 
+        $this->assertGuest();
+
         $user = User::where('email', 'local@renyrenteria.com')->firstOrFail();
 
         $this->assertSame('open', $user->fresh()->royal_status);
@@ -317,6 +541,69 @@ class RoyalPassCheckoutTest extends TestCase
             'event_name' => 'purchase_pending',
             'resource_key' => 'LOCAL-ACH-20260619-1234-1-deluxe',
         ]);
+    }
+
+    public function test_public_local_checkout_with_existing_identifier_uses_guest_customer_without_logging_in(): void
+    {
+        $existing = User::factory()->create([
+            'email' => 'existing-local@renyrenteria.com',
+            'phone' => null,
+            'royal_status' => 'open',
+            'royal_ends_at' => null,
+        ]);
+
+        $this->postJson('/checkout/local', [
+            'identifier' => 'existing-local@renyrenteria.com',
+            'product_keys' => ['deluxe'],
+            'currency' => 'USD',
+            'local_reference' => 'ACH-20260619-8899',
+        ])
+            ->assertOk()
+            ->assertJsonPath('status', 'pending')
+            ->assertJsonPath('authenticated', false);
+
+        $this->assertGuest();
+
+        $order = Order::where('provider_order_id', 'LOCAL-ACH-20260619-8899-1-deluxe')->firstOrFail();
+        $guest = User::findOrFail($order->user_id);
+
+        $this->assertNotSame($existing->id, $guest->id);
+        $this->assertStringStartsWith('guest-', $guest->email);
+        $this->assertSame('open', $existing->fresh()->royal_status);
+        $this->assertDatabaseMissing('orders', [
+            'user_id' => $existing->id,
+            'provider_order_id' => 'LOCAL-ACH-20260619-8899-1-deluxe',
+        ]);
+    }
+
+    public function test_public_local_checkout_with_existing_phone_uses_guest_customer_without_logging_in(): void
+    {
+        $existing = User::factory()->create([
+            'email' => 'existing-local-phone@renyrenteria.com',
+            'phone' => '15559990002',
+            'royal_status' => 'open',
+            'royal_ends_at' => null,
+        ]);
+
+        $this->postJson('/checkout/local', [
+            'identifier' => '+1 (555) 999-0002',
+            'product_keys' => ['deluxe'],
+            'currency' => 'USD',
+            'local_reference' => 'ACH-20260619-9902',
+        ])
+            ->assertOk()
+            ->assertJsonPath('status', 'pending')
+            ->assertJsonPath('authenticated', false);
+
+        $this->assertGuest();
+
+        $order = Order::where('provider_order_id', 'LOCAL-ACH-20260619-9902-1-deluxe')->firstOrFail();
+        $guest = User::findOrFail($order->user_id);
+
+        $this->assertNotSame($existing->id, $guest->id);
+        $this->assertStringStartsWith('guest-', $guest->email);
+        $this->assertNull($guest->phone);
+        $this->assertSame('open', $existing->fresh()->royal_status);
     }
 
     public function test_local_checkout_rejects_reused_reference(): void
@@ -820,6 +1107,24 @@ class RoyalPassCheckoutTest extends TestCase
         ]);
     }
 
+    public function test_cancel_paypal_order_requires_original_checkout_session(): void
+    {
+        $this->createPendingPayPalOrder('cancel-session@renyrenteria.com', ['merch'], 'PAYPAL-CANCEL-SESSION');
+        $this->flushSession();
+
+        $this->postJson('/checkout/paypal/orders/cancel', [
+            'paypal_order_id' => 'PAYPAL-CANCEL-SESSION',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('paypal_order_id');
+
+        $this->assertDatabaseHas('orders', [
+            'provider_order_id' => 'PAYPAL-CANCEL-SESSION-1-merch',
+            'status' => 'pending',
+            'provider_capture_id' => null,
+        ]);
+    }
+
     public function test_failed_paypal_order_creation_marks_pending_order_failed(): void
     {
         Http::fake([
@@ -843,10 +1148,12 @@ class RoyalPassCheckoutTest extends TestCase
             ->assertUnprocessable()
             ->assertJsonValidationErrors('paypal');
 
-        $user = User::where('email', 'failed@renyrenteria.com')->firstOrFail();
-
+        $this->assertGuest();
+        $this->assertDatabaseMissing('users', [
+            'email' => 'failed@renyrenteria.com',
+        ]);
         $this->assertDatabaseHas('orders', [
-            'user_id' => $user->id,
+            'user_id' => null,
             'provider' => 'paypal',
             'product_key' => 'merch',
             'status' => 'failed',

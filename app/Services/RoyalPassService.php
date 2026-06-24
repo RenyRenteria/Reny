@@ -10,21 +10,25 @@ use Illuminate\Support\Str;
 
 class RoyalPassService
 {
-    public function findOrCreateCustomer(string $identifier): User
+    public function findOrCreateCustomer(string $identifier, bool $allowExisting = false): User
     {
-        $identifier = trim($identifier);
-        $email = filter_var($identifier, FILTER_VALIDATE_EMAIL) ? strtolower($identifier) : null;
-        $phone = $email ? null : $this->normalizePhone($identifier);
+        [$email, $phone] = $this->contactParts($identifier);
 
-        $user = User::query()
-            ->when($email, fn ($query) => $query->where('email', $email))
-            ->when($phone, fn ($query) => $query->where('phone', $phone))
-            ->first();
+        $user = $this->findCustomer($email, $phone);
 
-        if ($user) {
+        if ($user && $allowExisting) {
             return $user;
         }
 
+        if (! $user && ($email !== null || $phone !== null)) {
+            return $this->createCustomer($email, $phone);
+        }
+
+        return $this->createGuestCustomer();
+    }
+
+    private function createCustomer(?string $email, ?string $phone): User
+    {
         return User::create([
             'name' => 'Royal Member',
             'email' => $email ?: "phone-{$phone}@renyrenteria.local",
@@ -33,6 +37,42 @@ class RoyalPassService
             'role' => 'fan',
             'royal_status' => 'open',
         ]);
+    }
+
+    private function createGuestCustomer(): User
+    {
+        return User::create([
+            'name' => 'Royal Guest',
+            'email' => 'guest-'.Str::ulid().'@renyrenteria.local',
+            'phone' => null,
+            'password' => Hash::make(Str::password(24)),
+            'role' => 'fan',
+            'royal_status' => 'open',
+        ]);
+    }
+
+    private function findCustomer(?string $email, ?string $phone): ?User
+    {
+        if ($email === null && $phone === null) {
+            return null;
+        }
+
+        return User::query()
+            ->when($email, fn ($query) => $query->where('email', $email))
+            ->when($phone, fn ($query) => $query->where('phone', $phone))
+            ->first();
+    }
+
+    /**
+     * @return array{0: string|null, 1: string|null}
+     */
+    private function contactParts(string $identifier): array
+    {
+        $identifier = trim($identifier);
+        $email = filter_var($identifier, FILTER_VALIDATE_EMAIL) ? strtolower($identifier) : null;
+        $phone = $email ? null : $this->normalizePhone($identifier);
+
+        return [$email, $phone !== '' ? $phone : null];
     }
 
     public function grantMonth(User $user, Order $order): User
