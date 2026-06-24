@@ -111,6 +111,66 @@ class PublicCmsContentTest extends TestCase
         $this->get('/community')->assertOk()->assertSee('CMS Community Post')->assertSee('CMS poll question?');
     }
 
+    public function test_public_payload_contract_keeps_home_music_and_video_keys_stable(): void
+    {
+        $album = $this->publishedContent(ContentType::MusicalAlbum, [
+            'title' => 'Contract Album',
+            'summary' => 'Contract album summary',
+            'metadata' => [
+                'tracks' => [
+                    ['track_name' => 'Contract Intro'],
+                    ['track_name' => 'Contract Finale'],
+                ],
+            ],
+        ]);
+
+        $single = $this->publishedContent(ContentType::Song, [
+            'title' => 'Contract Single',
+            'summary' => 'Contract single summary',
+            'metadata' => [
+                'audio_url' => 'https://audio.test/contract-single.mp3',
+            ],
+        ]);
+
+        $video = $this->publishedContent(ContentType::Video, [
+            'title' => 'Contract Video',
+            'summary' => 'Contract video summary',
+            'metadata' => [
+                'youtube_url' => 'https://www.youtube.com/watch?v=abc12345678',
+                'category' => 'performance',
+            ],
+        ]);
+
+        $this->getJson(route('public-content.payload', 'home'))
+            ->assertOk()
+            ->assertJsonPath('album.title', 'Contract Album')
+            ->assertJsonPath('album.kind', 'album')
+            ->assertJsonPath('album.meta', '2 tracks')
+            ->assertJsonPath('album.access_state', 'ready')
+            ->assertJsonPath('album.access_label', 'Open')
+            ->assertJsonPath('album.buy_label', 'Buy Deluxe')
+            ->assertJsonPath('singles.0.title', 'Contract Single')
+            ->assertJsonPath('singles.0.kind', 'single')
+            ->assertJsonPath('singles.0.play_url', route('music.play', $single))
+            ->assertJsonPath('featured_video.id', 'abc12345678');
+
+        $this->getJson(route('public-content.payload', 'music'))
+            ->assertOk()
+            ->assertJsonPath('albums.0.title', 'Contract Album')
+            ->assertJsonPath('albums.0.detail_url', route('music.albums.show', $album))
+            ->assertJsonPath('albums.0.access_state', 'ready')
+            ->assertJsonPath('singles.0.title', 'Contract Single')
+            ->assertJsonPath('singles.0.has_audio_source', true);
+
+        $this->getJson(route('public-content.payload', 'videos'))
+            ->assertOk()
+            ->assertJsonPath('performances.0.title', 'Contract Video')
+            ->assertJsonPath('performances.0.id', 'abc12345678')
+            ->assertJsonPath('performances.0.group', 'performances')
+            ->assertJsonPath('performances.0.play_state', 'ready')
+            ->assertJsonPath('performances.0.url', route('public.content.show', $video));
+    }
+
     public function test_video_categories_render_cms_empty_states_without_static_fallback(): void
     {
         $this->publishedContent(ContentType::Video, [
