@@ -338,6 +338,26 @@ class RoyalPassCheckoutTest extends TestCase
             ->assertJsonValidationErrors('local_reference');
     }
 
+    public function test_checkout_endpoints_are_rate_limited(): void
+    {
+        Http::fake();
+
+        $payload = [
+            'identifier' => 'checkout-limited@renyrenteria.com',
+            'product_keys' => [],
+            'currency' => 'USD',
+            'local_reference' => 'ACH-20260624-9999',
+        ];
+
+        for ($attempt = 0; $attempt < 20; $attempt++) {
+            $this->postJson('/checkout/local', $payload)
+                ->assertUnprocessable();
+        }
+
+        $this->postJson('/checkout/local', $payload)
+            ->assertStatus(429);
+    }
+
     public function test_royal_pass_checkout_uses_four_ninety_nine_pricing(): void
     {
         $this->createPendingPayPalOrder('royal-price@renyrenteria.com', ['royal'], 'PAYPAL-ROYAL-499');

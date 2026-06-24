@@ -20,7 +20,7 @@
 
                 <p class="auth-kicker">Account recovery</p>
                 <h1 id="recover-title">Recover access</h1>
-                <p class="auth-copy">Enter your email or phone number. If an account exists, reset instructions will be sent.</p>
+                <p class="auth-copy">Enter your email or phone number. Email recovery is sent when the account has a recovery email.</p>
 
                 @if (session('status'))
                     <div class="auth-status">{{ session('status') }}</div>

@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\MediaLibraryController;
 use App\Http\Controllers\Admin\SiteEditorController;
 use App\Http\Controllers\AnalyticsEventController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Commerce\CheckoutController;
@@ -38,23 +39,25 @@ Route::get('/community', [PublicContentController::class, 'community']);
 Route::get('/community/clubs/{club}', [CommunityInteractionController::class, 'showClub'])
     ->where('club', '[A-Za-z0-9._-]+')
     ->name('community.clubs.show');
-Route::post('/community/posts/{post}/like', [CommunityInteractionController::class, 'like'])
-    ->where('post', '[A-Za-z0-9._-]+')
-    ->name('community.posts.like');
-Route::post('/community/posts/{post}/replies', [CommunityInteractionController::class, 'reply'])
-    ->where('post', '[A-Za-z0-9._-]+')
-    ->name('community.posts.replies.store');
-Route::post('/community/polls/{poll}/vote', [CommunityInteractionController::class, 'vote'])
-    ->where('poll', '[A-Za-z0-9._-]+')
-    ->name('community.polls.vote');
-Route::post('/community/clubs', [CommunityInteractionController::class, 'storeClub'])
-    ->name('community.clubs.store');
-Route::post('/community/clubs/{club}/join', [CommunityInteractionController::class, 'joinClub'])
-    ->where('club', '[A-Za-z0-9._-]+')
-    ->name('community.clubs.join');
-Route::post('/community/clubs/{club}/messages', [CommunityInteractionController::class, 'clubMessage'])
-    ->where('club', '[A-Za-z0-9._-]+')
-    ->name('community.clubs.messages.store');
+Route::middleware('throttle:community')->group(function () {
+    Route::post('/community/posts/{post}/like', [CommunityInteractionController::class, 'like'])
+        ->where('post', '[A-Za-z0-9._-]+')
+        ->name('community.posts.like');
+    Route::post('/community/posts/{post}/replies', [CommunityInteractionController::class, 'reply'])
+        ->where('post', '[A-Za-z0-9._-]+')
+        ->name('community.posts.replies.store');
+    Route::post('/community/polls/{poll}/vote', [CommunityInteractionController::class, 'vote'])
+        ->where('poll', '[A-Za-z0-9._-]+')
+        ->name('community.polls.vote');
+    Route::post('/community/clubs', [CommunityInteractionController::class, 'storeClub'])
+        ->name('community.clubs.store');
+    Route::post('/community/clubs/{club}/join', [CommunityInteractionController::class, 'joinClub'])
+        ->where('club', '[A-Za-z0-9._-]+')
+        ->name('community.clubs.join');
+    Route::post('/community/clubs/{club}/messages', [CommunityInteractionController::class, 'clubMessage'])
+        ->where('club', '[A-Za-z0-9._-]+')
+        ->name('community.clubs.messages.store');
+});
 Route::get('/store', [PublicContentController::class, 'store'])->name('store');
 Route::get('/store/checkout/{product}', [PublicContentController::class, 'checkout'])
     ->where('product', '[A-Za-z0-9._-]+')
@@ -63,14 +66,16 @@ Route::post('/analytics/events', [AnalyticsEventController::class, 'store'])
     ->middleware('throttle:analytics-events')
     ->name('analytics.events.store');
 Route::post('/api/community/register-free-event', FreeEventRsvpController::class)
-    ->middleware('throttle:20,1')
+    ->middleware('throttle:community')
     ->name('community.free-event-rsvp.store');
 Route::get('/api/public-content/{page}', [PublicContentController::class, 'payload'])->name('public-content.payload');
 Route::get('/content/{content}', [PublicContentController::class, 'show'])->name('public.content.show');
 
 Route::prefix(config('admin.path', 'admin'))->name('admin.')->group(function () {
     Route::get('/login', [AdminLoginController::class, 'create'])->name('login');
-    Route::post('/login', [AdminLoginController::class, 'store'])->name('login.store');
+    Route::post('/login', [AdminLoginController::class, 'store'])
+        ->middleware('throttle:admin-auth')
+        ->name('login.store');
 
     Route::middleware(['admin.access', 'admin.session'])->group(function () {
         Route::get('/', DashboardController::class)->name('dashboard');
@@ -108,11 +113,15 @@ Route::prefix(config('admin.path', 'admin'))->name('admin.')->group(function () 
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');
-    Route::post('/login', [AuthenticatedSessionController::class, 'store'])->name('login.store');
+    Route::post('/login', [AuthenticatedSessionController::class, 'store'])
+        ->middleware('throttle:auth')
+        ->name('login.store');
     Route::get('/register', [RegisteredUserController::class, 'create'])->name('register');
     Route::post('/register', [RegisteredUserController::class, 'store'])->name('register.store');
     Route::get('/forgot-password', [PasswordResetLinkController::class, 'create'])->name('password.request');
     Route::post('/forgot-password', [PasswordResetLinkController::class, 'store'])->name('password.email');
+    Route::get('/reset-password/{token}', [NewPasswordController::class, 'create'])->name('password.reset');
+    Route::post('/reset-password', [NewPasswordController::class, 'store'])->name('password.store');
 });
 
 Route::middleware('auth')->group(function () {
@@ -131,9 +140,11 @@ Route::get('/session-expired', function () {
     return view('auth.session-expired');
 })->name('session.expired');
 
-Route::post('/checkout/paypal/orders', [CheckoutController::class, 'createOrder'])->name('checkout.paypal.orders');
-Route::post('/checkout/paypal/orders/cancel', [CheckoutController::class, 'cancelOrder'])->name('checkout.paypal.orders.cancel');
-Route::post('/checkout/paypal', [CheckoutController::class, 'store'])->name('checkout.paypal');
-Route::post('/checkout/local', [CheckoutController::class, 'local'])->name('checkout.local');
+Route::middleware('throttle:checkout')->group(function () {
+    Route::post('/checkout/paypal/orders', [CheckoutController::class, 'createOrder'])->name('checkout.paypal.orders');
+    Route::post('/checkout/paypal/orders/cancel', [CheckoutController::class, 'cancelOrder'])->name('checkout.paypal.orders.cancel');
+    Route::post('/checkout/paypal', [CheckoutController::class, 'store'])->name('checkout.paypal');
+    Route::post('/checkout/local', [CheckoutController::class, 'local'])->name('checkout.local');
+});
 Route::post('/paypal/refund', [PaypalWebhookController::class, 'refund'])->name('paypal.refund');
 Route::post('/mux/webhook', MuxWebhookController::class)->name('mux.webhook');

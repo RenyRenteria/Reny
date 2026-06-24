@@ -3,8 +3,11 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Password as PasswordBroker;
 use Tests\TestCase;
 
 class OpenInAuthTest extends TestCase
@@ -104,6 +107,70 @@ class OpenInAuthTest extends TestCase
         $response->assertSessionHasErrors('username');
     }
 
+    public function test_forgot_password_sends_real_reset_link_for_email_identifier(): void
+    {
+        Notification::fake();
+
+        $user = User::factory()->create([
+            'email' => 'recover@example.com',
+        ]);
+
+        $this->from('/forgot-password')
+            ->post('/forgot-password', [
+                'identifier' => 'recover@example.com',
+            ])
+            ->assertRedirect('/forgot-password')
+            ->assertSessionHas('status', 'If this account has email recovery enabled, reset instructions will be sent.');
+
+        Notification::assertSentTo($user, ResetPassword::class);
+    }
+
+    public function test_forgot_password_resolves_phone_identifier_when_account_has_email_recovery(): void
+    {
+        Notification::fake();
+
+        $user = User::factory()->create([
+            'email' => 'phone-recover@example.com',
+            'phone' => '15551012020',
+        ]);
+
+        $this->from('/forgot-password')
+            ->post('/forgot-password', [
+                'identifier' => '+1 (555) 101-2020',
+            ])
+            ->assertRedirect('/forgot-password')
+            ->assertSessionHas('status', 'If this account has email recovery enabled, reset instructions will be sent.');
+
+        Notification::assertSentTo($user, ResetPassword::class);
+    }
+
+    public function test_user_can_reset_password_from_recovery_link(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'reset-member@example.com',
+            'password' => Hash::make('old-password'),
+        ]);
+        $token = PasswordBroker::broker()->createToken($user);
+
+        $this->get(route('password.reset', [
+            'token' => $token,
+            'email' => $user->email,
+        ]))
+            ->assertOk()
+            ->assertSee('Reset password');
+
+        $this->post(route('password.store'), [
+            'token' => $token,
+            'email' => $user->email,
+            'password' => 'new-password',
+            'password_confirmation' => 'new-password',
+        ])
+            ->assertRedirect(route('login'))
+            ->assertSessionHas('status');
+
+        $this->assertTrue(Hash::check('new-password', $user->fresh()->password));
+    }
+
     public function test_user_can_sign_in_with_email_and_sidebar_uses_real_access_state(): void
     {
         $user = User::factory()->royal()->create([
@@ -149,6 +216,71 @@ class OpenInAuthTest extends TestCase
             ->assertDontSee('auth-status', false);
 
         $this->assertSame(1, substr_count($response->getContent(), 'auth-success-box'));
+    }
+
+    public function test_public_login_rate_limits_repeated_failures_by_identifier_and_ip(): void
+    {
+        User::factory()->create([
+            'email' => 'limited-member@example.com',
+            'password' => Hash::make('password'),
+        ]);
+
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            $this->from('/login')
+                ->post('/login', [
+                    'identifier' => 'limited-member@example.com',
+                    'password' => 'wrong-password',
+                ])
+                ->assertRedirect('/login')
+                ->assertSessionHasErrors('identifier');
+        }
+
+        $this->from('/login')
+            ->post('/login', [
+                'identifier' => 'limited-member@example.com',
+                'password' => 'wrong-password',
+            ])
+            ->assertStatus(429);
+    }
+
+    public function test_successful_public_login_clears_rate_limit_counter(): void
+    {
+        User::factory()->create([
+            'email' => 'cleared-member@example.com',
+            'password' => Hash::make('password'),
+        ]);
+
+        for ($attempt = 0; $attempt < 4; $attempt++) {
+            $this->from('/login')
+                ->post('/login', [
+                    'identifier' => 'cleared-member@example.com',
+                    'password' => 'wrong-password',
+                ])
+                ->assertRedirect('/login');
+        }
+
+        $this->post('/login', [
+            'identifier' => 'cleared-member@example.com',
+            'password' => 'password',
+        ])->assertRedirect('/account');
+
+        $this->post('/logout')->assertRedirect('/');
+
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            $this->from('/login')
+                ->post('/login', [
+                    'identifier' => 'cleared-member@example.com',
+                    'password' => 'wrong-password',
+                ])
+                ->assertRedirect('/login');
+        }
+
+        $this->from('/login')
+            ->post('/login', [
+                'identifier' => 'cleared-member@example.com',
+                'password' => 'wrong-password',
+            ])
+            ->assertStatus(429);
     }
 
     public function test_expired_user_keeps_account_but_sees_reactivation_state(): void

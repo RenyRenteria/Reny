@@ -4,10 +4,12 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Support\SecurityRateLimitKey;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\View\View;
 
 class AuthenticatedSessionController extends Controller
@@ -40,6 +42,7 @@ class AuthenticatedSessionController extends Controller
 
         Auth::login($user, $request->boolean('remember'));
         $request->session()->regenerate();
+        RateLimiter::clear(SecurityRateLimitKey::namedLimiter('auth', SecurityRateLimitKey::auth($request)));
 
         return redirect()
             ->intended(route('account.show'))

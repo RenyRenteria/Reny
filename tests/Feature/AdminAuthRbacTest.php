@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Tests\TestCase;
 
 class AdminAuthRbacTest extends TestCase
@@ -113,6 +114,38 @@ class AdminAuthRbacTest extends TestCase
             ->assertSessionHasErrors('email');
 
         $this->assertGuest();
+    }
+
+    public function test_admin_login_rate_limits_failures_and_logs_them(): void
+    {
+        Log::spy();
+
+        User::factory()->create([
+            'email' => 'limited-admin@example.com',
+            'password' => Hash::make('password'),
+            'role' => 'admin',
+        ]);
+
+        for ($attempt = 0; $attempt < 3; $attempt++) {
+            $this->from(route('admin.login'))
+                ->post(route('admin.login.store'), [
+                    'email' => 'limited-admin@example.com',
+                    'password' => 'wrong-password',
+                ])
+                ->assertRedirect(route('admin.login'))
+                ->assertSessionHasErrors('email');
+        }
+
+        $this->from(route('admin.login'))
+            ->post(route('admin.login.store'), [
+                'email' => 'limited-admin@example.com',
+                'password' => 'wrong-password',
+            ])
+            ->assertStatus(429);
+
+        Log::shouldHaveReceived('warning')
+            ->with('Admin login failed.', \Mockery::type('array'))
+            ->times(3);
     }
 
     public function test_editor_can_save_draft_but_cannot_publish(): void
