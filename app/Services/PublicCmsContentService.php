@@ -58,16 +58,11 @@ class PublicCmsContentService
     public function home(?User $user): array
     {
         return $this->page('home', $user, function () use ($user): array {
-            $albums = $this->listableMusicContents('albums')
-                ->limit(4)
-                ->get()
-                ->values()
-                ->map(fn (EditorialContent $content, int $index): array => $this->albumPayload($content, $index, $user));
-
             $storefront = $this->storefrontSettings->publicPayload();
             $featuredVideo = $this->featuredVideoPayload(
                 $this->visibleContents($user, [ContentType::Video])->first()
             );
+            $latestAlbum = $this->latestAlbumContent();
 
             return [
                 'featured_video' => $featuredVideo,
@@ -77,7 +72,10 @@ class PublicCmsContentService
                     ->filter()
                     ->values()
                     ->all(),
-                'album' => $this->homeAlbumPayload($albums, data_get($storefront, 'slots.album', [])),
+                'album' => $this->homeAlbumPayload(
+                    $latestAlbum instanceof EditorialContent ? $this->albumPayload($latestAlbum, 0, $user) : null,
+                    data_get($storefront, 'slots.album', []),
+                ),
                 'singles' => $this->listableMusicContents('singles')
                     ->limit(3)
                     ->get()
@@ -165,7 +163,7 @@ class PublicCmsContentService
     /**
      * @return array{status:int,payload:array<string,mixed>}
      */
-    public function musicPlayback(EditorialContent $content, ?User $user): array
+    public function musicPlayback(EditorialContent $content, ?User $user, ?int $track = null): array
     {
         $content->loadMissing([
             'mediaAssets' => fn ($query) => $query->orderBy('content_media_assets.sort_order'),
@@ -190,12 +188,12 @@ class PublicCmsContentService
                 'payload' => [
                     ...$access,
                     'title' => $content->title,
-                    'detail_url' => route('public.content.show', $content),
+                    'detail_url' => $this->musicDetailUrl($content),
                 ],
             ];
         }
 
-        $queue = $this->musicPlaybackQueue($content, $user);
+        $queue = $this->musicPlaybackQueue($content, $user, $track);
         $audioUrl = $queue[0]['audio_url'] ?? $this->audioUrl($content);
         $basePayload = $this->musicBasePayload($content, $user);
 
@@ -212,7 +210,7 @@ class PublicCmsContentService
                         default => 'This album is published, but a playable audio source is not connected yet.',
                     },
                     'cta_label' => 'Open details',
-                    'cta_url' => route('public.content.show', $content),
+                    'cta_url' => $this->musicDetailUrl($content),
                 ],
             ];
         }
@@ -337,6 +335,27 @@ class PublicCmsContentService
             'store' => $this->store($user),
             'community' => $this->community($user),
         };
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function albumDetail(EditorialContent $content, ?User $user): array
+    {
+        $content->loadMissing([
+            'mediaAssets' => fn ($query) => $query->orderBy('content_media_assets.sort_order'),
+            'releaseWindows',
+        ]);
+
+        abort_unless(in_array($content->type, self::MUSIC_ALBUM_TYPES, true), 404);
+        abort_unless($this->isPubliclyListable($content), 404);
+
+        $album = $this->albumPayload($content, 0, $user);
+
+        return [
+            ...$album,
+            'track_items' => $this->albumTrackItems($content, $album),
+        ];
     }
 
     public static function forgetCachedUserPayloads(User $user): void
@@ -470,17 +489,11 @@ class PublicCmsContentService
     }
 
     /**
-     * @param  Collection<int, array<string, mixed>>  $albums
      * @param  array<string, mixed>  $storeAlbum
      * @return array<string, mixed>|null
      */
-    private function homeAlbumPayload(Collection $albums, array $storeAlbum): ?array
+    private function homeAlbumPayload(?array $album, array $storeAlbum): ?array
     {
-        $contentId = (string) ($storeAlbum['content_id'] ?? '');
-        $album = $contentId !== ''
-            ? $albums->firstWhere('id', $contentId)
-            : $albums->first();
-
         if (! is_array($album)) {
             return $storeAlbum === []
                 ? null
@@ -493,9 +506,8 @@ class PublicCmsContentService
 
         return [
             ...$album,
-            'title' => $storeAlbum['title'] ?? $album['title'],
-            'summary' => $storeAlbum['description'] ?? ($album['summary'] ?? ''),
-            'image_url' => $storeAlbum['image_url'] ?? $album['image_url'] ?? null,
+            'summary' => $album['summary'] ?? $storeAlbum['description'] ?? '',
+            'image_url' => $album['image_url'] ?? null,
             'store_image' => $storeAlbum['image'] ?? null,
             'image_alt' => $storeAlbum['image_alt'] ?? $album['title'],
             'product_key' => $storeAlbum['product_key'] ?? 'deluxe',
@@ -529,7 +541,7 @@ class PublicCmsContentService
         return [
             ...$this->musicBasePayload($content, $user),
             'title' => $content->title,
-            'meta' => count($this->tracklist($content)).' tracks',
+            'meta' => $this->albumTrackCount($content).' tracks',
             'cover_class' => ['cover-a', 'cover-b', 'cover-c', 'cover-d'][$index % 4],
             'image_url' => $this->mediaUrl($content, ['album_artwork_asset_id', 'cover_asset_id', 'image_asset_id']),
             'kind' => 'album',
@@ -777,14 +789,14 @@ class PublicCmsContentService
     /**
      * @return array<int, array<string, string>>
      */
-    private function musicPlaybackQueue(EditorialContent $content, ?User $user): array
+    private function musicPlaybackQueue(EditorialContent $content, ?User $user, ?int $track = null): array
     {
         if (in_array($content->type, self::MUSIC_PLAYLIST_TYPES, true)) {
             return $this->playlistPlaybackQueue($content, $user);
         }
 
         if (in_array($content->type, self::MUSIC_ALBUM_TYPES, true)) {
-            return $this->albumPlaybackQueue($content);
+            return $this->albumPlaybackQueue($content, $track);
         }
 
         $track = $this->singlePlaybackQueueTrack($content);
@@ -795,7 +807,7 @@ class PublicCmsContentService
     /**
      * @return array<int, array<string, string>>
      */
-    private function albumPlaybackQueue(EditorialContent $content): array
+    private function albumPlaybackQueue(EditorialContent $content, ?int $selectedTrack = null): array
     {
         $imageUrl = $this->mediaUrl($content, ['album_artwork_asset_id', 'cover_asset_id', 'image_asset_id']);
         $tracks = collect($this->metadata($content, 'tracks', []))
@@ -825,6 +837,21 @@ class PublicCmsContentService
             ->filter()
             ->values()
             ->all();
+
+        if ($selectedTrack !== null) {
+            $selectedId = $content->getKey().':'.$selectedTrack;
+            $selected = collect($tracks)->firstWhere('id', $selectedId);
+
+            if (! is_array($selected)) {
+                return [];
+            }
+
+            return collect($tracks)
+                ->reject(fn (array $track): bool => $track['id'] === $selectedId)
+                ->prepend($selected)
+                ->values()
+                ->all();
+        }
 
         if ($tracks !== []) {
             return $tracks;
@@ -978,7 +1005,7 @@ class PublicCmsContentService
             'title' => $title,
             'audio_url' => $audioUrl,
             'image_url' => $imageUrl ?: '',
-            'detail_url' => route('public.content.show', $content),
+            'detail_url' => $this->musicDetailUrl($content),
             'item_type' => $itemType,
             'state' => 'ready',
             'access_label' => '',
@@ -1002,7 +1029,31 @@ class PublicCmsContentService
             ])
             ->whereIn('type', array_map(fn (ContentType $type): string => $type->value, $types))
             ->where(fn (Builder $query): Builder => $this->applyPublishedNowConstraint($query))
-            ->orderByRaw('COALESCE(published_at, scheduled_at, created_at) DESC');
+            ->when(
+                $section === 'albums',
+                fn (Builder $query): Builder => $this->orderByMusicReleaseDate($query),
+                fn (Builder $query): Builder => $query->orderByRaw('COALESCE(published_at, scheduled_at, created_at) DESC')
+            );
+    }
+
+    private function latestAlbumContent(): ?EditorialContent
+    {
+        return $this->listableMusicContents('albums')->first();
+    }
+
+    private function orderByMusicReleaseDate(Builder $query): Builder
+    {
+        $driver = $query->getModel()->getConnection()->getDriverName();
+        $releaseDate = match ($driver) {
+            'pgsql' => "COALESCE(metadata->>'release_date', metadata->>'release_date_open_view', metadata->>'release_date_member_view')",
+            'sqlite' => "COALESCE(json_extract(metadata, '$.release_date'), json_extract(metadata, '$.release_date_open_view'), json_extract(metadata, '$.release_date_member_view'))",
+            default => "COALESCE(JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.release_date')), JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.release_date_open_view')), JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.release_date_member_view')))",
+        };
+
+        return $query
+            ->orderByRaw("{$releaseDate} DESC")
+            ->orderByRaw('COALESCE(published_at, scheduled_at, created_at) DESC')
+            ->orderByDesc('created_at');
     }
 
     private function applyPublishedNowConstraint(Builder $query): Builder
@@ -1060,7 +1111,7 @@ class PublicCmsContentService
             'id' => (string) $content->getKey(),
             'visibility' => $content->visibility->value,
             'summary' => $content->summary ?: $content->body ?: '',
-            'detail_url' => route('public.content.show', $content),
+            'detail_url' => $this->musicDetailUrl($content),
             'play_url' => route('music.play', $content),
             'image_url' => match ($content->type) {
                 ContentType::Song => $this->mediaUrl($content, ['artwork_asset_id', 'cover_asset_id', 'image_asset_id']),
@@ -1134,7 +1185,7 @@ class PublicCmsContentService
             'access_label' => 'Locked',
             'access_message' => 'This release window is not open for this account.',
             'cta_label' => 'View details',
-            'cta_url' => route('public.content.show', $content),
+            'cta_url' => $this->musicDetailUrl($content),
         ];
     }
 
@@ -1157,6 +1208,70 @@ class PublicCmsContentService
             ->filter()
             ->values()
             ->all();
+    }
+
+    private function albumTrackCount(EditorialContent $content): int
+    {
+        $explicitCount = $this->metadata($content, 'track_count');
+
+        if (is_numeric($explicitCount) && (int) $explicitCount > 0) {
+            return (int) $explicitCount;
+        }
+
+        return count($this->tracklist($content));
+    }
+
+    /**
+     * @param  array<string, mixed>  $album
+     * @return array<int, array<string, mixed>>
+     */
+    private function albumTrackItems(EditorialContent $content, array $album): array
+    {
+        $structuredTracks = collect($this->metadata($content, 'tracks', []))
+            ->values()
+            ->map(fn (mixed $track, int $index): ?array => is_array($track)
+                ? $this->albumTrackItem($content, $album, trim((string) ($track['track_name'] ?? '')) ?: 'Track '.($index + 1), $index)
+                : null)
+            ->filter()
+            ->values();
+
+        if ($structuredTracks->isNotEmpty()) {
+            return $structuredTracks->all();
+        }
+
+        return collect($this->tracklist($content))
+            ->values()
+            ->map(fn (string $title, int $index): array => $this->albumTrackItem($content, $album, $title, $index))
+            ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $album
+     * @return array<string, mixed>
+     */
+    private function albumTrackItem(EditorialContent $content, array $album, string $title, int $index): array
+    {
+        return [
+            'id' => $content->getKey().':'.$index,
+            'title' => $title,
+            'number' => $index + 1,
+            'kind' => 'track',
+            'image_url' => $album['image_url'] ?? '',
+            'detail_url' => route('music.albums.show', $content),
+            'play_url' => route('music.play', ['content' => $content, 'track' => $index]),
+            'access_state' => $album['access_state'] ?? 'ready',
+            'access_label' => $album['access_label'] ?? 'Open',
+            'access_message' => $album['access_message'] ?? 'Ready for this account.',
+            'cta_label' => $album['cta_label'] ?? null,
+            'cta_url' => $album['cta_url'] ?? null,
+        ];
+    }
+
+    private function musicDetailUrl(EditorialContent $content): string
+    {
+        return in_array($content->type, self::MUSIC_ALBUM_TYPES, true)
+            ? route('music.albums.show', $content)
+            : route('public.content.show', $content);
     }
 
     /**

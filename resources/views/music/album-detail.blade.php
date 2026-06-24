@@ -1,9 +1,10 @@
 @php
-    $items = $publicCms['items'] ?? [];
-    $isAlbums = $section === 'albums';
-    $isPlaylists = $section === 'playlists';
-    $title = $isAlbums ? 'Albums' : ($isPlaylists ? 'Playlists' : 'Singles');
-    $deluxeUrl = route('store.checkout', ['product' => 'deluxe']);
+    $tracks = $album['track_items'] ?? [];
+    $albumTitle = $album['title'] ?? 'Album';
+    $albumImage = $album['image_url'] ?? asset('images/store/work-in-progress.png');
+    $albumMeta = $album['meta'] ?? count($tracks).' tracks';
+    $albumProductKey = $album['product_key'] ?? 'deluxe';
+    $deluxeUrl = route('store.checkout', ['product' => $albumProductKey]);
 @endphp
 
 <!DOCTYPE html>
@@ -13,15 +14,15 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title>{{ $title }} | Reny Renteria</title>
+        <title>{{ $albumTitle }} | Reny Renteria</title>
 
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body data-analytics-screen="music_{{ $section }}">
-        <div class="music-shell" data-public-page-root>
+    <body data-analytics-screen="album_detail">
+        <div class="music-shell album-detail-shell" data-public-page-root>
             <aside class="sidebar" aria-label="Primary navigation">
                 <div>
                     <a class="brand-link" href="{{ route('home') }}" aria-label="Reny Renteria home">
@@ -73,7 +74,7 @@
                 <x-member-card />
             </aside>
 
-            <main class="main-content" id="music-{{ $section }}">
+            <main class="main-content album-detail-main" id="album-detail">
                 <header class="mobile-header">
                     <div class="mobile-brand">
                         <a class="brand-link" href="{{ route('home') }}" aria-label="Reny Renteria home">
@@ -82,85 +83,61 @@
                     </div>
                 </header>
 
-                <section class="content-section music-list-section" aria-labelledby="music-list-title">
-                    <div class="section-head">
-                        <div>
-                            <a class="music-back-link" href="{{ route('music') }}">Music</a>
-                            <h1 id="music-list-title">{{ $title }}</h1>
+                <section class="album-detail-view" aria-labelledby="album-detail-title">
+                    <a class="music-back-link" href="{{ route('music.albums') }}">Albums</a>
+
+                    <div class="album-detail-layout">
+                        <button
+                            class="album-detail-cover-button"
+                            type="button"
+                            @include('partials.music-play-trigger-attributes', ['item' => $album, 'type' => 'album', 'label' => "Play {$albumTitle} cover"])
+                        >
+                            <img src="{{ $albumImage }}" alt="{{ $album['image_alt'] ?? $albumTitle }}" loading="eager" decoding="async">
+                        </button>
+
+                        <div class="album-detail-content">
+                            <div class="album-detail-heading">
+                                <h1 id="album-detail-title">{{ $albumTitle }}</h1>
+                                <p>Album &bull; {{ $albumMeta }}</p>
+                            </div>
+
+                            <div class="album-detail-actions">
+                                <button
+                                    class="album-detail-pill"
+                                    type="button"
+                                    @include('partials.music-play-trigger-attributes', ['item' => $album, 'type' => 'album', 'label' => "Play {$albumTitle}"])
+                                >Play</button>
+                                <button
+                                    class="album-detail-pill"
+                                    type="button"
+                                    data-buy="{{ $albumProductKey }}"
+                                    data-buy-name="{{ $albumTitle }}"
+                                    data-buy-type="Album"
+                                    data-buy-summary="{{ $album['summary'] ?? 'Deluxe album checkout' }}"
+                                    data-buy-image="{{ $albumImage }}"
+                                    data-buy-url="{{ $deluxeUrl }}"
+                                >Get Deluxe</button>
+                            </div>
+
+                            <div class="album-track-list" aria-label="{{ $albumTitle }} songs">
+                                @forelse ($tracks as $track)
+                                    <article class="album-track-row music-item" data-access-state="{{ $track['access_state'] ?? 'ready' }}">
+                                        <img src="{{ $track['image_url'] ?: $albumImage }}" alt="" loading="lazy" decoding="async">
+                                        <div class="album-track-copy">
+                                            <span>{{ str_pad((string) ($track['number'] ?? $loop->iteration), 2, '0', STR_PAD_LEFT) }}</span>
+                                            <strong>{{ $track['title'] }}</strong>
+                                        </div>
+                                        @include('partials.music-play-button', ['item' => $track, 'class' => 'album-track-play-button', 'type' => 'track'])
+                                    </article>
+                                @empty
+                                    <div class="music-empty-state album-track-empty">
+                                        <span>Empty</span>
+                                        <strong>No published tracks yet.</strong>
+                                    </div>
+                                @endforelse
+                            </div>
                         </div>
                     </div>
-
-                    @if ($items)
-                        @if ($isAlbums)
-                            <div class="albums music-list-grid">
-                                @foreach ($items as $album)
-                                    <article class="album music-item" data-access-state="{{ $album['access_state'] ?? 'ready' }}">
-                                        <div
-                                            class="cover {{ $album['cover_class'] ?? 'cover-a' }}"
-                                            @if (! empty($album['image_url'])) style="background-image: url('{{ $album['image_url'] }}'); background-size: cover; background-position: center;" @endif
-                                        >
-                                            <button
-                                                class="cover-play-area"
-                                                type="button"
-                                                @include('partials.music-play-trigger-attributes', ['item' => $album, 'type' => 'album', 'label' => "Play {$album['title']} cover"])
-                                            ></button>
-                                            @include('partials.music-play-button', ['item' => $album, 'class' => 'play-button', 'type' => 'album'])
-                                        </div>
-                                        @if (($album['access_state'] ?? 'ready') !== 'ready')
-                                            <span class="music-state-badge">{{ $album['access_label'] }}</span>
-                                        @endif
-                                        <h4><a href="{{ $album['detail_url'] }}">{{ $album['title'] }}</a></h4>
-                                        <p>{{ $album['meta'] }}</p>
-                                        <button
-                                            class="album-deluxe-button"
-                                            type="button"
-                                            data-buy="deluxe"
-                                            data-buy-name="Deluxe Digital Album"
-                                            data-buy-type="Album"
-                                            data-buy-summary="Unlock {{ $album['title'] }} and the deluxe music package."
-                                            data-buy-image="{{ $album['image_url'] ?? asset('images/store/work-in-progress.png') }}"
-                                            data-buy-url="{{ $deluxeUrl }}"
-                                            aria-label="Buy Deluxe - {{ $album['title'] }}"
-                                        >Buy Deluxe</button>
-                                    </article>
-                                @endforeach
-                            </div>
-                        @elseif ($isPlaylists)
-                            <div class="music-playlists music-list-grid">
-                                @foreach ($items as $playlist)
-                                    <article class="playlist-card music-item" data-access-state="{{ $playlist['access_state'] ?? 'ready' }}">
-                                        <div
-                                            class="playlist-stack"
-                                            @if (! empty($playlist['image_url'])) style="--thumb-url: url('{{ $playlist['image_url'] }}');" @endif
-                                        >
-                                            @include('partials.music-play-button', ['item' => $playlist, 'class' => 'playlist-play-button', 'type' => 'playlist'])
-                                        </div>
-                                        <div class="playlist-copy">
-                                            <div>
-                                                <span>{{ $playlist['meta'] }}</span>
-                                                <h4><a href="{{ $playlist['detail_url'] }}">{{ $playlist['title'] }}</a></h4>
-                                                <p>{{ collect($playlist['tracks'] ?? [])->take(5)->implode(' / ') }}</p>
-                                            </div>
-                                            @if (($playlist['access_state'] ?? 'ready') !== 'ready')
-                                                <em class="music-inline-state">{{ $playlist['access_label'] }}</em>
-                                            @endif
-                                        </div>
-                                    </article>
-                                @endforeach
-                            </div>
-                        @else
-                            <div class="singles music-list-grid">
-                                @foreach ($items as $single)
-                                    @include('partials.music-single-card', ['single' => $single])
-                                @endforeach
-                            </div>
-                        @endif
-                    @else
-                        <div class="music-empty-state">
-                            <span>Empty</span>
-                            <strong>No published {{ strtolower($title) }} yet.</strong>
-                        </div>
-                    @endif
                 </section>
 
                 <nav class="mobile-bottom-nav" aria-label="Mobile menu">
@@ -183,7 +160,7 @@
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                             <rect x="3" y="3" width="18" height="18" rx="2"></rect>
                             <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                            <path d="m21 15-5-5L5 21"></path>
+                            <path d="M21 15l-5-5L5 21"></path>
                         </svg>
                         <span class="sr-only">PHOTOS</span>
                     </a>

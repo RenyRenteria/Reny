@@ -30,6 +30,7 @@ class MusicFlowsTest extends TestCase
     public function test_home_music_buttons_have_real_play_and_checkout_actions(): void
     {
         $album = $this->publishedMusic(ContentType::MusicalAlbum, 'Launch Album', [
+            'release_date' => '2026-08-01',
             'release_date_member_view' => '2026-07-01T10:00',
             'release_date_open_view' => '2026-07-02T10:00',
             'tracks' => [
@@ -38,6 +39,7 @@ class MusicFlowsTest extends TestCase
             ],
         ]);
         $this->publishedMusic(ContentType::MusicalAlbum, 'Launch Album Two', [
+            'release_date' => '2026-07-01',
             'release_date_member_view' => '2026-07-01T10:00',
             'release_date_open_view' => '2026-07-02T10:00',
             'tracks' => [
@@ -71,6 +73,34 @@ class MusicFlowsTest extends TestCase
         $this->assertSame(1, substr_count($html, 'class="home-buy-deluxe"'));
         $this->assertStringNotContainsString('href="'.route('music.albums').'"', $html);
         $this->assertStringNotContainsString('href="'.route('music.singles').'"', $html);
+    }
+
+    public function test_home_album_card_uses_latest_release_date_and_cover_playback(): void
+    {
+        $olderAlbum = $this->publishedMusic(ContentType::MusicalAlbum, 'Older Album', [
+            'release_date' => '2026-02-01',
+            'tracks' => [
+                ['track_name' => 'Older Intro'],
+            ],
+        ]);
+
+        $latestAlbum = $this->publishedMusic(ContentType::MusicalAlbum, 'Newest Album', [
+            'release_date' => '2026-08-01',
+            'tracks' => [
+                ['track_name' => 'Newest Intro'],
+            ],
+        ]);
+
+        $response = $this->get('/');
+
+        $response
+            ->assertOk()
+            ->assertSee('Newest Album')
+            ->assertDontSee('Older Album')
+            ->assertSee('class="home-album-cover-button"', false)
+            ->assertSee('data-play-url="'.route('music.play', $latestAlbum).'"', false)
+            ->assertSee('data-detail-url="'.route('music.albums.show', $latestAlbum).'"', false)
+            ->assertDontSee('data-play-url="'.route('music.play', $olderAlbum).'"', false);
     }
 
     public function test_music_route_renders_banner_and_public_nav_targets_music(): void
@@ -119,7 +149,7 @@ class MusicFlowsTest extends TestCase
     public function test_music_view_all_pages_and_empty_state_render(): void
     {
         $deluxeUrl = route('store.checkout', ['product' => 'deluxe']);
-        $this->publishedMusic(ContentType::MusicalAlbum, 'Full Album One', [
+        $album = $this->publishedMusic(ContentType::MusicalAlbum, 'Full Album One', [
             'release_date_member_view' => '2026-07-01T10:00',
             'release_date_open_view' => '2026-07-02T10:00',
             'tracks' => [
@@ -133,6 +163,7 @@ class MusicFlowsTest extends TestCase
         $response
             ->assertOk()
             ->assertSee('Full Album One')
+            ->assertSee('class="cover-play-area"', false)
             ->assertSee('data-buy="deluxe"', false)
             ->assertSee('data-buy-url="'.$deluxeUrl.'"', false)
             ->assertSee('id="bagLayer"', false)
@@ -142,7 +173,12 @@ class MusicFlowsTest extends TestCase
             ->assertSee('data-analytics-screen="music_albums"', false)
             ->assertDontSee('href="'.$deluxeUrl.'"', false);
 
-        $this->assertSame(1, substr_count($response->getContent(), 'class="album-deluxe-button"'));
+        $html = $response->getContent();
+
+        $this->assertSame(1, substr_count($html, 'class="album-deluxe-button"'));
+        $this->assertSame(2, substr_count($html, 'data-play-url="'.route('music.play', $album).'"'));
+        $this->assertStringContainsString('href="'.route('music.albums.show', $album).'"', $html);
+        $this->assertStringNotContainsString('data-title="Full Album One"', $html);
 
         $this->get('/music/singles')
             ->assertOk()
@@ -187,6 +223,43 @@ class MusicFlowsTest extends TestCase
         $this->get(route('music.playlists'))
             ->assertOk()
             ->assertSee('CMS Playlist');
+    }
+
+    public function test_album_detail_renders_tracks_and_track_playback_starts_selected_track(): void
+    {
+        $firstAudio = $this->mediaAsset(MediaAssetType::Audio->value);
+        $secondAudio = $this->mediaAsset(MediaAssetType::Audio->value);
+        $firstAudio->update(['path' => 'media/audio/first-song.mp3']);
+        $secondAudio->update(['path' => 'media/audio/second-song.mp3']);
+
+        $album = $this->publishedMusic(ContentType::MusicalAlbum, 'Work in Progress', [
+            'release_date' => '2026-08-01',
+            'tracks' => [
+                ['track_name' => 'First Song', 'track_audio_asset_id' => $firstAudio->id],
+                ['track_name' => 'Second Song', 'track_audio_asset_id' => $secondAudio->id],
+            ],
+        ]);
+        $album->mediaAssets()->attach($firstAudio->id, ['role' => 'track_audio', 'sort_order' => 0]);
+        $album->mediaAssets()->attach($secondAudio->id, ['role' => 'track_audio', 'sort_order' => 1]);
+
+        $response = $this->get(route('music.albums.show', $album));
+
+        $response
+            ->assertOk()
+            ->assertSee('data-analytics-screen="album_detail"', false)
+            ->assertSee('class="album-detail-cover-button"', false)
+            ->assertSee('Work in Progress')
+            ->assertSee('First Song')
+            ->assertSee('Second Song')
+            ->assertSee('data-play-url="'.route('music.play', ['content' => $album, 'track' => 0]).'"', false)
+            ->assertSee('data-play-url="'.route('music.play', ['content' => $album, 'track' => 1]).'"', false);
+
+        $this->getJson(route('music.play', ['content' => $album, 'track' => 1]))
+            ->assertOk()
+            ->assertJsonPath('state', 'ready')
+            ->assertJsonPath('audio_url', $secondAudio->publicUrl())
+            ->assertJsonPath('queue.0.title', 'Work in Progress - Second Song')
+            ->assertJsonPath('queue.1.title', 'Work in Progress - First Song');
     }
 
     public function test_playlist_playback_endpoint_returns_playable_track_queue(): void

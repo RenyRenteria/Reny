@@ -178,9 +178,13 @@
                                     <article class="album music-item" data-access-state="{{ $album['access_state'] ?? 'ready' }}">
                                         <div
                                             class="cover {{ $album['cover_class'] ?? 'cover-a' }}"
-                                            data-title="{{ $album['title'] }}"
                                             @if (! empty($album['image_url'])) style="background-image: url('{{ $album['image_url'] }}'); background-size: cover; background-position: center;" @endif
                                         >
+                                            <button
+                                                class="cover-play-area"
+                                                type="button"
+                                                @include('partials.music-play-trigger-attributes', ['item' => $album, 'type' => 'album', 'label' => "Play {$album['title']} cover"])
+                                            ></button>
                                             @include('partials.music-play-button', ['item' => $album, 'class' => 'play-button', 'type' => 'album'])
                                         </div>
                                         @if (($album['access_state'] ?? 'ready') !== 'ready')
@@ -204,7 +208,12 @@
                             @else
                                 @foreach ($fallbackAlbums as $album)
                                     <article class="album music-item" data-access-state="{{ $album['access_state'] }}">
-                                        <div class="cover {{ $album['cover_class'] }}" data-title="{{ $album['title'] }}">
+                                        <div class="cover {{ $album['cover_class'] }}">
+                                            <button
+                                                class="cover-play-area"
+                                                type="button"
+                                                @include('partials.music-play-trigger-attributes', ['item' => $album, 'type' => 'album', 'label' => "Play {$album['title']} cover"])
+                                            ></button>
                                             @include('partials.music-play-button', ['item' => $album, 'class' => 'play-button', 'type' => 'album'])
                                         </div>
                                         <span class="music-state-badge">{{ $album['access_label'] }}</span>

@@ -296,24 +296,23 @@
                                     <h2>{{ $albumTitle }}</h2>
                                     <p>Album &bull; {{ $albumMeta }}</p>
                                 </div>
-                                <img class="home-album-image" src="{{ $albumImage }}" alt="{{ $album['image_alt'] ?? $albumTitle }}" loading="lazy" decoding="async">
+                                @if ($album)
+                                    <button
+                                        class="home-album-cover-button"
+                                        type="button"
+                                        @include('partials.music-play-trigger-attributes', ['item' => $album, 'type' => 'album', 'label' => "Play {$albumTitle} cover"])
+                                    >
+                                        <img class="home-album-image" src="{{ $albumImage }}" alt="{{ $album['image_alt'] ?? $albumTitle }}" loading="lazy" decoding="async">
+                                    </button>
+                                @else
+                                    <img class="home-album-image" src="{{ $albumImage }}" alt="{{ $albumTitle }}" loading="lazy" decoding="async">
+                                @endif
                                 <div class="home-album-actions">
                                     @if ($album)
                                         <button
                                             class="home-play-here"
                                             type="button"
-                                            data-music-play
-                                            data-play-url="{{ $album['play_url'] ?? '' }}"
-                                            data-detail-url="{{ $album['detail_url'] ?? '' }}"
-                                            data-access-state="{{ $album['access_state'] ?? 'playback_error' }}"
-                                            data-access-label="{{ $album['access_label'] ?? 'Unavailable' }}"
-                                            data-access-message="{{ $album['access_message'] ?? 'This music item is not connected to playback yet.' }}"
-                                            data-cta-label="{{ $album['cta_label'] ?? '' }}"
-                                            data-cta-url="{{ $album['cta_url'] ?? '' }}"
-                                            data-analytics-id="{{ $album['id'] ?? \Illuminate\Support\Str::slug($albumTitle) }}"
-                                            data-analytics-label="{{ $albumTitle }}"
-                                            data-analytics-type="album"
-                                            aria-label="Play {{ $albumTitle }}"
+                                            @include('partials.music-play-trigger-attributes', ['item' => $album, 'type' => 'album', 'label' => "Play {$albumTitle}"])
                                         >Play Here</button>
                                     @else
                                         <a class="home-play-here" href="{{ route('music') }}">Play Here</a>
