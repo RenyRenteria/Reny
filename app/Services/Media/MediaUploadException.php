@@ -4,7 +4,4 @@ namespace App\Services\Media;
 
 use RuntimeException;
 
-class MediaUploadException extends RuntimeException
-{
-    //
-}
+class MediaUploadException extends RuntimeException {}

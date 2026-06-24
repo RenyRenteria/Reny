@@ -8,7 +8,7 @@ php artisan db:seed --class=QaAccountStateSeeder
 
 In production-like environments the seeder exits unless `RENY_ALLOW_QA_FIXTURES=true` is set.
 
-All QA accounts use password `RenyQA!2026`.
+Set `RENY_QA_PASSWORD` before running the seeder. The seeder fails when the password is missing so shared QA or staging environments do not get a known credential by accident.
 
 ```
 State           Email
