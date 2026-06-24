@@ -97,7 +97,7 @@ class AdminStorefrontSettingsTest extends TestCase
             ->assertOk()
             ->assertSee('Home CMS Show')
             ->assertSee('RESERVE')
-            ->assertSee('data-rsvp="home-cms-show"', false)
+            ->assertSee('data-free-event-rsvp="home-cms-show"', false)
             ->assertSee('Home Deluxe Album')
             ->assertSee('Home selected deluxe content')
             ->assertSee('data-buy="home-deluxe"', false);
@@ -140,14 +140,14 @@ class AdminStorefrontSettingsTest extends TestCase
             ->assertOk()
             ->assertSee('Synced Storefront Show')
             ->assertSee('JOIN LIST')
-            ->assertSee('data-rsvp="synced-storefront-show"', false)
+            ->assertSee('data-free-event-rsvp="synced-storefront-show"', false)
             ->assertDontSee('Reny Renteria en Concierto');
 
         $this->get('/')
             ->assertOk()
             ->assertSee('Synced Storefront Show')
             ->assertSee('JOIN LIST')
-            ->assertSee('data-rsvp="synced-storefront-show"', false)
+            ->assertSee('data-free-event-rsvp="synced-storefront-show"', false)
             ->assertDontSee('Reny Renteria en Concierto');
 
         $this->getJson(route('public-content.payload', 'home'))
@@ -202,7 +202,7 @@ class AdminStorefrontSettingsTest extends TestCase
             ->assertOk()
             ->assertSee('CMS Free Night')
             ->assertSee('SAVE SEAT')
-            ->assertSee('data-rsvp="cms-free"', false)
+            ->assertSee('data-free-event-rsvp="cms-free"', false)
             ->assertSee('data-countdown-at="2026-11-02T20:45:00-05:00"', false)
             ->assertSee('/storage/store/cms-event.png', false)
             ->assertSee('CMS Deluxe Album')

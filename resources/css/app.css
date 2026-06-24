@@ -5877,6 +5877,37 @@ body.has-modal-open {
     padding: 1rem;
 }
 
+.free-event-rsvp-dialog {
+    width: min(36rem, 100%);
+}
+
+.free-event-rsvp-form {
+    display: grid;
+    padding: 1rem;
+    gap: 1rem;
+}
+
+.free-event-rsvp-form .store-contact-grid {
+    grid-template-columns: 1fr;
+    margin-top: 0;
+}
+
+.free-event-rsvp-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.875rem;
+}
+
+.free-event-rsvp-actions .store-button {
+    min-width: 10rem;
+}
+
+.free-event-rsvp-status {
+    flex: 1 1 14rem;
+    margin: 0;
+}
+
 .store-detail img {
     min-height: 25rem;
     border-radius: 0.375rem;
@@ -8373,6 +8404,71 @@ body.admin-cms-body[data-theme="royal"] {
     display: grid;
     min-width: 0;
     gap: 0.25rem;
+}
+
+.community-rsvp-panel {
+    gap: 1rem;
+}
+
+.community-rsvp-filter {
+    display: grid;
+    max-width: 28rem;
+}
+
+.community-rsvp-filter label {
+    display: grid;
+    gap: 0.375rem;
+}
+
+.community-rsvp-filter span {
+    color: var(--text-secondary);
+    font-size: 0.6875rem;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.community-rsvp-filter select {
+    min-height: 2.625rem;
+    padding: 0.625rem 0.75rem;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm);
+    background: #ffffff;
+    color: var(--text-primary);
+    font: inherit;
+    font-weight: 750;
+}
+
+.community-rsvp-table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+}
+
+.community-rsvp-table {
+    width: 100%;
+    min-width: 36rem;
+    border-collapse: collapse;
+}
+
+.community-rsvp-table th,
+.community-rsvp-table td {
+    padding: 0.875rem 1rem;
+    border-bottom: 1px solid var(--border-default);
+    color: var(--text-secondary);
+    font-size: 0.8125rem;
+    text-align: left;
+}
+
+.community-rsvp-table tr:last-child td {
+    border-bottom: 0;
+}
+
+.community-rsvp-table th {
+    background: var(--bg-subtle);
+    color: var(--text-disabled);
+    font-size: 0.6875rem;
+    font-weight: 900;
+    text-transform: uppercase;
 }
 
 .music-cms-screens {

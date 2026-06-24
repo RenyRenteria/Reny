@@ -15,6 +15,46 @@
     </div>
 </section>
 
+<section class="store-modal-layer" id="freeEventRsvpLayer" hidden inert>
+    <div class="store-dialog free-event-rsvp-dialog" role="dialog" aria-modal="true" aria-labelledby="freeEventRsvpTitle">
+        <div class="store-dialog-head">
+            <h2 id="freeEventRsvpTitle">Get Tickets</h2>
+            <button class="store-icon-button" type="button" data-close="freeEventRsvpLayer" aria-label="Close registration">Close</button>
+        </div>
+        <form
+            class="free-event-rsvp-form"
+            id="freeEventRsvpForm"
+            data-free-event-rsvp-form
+            data-free-event-rsvp-endpoint="{{ route('community.free-event-rsvp.store') }}"
+        >
+            <p class="store-checkout-note" id="freeEventRsvpEventName"></p>
+            <div class="store-contact-grid">
+                <div class="store-field">
+                    <label for="freeEventRsvpName">Nombre</label>
+                    <input class="store-input" id="freeEventRsvpName" name="name" type="text" value="" autocomplete="name" required>
+                </div>
+                <div class="store-field">
+                    <label for="freeEventRsvpEmail">Correo electrónico</label>
+                    <input class="store-input" id="freeEventRsvpEmail" name="email" type="email" value="" autocomplete="email" required>
+                </div>
+                <div class="store-field">
+                    <label for="freeEventRsvpCountry">País</label>
+                    <select class="store-input" id="freeEventRsvpCountry" name="country" autocomplete="country-name" required>
+                        <option value="">Select country</option>
+                        @foreach (\App\Support\CountryOptions::names() as $country)
+                            <option value="{{ $country }}">{{ $country }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+            <div class="free-event-rsvp-actions">
+                <button class="store-button" id="freeEventRsvpSubmit" type="submit">Registrarme</button>
+                <p class="store-checkout-note free-event-rsvp-status" id="freeEventRsvpStatus" role="status" aria-live="polite"></p>
+            </div>
+        </form>
+    </div>
+</section>
+
 <section class="store-modal-layer" id="bagLayer" hidden inert>
     <div class="store-dialog" role="dialog" aria-modal="true" aria-labelledby="bagTitle">
         <div class="store-dialog-head">

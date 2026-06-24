@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\Admin\AdminLoginController;
+use App\Http\Controllers\Admin\CommunityRsvpController as AdminCommunityRsvpController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\EditorialActionController;
 use App\Http\Controllers\Admin\EditorialContentController;
@@ -13,6 +14,7 @@ use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Commerce\CheckoutController;
 use App\Http\Controllers\Commerce\PaypalWebhookController;
+use App\Http\Controllers\FreeEventRsvpController;
 use App\Http\Controllers\CommunityInteractionController;
 use App\Http\Controllers\MusicController;
 use App\Http\Controllers\MuxWebhookController;
@@ -59,6 +61,9 @@ Route::get('/store/checkout/{product}', [PublicContentController::class, 'checko
 Route::post('/analytics/events', [AnalyticsEventController::class, 'store'])
     ->middleware('throttle:analytics-events')
     ->name('analytics.events.store');
+Route::post('/api/community/register-free-event', FreeEventRsvpController::class)
+    ->middleware('throttle:20,1')
+    ->name('community.free-event-rsvp.store');
 Route::get('/api/public-content/{page}', [PublicContentController::class, 'payload'])->name('public-content.payload');
 Route::get('/content/{content}', [PublicContentController::class, 'show'])->name('public.content.show');
 
@@ -72,6 +77,7 @@ Route::prefix(config('admin.path', 'admin'))->name('admin.')->group(function () 
 
         Route::get('/site-editor', [SiteEditorController::class, 'index'])->middleware('admin.cms')->name('site-editor.index');
         Route::get('/site-editor/{page}/preview', [SiteEditorController::class, 'preview'])->middleware('admin.cms')->name('site-editor.preview');
+        Route::get('/site-editor/community/rsvps.csv', AdminCommunityRsvpController::class)->middleware('admin.cms')->name('site-editor.community-rsvps.export');
         Route::get('/site-editor/{page}', [SiteEditorController::class, 'show'])->middleware('admin.cms')->name('site-editor.show');
         Route::post('/site-editor/music/banner', [SiteEditorController::class, 'updateMusicBanner'])->middleware('admin.cms')->name('site-editor.music-banner.update');
         Route::post('/site-editor/store/storefront', [SiteEditorController::class, 'updateStorefront'])->middleware('admin.cms')->name('site-editor.storefront.update');
