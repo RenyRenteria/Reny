@@ -128,7 +128,7 @@ class HomePageTest extends TestCase
             ],
         ]);
 
-        $user = User::factory()->create();
+        $user = User::factory()->create(['role' => 'member']);
         $guestHtml = $this->get('/')
             ->assertOk()
             ->assertSee('Authenticated Single')
@@ -225,6 +225,30 @@ class HomePageTest extends TestCase
             ->assertJsonPath('events.0.title', 'Reny Renteria en Concierto')
             ->assertJsonPath('storefront.slots.event_primary.title', 'Reny Renteria en Concierto')
             ->assertJsonPath('royal_pass.product_key', 'royal');
+    }
+
+    public function test_home_payload_keeps_latest_singles_for_authenticated_member(): void
+    {
+        $single = $this->publishedContent(ContentType::Song, [
+            'title' => 'Shared Member Payload Single',
+            'metadata' => [
+                'audio_url' => 'https://audio.test/shared-member-payload-single.mp3',
+            ],
+        ]);
+
+        $member = User::factory()->create(['role' => 'member']);
+
+        $this->getJson(route('public-content.payload', 'home'))
+            ->assertOk()
+            ->assertJsonPath('singles.0.title', 'Shared Member Payload Single')
+            ->assertJsonPath('singles.0.access_state', 'ready');
+
+        $this->actingAs($member)
+            ->getJson(route('public-content.payload', 'home'))
+            ->assertOk()
+            ->assertJsonPath('singles.0.title', 'Shared Member Payload Single')
+            ->assertJsonPath('singles.0.access_state', 'ready')
+            ->assertJsonPath('singles.0.play_url', route('music.play', $single));
     }
 
     public function test_home_renders_latest_singles_with_music_tab_card(): void
