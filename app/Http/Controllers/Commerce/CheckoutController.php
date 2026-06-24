@@ -408,21 +408,21 @@ class CheckoutController extends Controller
 
         $orders = $query->get();
 
-        if ($user) {
-            return $orders
-                ->filter(fn (Order $order): bool => $order->user_id === $user->id)
-                ->values();
-        }
-
         if (! $checkoutTokenHash) {
             return collect();
         }
 
         return $orders
-            ->filter(fn (Order $order): bool => hash_equals(
-                $checkoutTokenHash,
-                (string) data_get($order->metadata, 'checkout.session_token_hash', ''),
-            ))
+            ->filter(function (Order $order) use ($checkoutTokenHash, $user): bool {
+                if ($user && $order->user_id !== $user->id) {
+                    return false;
+                }
+
+                return hash_equals(
+                    $checkoutTokenHash,
+                    (string) data_get($order->metadata, 'checkout.session_token_hash', ''),
+                );
+            })
             ->values();
     }
 
