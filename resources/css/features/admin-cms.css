@@ -1818,6 +1818,130 @@ body.admin-cms-body[data-theme="royal"] {
     background: rgba(255, 255, 255, 0.55);
 }
 
+.upload-progress-panel {
+    display: grid;
+    gap: 0.75rem;
+    padding: 0.875rem;
+    border: 1px solid color-mix(in srgb, var(--section-accent) 34%, var(--border-default));
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--section-accent-soft) 38%, #ffffff);
+}
+
+.upload-progress-panel[hidden] {
+    display: none;
+}
+
+.upload-progress-head,
+.upload-progress-file {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.625rem;
+}
+
+.upload-progress-head > div,
+.upload-progress-file > div:first-child {
+    display: grid;
+    min-width: 0;
+    gap: 0.1875rem;
+}
+
+.upload-progress-head span,
+.upload-progress-file span {
+    color: var(--text-secondary);
+    font-size: 0.6875rem;
+    font-weight: 850;
+}
+
+.upload-progress-head strong,
+.upload-progress-file strong {
+    overflow-wrap: anywhere;
+    color: var(--text-primary);
+    font-size: 0.8125rem;
+    font-weight: 950;
+}
+
+.upload-progress-track,
+.upload-progress-file-track {
+    overflow: hidden;
+    height: 0.5rem;
+    border-radius: 999px;
+    background: rgba(18, 20, 23, 0.1);
+}
+
+.upload-progress-track span,
+.upload-progress-file-track span {
+    display: block;
+    width: 0%;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--section-accent);
+    transition: width 160ms ease;
+}
+
+.upload-progress-files {
+    display: grid;
+    gap: 0.5rem;
+}
+
+.upload-progress-file {
+    padding: 0.625rem;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.68);
+}
+
+.upload-progress-file.is-success {
+    border-color: color-mix(in srgb, var(--status-success) 34%, var(--border-default));
+}
+
+.upload-progress-file.is-error {
+    border-color: color-mix(in srgb, var(--status-danger) 34%, var(--border-default));
+}
+
+.upload-progress-file-track {
+    grid-column: 1 / -1;
+}
+
+.upload-progress-empty {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    font-weight: 800;
+}
+
+.upload-progress-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+.upload-progress-panel[data-upload-state='success'] {
+    border-color: color-mix(in srgb, var(--status-success) 36%, var(--border-default));
+    background: var(--status-success-soft);
+}
+
+.upload-progress-panel[data-upload-state='error'],
+.upload-progress-panel[data-upload-state='canceled'] {
+    border-color: color-mix(in srgb, var(--status-danger) 36%, var(--border-default));
+    background: var(--status-danger-soft);
+}
+
+.upload-progress-panel[data-upload-state='success'] .upload-progress-track span,
+.upload-progress-panel[data-upload-state='success'] .upload-progress-file-track span,
+.upload-progress-file.is-success .upload-progress-file-track span {
+    background: var(--status-success);
+}
+
+.upload-progress-panel[data-upload-state='error'] .upload-progress-track span,
+.upload-progress-panel[data-upload-state='error'] .upload-progress-file-track span,
+.upload-progress-panel[data-upload-state='canceled'] .upload-progress-track span,
+.upload-progress-panel[data-upload-state='canceled'] .upload-progress-file-track span,
+.upload-progress-file.is-error .upload-progress-file-track span {
+    background: var(--status-danger);
+}
+
 .music-banner-actions {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));

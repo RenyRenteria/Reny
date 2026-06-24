@@ -46,6 +46,24 @@ class SiteEditorAccessTest extends TestCase
             ->assertSee('Guardar y publicar');
     }
 
+    public function test_music_album_cms_renders_upload_progress_controls(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+
+        $this->actingAsAdmin($admin);
+
+        $this->get(route('admin.site-editor.show', ['page' => 'music']))
+            ->assertOk()
+            ->assertSee('data-album-upload-progress-form', false)
+            ->assertSee(route('admin.content.album-track-audio.store'), false)
+            ->assertSee('data-max-tracks="30"', false)
+            ->assertSee('enctype="multipart/form-data"', false)
+            ->assertSee('data-upload-progress', false)
+            ->assertSee('data-upload-file-list', false)
+            ->assertSee('data-upload-cancel', false)
+            ->assertSee('data-upload-retry', false);
+    }
+
     public function test_music_site_editor_manage_music_lists_edit_and_delete_actions(): void
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
