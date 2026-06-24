@@ -1,4 +1,5 @@
 import './features/analytics.js';
+import './features/account-hub.js';
 import './features/tabs.js';
 import './features/video-player.js';
 import './features/content-analytics.js';

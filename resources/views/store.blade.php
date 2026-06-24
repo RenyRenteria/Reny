@@ -73,7 +73,7 @@
         <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;500&display=swap" rel="stylesheet">
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body data-analytics-screen="store">
+    <body data-analytics-screen="store" data-preferred-currency="{{ auth()->user()?->preferred_currency ?? 'USD' }}">
         <div class="store-shell" data-public-page-root>
             <aside class="sidebar" aria-label="Primary navigation">
                 <div>
@@ -172,6 +172,8 @@
                                 $slotActionType = $slot['action_type'] ?? 'buy';
                                 $slotVisiblePrice = trim((string) ($slot['price_label'] ?? ''));
                                 $isFreeLeadEvent = ($slot['kind'] ?? '') === 'event' && $isFreeEventPrice($slotVisiblePrice);
+                                $slotPriceValue = (float) preg_replace('/[^0-9.]/', '', $slotVisiblePrice);
+                                $slotHasExchangeablePrice = filled($slotVisiblePrice) && ! $isFreeLeadEvent && $slotPriceValue > 0;
                                 $slotStatusId = 'rsvp-status-' . \Illuminate\Support\Str::slug($slotProductKey);
                                 $rsvpTicket = $rsvpTickets[$slotProductKey] ?? null;
                                 $countdownTarget = ($slot['kind'] ?? '') === 'event'
@@ -198,7 +200,13 @@
                                     <h2>{{ $slot['title'] }}</h2>
                                     <p>{!! nl2br(e($slot['description'] ?? '')) !!}</p>
                                     @if (filled($slotVisiblePrice))
-                                        <strong class="storefront-price">{{ $slotVisiblePrice }}</strong>
+                                        <strong
+                                            class="storefront-price"
+                                            @if ($slotHasExchangeablePrice)
+                                                data-price="{{ $slotProductKey }}"
+                                                data-price-value="{{ number_format($slotPriceValue, 2, '.', '') }}"
+                                            @endif
+                                        >{{ $slotVisiblePrice }}</strong>
                                     @endif
 
                                     <div class="storefront-action-row">
