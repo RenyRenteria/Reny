@@ -55,6 +55,8 @@ class SiteEditorAccessTest extends TestCase
         $this->get(route('admin.site-editor.show', ['page' => 'music']))
             ->assertOk()
             ->assertSee('data-album-upload-progress-form', false)
+            ->assertSee(route('admin.content.album-track-audio.store'), false)
+            ->assertSee('data-max-tracks="30"', false)
             ->assertSee('enctype="multipart/form-data"', false)
             ->assertSee('data-upload-progress', false)
             ->assertSee('data-upload-file-list', false)

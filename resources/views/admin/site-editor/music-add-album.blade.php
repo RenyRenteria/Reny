@@ -21,7 +21,10 @@
     action="{{ $formAction }}"
     enctype="multipart/form-data"
     data-album-upload-progress-form
+    data-track-upload-url="{{ route('admin.content.album-track-audio.store') }}"
     data-upload-success-url="{{ route('admin.site-editor.show', ['page' => 'music']) }}"
+    data-max-tracks="30"
+    data-max-track-file-size="{{ 50 * 1024 * 1024 }}"
 >
     @csrf
     @if ($isEditing)
@@ -170,6 +173,7 @@
     <script>
         (() => {
             const readyAttribute = 'data-album-upload-progress-ready';
+            const trackFileInputSelector = 'input[type="file"][name^="track_audio_files"]';
 
             const formatBytes = (bytes) => {
                 if (!Number.isFinite(bytes) || bytes <= 0) return '0 KB';
@@ -209,37 +213,59 @@
                 return payload.message || fallback;
             };
 
+            const csrfToken = (form) => (
+                form.querySelector('input[name="_token"]')?.value
+                || document.querySelector('meta[name="csrf-token"]')?.content
+                || ''
+            );
+
+            const trackRows = (form) => Array.from(form.querySelectorAll('[data-track-row]'));
+
+            const trackNameFor = (row) => row.querySelector('[name$="[track_name]"]')?.value?.trim() || 'Track';
+
+            const ensureTrackAssetInput = (row, index) => {
+                let input = row.querySelector('[name$="[track_audio_asset_id]"]');
+
+                if (!input) {
+                    input = document.createElement('input');
+                    input.type = 'hidden';
+                    row.append(input);
+                }
+
+                input.name = `metadata[tracks][${index}][track_audio_asset_id]`;
+
+                return input;
+            };
+
             const uploadItemsFor = (form) => {
-                const inputs = Array.from(form.querySelectorAll('input[type="file"]'));
                 const items = [];
 
-                inputs.forEach((input) => {
-                    Array.from(input.files || []).forEach((file) => {
-                        const row = input.closest('[data-track-row]');
-                        const trackName = row?.querySelector('[name$="[track_name]"]')?.value?.trim();
-                        const label = input.closest('label')?.querySelector('span')?.textContent?.trim() || input.name || 'Archivo';
+                trackRows(form).forEach((row, index) => {
+                    const input = row.querySelector(trackFileInputSelector);
+                    const file = input?.files?.[0];
 
-                        items.push({
-                            file,
-                            label: trackName && input.name.startsWith('track_audio_files') ? `${trackName} audio` : label,
-                            size: file.size || 0,
-                            offset: 0,
-                            row: null,
-                            bar: null,
-                            percent: null,
-                            status: null,
-                        });
+                    if (!file) return;
+
+                    items.push({
+                        index,
+                        rowElement: row,
+                        input,
+                        file,
+                        trackName: trackNameFor(row),
+                        size: file.size || 0,
+                        loaded: 0,
+                        state: 'pending',
+                        element: null,
+                        bar: null,
+                        detail: null,
+                        status: null,
                     });
                 });
 
-                let offset = 0;
-
-                items.forEach((item) => {
-                    item.offset = offset;
-                    offset += item.size;
-                });
-
-                return {items, totalSize: offset};
+                return {
+                    items,
+                    totalSize: items.reduce((total, item) => total + item.size, 0),
+                };
             };
 
             const setSubmitState = (form, isSubmitting, submitter) => {
@@ -303,7 +329,7 @@
                     const status = document.createElement('span');
 
                     name.textContent = item.file.name;
-                    detail.textContent = `${item.label} - ${formatBytes(item.size)}`;
+                    detail.textContent = `${item.trackName} - ${formatBytes(item.size)}`;
                     status.textContent = 'En espera';
 
                     meta.append(name, detail);
@@ -316,42 +342,49 @@
                     row.append(meta, status, track);
                     elements.fileList.append(row);
 
-                    item.row = row;
+                    item.element = row;
                     item.bar = bar;
-                    item.percent = detail;
+                    item.detail = detail;
                     item.status = status;
                 });
             };
 
-            const setFileProgress = (upload, percent, state) => {
-                const uploadedBytes = upload.totalSize > 0 ? (percent / 100) * upload.totalSize : 0;
+            const setFileProgress = (item, percent, state, message = null) => {
+                const safePercent = clampPercent(percent);
 
-                upload.items.forEach((item) => {
-                    let itemPercent = percent;
+                if (!item.bar || !item.status) return;
 
-                    if (upload.totalSize > 0 && item.size > 0) {
-                        itemPercent = clampPercent(((uploadedBytes - item.offset) / item.size) * 100);
-                    }
+                item.state = state;
+                item.bar.style.width = `${safePercent}%`;
+                item.element?.classList.toggle('is-success', state === 'success');
+                item.element?.classList.toggle('is-error', state === 'error');
 
-                    if (state === 'success') itemPercent = 100;
-
-                    item.bar.style.width = `${itemPercent}%`;
-
-                    if (state === 'error') {
-                        item.status.textContent = itemPercent >= 100 ? 'Completado' : 'Error';
-                    } else if (state === 'canceled') {
-                        item.status.textContent = itemPercent >= 100 ? 'Completado' : 'Cancelado';
-                    } else if (itemPercent >= 100) {
-                        item.status.textContent = 'Completado';
-                    } else if (itemPercent > 0) {
-                        item.status.textContent = `En progreso ${itemPercent}%`;
-                    } else {
-                        item.status.textContent = 'En espera';
-                    }
-                });
+                if (message) {
+                    item.status.textContent = message;
+                } else if (state === 'success') {
+                    item.status.textContent = 'Completado';
+                } else if (state === 'error') {
+                    item.status.textContent = 'Error';
+                } else if (state === 'running') {
+                    item.status.textContent = safePercent > 0 ? `En progreso ${safePercent}%` : 'En progreso';
+                } else {
+                    item.status.textContent = 'En espera';
+                }
             };
 
-            const setProgress = (elements, upload, state, percent, message) => {
+            const uploadedBytesFor = (upload) => upload.items.reduce((total, item) => {
+                if (item.state === 'success') return total + item.size;
+
+                return total + Math.min(item.loaded || 0, item.size);
+            }, 0);
+
+            const uploadPercent = (upload, cap = 95) => {
+                if (upload.totalSize <= 0) return 0;
+
+                return Math.min(cap, clampPercent((uploadedBytesFor(upload) / upload.totalSize) * cap));
+            };
+
+            const setProgress = (elements, state, percent, message) => {
                 const safePercent = clampPercent(percent);
                 const stateLabel = {
                     running: 'En progreso',
@@ -367,14 +400,168 @@
                 elements.percent.textContent = `${safePercent}%`;
                 elements.bar.style.width = `${safePercent}%`;
                 elements.track.setAttribute('aria-valuenow', String(safePercent));
-                setFileProgress(upload, safePercent, state);
             };
+
+            const finalAlbumFormData = (form, submitter) => {
+                const formData = new FormData(form);
+
+                Array.from(formData.keys()).forEach((key) => {
+                    if (key.startsWith('track_audio_files[')) {
+                        formData.delete(key);
+                    }
+                });
+
+                if (submitter?.name) {
+                    formData.set(submitter.name, submitter.value);
+                }
+
+                return formData;
+            };
+
+            const uploadTrack = (form, item, upload, elements, onRequest) => new Promise((resolve) => {
+                const maxFileSize = Number(form.dataset.maxTrackFileSize || 0);
+
+                if (maxFileSize > 0 && item.size > maxFileSize) {
+                    item.loaded = 0;
+                    setFileProgress(item, 0, 'error', `Excede ${formatBytes(maxFileSize)}`);
+                    resolve({ok: false, message: `${item.trackName}: excede ${formatBytes(maxFileSize)}.`});
+                    return;
+                }
+
+                const xhr = new XMLHttpRequest();
+                const formData = new FormData();
+                const token = csrfToken(form);
+
+                formData.set('album_title', form.querySelector('[name="title"]')?.value || '');
+                formData.set('track_name', item.trackName);
+                formData.set('track_index', String(item.index));
+                formData.set('track_audio_file', item.file);
+
+                if (token) {
+                    formData.set('_token', token);
+                }
+
+                onRequest(xhr);
+                setFileProgress(item, 0, 'running');
+                setProgress(elements, 'running', uploadPercent(upload), `Subiendo ${item.trackName}.`);
+
+                xhr.upload.addEventListener('progress', (event) => {
+                    if (!event.lengthComputable || event.total <= 0) {
+                        item.loaded = Math.max(item.loaded, 1);
+                        setFileProgress(item, 1, 'running');
+                        setProgress(elements, 'running', Math.max(uploadPercent(upload), 1), `Subiendo ${item.trackName}.`);
+                        return;
+                    }
+
+                    item.loaded = Math.min(event.loaded, item.size);
+                    const itemPercent = clampPercent((event.loaded / event.total) * 100);
+                    setFileProgress(item, Math.min(itemPercent, 99), 'running');
+                    setProgress(elements, 'running', uploadPercent(upload), `Subiendo ${item.trackName}.`);
+                });
+
+                xhr.onreadystatechange = () => {
+                    if (xhr.readyState !== XMLHttpRequest.DONE) return;
+
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        const payload = parseJson(xhr.responseText || '{}');
+                        const assetId = payload.asset?.id;
+
+                        if (!assetId) {
+                            setFileProgress(item, clampPercent((item.loaded / Math.max(item.size, 1)) * 100), 'error', 'Error');
+                            resolve({ok: false, message: `${item.trackName}: el servidor no devolvio el asset.`});
+                            return;
+                        }
+
+                        const input = ensureTrackAssetInput(item.rowElement, item.index);
+                        input.value = String(assetId);
+
+                        item.loaded = item.size;
+                        setFileProgress(item, 100, 'success');
+                        item.input.required = false;
+                        item.input.value = '';
+                        setProgress(elements, 'running', uploadPercent(upload), `${item.trackName} completado.`);
+                        resolve({ok: true});
+                        return;
+                    }
+
+                    const message = responseMessage(xhr, `${item.trackName}: no se pudo subir.`);
+                    setFileProgress(item, clampPercent((item.loaded / Math.max(item.size, 1)) * 100), 'error', 'Error');
+                    resolve({ok: false, message});
+                };
+
+                xhr.onerror = () => {
+                    setFileProgress(item, clampPercent((item.loaded / Math.max(item.size, 1)) * 100), 'error', 'Error');
+                    resolve({ok: false, message: `${item.trackName}: fallo de red.`});
+                };
+
+                xhr.ontimeout = () => {
+                    setFileProgress(item, clampPercent((item.loaded / Math.max(item.size, 1)) * 100), 'error', 'Timeout');
+                    resolve({ok: false, message: `${item.trackName}: el upload tardo demasiado.`});
+                };
+
+                xhr.onabort = () => {
+                    setFileProgress(item, clampPercent((item.loaded / Math.max(item.size, 1)) * 100), 'error', 'Cancelado');
+                    resolve({ok: false, canceled: true, message: `${item.trackName}: cancelado.`});
+                };
+
+                xhr.open('POST', form.dataset.trackUploadUrl, true);
+                xhr.timeout = 300000;
+                xhr.setRequestHeader('Accept', 'application/json');
+                xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+
+                if (token) {
+                    xhr.setRequestHeader('X-CSRF-TOKEN', token);
+                }
+
+                xhr.send(formData);
+            });
+
+            const submitAlbum = (form, submitter, elements, upload, onRequest) => new Promise((resolve) => {
+                const xhr = new XMLHttpRequest();
+                let latestPercent = Math.max(uploadPercent(upload), upload.items.length > 0 ? 95 : 0);
+
+                onRequest(xhr);
+                setProgress(elements, 'running', latestPercent, 'Guardando album.');
+
+                xhr.upload.addEventListener('progress', (event) => {
+                    if (!event.lengthComputable || event.total <= 0) {
+                        latestPercent = Math.max(latestPercent, 96);
+                        setProgress(elements, 'running', latestPercent, 'Guardando album.');
+                        return;
+                    }
+
+                    latestPercent = Math.max(latestPercent, Math.min(99, 95 + clampPercent((event.loaded / event.total) * 4)));
+                    setProgress(elements, 'running', latestPercent, 'Guardando album.');
+                });
+
+                xhr.onreadystatechange = () => {
+                    if (xhr.readyState !== XMLHttpRequest.DONE) return;
+
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        resolve({ok: true, message: responseMessage(xhr, 'Album guardado correctamente.')});
+                        return;
+                    }
+
+                    resolve({ok: false, message: responseMessage(xhr, 'No se pudo guardar el album. Reintenta.')});
+                };
+
+                xhr.onerror = () => resolve({ok: false, message: 'Fallo de red guardando el album. Reintenta.'});
+                xhr.ontimeout = () => resolve({ok: false, message: 'Guardar el album tardo demasiado. Reintenta.'});
+                xhr.onabort = () => resolve({ok: false, canceled: true, message: 'Upload cancelado.'});
+
+                xhr.open((form.getAttribute('method') || 'POST').toUpperCase(), form.action, true);
+                xhr.timeout = 300000;
+                xhr.setRequestHeader('Accept', 'application/json');
+                xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+                xhr.send(finalAlbumFormData(form, submitter));
+            });
 
             const initializeAlbumUploadProgress = () => {
                 document.querySelectorAll(`[data-album-upload-progress-form]:not([${readyAttribute}])`).forEach((form) => {
                     form.setAttribute(readyAttribute, 'true');
 
-                    let currentXhr = null;
+                    let activeXhr = null;
+                    let isSubmitting = false;
                     let clickedSubmitter = null;
                     let lastSubmitter = null;
 
@@ -383,48 +570,39 @@
                         if (submitter) clickedSubmitter = submitter;
                     });
 
-                    const startUpload = (submitter) => {
-                        if (currentXhr || !submitter) return;
-                        if (typeof form.reportValidity === 'function' && !form.reportValidity()) return;
-
+                    const startUpload = async (submitter) => {
+                        if (isSubmitting || !submitter) return;
                         const elements = progressElements(form);
                         if (!elements.panel || typeof XMLHttpRequest === 'undefined' || typeof FormData === 'undefined') return;
 
+                        const rows = trackRows(form);
+                        const maxTracks = Number(form.dataset.maxTracks || 0);
+                        const emptyUpload = {items: [], totalSize: 0};
+
+                        if (maxTracks > 0 && rows.length > maxTracks) {
+                            renderFileList(elements, emptyUpload);
+                            elements.cancel.hidden = true;
+                            elements.retry.hidden = true;
+                            setProgress(elements, 'error', 0, `El album puede tener maximo ${maxTracks} canciones.`);
+                            return;
+                        }
+
+                        if (typeof form.reportValidity === 'function' && !form.reportValidity()) return;
+
+                        isSubmitting = true;
                         lastSubmitter = submitter;
                         const upload = uploadItemsFor(form);
-                        const formData = new FormData(form);
-
-                        if (submitter.name) {
-                            formData.set(submitter.name, submitter.value);
-                        }
+                        let canceled = false;
 
                         renderFileList(elements, upload);
                         elements.cancel.hidden = false;
                         elements.retry.hidden = true;
-                        setProgress(elements, upload, 'running', 0, 'Preparando upload.');
+                        setProgress(elements, 'running', 0, upload.items.length > 0 ? 'Preparando canciones.' : 'Guardando album.');
                         setSubmitState(form, true, submitter);
 
-                        const xhr = new XMLHttpRequest();
-                        let canceled = false;
-                        let finished = false;
-                        let latestPercent = 0;
-
-                        currentXhr = xhr;
-
-                        const finish = (callback) => {
-                            if (finished) return;
-
-                            finished = true;
-                            currentXhr = null;
-                            setSubmitState(form, false, submitter);
-                            callback();
-                        };
-
                         elements.cancel.onclick = () => {
-                            if (!currentXhr) return;
-
                             canceled = true;
-                            currentXhr.abort();
+                            activeXhr?.abort();
                         };
 
                         elements.retry.onclick = () => {
@@ -432,79 +610,78 @@
                             startUpload(lastSubmitter);
                         };
 
-                        xhr.upload.addEventListener('progress', (event) => {
-                            if (!event.lengthComputable || event.total <= 0) {
-                                latestPercent = Math.max(latestPercent, 1);
-                                setProgress(elements, upload, 'running', latestPercent, 'Upload en progreso.');
-                                return;
+                        const failures = [];
+
+                        for (const item of upload.items) {
+                            if (canceled) break;
+
+                            const result = await uploadTrack(form, item, upload, elements, (xhr) => {
+                                activeXhr = xhr;
+                            });
+
+                            activeXhr = null;
+
+                            if (result.canceled || canceled) {
+                                canceled = true;
+                                break;
                             }
 
-                            const percent = Math.min(99, clampPercent((event.loaded / event.total) * 100));
-                            latestPercent = percent;
-                            setProgress(elements, upload, 'running', percent, `Subiendo archivos ${percent}%.`);
+                            if (!result.ok) {
+                                failures.push(result.message);
+                            }
+                        }
+
+                        if (canceled) {
+                            elements.cancel.hidden = true;
+                            elements.retry.hidden = false;
+                            setSubmitState(form, false, submitter);
+                            setProgress(elements, 'canceled', uploadPercent(upload), 'Upload cancelado.');
+                            isSubmitting = false;
+                            return;
+                        }
+
+                        if (failures.length > 0) {
+                            elements.cancel.hidden = true;
+                            elements.retry.hidden = false;
+                            setSubmitState(form, false, submitter);
+                            setProgress(elements, 'error', uploadPercent(upload), `${failures.length} cancion(es) fallaron. ${failures[0]} Las demas quedaron subidas; corrige y reintenta.`);
+                            isSubmitting = false;
+                            return;
+                        }
+
+                        const result = await submitAlbum(form, submitter, elements, upload, (xhr) => {
+                            activeXhr = xhr;
                         });
 
-                        xhr.onreadystatechange = () => {
-                            if (xhr.readyState !== XMLHttpRequest.DONE || canceled) return;
+                        activeXhr = null;
+                        elements.cancel.hidden = true;
+                        setSubmitState(form, false, submitter);
+                        isSubmitting = false;
 
-                            if (xhr.status >= 200 && xhr.status < 300) {
-                                const message = responseMessage(xhr, 'Album publicado correctamente.');
+                        if (result.canceled) {
+                            elements.retry.hidden = false;
+                            setProgress(elements, 'canceled', uploadPercent(upload), result.message);
+                            return;
+                        }
 
-                                finish(() => {
-                                    elements.cancel.hidden = true;
-                                    elements.retry.hidden = true;
-                                    setProgress(elements, upload, 'success', 100, message);
+                        if (!result.ok) {
+                            elements.retry.hidden = false;
+                            setProgress(elements, 'error', Math.max(uploadPercent(upload), 95), result.message);
+                            return;
+                        }
 
-                                    window.setTimeout(() => {
-                                        window.location.assign(form.dataset.uploadSuccessUrl || window.location.href);
-                                    }, 700);
-                                });
+                        elements.retry.hidden = true;
+                        setProgress(elements, 'success', 100, result.message);
 
-                                return;
-                            }
-
-                            finish(() => {
-                                elements.cancel.hidden = true;
-                                elements.retry.hidden = false;
-                                setProgress(elements, upload, 'error', latestPercent, responseMessage(xhr, 'No se pudo completar el upload. Reintenta.'));
-                            });
-                        };
-
-                        xhr.onerror = () => {
-                            finish(() => {
-                                elements.cancel.hidden = true;
-                                elements.retry.hidden = false;
-                                setProgress(elements, upload, 'error', latestPercent, 'Fallo de red durante el upload. Reintenta.');
-                            });
-                        };
-
-                        xhr.ontimeout = () => {
-                            finish(() => {
-                                elements.cancel.hidden = true;
-                                elements.retry.hidden = false;
-                                setProgress(elements, upload, 'error', latestPercent, 'El upload tardo demasiado. Reintenta con una conexion estable.');
-                            });
-                        };
-
-                        xhr.onabort = () => {
-                            finish(() => {
-                                elements.cancel.hidden = true;
-                                elements.retry.hidden = false;
-                                setProgress(elements, upload, 'canceled', latestPercent, 'Upload cancelado.');
-                            });
-                        };
-
-                        xhr.open((form.getAttribute('method') || 'POST').toUpperCase(), form.action, true);
-                        xhr.timeout = 600000;
-                        xhr.setRequestHeader('Accept', 'application/json');
-                        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-                        xhr.send(formData);
+                        window.setTimeout(() => {
+                            window.location.assign(form.dataset.uploadSuccessUrl || window.location.href);
+                        }, 700);
                     };
 
                     form.addEventListener('submit', (event) => {
                         const submitter = event.submitter || clickedSubmitter;
 
-                        if (!submitter || submitter.value !== 'publish') return;
+                        if (!submitter || !submitter.name) return;
                         if (typeof XMLHttpRequest === 'undefined' || typeof FormData === 'undefined') return;
                         if (!form.querySelector('[data-upload-progress]')) return;
 

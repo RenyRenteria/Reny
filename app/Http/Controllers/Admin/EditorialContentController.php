@@ -87,6 +87,25 @@ class EditorialContentController extends Controller
         return $this->persist($request, $workflow, $library, $content);
     }
 
+    public function storeAlbumTrackAudio(Request $request, MediaLibraryService $library): JsonResponse
+    {
+        try {
+            $asset = $this->musicContent->storeAlbumTrackAudio($request, $library);
+        } catch (MediaUploadException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 503);
+        }
+
+        return response()->json([
+            'message' => 'Track audio uploaded.',
+            'asset' => [
+                'id' => $asset?->id,
+                'title' => $asset?->title,
+                'filename' => $asset?->original_filename,
+                'size_bytes' => $asset?->size_bytes,
+            ],
+        ], 201);
+    }
+
     public function destroy(Request $request, EditorialContent $content): RedirectResponse
     {
         abort_unless($request->user()?->canPublishContent(), 403);
@@ -225,6 +244,11 @@ class EditorialContentController extends Controller
             'taxonomy_ids' => ['nullable', 'array'],
             'taxonomy_ids.*' => ['integer', Rule::exists('taxonomies', 'id')],
             ...$this->metadataRulesFor($type),
+        ], [
+            'audio_file.max' => 'Audio file must be 50MB or less.',
+            'metadata.tracks.max' => 'Albums can have up to 30 tracks.',
+            'track_audio_files.max' => 'Albums can have up to 30 track files.',
+            'track_audio_files.*.max' => 'Each track audio file must be 50MB or less.',
         ]);
 
         $validator->after(function ($validator) use ($request, $input, $type): void {

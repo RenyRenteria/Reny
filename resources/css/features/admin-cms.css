@@ -1818,12 +1818,6 @@ body.admin-cms-body[data-theme="royal"] {
     background: rgba(255, 255, 255, 0.55);
 }
 
-.music-banner-actions {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.5625rem;
-}
-
 .upload-progress-panel {
     display: grid;
     gap: 0.75rem;
@@ -1897,6 +1891,14 @@ body.admin-cms-body[data-theme="royal"] {
     background: rgba(255, 255, 255, 0.68);
 }
 
+.upload-progress-file.is-success {
+    border-color: color-mix(in srgb, var(--status-success) 34%, var(--border-default));
+}
+
+.upload-progress-file.is-error {
+    border-color: color-mix(in srgb, var(--status-danger) 34%, var(--border-default));
+}
+
 .upload-progress-file-track {
     grid-column: 1 / -1;
 }
@@ -1927,15 +1929,23 @@ body.admin-cms-body[data-theme="royal"] {
 }
 
 .upload-progress-panel[data-upload-state='success'] .upload-progress-track span,
-.upload-progress-panel[data-upload-state='success'] .upload-progress-file-track span {
+.upload-progress-panel[data-upload-state='success'] .upload-progress-file-track span,
+.upload-progress-file.is-success .upload-progress-file-track span {
     background: var(--status-success);
 }
 
 .upload-progress-panel[data-upload-state='error'] .upload-progress-track span,
 .upload-progress-panel[data-upload-state='error'] .upload-progress-file-track span,
 .upload-progress-panel[data-upload-state='canceled'] .upload-progress-track span,
-.upload-progress-panel[data-upload-state='canceled'] .upload-progress-file-track span {
+.upload-progress-panel[data-upload-state='canceled'] .upload-progress-file-track span,
+.upload-progress-file.is-error .upload-progress-file-track span {
     background: var(--status-danger);
+}
+
+.music-banner-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5625rem;
 }
 
 .music-banner-preview-toolbar {

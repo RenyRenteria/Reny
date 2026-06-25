@@ -6,6 +6,7 @@ use App\Enums\ContentType;
 use App\Enums\MediaAssetType;
 use App\Enums\VisibilityAudience;
 use App\Models\EditorialContent;
+use App\Models\MediaAsset;
 use App\Services\Media\MediaLibraryService;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
@@ -17,6 +18,10 @@ use Illuminate\Validation\Validator;
 
 class MusicContentUploadService
 {
+    private const int ALBUM_MAX_TRACKS = 30;
+
+    private const int MUSIC_AUDIO_MAX_KB = 51200;
+
     /**
      * @return array<string, array<int, mixed>>
      */
@@ -38,20 +43,20 @@ class MusicContentUploadService
                     'metadata.artwork_asset_id' => $assetRule,
                     'metadata.release_date_member_view' => ['required', 'date'],
                     'metadata.release_date_open_view' => ['required', 'date', 'after_or_equal:metadata.release_date_member_view'],
-                    'audio_file' => ['nullable', 'file', 'mimes:mp3,wav', 'max:102400'],
+                    'audio_file' => ['nullable', 'file', 'mimes:mp3,wav', 'max:'.self::MUSIC_AUDIO_MAX_KB],
                     'artwork' => ['nullable', 'file', 'mimes:jpg', 'max:20480'],
                 ],
                 ContentType::MusicalAlbum->value => [
                     'metadata.album_artwork_asset_id' => $assetRule,
                     'metadata.release_date_member_view' => ['required', 'date'],
                     'metadata.release_date_open_view' => ['required', 'date', 'after_or_equal:metadata.release_date_member_view'],
-                    'metadata.tracks' => ['required', 'array', 'min:1'],
+                    'metadata.tracks' => ['required', 'array', 'min:1', 'max:'.self::ALBUM_MAX_TRACKS],
                     'metadata.tracks.*.track_name' => ['required', 'string', 'max:160'],
                     'metadata.tracks.*.track_audio_asset_id' => $assetRule,
                     'metadata.tracks.*.release_date_member_view' => ['nullable', 'date'],
                     'album_artwork' => ['nullable', 'file', 'mimes:jpg', 'max:20480'],
-                    'track_audio_files' => ['nullable', 'array'],
-                    'track_audio_files.*' => ['nullable', 'file', 'mimes:mp3,wav', 'max:102400'],
+                    'track_audio_files' => ['nullable', 'array', 'max:'.self::ALBUM_MAX_TRACKS],
+                    'track_audio_files.*' => ['nullable', 'file', 'mimes:mp3,wav', 'max:'.self::MUSIC_AUDIO_MAX_KB],
                 ],
                 ContentType::MusicPlaylist->value => [
                     'metadata.playlist_cover_asset_id' => $assetRule,
@@ -87,6 +92,37 @@ class MusicContentUploadService
         if ($errors !== []) {
             throw ValidationException::withMessages($errors);
         }
+    }
+
+    public function storeAlbumTrackAudio(Request $request, MediaLibraryService $library): ?MediaAsset
+    {
+        $validated = validator($request->all(), [
+            'album_title' => ['nullable', 'string', 'max:160'],
+            'track_name' => ['nullable', 'string', 'max:160'],
+            'track_index' => ['nullable', 'integer', 'min:0', 'max:'.(self::ALBUM_MAX_TRACKS - 1)],
+            'track_audio_file' => ['required', 'file', 'mimes:mp3,wav', 'max:'.self::MUSIC_AUDIO_MAX_KB],
+        ], [
+            'track_audio_file.max' => 'Each track audio file must be 50MB or less.',
+            'track_audio_file.mimes' => 'Track audio files must be MP3 or WAV.',
+            'track_index.max' => 'Albums can have up to 30 tracks.',
+        ])->validate();
+
+        $audio = $this->uploadedFile($request, 'track_audio_file');
+
+        if (! $audio) {
+            throw ValidationException::withMessages([
+                'track_audio_file' => 'Track audio file is required.',
+            ]);
+        }
+
+        $albumTitle = trim((string) ($validated['album_title'] ?? 'Album'));
+        $trackName = trim((string) ($validated['track_name'] ?? 'track'));
+
+        return $library->storeUploads($request->user(), [
+            'type' => MediaAssetType::Audio->value,
+            'title' => ($albumTitle !== '' ? $albumTitle : 'Album').' - '.($trackName !== '' ? $trackName : 'track').' audio',
+            'is_public' => true,
+        ], [$audio])->first();
     }
 
     /**
