@@ -7,6 +7,8 @@ use App\Models\EditorialContent;
 use App\Models\MediaAsset;
 use App\Models\User;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Schema;
+use Throwable;
 
 class ProductCatalog
 {
@@ -21,7 +23,13 @@ class ProductCatalog
             return null;
         }
 
-        $content = $this->cmsProduct($productKey, $user);
+        $content = null;
+
+        try {
+            $content = $this->cmsProduct($productKey, $user);
+        } catch (Throwable $exception) {
+            report($exception);
+        }
 
         if ($content instanceof EditorialContent) {
             return $this->normalizeCmsProduct($content, $productKey);
@@ -133,8 +141,11 @@ class ProductCatalog
 
     private function cmsProduct(string $productKey, ?User $user): ?EditorialContent
     {
-        return EditorialContent::query()
-            ->with(['mediaAssets'])
+        if (! $this->cmsProductsAvailable()) {
+            return null;
+        }
+
+        $query = EditorialContent::query()
             ->visibleFor($user)
             ->whereIn('type', [
                 ContentType::Product->value,
@@ -146,8 +157,13 @@ class ProductCatalog
                 $query
                     ->where('purchase_key', $productKey)
                     ->orWhere('slug', $productKey);
-            })
-            ->first();
+            });
+
+        if ($this->cmsMediaAvailable()) {
+            $query->with(['mediaAssets']);
+        }
+
+        return $query->first();
     }
 
     /**
@@ -253,6 +269,10 @@ class ProductCatalog
 
     private function contentImageAsset(EditorialContent $content): ?MediaAsset
     {
+        if (! $content->relationLoaded('mediaAssets')) {
+            return null;
+        }
+
         $assetId = collect(['image_asset_id', 'cover_asset_id'])
             ->map(fn (string $key): mixed => data_get($content->metadata, $key))
             ->filter()
@@ -296,5 +316,18 @@ class ProductCatalog
         $value = trim((string) $value);
 
         return $value === '' ? null : $value;
+    }
+
+    private function cmsProductsAvailable(): bool
+    {
+        return Schema::hasTable('editorial_contents')
+            && Schema::hasTable('content_release_windows')
+            && Schema::hasTable('user_unlocks');
+    }
+
+    private function cmsMediaAvailable(): bool
+    {
+        return Schema::hasTable('media_assets')
+            && Schema::hasTable('content_media_assets');
     }
 }
