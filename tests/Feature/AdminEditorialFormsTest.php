@@ -233,6 +233,67 @@ class AdminEditorialFormsTest extends TestCase
         Storage::disk('public')->assertExists($asset->path);
     }
 
+    public function test_admin_can_submit_album_with_preuploaded_track_assets(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $artwork = $this->mediaAsset(MediaAssetType::Thumbnail->value);
+        $firstTrack = $this->mediaAsset(MediaAssetType::Audio->value);
+        $secondTrack = $this->mediaAsset(MediaAssetType::Audio->value);
+
+        $this->actingAsAdmin($admin);
+
+        $this->post(route('admin.content.store'), [
+            'return_to_music_editor' => '1',
+            '_music_form_key' => 'music-album-new',
+            'action' => 'draft',
+            'type' => ContentType::MusicalAlbum->value,
+            'title' => 'Final Submit Album',
+            'visibility' => VisibilityAudience::Open->value,
+            'metadata' => [
+                'album_artwork_asset_id' => $artwork->id,
+                'release_date_member_view' => '2026-07-01T10:00',
+                'release_date_open_view' => '2026-07-02T10:00',
+                'tracks' => [
+                    [
+                        'track_name' => 'Intro',
+                        'track_audio_asset_id' => $firstTrack->id,
+                    ],
+                    [
+                        'track_name' => 'Outro',
+                        'track_audio_asset_id' => $secondTrack->id,
+                    ],
+                ],
+            ],
+        ], ['Accept' => 'application/json'])
+            ->assertCreated()
+            ->assertJsonPath('type', ContentType::MusicalAlbum->value)
+            ->assertJsonPath('status', EditorialStatus::Draft->value);
+
+        $content = EditorialContent::query()->firstOrFail();
+
+        $this->assertSame('Final Submit Album', $content->title);
+        $this->assertSame($firstTrack->id, data_get($content->metadata, 'tracks.0.track_audio_asset_id'));
+        $this->assertSame($secondTrack->id, data_get($content->metadata, 'tracks.1.track_audio_asset_id'));
+        $this->assertDatabaseHas('content_media_assets', [
+            'editorial_content_id' => $content->id,
+            'media_asset_id' => $artwork->id,
+            'role' => 'artwork',
+            'sort_order' => 0,
+        ]);
+        $this->assertDatabaseHas('content_media_assets', [
+            'editorial_content_id' => $content->id,
+            'media_asset_id' => $firstTrack->id,
+            'role' => 'track_audio',
+            'sort_order' => 1,
+        ]);
+        $this->assertDatabaseHas('content_media_assets', [
+            'editorial_content_id' => $content->id,
+            'media_asset_id' => $secondTrack->id,
+            'role' => 'track_audio',
+            'sort_order' => 2,
+        ]);
+    }
+
     public function test_album_track_audio_upload_rejects_files_over_50mb(): void
     {
         Storage::fake('public');

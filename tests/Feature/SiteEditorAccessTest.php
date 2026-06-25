@@ -61,7 +61,11 @@ class SiteEditorAccessTest extends TestCase
             ->assertSee('data-upload-progress', false)
             ->assertSee('data-upload-file-list', false)
             ->assertSee('data-upload-cancel', false)
-            ->assertSee('data-upload-retry', false);
+            ->assertSee('data-upload-retry', false)
+            ->assertSee('name="action" value="publish"', false)
+            ->assertSee('name="action" value="draft"', false)
+            ->assertSee('formActionUrl(form)', false)
+            ->assertDontSee('form.action, true', false);
     }
 
     public function test_music_site_editor_manage_music_lists_edit_and_delete_actions(): void
