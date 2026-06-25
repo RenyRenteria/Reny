@@ -402,6 +402,12 @@
                 elements.track.setAttribute('aria-valuenow', String(safePercent));
             };
 
+            const formActionUrl = (form) => {
+                const action = form.getAttribute('action') || window.location.href;
+
+                return new URL(action, window.location.href).toString();
+            };
+
             const finalAlbumFormData = (form, submitter) => {
                 const formData = new FormData(form);
 
@@ -549,7 +555,7 @@
                 xhr.ontimeout = () => resolve({ok: false, message: 'Guardar el album tardo demasiado. Reintenta.'});
                 xhr.onabort = () => resolve({ok: false, canceled: true, message: 'Upload cancelado.'});
 
-                xhr.open((form.getAttribute('method') || 'POST').toUpperCase(), form.action, true);
+                xhr.open((form.getAttribute('method') || 'POST').toUpperCase(), formActionUrl(form), true);
                 xhr.timeout = 300000;
                 xhr.setRequestHeader('Accept', 'application/json');
                 xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
