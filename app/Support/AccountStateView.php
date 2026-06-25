@@ -153,6 +153,20 @@ class AccountStateView
 
     private static function formattedRoyalDate(User $user): ?string
     {
-        return $user->royal_ends_at?->timezone($user->timezone ?: config('app.timezone'))->format('M j, Y');
+        return $user->royal_ends_at?->timezone(self::timezone($user))->format('M j, Y');
+    }
+
+    private static function timezone(User $user): string
+    {
+        $fallback = config('admin.publishing_timezone', config('app.timezone', 'UTC'));
+        $candidate = $user->timezone ?: $fallback;
+
+        try {
+            new \DateTimeZone($candidate);
+
+            return $candidate;
+        } catch (\Throwable) {
+            return $fallback;
+        }
     }
 }

@@ -16,6 +16,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -23,13 +24,24 @@ use Illuminate\View\View;
 
 class AccountController extends Controller
 {
+    /**
+     * @var array<string, bool>
+     */
+    private array $tableCache = [];
+
+    /**
+     * @var array<string, bool>
+     */
+    private array $columnCache = [];
+
     public function show(
         Request $request,
         PointLedgerService $points,
         ProductCatalog $products,
         StorefrontSettingsService $storefront,
     ): View {
-        $user = $request->user()->load('billingProfile');
+        $user = $request->user();
+        $this->loadBillingProfile($user);
         $storefrontPayload = $storefront->publicPayload();
         $registeredEvents = $this->registeredEventCards($user, $storefrontPayload, $products);
 
@@ -40,7 +52,7 @@ class AccountController extends Controller
             'currencies' => config('user_hub.currencies', []),
             'initials' => $this->initials($user->name),
             'languages' => config('user_hub.languages', []),
-            'pointBalance' => $points->balance($user),
+            'pointBalance' => $this->pointBalance($user, $points),
             'purchases' => $this->purchaseRows($user, $products),
             'registeredEvents' => $registeredEvents,
             'user' => $user,
@@ -144,27 +156,39 @@ class AccountController extends Controller
      */
     private function registeredEventCards(User $user, array $storefront, ProductCatalog $products): Collection
     {
-        $ticketCards = $user->tickets()
-            ->with(['event', 'order'])
-            ->whereIn('status', ['reserved', 'confirmed', 'checked_in'])
-            ->get()
-            ->filter(fn (Ticket $ticket): bool => $ticket->event?->starts_at?->isFuture() === true)
-            ->sortBy(fn (Ticket $ticket): int => $ticket->event?->starts_at?->getTimestamp() ?? 0)
-            ->map(fn (Ticket $ticket): array => $this->ticketEventCard($ticket, $user, $storefront, $products));
+        $ticketCards = collect();
+
+        if ($this->hasTable('tickets') && $this->hasTable('events')) {
+            $relations = ['event'];
+
+            if ($this->hasTable('orders') && $this->hasColumn('tickets', 'order_id')) {
+                $relations[] = 'order';
+            }
+
+            $ticketCards = $user->tickets()
+                ->with($relations)
+                ->whereIn('status', ['reserved', 'confirmed', 'checked_in'])
+                ->get()
+                ->filter(fn (Ticket $ticket): bool => $ticket->event?->starts_at?->isFuture() === true)
+                ->sortBy(fn (Ticket $ticket): int => $ticket->event?->starts_at?->getTimestamp() ?? 0)
+                ->map(fn (Ticket $ticket): array => $this->ticketEventCard($ticket, $user, $storefront, $products));
+        }
 
         $ticketFingerprints = $ticketCards
             ->flatMap(fn (array $card): array => [$card['event_key'] ?? null, $card['fingerprint'] ?? null])
             ->filter()
             ->values();
 
-        $rsvpCards = Rsvp::query()
-            ->where('email', Str::lower($user->email))
-            ->latest()
-            ->get()
-            ->map(fn (Rsvp $rsvp): ?array => $this->rsvpEventCard($rsvp, $storefront))
-            ->filter()
-            ->reject(fn (array $card): bool => $ticketFingerprints->contains($card['event_key']) || $ticketFingerprints->contains($card['fingerprint']))
-            ->values();
+        $rsvpCards = $this->hasTable('rsvps')
+            ? Rsvp::query()
+                ->where('email', Str::lower($user->email))
+                ->latest()
+                ->get()
+                ->map(fn (Rsvp $rsvp): ?array => $this->rsvpEventCard($rsvp, $storefront))
+                ->filter()
+                ->reject(fn (array $card): bool => $ticketFingerprints->contains($card['event_key']) || $ticketFingerprints->contains($card['fingerprint']))
+                ->values()
+            : collect();
 
         return $ticketCards
             ->merge($rsvpCards)
@@ -215,6 +239,10 @@ class AccountController extends Controller
      */
     private function purchaseRows(User $user, ProductCatalog $products): Collection
     {
+        if (! $this->hasTable('orders')) {
+            return collect();
+        }
+
         return $user->orders()
             ->whereIn('status', ['completed', 'payment_review', 'refunded'])
             ->latest()
@@ -222,7 +250,7 @@ class AccountController extends Controller
             ->get()
             ->map(fn (Order $order): array => [
                 'name' => $this->orderProductName($order, $user, $products),
-                'date' => $order->created_at?->timezone($user->timezone ?: config('app.timezone'))->format('F d, Y'),
+                'date' => $order->created_at?->timezone($this->accountTimezone($user))->format('F d, Y'),
                 'status' => str($order->status)->replace('_', ' ')->headline()->toString(),
             ]);
     }
@@ -232,13 +260,15 @@ class AccountController extends Controller
      */
     private function billingSummary(User $user, ProductCatalog $products): array
     {
-        $profile = $user->billingProfile;
+        $profile = $this->hasTable('billing_profiles') ? $user->billingProfile : null;
         $royalPass = $products->find('royal', $user) ?? [];
-        $latestRoyalOrder = $user->orders()
-            ->where('status', 'completed')
-            ->where('product_key', 'royal')
-            ->latest()
-            ->first();
+        $latestRoyalOrder = $this->hasTable('orders')
+            ? $user->orders()
+                ->where('status', 'completed')
+                ->where('product_key', 'royal')
+                ->latest()
+                ->first()
+            : null;
 
         $amountCents = (int) ($latestRoyalOrder?->amount_cents ?? $royalPass['amount_cents'] ?? 499);
         $currency = strtoupper((string) ($latestRoyalOrder?->currency ?? $royalPass['currency'] ?? 'USD'));
@@ -249,7 +279,7 @@ class AccountController extends Controller
             'amount' => $this->moneyLabel($amountCents, $currency),
             'method' => $profile?->payment_method_summary ?: 'PayPal',
             'next_payment_date' => $active
-                ? $profile->current_period_ends_at?->timezone($user->timezone ?: config('app.timezone'))->format('F d, Y')
+                ? $profile->current_period_ends_at?->timezone($this->accountTimezone($user))->format('F d, Y')
                 : null,
             'paypal_manage_url' => config('user_hub.paypal_manage_url'),
             'reactivate_url' => route('store.checkout', ['product' => 'royal']),
@@ -277,7 +307,7 @@ class AccountController extends Controller
             'image_url' => $slot ? $this->slotImage($slot) : asset('images/store/rosa-dorada.png'),
             'meta' => $this->eventMeta(
                 $startsAt,
-                (string) ($event?->timezone ?: $user->timezone ?: config('app.timezone')),
+                $this->accountTimezone($user, $event?->timezone),
                 (string) ($event?->venue ?: 'Venue pending'),
             ),
             'starts_at' => $startsAt,
@@ -489,5 +519,47 @@ class AccountController extends Controller
             ->map(fn (string $part) => Str::of($part)->substr(0, 1)->upper())
             ->take(2)
             ->implode('');
+    }
+
+    private function loadBillingProfile(User $user): void
+    {
+        if ($this->hasTable('billing_profiles')) {
+            $user->load('billingProfile');
+
+            return;
+        }
+
+        $user->setRelation('billingProfile', null);
+    }
+
+    private function pointBalance(User $user, PointLedgerService $points): int
+    {
+        return $this->hasTable('point_ledger_entries') ? $points->balance($user) : 0;
+    }
+
+    private function accountTimezone(User $user, ?string $timezone = null): string
+    {
+        $fallback = config('admin.publishing_timezone', config('app.timezone', 'UTC'));
+        $candidate = $timezone ?: $user->timezone ?: $fallback;
+
+        try {
+            new \DateTimeZone($candidate);
+
+            return $candidate;
+        } catch (\Throwable) {
+            return $fallback;
+        }
+    }
+
+    private function hasTable(string $table): bool
+    {
+        return $this->tableCache[$table] ??= Schema::hasTable($table);
+    }
+
+    private function hasColumn(string $table, string $column): bool
+    {
+        $key = "{$table}.{$column}";
+
+        return $this->columnCache[$key] ??= ($this->hasTable($table) && Schema::hasColumn($table, $column));
     }
 }

@@ -11,6 +11,7 @@ use App\Models\Ticket;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -146,6 +147,82 @@ class AccountDashboardTest extends TestCase
             ->assertSee('0 pts')
             ->assertSee('No purchases yet')
             ->assertSee('Reactivate subscription');
+    }
+
+    public function test_account_dashboard_renders_when_optional_hub_tables_are_unavailable(): void
+    {
+        $user = User::factory()->create([
+            'name' => 'Partially Migrated Fan',
+            'royal_status' => 'open',
+        ]);
+
+        $unavailableTables = [
+            'billing_profiles',
+            'content_media_assets',
+            'content_release_windows',
+            'editorial_contents',
+            'events',
+            'media_assets',
+            'orders',
+            'point_ledger_entries',
+            'rsvps',
+            'site_page_settings',
+            'tickets',
+            'user_unlocks',
+        ];
+
+        Schema::partialMock()
+            ->shouldReceive('hasTable')
+            ->andReturnUsing(fn (string $table): bool => ! in_array($table, $unavailableTables, true));
+
+        Schema::shouldReceive('hasColumn')->andReturn(false);
+
+        $this->actingAs($user)
+            ->get('/account')
+            ->assertOk()
+            ->assertSee('Partially Migrated Fan')
+            ->assertSee('No upcoming events')
+            ->assertSee('Available Upcoming')
+            ->assertSee('Reny Renteria en Concierto')
+            ->assertSee('0 pts')
+            ->assertSee('No purchases yet')
+            ->assertSee('Reactivate subscription');
+    }
+
+    public function test_account_dashboard_renders_with_invalid_user_timezone(): void
+    {
+        $user = User::factory()->royal()->create([
+            'name' => 'Timezone Edge Fan',
+            'timezone' => 'Invalid/Zone',
+        ]);
+
+        Order::create([
+            'user_id' => $user->id,
+            'provider' => 'paypal',
+            'provider_order_id' => 'PAYPAL-TZ-100-royal',
+            'product_key' => 'royal',
+            'amount_cents' => 499,
+            'currency' => 'USD',
+            'status' => 'completed',
+            'grants_royal_month' => true,
+            'royal_granted_until' => $user->royal_ends_at,
+        ]);
+
+        BillingProfile::create([
+            'user_id' => $user->id,
+            'provider' => 'paypal',
+            'status' => 'active',
+            'payment_method_summary' => 'PayPal',
+            'current_period_ends_at' => now()->addMonth(),
+            'last_synced_at' => now(),
+        ]);
+
+        $this->actingAs($user)
+            ->get('/account')
+            ->assertOk()
+            ->assertSee('Timezone Edge Fan')
+            ->assertSee('Pause subscription')
+            ->assertSee('Royal Pass');
     }
 
     public function test_user_can_update_profile_preferences_and_avatar(): void

@@ -11,6 +11,7 @@ use App\Models\User;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Schema;
 
 class StorefrontSettingsService
 {
@@ -188,6 +189,10 @@ class StorefrontSettingsService
 
     public function draftSetting(): ?SitePageSetting
     {
+        if (! $this->settingsAvailable()) {
+            return null;
+        }
+
         return SitePageSetting::query()
             ->forSection(self::PAGE, self::SECTION)
             ->draft()
@@ -196,6 +201,10 @@ class StorefrontSettingsService
 
     public function publishedSetting(): ?SitePageSetting
     {
+        if (! $this->settingsAvailable()) {
+            return null;
+        }
+
         return SitePageSetting::query()
             ->forSection(self::PAGE, self::SECTION)
             ->published()
@@ -224,7 +233,7 @@ class StorefrontSettingsService
             ->unique()
             ->values();
 
-        $assets = $assetIds->isEmpty()
+        $assets = $assetIds->isEmpty() || ! $this->mediaAvailable()
             ? collect()
             : MediaAsset::query()->whereKey($assetIds)->get()->keyBy('id');
 
@@ -255,15 +264,22 @@ class StorefrontSettingsService
 
     private function publishedAlbum(int $contentId): ?EditorialContent
     {
+        if (! $this->editorialContentAvailable()) {
+            return null;
+        }
+
         $now = now();
 
         $query = EditorialContent::query()
-            ->with(['mediaAssets'])
             ->whereIn('type', [ContentType::MusicalAlbum->value, ContentType::DeluxeAlbum->value])
             ->whereIn('status', [EditorialStatus::Published->value, EditorialStatus::Scheduled->value])
             ->where(function ($query) use ($now): void {
                 $query->whereNull('scheduled_at')->orWhere('scheduled_at', '<=', $now);
             });
+
+        if ($this->mediaAvailable()) {
+            $query->with(['mediaAssets']);
+        }
 
         if ($contentId > 0) {
             return $query->whereKey($contentId)->first();
@@ -282,9 +298,11 @@ class StorefrontSettingsService
     private function albumSlot(array $slot, EditorialContent $album): array
     {
         $assetId = (int) ($slot['image_asset_id'] ?? 0);
-        $asset = $album->mediaAssets
-            ->when($assetId > 0, fn (Collection $assets): Collection => $assets->where('id', $assetId))
-            ->first();
+        $asset = $album->relationLoaded('mediaAssets')
+            ? $album->mediaAssets
+                ->when($assetId > 0, fn (Collection $assets): Collection => $assets->where('id', $assetId))
+                ->first()
+            : null;
 
         return [
             ...$slot,
@@ -354,5 +372,21 @@ class StorefrontSettingsService
         $value = trim((string) $value);
 
         return $value === '' ? $default : $value;
+    }
+
+    private function settingsAvailable(): bool
+    {
+        return Schema::hasTable('site_page_settings');
+    }
+
+    private function mediaAvailable(): bool
+    {
+        return Schema::hasTable('media_assets')
+            && Schema::hasTable('content_media_assets');
+    }
+
+    private function editorialContentAvailable(): bool
+    {
+        return Schema::hasTable('editorial_contents');
     }
 }
