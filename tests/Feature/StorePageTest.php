@@ -83,6 +83,8 @@ class StorePageTest extends TestCase
         $this->assertStringNotContainsString('Reny Shop', $html);
         $this->assertStringNotContainsString('data-filter=', $html);
         $this->assertStringNotContainsString('role="tab"', $html);
+        $this->assertStringContainsString('class="store-royal-pass-selector"', $html);
+        $this->assertStringNotContainsString('role="button"', $html);
         $this->assertStringNotContainsString('aria-selected', $html);
         $this->assertStringNotContainsString('<iframe', $html);
         $this->assertStringNotContainsString('<video', $html);

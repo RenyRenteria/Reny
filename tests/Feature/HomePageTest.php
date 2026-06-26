@@ -73,6 +73,8 @@ class HomePageTest extends TestCase
         $this->assertStringNotContainsString('aria-current="page"', $html);
         $this->assertStringContainsString('class="home-show-card"', $html);
         $this->assertStringContainsString('class="home-royal-pass"', $html);
+        $this->assertStringContainsString('class="home-royal-pass-selector"', $html);
+        $this->assertStringNotContainsString('role="button"', $html);
     }
 
     public function test_mobile_navigation_uses_shared_compact_sizing_across_public_tabs(): void

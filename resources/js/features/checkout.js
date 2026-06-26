@@ -778,10 +778,12 @@ const initializeStoreInteractions = (root = document) => {
     const refreshRoyalPassOptions = () => {
         royalPassOptions.forEach((option) => {
             const selected = selectedRoyalPassProduct === option.dataset.royalPassOption;
-            const cta = option.querySelector('[data-royal-pass-cta]');
+            const container = option.closest('[data-royal-pass-container]') || option;
+            const cta = container.querySelector('[data-royal-pass-cta]');
 
+            container.classList.toggle('is-selected', selected);
+            container.dataset.royalPassSelected = selected ? 'true' : 'false';
             option.classList.toggle('is-selected', selected);
-            option.dataset.royalPassSelected = selected ? 'true' : 'false';
             option.setAttribute('aria-pressed', selected ? 'true' : 'false');
 
             if (cta) {
@@ -997,21 +999,20 @@ const initializeStoreInteractions = (root = document) => {
     });
 
     royalPassOptions.forEach((option) => {
-        option.addEventListener('click', (event) => {
-            if (event.target.closest('[data-royal-pass-cta]')) {
-                return;
-            }
-
+        option.addEventListener('click', () => {
             selectRoyalPassOption(option);
         });
-        option.addEventListener('keydown', (event) => {
-            if (!['Enter', ' '].includes(event.key)) {
-                return;
-            }
 
-            event.preventDefault();
-            selectRoyalPassOption(option);
-        });
+        if (option.tagName !== 'BUTTON') {
+            option.addEventListener('keydown', (event) => {
+                if (!['Enter', ' '].includes(event.key)) {
+                    return;
+                }
+
+                event.preventDefault();
+                selectRoyalPassOption(option);
+            });
+        }
     });
 
     document.querySelectorAll('[data-copy-current-url]').forEach((button) => {

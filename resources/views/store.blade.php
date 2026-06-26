@@ -148,18 +148,22 @@
                 @if ($shouldShowRoyalPass)
                     <section
                         class="store-royal-pass"
-                        aria-label="Select Royal Pass"
-                        aria-pressed="false"
-                        data-royal-pass-option="{{ $royalProductKey }}"
+                        data-royal-pass-container
                         data-royal-pass-selected="false"
-                        role="button"
-                        tabindex="0"
                     >
-                        <p>
-                            {{ $royalPass['copy_before'] ?? 'Get your' }}
-                            <strong>{{ $royalPass['emphasis'] ?? 'Royal Pass' }}</strong>
-                            {{ $royalPass['copy_after'] ?? 'to unlock exclusive content, community and more' }}
-                        </p>
+                        <button
+                            class="store-royal-pass-selector"
+                            type="button"
+                            aria-label="Select Royal Pass"
+                            aria-pressed="false"
+                            data-royal-pass-option="{{ $royalProductKey }}"
+                        >
+                            <span class="store-royal-pass-copy">
+                                {{ $royalPass['copy_before'] ?? 'Get your' }}
+                                <strong>{{ $royalPass['emphasis'] ?? 'Royal Pass' }}</strong>
+                                {{ $royalPass['copy_after'] ?? 'to unlock exclusive content, community and more' }}
+                            </span>
+                        </button>
                         <button
                             class="store-button store-royal-pass-button"
                             type="button"

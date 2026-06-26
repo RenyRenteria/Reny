@@ -168,17 +168,26 @@
                 <div class="home-stack">
                     <section
                         class="home-royal-pass"
-                        aria-label="Select Royal Pass"
-                        aria-pressed="false"
-                        data-royal-pass-option="{{ $royalProductKey }}"
+                        data-royal-pass-container
                         data-royal-pass-selected="false"
-                        role="button"
-                        tabindex="0"
                     >
-                        <div class="home-royal-pass-copy">
-                            <span>{{ $royalPass['copy_before'] ?? 'Get your' }} <strong>{{ $royalPass['emphasis'] ?? 'Royal Pass' }}</strong></span>
-                            <p>{{ $royalPass['copy_after'] ?? 'Unlock community, exclusive content and more...' }}</p>
-                        </div>
+                        <button
+                            class="home-royal-pass-selector"
+                            type="button"
+                            aria-label="Select Royal Pass"
+                            aria-pressed="false"
+                            data-royal-pass-option="{{ $royalProductKey }}"
+                        >
+                            <span class="home-royal-pass-copy">
+                                <span class="home-royal-pass-heading">{{ $royalPass['copy_before'] ?? 'Get your' }} <strong>{{ $royalPass['emphasis'] ?? 'Royal Pass' }}</strong></span>
+                                <span class="home-royal-pass-description">{{ $royalPass['copy_after'] ?? 'Unlock community, exclusive content and more...' }}</span>
+                            </span>
+                            <span class="home-royal-pass-images" aria-hidden="true">
+                                @foreach ($royalImages as $image)
+                                    <img src="{{ $image }}" alt="">
+                                @endforeach
+                            </span>
+                        </button>
                         <button
                             class="store-button home-unlock-button"
                             type="button"
@@ -200,11 +209,6 @@
                             </svg>
                             {{ $royalCtaLabel }}
                         </button>
-                        <div class="home-royal-pass-images" aria-hidden="true">
-                            @foreach ($royalImages as $image)
-                                <img src="{{ $image }}" alt="">
-                            @endforeach
-                        </div>
                     </section>
 
                     <section class="video-hero home-video-hero" aria-label="Featured video">
