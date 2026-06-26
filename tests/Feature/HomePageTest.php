@@ -61,6 +61,9 @@ class HomePageTest extends TestCase
             ->assertSee('CMS Deluxe Album')
             ->assertSee('CMS Lead Single')
             ->assertSee('data-buy="royal"', false)
+            ->assertSee('data-royal-pass-option="royal"', false)
+            ->assertSee('data-requires-plan-selection="true"', false)
+            ->assertSee('Get Your Royal Pass')
             ->assertSee('data-buy="deluxe"', false)
             ->assertSee('data-free-event-rsvp="concert"', false);
 

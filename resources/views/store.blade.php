@@ -1,6 +1,8 @@
 @php
     $storefront = $publicCms['storefront'] ?? app(\App\Services\StorefrontSettingsService::class)->publicPayload();
     $royalPass = $storefront['royal_pass'] ?? [];
+    $royalProductKey = $royalPass['product_key'] ?? 'royal';
+    $royalCtaLabel = $royalPass['cta_label'] ?? 'Get Your Royal Pass';
     $storefrontSlots = collect(['event_primary', 'event_secondary', 'album', 'merch'])
         ->map(fn (string $key): array => data_get($storefront, "slots.{$key}", []))
         ->filter()
@@ -144,7 +146,15 @@
                 </header>
 
                 @if ($shouldShowRoyalPass)
-                    <section class="store-royal-pass" aria-label="Royal Pass">
+                    <section
+                        class="store-royal-pass"
+                        aria-label="Select Royal Pass"
+                        aria-pressed="false"
+                        data-royal-pass-option="{{ $royalProductKey }}"
+                        data-royal-pass-selected="false"
+                        role="button"
+                        tabindex="0"
+                    >
                         <p>
                             {{ $royalPass['copy_before'] ?? 'Get your' }}
                             <strong>{{ $royalPass['emphasis'] ?? 'Royal Pass' }}</strong>
@@ -153,13 +163,18 @@
                         <button
                             class="store-button store-royal-pass-button"
                             type="button"
-                            data-buy="{{ $royalPass['product_key'] ?? 'royal' }}"
+                            data-buy="{{ $royalProductKey }}"
                             data-buy-name="{{ $royalPass['emphasis'] ?? 'Royal Pass' }}"
                             data-buy-type="Membership"
                             data-buy-summary="Monthly membership with exclusive content, community and more."
                             data-buy-image="{{ asset('images/store/crown-collection.png') }}"
-                            data-buy-url="{{ route('store.checkout', ['product' => $royalPass['product_key'] ?? 'royal']) }}"
-                        >{{ $royalPass['cta_label'] ?? 'BUY HERE' }}</button>
+                            data-buy-url="{{ route('store.checkout', ['product' => $royalProductKey]) }}"
+                            data-requires-plan-selection="true"
+                            data-royal-pass-cta
+                            disabled
+                            aria-disabled="true"
+                            aria-label="{{ $royalCtaLabel }}"
+                        >{{ $royalCtaLabel }}</button>
                     </section>
                 @endif
 

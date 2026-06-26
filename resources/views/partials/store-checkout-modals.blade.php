@@ -55,6 +55,20 @@
     </div>
 </section>
 
+<section class="store-modal-layer" id="purchaseConfirmationLayer" hidden inert>
+    <div class="store-dialog" role="dialog" aria-modal="true" aria-labelledby="purchaseConfirmationTitle">
+        <div class="store-dialog-head">
+            <h2 id="purchaseConfirmationTitle">Royal Pass confirmed</h2>
+            <button class="store-icon-button" type="button" data-close="purchaseConfirmationLayer" aria-label="Close confirmation">Close</button>
+        </div>
+        <div class="store-checkout-panel">
+            <h3>Payment confirmed</h3>
+            <p class="store-checkout-note" id="purchaseConfirmationMessage">Your Royal Pass is active. Confirmation was saved to your account.</p>
+            <a class="store-button" id="purchaseConfirmationAccount" href="{{ route('account.show') }}">View account</a>
+        </div>
+    </div>
+</section>
+
 <section class="store-modal-layer" id="bagLayer" hidden inert>
     <div class="store-dialog" role="dialog" aria-modal="true" aria-labelledby="bagTitle">
         <div class="store-dialog-head">

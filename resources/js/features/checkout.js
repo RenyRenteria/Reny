@@ -71,9 +71,14 @@ const initializeStoreInteractions = (root = document) => {
     const freeEventRsvpButtons = [...document.querySelectorAll('[data-free-event-rsvp]')];
     const rsvpButtons = [...document.querySelectorAll('[data-rsvp]')];
     const countdownNodes = [...document.querySelectorAll('[data-countdown-at]')];
+    const royalPassOptions = [...document.querySelectorAll('[data-royal-pass-option]')];
     const tierLabel = document.getElementById('tierLabel');
+    const purchaseConfirmationTitle = document.getElementById('purchaseConfirmationTitle');
+    const purchaseConfirmationMessage = document.getElementById('purchaseConfirmationMessage');
+    const purchaseConfirmationAccount = document.getElementById('purchaseConfirmationAccount');
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     let activePaymentMethod = 'paypal';
+    let selectedRoyalPassProduct = null;
     let paypalButtonsRendered = false;
     let paypalButtonsLoading = false;
     let paypalSdkPromise = null;
@@ -422,6 +427,26 @@ const initializeStoreInteractions = (root = document) => {
         return paypalSdkPromise;
     };
 
+    const showPurchaseConfirmation = (payload) => {
+        const royalActive = payload.royal_status === 'royal_active';
+
+        if (purchaseConfirmationTitle) {
+            purchaseConfirmationTitle.textContent = royalActive ? 'Royal Pass confirmed' : 'Purchase confirmed';
+        }
+
+        if (purchaseConfirmationMessage) {
+            purchaseConfirmationMessage.textContent = royalActive
+                ? 'Your Royal Pass is active. Confirmation was saved to your account.'
+                : 'Payment confirmed. Your purchase was saved to your account.';
+        }
+
+        if (purchaseConfirmationAccount) {
+            purchaseConfirmationAccount.href = payload.account_url || purchaseConfirmationAccount.href;
+        }
+
+        openStoreLayer('purchaseConfirmationLayer');
+    };
+
     const completeApprovedCheckout = (payload) => {
         if (tierLabel && payload.royal_status === 'royal_active') {
             tierLabel.textContent = 'ROYAL MEMBER';
@@ -431,10 +456,7 @@ const initializeStoreInteractions = (root = document) => {
         renderBag();
         closeStoreLayer('bagLayer');
         showStoreToast('PayPal confirmed. Hub updated.');
-
-        if (payload.account_url) {
-            window.location.assign(payload.account_url);
-        }
+        showPurchaseConfirmation(payload);
     };
 
     const renderPayPalButtons = async () => {
@@ -753,6 +775,39 @@ const initializeStoreInteractions = (root = document) => {
         return true;
     };
 
+    const refreshRoyalPassOptions = () => {
+        royalPassOptions.forEach((option) => {
+            const selected = selectedRoyalPassProduct === option.dataset.royalPassOption;
+            const cta = option.querySelector('[data-royal-pass-cta]');
+
+            option.classList.toggle('is-selected', selected);
+            option.dataset.royalPassSelected = selected ? 'true' : 'false';
+            option.setAttribute('aria-pressed', selected ? 'true' : 'false');
+
+            if (cta) {
+                cta.disabled = !selected;
+                cta.setAttribute('aria-disabled', selected ? 'false' : 'true');
+            }
+        });
+    };
+
+    const selectRoyalPassOption = (option) => {
+        const key = option.dataset.royalPassOption;
+
+        if (!key || !products[key]) {
+            return;
+        }
+
+        selectedRoyalPassProduct = key;
+        refreshRoyalPassOptions();
+        trackElementEvent(option, 'royal_pass_plan_selected', {
+            item_type: 'subscription',
+            item_id: key,
+            item_label: products[key]?.name || 'Royal Pass',
+            result: 'selected',
+        });
+    };
+
     const openBuyUrl = (button) => {
         if (!button.dataset.buyUrl) {
             return false;
@@ -816,6 +871,10 @@ const initializeStoreInteractions = (root = document) => {
     };
 
     const startCheckoutFromBuyButton = (button, { source = 'buy_button' } = {}) => {
+        if (button.dataset.requiresPlanSelection === 'true' && button.disabled) {
+            return false;
+        }
+
         if (openCheckoutModal(button.dataset.buy, {
             source,
             itemType: button.dataset.buyType || 'checkout',
@@ -934,6 +993,24 @@ const initializeStoreInteractions = (root = document) => {
     document.querySelectorAll('[data-buy]').forEach((button) => {
         button.addEventListener('click', () => {
             startCheckoutFromBuyButton(button);
+        });
+    });
+
+    royalPassOptions.forEach((option) => {
+        option.addEventListener('click', (event) => {
+            if (event.target.closest('[data-royal-pass-cta]')) {
+                return;
+            }
+
+            selectRoyalPassOption(option);
+        });
+        option.addEventListener('keydown', (event) => {
+            if (!['Enter', ' '].includes(event.key)) {
+                return;
+            }
+
+            event.preventDefault();
+            selectRoyalPassOption(option);
         });
     });
 
@@ -1257,7 +1334,7 @@ const initializeStoreInteractions = (root = document) => {
     window.renyStoreKeydownAbort?.abort();
     window.renyStoreKeydownAbort = new AbortController();
     document.addEventListener('keydown', (event) => {
-        const openLayerId = ['bagLayer', 'detailLayer', 'freeEventRsvpLayer'].find((id) => {
+        const openLayerId = ['bagLayer', 'detailLayer', 'freeEventRsvpLayer', 'purchaseConfirmationLayer'].find((id) => {
             const layer = document.getElementById(id);
             return layer && !layer.hidden;
         });
@@ -1276,6 +1353,7 @@ const initializeStoreInteractions = (root = document) => {
     }, { signal: window.renyStoreKeydownAbort.signal });
 
     selectPaymentMethod('paypal', { track: false });
+    refreshRoyalPassOptions();
     updateStorePrices();
     renderBag();
     [nameField, emailField, phoneField, countryField, freeEventRsvpName, freeEventRsvpEmail, freeEventRsvpCountry].forEach((field) => {
