@@ -197,7 +197,7 @@ class PublicContentController extends Controller
             'eyebrow' => 'Membership',
             'description' => trim(data_get($royalPass, 'copy_before', 'Get your').' '.data_get($royalPass, 'emphasis', 'Royal Pass').' '.data_get($royalPass, 'copy_after', 'to unlock exclusive content, community and more')),
             'price_label' => '$4.99/mo',
-            'cta_label' => data_get($royalPass, 'cta_label', 'BUY HERE'),
+            'cta_label' => data_get($royalPass, 'cta_label', 'Get Your Royal Pass'),
             'image' => 'images/store/crown-collection.png',
             'image_alt' => 'Royal Pass membership',
         ];

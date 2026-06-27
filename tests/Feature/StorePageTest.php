@@ -31,7 +31,7 @@ class StorePageTest extends TestCase
         $response->assertOk();
         $response->assertSee('Get your');
         $response->assertSee('Royal Pass');
-        $response->assertSee('BUY HERE');
+        $response->assertSee('Get Your Royal Pass');
         $response->assertSee('Reny Renteria en Concierto');
         $response->assertSee('Festival de la Rosa Dorada');
         $response->assertSee('Work in Progress');
@@ -51,6 +51,8 @@ class StorePageTest extends TestCase
         $response->assertSee('Selected currency is a reference. PayPal checkout is charged in USD.');
         $response->assertSee('data-free-event-rsvp="concert"', false);
         $response->assertSee('data-buy="listening"', false);
+        $response->assertSee('data-royal-pass-option="royal"', false);
+        $response->assertSee('data-requires-plan-selection="true"', false);
         $response->assertSee('data-buy="deluxe"', false);
         $response->assertSee('data-buy="merch"', false);
         $response->assertSee('data-buy-image="'.asset('images/store/rosa-dorada.png').'"', false);
@@ -81,6 +83,8 @@ class StorePageTest extends TestCase
         $this->assertStringNotContainsString('Reny Shop', $html);
         $this->assertStringNotContainsString('data-filter=', $html);
         $this->assertStringNotContainsString('role="tab"', $html);
+        $this->assertStringContainsString('class="store-royal-pass-selector"', $html);
+        $this->assertStringNotContainsString('role="button"', $html);
         $this->assertStringNotContainsString('aria-selected', $html);
         $this->assertStringNotContainsString('<iframe', $html);
         $this->assertStringNotContainsString('<video', $html);
@@ -95,7 +99,7 @@ class StorePageTest extends TestCase
             ->get('/store')
             ->assertOk()
             ->assertDontSee('class="store-royal-pass"', false)
-            ->assertDontSee('BUY HERE')
+            ->assertDontSee('Get Your Royal Pass')
             ->assertSee('Reny Renteria en Concierto');
     }
 

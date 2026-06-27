@@ -47,7 +47,7 @@ class StorefrontSettingsService
                 'copy_before' => 'Get your',
                 'emphasis' => 'Royal Pass',
                 'copy_after' => 'to unlock exclusive content, community and more',
-                'cta_label' => 'BUY HERE',
+                'cta_label' => 'Get Your Royal Pass',
                 'product_key' => 'royal',
             ],
             'slots' => [
