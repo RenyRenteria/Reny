@@ -31,7 +31,7 @@ class StorePageTest extends TestCase
         $response->assertOk();
         $response->assertSee('Get your');
         $response->assertSee('Royal Pass');
-        $response->assertSee('Get Your Royal Pass');
+        $response->assertSee('Unlock Royal Pass');
         $response->assertSee('Reny Renteria en Concierto');
         $response->assertSee('Festival de la Rosa Dorada');
         $response->assertSee('Work in Progress');
@@ -53,6 +53,9 @@ class StorePageTest extends TestCase
         $response->assertSee('data-buy="listening"', false);
         $response->assertSee('data-royal-pass-option="royal"', false);
         $response->assertSee('data-requires-plan-selection="true"', false);
+        $response->assertSee('data-royal-pass-selected="true"', false);
+        $response->assertSee('aria-pressed="true"', false);
+        $response->assertSee('aria-disabled="false"', false);
         $response->assertSee('data-buy="deluxe"', false);
         $response->assertSee('data-buy="merch"', false);
         $response->assertSee('data-buy-image="'.asset('images/store/rosa-dorada.png').'"', false);
@@ -83,6 +86,7 @@ class StorePageTest extends TestCase
         $this->assertStringNotContainsString('Reny Shop', $html);
         $this->assertStringNotContainsString('data-filter=', $html);
         $this->assertStringNotContainsString('role="tab"', $html);
+        $this->assertStringContainsString('class="store-royal-pass is-selected"', $html);
         $this->assertStringContainsString('class="store-royal-pass-selector"', $html);
         $this->assertStringNotContainsString('role="button"', $html);
         $this->assertStringNotContainsString('aria-selected', $html);
@@ -99,8 +103,28 @@ class StorePageTest extends TestCase
             ->get('/store')
             ->assertOk()
             ->assertDontSee('class="store-royal-pass"', false)
-            ->assertDontSee('Get Your Royal Pass')
+            ->assertDontSee('Unlock Royal Pass')
             ->assertSee('Reny Renteria en Concierto');
+    }
+
+    public function test_store_page_normalizes_legacy_royal_pass_cta_label(): void
+    {
+        SitePageSetting::create([
+            'page' => StorefrontSettingsService::PAGE,
+            'section' => StorefrontSettingsService::SECTION,
+            'status' => SitePageSetting::STATUS_PUBLISHED,
+            'payload' => [
+                'royal_pass' => [
+                    'cta_label' => 'Buy here',
+                ],
+            ],
+            'published_at' => now(),
+        ]);
+
+        $this->get('/store')
+            ->assertOk()
+            ->assertSee('Unlock Royal Pass')
+            ->assertDontSee('Buy here');
     }
 
     public function test_checkout_screen_renders_product_details_and_modal_hooks(): void

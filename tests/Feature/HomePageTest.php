@@ -63,7 +63,10 @@ class HomePageTest extends TestCase
             ->assertSee('data-buy="royal"', false)
             ->assertSee('data-royal-pass-option="royal"', false)
             ->assertSee('data-requires-plan-selection="true"', false)
-            ->assertSee('Get Your Royal Pass')
+            ->assertSee('Unlock Royal Pass')
+            ->assertSee('data-royal-pass-selected="true"', false)
+            ->assertSee('aria-pressed="true"', false)
+            ->assertSee('aria-disabled="false"', false)
             ->assertSee('data-buy="deluxe"', false)
             ->assertSee('data-free-event-rsvp="concert"', false);
 
@@ -72,7 +75,7 @@ class HomePageTest extends TestCase
         $this->assertStringNotContainsString('class="tab is-active"', $html);
         $this->assertStringNotContainsString('aria-current="page"', $html);
         $this->assertStringContainsString('class="home-show-card"', $html);
-        $this->assertStringContainsString('class="home-royal-pass"', $html);
+        $this->assertStringContainsString('class="home-royal-pass is-selected"', $html);
         $this->assertStringContainsString('class="home-royal-pass-selector"', $html);
         $this->assertStringNotContainsString('role="button"', $html);
     }
@@ -143,7 +146,7 @@ class HomePageTest extends TestCase
         $memberResponse = $this->actingAs($user)
             ->get('/')
             ->assertOk()
-            ->assertSee('class="home-royal-pass"', false)
+            ->assertSee('class="home-royal-pass is-selected"', false)
             ->assertSee('data-buy="royal"', false)
             ->assertSee('Reny Renteria en Concierto')
             ->assertSee('Festival de la Rosa Dorada')
@@ -176,7 +179,7 @@ class HomePageTest extends TestCase
             ->assertSee('Upcoming Shows')
             ->assertSee('Reny Renteria en Concierto')
             ->assertSee('Festival de la Rosa Dorada')
-            ->assertSee('class="home-royal-pass"', false);
+            ->assertSee('class="home-royal-pass is-selected"', false);
     }
 
     public function test_home_prefers_current_storefront_events_over_legacy_cached_events(): void

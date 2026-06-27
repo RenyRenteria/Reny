@@ -246,7 +246,7 @@ class AdminStorefrontSettingsTest extends TestCase
                 'copy_before' => 'Get your',
                 'emphasis' => 'Royal Pass',
                 'copy_after' => 'to unlock exclusive content, community and more',
-                'cta_label' => 'Get Your Royal Pass',
+                'cta_label' => 'Unlock Royal Pass',
                 'product_key' => 'royal',
             ],
             'slots' => [
