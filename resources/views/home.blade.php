@@ -43,7 +43,7 @@
     $singles = collect($publicCms['singles'] ?? [])->take(3)->values();
     $royalPass = $publicCms['royal_pass'] ?? [];
     $royalProductKey = $royalPass['product_key'] ?? 'royal';
-    $royalCtaLabel = $royalPass['cta_label'] ?? 'Get Your Royal Pass';
+    $royalCtaLabel = $royalPass['cta_label'] ?? 'Unlock Royal Pass';
     $rsvpTickets = $rsvpTickets ?? [];
     $slotImage = fn (array $slot): string => $slot['image_url'] ?? asset($slot['image'] ?? 'images/store/work-in-progress.png');
     $eventLines = fn (array $event): array => array_values(array_filter(
@@ -167,15 +167,15 @@
 
                 <div class="home-stack">
                     <section
-                        class="home-royal-pass"
+                        class="home-royal-pass is-selected"
                         data-royal-pass-container
-                        data-royal-pass-selected="false"
+                        data-royal-pass-selected="true"
                     >
                         <button
                             class="home-royal-pass-selector"
                             type="button"
                             aria-label="Select Royal Pass"
-                            aria-pressed="false"
+                            aria-pressed="true"
                             data-royal-pass-option="{{ $royalProductKey }}"
                         >
                             <span class="home-royal-pass-copy">
@@ -199,8 +199,7 @@
                             data-buy-url="{{ route('store.checkout', ['product' => $royalProductKey]) }}"
                             data-requires-plan-selection="true"
                             data-royal-pass-cta
-                            disabled
-                            aria-disabled="true"
+                            aria-disabled="false"
                             aria-label="{{ $royalCtaLabel }}"
                         >
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">

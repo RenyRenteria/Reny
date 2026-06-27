@@ -810,6 +810,27 @@ const initializeStoreInteractions = (root = document) => {
         });
     };
 
+    const initializeRoyalPassSelection = () => {
+        if (selectedRoyalPassProduct || royalPassOptions.length === 0) {
+            return;
+        }
+
+        const preselectedOption = royalPassOptions.find((option) => {
+            const container = option.closest('[data-royal-pass-container]');
+
+            return option.getAttribute('aria-pressed') === 'true'
+                || container?.dataset.royalPassSelected === 'true';
+        }) || royalPassOptions[0];
+        const key = preselectedOption?.dataset.royalPassOption;
+
+        if (!key || !products[key]) {
+            return;
+        }
+
+        selectedRoyalPassProduct = key;
+        refreshRoyalPassOptions();
+    };
+
     const openBuyUrl = (button) => {
         if (!button.dataset.buyUrl) {
             return false;
@@ -1014,6 +1035,8 @@ const initializeStoreInteractions = (root = document) => {
             });
         }
     });
+
+    initializeRoyalPassSelection();
 
     document.querySelectorAll('[data-copy-current-url]').forEach((button) => {
         button.addEventListener('click', async () => {

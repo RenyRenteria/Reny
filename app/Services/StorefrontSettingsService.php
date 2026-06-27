@@ -47,7 +47,7 @@ class StorefrontSettingsService
                 'copy_before' => 'Get your',
                 'emphasis' => 'Royal Pass',
                 'copy_after' => 'to unlock exclusive content, community and more',
-                'cta_label' => 'Get Your Royal Pass',
+                'cta_label' => 'Unlock Royal Pass',
                 'product_key' => 'royal',
             ],
             'slots' => [
@@ -325,9 +325,15 @@ class StorefrontSettingsService
         $defaults = $this->defaults();
 
         $royalPass = collect($defaults['royal_pass'])
-            ->mapWithKeys(fn (string $default, string $key): array => [
-                $key => $this->stringValue(Arr::get($payload, "royal_pass.{$key}"), $default),
-            ])
+            ->mapWithKeys(function (string $default, string $key) use ($payload): array {
+                $value = $this->stringValue(Arr::get($payload, "royal_pass.{$key}"), $default);
+
+                if ($key === 'cta_label') {
+                    $value = $this->royalPassCtaLabel($value);
+                }
+
+                return [$key => $value];
+            })
             ->all();
 
         $slots = [];
@@ -388,5 +394,12 @@ class StorefrontSettingsService
     private function editorialContentAvailable(): bool
     {
         return Schema::hasTable('editorial_contents');
+    }
+
+    private function royalPassCtaLabel(string $value): string
+    {
+        return in_array(strtolower($value), ['buy here', 'get your royal pass'], true)
+            ? $this->defaults()['royal_pass']['cta_label']
+            : $value;
     }
 }
