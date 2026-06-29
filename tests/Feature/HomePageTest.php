@@ -62,7 +62,7 @@ class HomePageTest extends TestCase
             ->assertSee('CMS Lead Single')
             ->assertSee('data-buy="royal"', false)
             ->assertSee('data-royal-pass-option="royal"', false)
-            ->assertSee('data-requires-plan-selection="true"', false)
+            ->assertSee('data-buy-image="'.asset('images/store/royal-pass.png').'"', false)
             ->assertSee('Unlock Royal Pass')
             ->assertSee('data-royal-pass-selected="true"', false)
             ->assertSee('aria-pressed="true"', false)
@@ -77,6 +77,7 @@ class HomePageTest extends TestCase
         $this->assertStringContainsString('class="home-show-card"', $html);
         $this->assertStringContainsString('class="home-royal-pass is-selected"', $html);
         $this->assertStringContainsString('class="home-royal-pass-selector"', $html);
+        $this->assertStringNotContainsString('data-requires-plan-selection="true"', $html);
         $this->assertStringNotContainsString('role="button"', $html);
     }
 

@@ -894,6 +894,16 @@ const initializeStoreInteractions = (root = document) => {
     };
 
     const startCheckoutFromBuyButton = (button, { source = 'buy_button' } = {}) => {
+        if (button.hasAttribute('data-royal-pass-cta')) {
+            initializeRoyalPassSelection();
+            const container = button.closest('[data-royal-pass-container]');
+
+            if (container?.dataset.royalPassSelected === 'true') {
+                button.disabled = false;
+                button.setAttribute('aria-disabled', 'false');
+            }
+        }
+
         if (button.dataset.requiresPlanSelection === 'true' && button.disabled) {
             return false;
         }
