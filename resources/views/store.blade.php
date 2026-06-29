@@ -171,9 +171,8 @@
                             data-buy-name="{{ $royalPass['emphasis'] ?? 'Royal Pass' }}"
                             data-buy-type="Membership"
                             data-buy-summary="Monthly membership with exclusive content, community and more."
-                            data-buy-image="{{ asset('images/store/crown-collection.png') }}"
+                            data-buy-image="{{ asset('images/store/royal-pass.png') }}"
                             data-buy-url="{{ route('store.checkout', ['product' => $royalProductKey]) }}"
-                            data-requires-plan-selection="true"
                             data-royal-pass-cta
                             aria-disabled="false"
                             aria-label="{{ $royalCtaLabel }}"

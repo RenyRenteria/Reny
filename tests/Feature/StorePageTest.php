@@ -48,14 +48,15 @@ class StorePageTest extends TestCase
         $response->assertSee('images/store/rosa-dorada.png');
         $response->assertSee('images/store/work-in-progress.png');
         $response->assertSee('images/store/crown-collection.png');
+        $response->assertSee('images/store/royal-pass.png');
         $response->assertSee('Selected currency is a reference. PayPal checkout is charged in USD.');
         $response->assertSee('data-free-event-rsvp="concert"', false);
         $response->assertSee('data-buy="listening"', false);
         $response->assertSee('data-royal-pass-option="royal"', false);
-        $response->assertSee('data-requires-plan-selection="true"', false);
         $response->assertSee('data-royal-pass-selected="true"', false);
         $response->assertSee('aria-pressed="true"', false);
         $response->assertSee('aria-disabled="false"', false);
+        $response->assertSee('data-buy-image="'.asset('images/store/royal-pass.png').'"', false);
         $response->assertSee('data-buy="deluxe"', false);
         $response->assertSee('data-buy="merch"', false);
         $response->assertSee('data-buy-image="'.asset('images/store/rosa-dorada.png').'"', false);
@@ -88,6 +89,7 @@ class StorePageTest extends TestCase
         $this->assertStringNotContainsString('role="tab"', $html);
         $this->assertStringContainsString('class="store-royal-pass is-selected"', $html);
         $this->assertStringContainsString('class="store-royal-pass-selector"', $html);
+        $this->assertStringNotContainsString('data-requires-plan-selection="true"', $html);
         $this->assertStringNotContainsString('role="button"', $html);
         $this->assertStringNotContainsString('aria-selected', $html);
         $this->assertStringNotContainsString('<iframe', $html);
@@ -156,6 +158,19 @@ class StorePageTest extends TestCase
             ->assertSee('data-create-order-endpoint="'.route('checkout.paypal.orders').'"', false)
             ->assertDontSee('Load PayPal checkout')
             ->assertSee('GET TICKETS');
+    }
+
+    public function test_royal_pass_checkout_uses_membership_card_art(): void
+    {
+        $royalPassImage = asset('images/store/royal-pass.png');
+
+        $this->get(route('store.checkout', ['product' => 'royal']))
+            ->assertOk()
+            ->assertSee('Royal Pass')
+            ->assertSee('Unlock Royal Pass')
+            ->assertSee('src="'.$royalPassImage.'"', false)
+            ->assertSee('alt="Royal Pass membership card"', false)
+            ->assertSee('data-buy-image="'.$royalPassImage.'"', false);
     }
 
     public function test_checkout_screen_uses_published_event_image_for_page_and_modal_data(): void
