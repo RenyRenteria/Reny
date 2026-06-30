@@ -112,6 +112,77 @@ class AdminPhotoLibraryTest extends TestCase
             ->assertOk();
     }
 
+    public function test_member_only_legacy_photo_retires_public_static_asset(): void
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+        $legacyRelativePath = 'images/photos/legacy-private.jpg';
+        $legacyPublicPath = public_path($legacyRelativePath);
+
+        if (! is_dir(dirname($legacyPublicPath))) {
+            mkdir(dirname($legacyPublicPath), 0755, true);
+        }
+
+        $legacyImage = UploadedFile::fake()->image('legacy-private.jpg', 80, 60)->size(512);
+        copy($legacyImage->getRealPath(), $legacyPublicPath);
+
+        try {
+            $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+            $this->actingAsAdmin($admin);
+
+            $photo = Photo::create([
+                'visibility' => PhotoVisibility::Public,
+                'status' => PhotoStatus::Active,
+                'order_index' => 0,
+                'caption' => 'Legacy private frame',
+                'metadata' => [
+                    'legacy_import' => true,
+                    'legacy_asset_path' => $legacyRelativePath,
+                    'original_filename' => 'legacy-private.jpg',
+                    'title' => 'Legacy Private',
+                    'type' => 'Single post',
+                    'tone' => 'legacy',
+                    'size' => 'standard',
+                ],
+            ]);
+
+            $this->assertFileExists($legacyPublicPath);
+
+            $this->patch(route('admin.photos.update', $photo), [
+                'visibility' => PhotoVisibility::MemberOnly->value,
+                'status' => PhotoStatus::Active->value,
+                'caption' => $photo->caption,
+                'order_index' => $photo->order_index,
+            ])->assertRedirect();
+
+            $photo->refresh();
+
+            $this->assertSame(PhotoVisibility::MemberOnly, $photo->visibility);
+            $this->assertSame('local', $photo->original_disk);
+            $this->assertSame('local', $photo->public_disk);
+            $this->assertSame('public', $photo->blurred_disk);
+            $this->assertArrayNotHasKey('legacy_asset_path', $photo->metadata);
+            $this->assertSame($legacyRelativePath, $photo->metadata['legacy_asset_retired_path']);
+            $this->assertFileDoesNotExist($legacyPublicPath);
+            Storage::disk('local')->assertExists($photo->original_path);
+            Storage::disk('local')->assertExists($photo->public_path);
+            Storage::disk('public')->assertExists($photo->blurred_path);
+
+            auth()->logout();
+
+            $this->get('/images/photos/legacy-private.jpg')->assertNotFound();
+            $this->get('/photos')
+                ->assertOk()
+                ->assertSee('data-photo-locked="true"', false)
+                ->assertSee(Storage::disk('public')->url($photo->blurred_path), false)
+                ->assertDontSee(asset($legacyRelativePath), false);
+        } finally {
+            if (is_file($legacyPublicPath)) {
+                unlink($legacyPublicPath);
+            }
+        }
+    }
+
     public function test_large_batches_are_queued_in_processing_state(): void
     {
         Queue::fake();

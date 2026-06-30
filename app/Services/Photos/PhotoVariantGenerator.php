@@ -85,8 +85,12 @@ class PhotoVariantGenerator
 
     private function sourcePath(Photo $photo): string
     {
-        if ($legacy = $this->legacySourcePath($photo)) {
-            return $legacy;
+        if (! $photo->original_disk || ! $photo->original_path) {
+            if ($legacy = $this->legacySourcePath($photo)) {
+                return $legacy;
+            }
+
+            throw new RuntimeException('Photo original file is missing.');
         }
 
         $disk = Storage::disk($photo->original_disk);
@@ -127,6 +131,12 @@ class PhotoVariantGenerator
         $legacy = data_get($photo->metadata ?? [], 'legacy_asset_path');
 
         if (! is_string($legacy) || $legacy === '') {
+            return null;
+        }
+
+        $legacy = str_replace('\\', '/', $legacy);
+
+        if (! str_starts_with($legacy, 'images/photos/') || str_contains($legacy, '..')) {
             return null;
         }
 

@@ -88,12 +88,8 @@ class Photo extends Model
 
     public function optimizedUrl(?User $user = null): ?string
     {
-        if ($legacy = $this->legacyAssetUrl()) {
-            return $legacy;
-        }
-
         if (! $this->public_path || ! $this->public_disk) {
-            return null;
+            return $this->legacyAssetUrl();
         }
 
         if ($this->visibility === PhotoVisibility::MemberOnly) {
@@ -129,8 +125,25 @@ class Photo extends Model
 
     private function legacyAssetUrl(): ?string
     {
+        if ($this->visibility !== PhotoVisibility::Public) {
+            return null;
+        }
+
+        $path = $this->legacyAssetPath();
+
+        return $path && is_file(public_path($path)) ? asset($path) : null;
+    }
+
+    private function legacyAssetPath(): ?string
+    {
         $path = data_get($this->metadata ?? [], 'legacy_asset_path');
 
-        return is_string($path) && $path !== '' ? asset($path) : null;
+        if (! is_string($path) || $path === '') {
+            return null;
+        }
+
+        $path = str_replace('\\', '/', $path);
+
+        return str_starts_with($path, 'images/photos/') && ! str_contains($path, '..') ? $path : null;
     }
 }

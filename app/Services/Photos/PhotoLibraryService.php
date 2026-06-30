@@ -13,6 +13,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use RuntimeException;
 use Throwable;
 
 class PhotoLibraryService
@@ -63,11 +64,19 @@ class PhotoLibraryService
     {
         $photo = $photo->fresh() ?? $photo;
         $oldPaths = $this->variantPaths($photo);
+        $legacyAssetPath = $this->legacyAssetPath($photo);
 
         try {
+            $photo = $this->preserveLegacyOriginal($photo);
             $generated = $this->variants->generate($photo);
             $metadata = $photo->metadata ?? [];
             unset($metadata['processing_error']);
+
+            if ($legacyAssetPath) {
+                unset($metadata['legacy_asset_path']);
+                $metadata['legacy_asset_retired_path'] = $legacyAssetPath;
+                $metadata['legacy_asset_retired_at'] = now()->toISOString();
+            }
 
             $photo->forceFill([
                 ...$generated,
@@ -79,13 +88,28 @@ class PhotoLibraryService
             ])->save();
 
             $this->deletePaths($oldPaths);
+            $this->deletePublicLegacyAsset($legacyAssetPath);
             PublicCmsContentService::bumpCacheVersion();
         } catch (Throwable $exception) {
             report($exception);
+            $metadata = $photo->metadata ?? [];
+
+            if (
+                $legacyAssetPath
+                && $photo->visibility === PhotoVisibility::MemberOnly
+                && $photo->original_disk
+                && $photo->original_path
+            ) {
+                unset($metadata['legacy_asset_path']);
+                $metadata['legacy_asset_retired_path'] = $legacyAssetPath;
+                $metadata['legacy_asset_retired_at'] = now()->toISOString();
+                $this->deletePublicLegacyAsset($legacyAssetPath);
+            }
+
             $photo->forceFill([
                 'status' => PhotoStatus::Processing,
                 'metadata' => [
-                    ...($photo->metadata ?? []),
+                    ...$metadata,
                     'processing_error' => $exception->getMessage(),
                 ],
             ])->save();
@@ -140,10 +164,12 @@ class PhotoLibraryService
             ...$this->variantPaths($photo),
             [$photo->original_disk, $photo->original_path],
         ];
+        $legacyAssetPath = $this->legacyAssetPath($photo);
         $album = $photo->album;
 
         $photo->delete();
         $this->deletePaths($paths);
+        $this->deletePublicLegacyAsset($legacyAssetPath);
 
         if ($album && (int) $album->cover_photo_id === (int) $photo->id) {
             $album->forceFill([
@@ -205,7 +231,7 @@ class PhotoLibraryService
         $path = Storage::disk($disk)->putFileAs('photos/originals/'.now()->format('Y/m'), $file, $filename);
 
         if (! is_string($path) || $path === '') {
-            throw new \RuntimeException('Photo original could not be stored.');
+            throw new RuntimeException('Photo original could not be stored.');
         }
 
         return Photo::create([
@@ -232,9 +258,80 @@ class PhotoLibraryService
             return true;
         }
 
-        $legacy = data_get($photo->metadata ?? [], 'legacy_asset_path');
+        $legacy = $this->legacyAssetPath($photo);
 
         return is_string($legacy) && $legacy !== '' && is_file(public_path($legacy));
+    }
+
+    private function preserveLegacyOriginal(Photo $photo): Photo
+    {
+        if ($photo->original_disk && $photo->original_path) {
+            return $photo;
+        }
+
+        $legacy = $this->legacyAssetPath($photo);
+
+        if (! $legacy) {
+            return $photo;
+        }
+
+        $sourcePath = public_path($legacy);
+
+        if (! is_file($sourcePath)) {
+            return $photo;
+        }
+
+        $contents = file_get_contents($sourcePath);
+
+        if (! is_string($contents) || $contents === '') {
+            throw new RuntimeException('Legacy photo original could not be read.');
+        }
+
+        $disk = config('photos.private_disk', 'local');
+        $extension = strtolower(pathinfo($sourcePath, PATHINFO_EXTENSION) ?: 'jpg');
+        $path = 'photos/originals/legacy/'.now()->format('Y/m').'/'.Str::uuid().'.'.$extension;
+
+        if (! Storage::disk($disk)->put($path, $contents)) {
+            throw new RuntimeException('Legacy photo original could not be stored.');
+        }
+
+        $photo->forceFill([
+            'original_disk' => $disk,
+            'original_path' => $path,
+            'metadata' => [
+                ...($photo->metadata ?? []),
+                'legacy_preserved_from' => $legacy,
+                'legacy_preserved_at' => now()->toISOString(),
+            ],
+        ])->save();
+
+        return $photo->fresh() ?? $photo;
+    }
+
+    private function legacyAssetPath(Photo $photo): ?string
+    {
+        $legacy = data_get($photo->metadata ?? [], 'legacy_asset_path');
+
+        if (! is_string($legacy) || $legacy === '') {
+            return null;
+        }
+
+        $legacy = str_replace('\\', '/', $legacy);
+
+        return str_starts_with($legacy, 'images/photos/') && ! str_contains($legacy, '..') ? $legacy : null;
+    }
+
+    private function deletePublicLegacyAsset(?string $path): void
+    {
+        if (! $path) {
+            return;
+        }
+
+        $publicPath = public_path($path);
+
+        if (is_file($publicPath)) {
+            unlink($publicPath);
+        }
     }
 
     /**
