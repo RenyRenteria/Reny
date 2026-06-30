@@ -2,6 +2,7 @@ import {
     bindOnce,
     normalizeAnalyticsKey,
     trackElementEvent,
+    trackEvent,
 } from './analytics.js';
 
 let activePhotoTile = null;
@@ -62,9 +63,34 @@ const openPhotoLightbox = (tile) => {
     });
 };
 
+const openPhotoPaywall = (tile) => {
+    trackEvent('paywall_triggered_from_photo', {
+        item_type: 'photo',
+        item_id: tile.dataset.photoId || normalizeAnalyticsKey(tile.dataset.photoTitle),
+        photo_id: tile.dataset.photoId,
+        album_id: tile.dataset.photoAlbumId,
+        source: 'photos_grid',
+        result: 'blocked',
+    });
+
+    const trigger = document.querySelector('[data-photo-paywall-trigger][data-buy]');
+
+    if (trigger) {
+        trigger.click();
+        return;
+    }
+
+    window.location.assign('/store/checkout/royal');
+};
+
 const initializePhotoInteractions = (root = document) => {
     root.querySelectorAll('.photo-tile').forEach((tile) => {
         bindOnce(tile, 'photo-tile-open', 'click', () => {
+            if (tile.dataset.photoLocked === 'true') {
+                openPhotoPaywall(tile);
+                return;
+            }
+
             const tiles = [...document.querySelectorAll('.photo-tile')];
             const usesTouch = window.matchMedia('(hover: none)').matches;
 

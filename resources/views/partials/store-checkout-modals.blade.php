@@ -5,7 +5,7 @@
             <button class="store-icon-button" type="button" data-close="detailLayer" aria-label="Close product details">Close</button>
         </div>
         <div class="store-detail">
-            <img id="detailImage" src="{{ asset('images/photos/merch.jpg') }}" alt="">
+            <img id="detailImage" src="{{ asset($detailPlaceholderImage ?? 'images/photos/merch.jpg') }}" alt="">
             <div class="store-detail-copy">
                 <p id="detailText"></p>
                 <div class="store-detail-grid" id="detailGrid"></div>

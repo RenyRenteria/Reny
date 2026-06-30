@@ -93,6 +93,7 @@ class AnalyticsInstrumentationTest extends TestCase
             'free_event_rsvp_succeeded',
             'free_event_rsvp_failed',
             'photo_opened',
+            'paywall_triggered_from_photo',
         ] as $eventName) {
             $this->assertStringContainsString($eventName, $script);
         }

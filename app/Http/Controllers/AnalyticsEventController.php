@@ -20,8 +20,8 @@ class AnalyticsEventController extends Controller
         }
 
         $data = $request->validate([
-            'name' => ['required', 'string', Rule::in(['page_view', 'permission_denied'])],
-            'payload' => ['nullable', 'array:screen,path,result,title,referrer,section,item_type,item_id', 'max:8'],
+            'name' => ['required', 'string', Rule::in(['page_view', 'permission_denied', 'paywall_triggered_from_photo'])],
+            'payload' => ['nullable', 'array:screen,path,result,title,referrer,section,item_type,item_id,photo_id,album_id,source', 'max:10'],
             'payload.screen' => ['nullable', 'string', 'max:80'],
             'payload.path' => ['nullable', 'string', 'max:200'],
             'payload.result' => ['nullable', 'string', 'max:40'],
@@ -30,6 +30,9 @@ class AnalyticsEventController extends Controller
             'payload.section' => ['nullable', 'string', 'max:80'],
             'payload.item_type' => ['nullable', 'string', 'max:80'],
             'payload.item_id' => ['nullable', 'string', 'max:120'],
+            'payload.photo_id' => ['nullable', 'string', 'max:120'],
+            'payload.album_id' => ['nullable', 'string', 'max:120'],
+            'payload.source' => ['nullable', 'string', 'max:80'],
             'timestamp' => ['nullable', 'date'],
         ]);
 
@@ -73,6 +76,13 @@ class AnalyticsEventController extends Controller
             return [
                 'type' => 'access_gate',
                 'key' => (string) (Arr::get($payload, 'section') ?: $itemId ?: $screen ?: 'unknown'),
+            ];
+        }
+
+        if ($name === 'paywall_triggered_from_photo') {
+            return [
+                'type' => 'photo',
+                'key' => (string) ($itemId ?: Arr::get($payload, 'photo_id') ?: 'unknown'),
             ];
         }
 

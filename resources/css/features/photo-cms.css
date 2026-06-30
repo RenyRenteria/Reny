@@ -1,0 +1,219 @@
+.photos-cms-screen {
+    display: grid;
+    gap: 1.5rem;
+}
+
+.photos-cms-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(20rem, 0.65fr);
+    gap: 1.25rem;
+}
+
+.photo-upload-form,
+.photo-manage-form {
+    display: grid;
+    gap: 1rem;
+}
+
+.photo-dropzone {
+    border: 1px dashed color-mix(in srgb, var(--admin-accent, #a96519) 45%, #d8d3ca);
+    border-radius: 8px;
+    display: grid;
+    gap: 0.35rem;
+    min-height: 9rem;
+    padding: 1.25rem;
+    place-items: center;
+    text-align: center;
+    transition: background-color 160ms ease, border-color 160ms ease;
+}
+
+.photo-dropzone input {
+    inline-size: 100%;
+    max-inline-size: 24rem;
+}
+
+.photo-dropzone.is-dragging {
+    background: color-mix(in srgb, var(--admin-accent, #a96519) 10%, #fff);
+    border-color: var(--admin-accent, #a96519);
+}
+
+.photo-upload-preview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+    gap: 0.85rem;
+}
+
+.photo-upload-preview {
+    border: 1px solid #e6dfd3;
+    border-radius: 8px;
+    display: grid;
+    gap: 0.5rem;
+    padding: 0.6rem;
+}
+
+.photo-upload-preview img {
+    aspect-ratio: 4 / 3;
+    border-radius: 6px;
+    inline-size: 100%;
+    object-fit: cover;
+}
+
+.photo-upload-preview strong {
+    font-size: 0.82rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.photo-upload-progress {
+    display: grid;
+    gap: 0.35rem;
+}
+
+.photo-upload-progress div {
+    background: #ece6dc;
+    border-radius: 999px;
+    block-size: 0.55rem;
+    overflow: hidden;
+}
+
+.photo-upload-progress i {
+    background: var(--admin-accent, #a96519);
+    block-size: 100%;
+    display: block;
+    inline-size: 0%;
+    transition: inline-size 120ms ease;
+}
+
+.photo-album-list,
+.photo-manage-list {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.photo-album-row {
+    align-items: center;
+    border: 1px solid #e7dfd5;
+    border-radius: 8px;
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: minmax(0, 1fr);
+    padding: 0.8rem;
+}
+
+.photo-album-row form,
+.photo-manage-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.photo-filters {
+    align-items: end;
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: repeat(4, minmax(8rem, 1fr)) auto auto;
+    margin-block-end: 1rem;
+}
+
+.photo-manage-toolbar {
+    justify-content: space-between;
+    margin-block-end: 1rem;
+}
+
+.photo-manage-toolbar form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.photo-manage-item {
+    align-items: stretch;
+    border: 1px solid #e3dbcf;
+    border-radius: 8px;
+    display: grid;
+    gap: 0.85rem;
+    grid-template-columns: auto 9rem minmax(0, 1fr) auto;
+    padding: 0.8rem;
+}
+
+.photo-manage-item.is-dragging {
+    opacity: 0.55;
+}
+
+.photo-manage-select {
+    align-items: center;
+    display: grid;
+    gap: 0.6rem;
+}
+
+.photo-drag-handle {
+    border: 1px solid #d9d0c4;
+    border-radius: 6px;
+    cursor: grab;
+    font-weight: 800;
+    padding: 0.3rem 0.45rem;
+}
+
+.photo-manage-thumb {
+    display: grid;
+    gap: 0.35rem;
+}
+
+.photo-manage-thumb img,
+.photo-manage-thumb > span {
+    aspect-ratio: 1;
+    background: #efe9df;
+    border-radius: 8px;
+    display: grid;
+    inline-size: 100%;
+    object-fit: cover;
+    place-items: center;
+}
+
+.photo-manage-thumb small {
+    color: #7f6d5d;
+    font-size: 0.75rem;
+}
+
+.photo-manage-form {
+    grid-template-columns: minmax(12rem, 1.6fr) repeat(4, minmax(7rem, 1fr));
+}
+
+.photo-field-wide {
+    grid-row: span 2;
+}
+
+.photo-manage-meta,
+.photo-manage-actions {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    grid-column: 1 / -1;
+}
+
+.photo-manage-meta span {
+    background: #f4eee6;
+    border-radius: 999px;
+    color: #6f5d4b;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.55rem;
+}
+
+.photo-delete-form {
+    align-self: end;
+}
+
+@media (max-width: 68rem) {
+    .photos-cms-grid,
+    .photo-filters,
+    .photo-manage-item,
+    .photo-manage-form {
+        grid-template-columns: 1fr;
+    }
+
+    .photo-manage-thumb {
+        max-inline-size: 12rem;
+    }
+}
