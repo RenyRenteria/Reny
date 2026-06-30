@@ -197,9 +197,9 @@ class PublicContentController extends Controller
             'eyebrow' => 'Membership',
             'description' => trim(data_get($royalPass, 'copy_before', 'Get your').' '.data_get($royalPass, 'emphasis', 'Royal Pass').' '.data_get($royalPass, 'copy_after', 'to unlock exclusive content, community and more')),
             'price_label' => '$4.99/mo',
-            'cta_label' => data_get($royalPass, 'cta_label', 'Get Your Royal Pass'),
-            'image' => 'images/store/crown-collection.png',
-            'image_alt' => 'Royal Pass membership',
+            'cta_label' => data_get($royalPass, 'cta_label', 'Unlock Royal Pass'),
+            'image' => 'images/store/royal-pass.png',
+            'image_alt' => 'Royal Pass membership card',
         ];
     }
 
@@ -232,7 +232,8 @@ class PublicContentController extends Controller
 
         return asset(match ($kind) {
             'ticket' => 'images/store/rosa-dorada.png',
-            'subscription', 'merch' => 'images/store/crown-collection.png',
+            'subscription' => 'images/store/royal-pass.png',
+            'merch' => 'images/store/crown-collection.png',
             default => 'images/store/work-in-progress.png',
         });
     }

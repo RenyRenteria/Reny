@@ -2,7 +2,7 @@
     $storefront = $publicCms['storefront'] ?? app(\App\Services\StorefrontSettingsService::class)->publicPayload();
     $royalPass = $storefront['royal_pass'] ?? [];
     $royalProductKey = $royalPass['product_key'] ?? 'royal';
-    $royalCtaLabel = $royalPass['cta_label'] ?? 'Get Your Royal Pass';
+    $royalCtaLabel = $royalPass['cta_label'] ?? 'Unlock Royal Pass';
     $storefrontSlots = collect(['event_primary', 'event_secondary', 'album', 'merch'])
         ->map(fn (string $key): array => data_get($storefront, "slots.{$key}", []))
         ->filter()
@@ -147,15 +147,15 @@
 
                 @if ($shouldShowRoyalPass)
                     <section
-                        class="store-royal-pass"
+                        class="store-royal-pass is-selected"
                         data-royal-pass-container
-                        data-royal-pass-selected="false"
+                        data-royal-pass-selected="true"
                     >
                         <button
                             class="store-royal-pass-selector"
                             type="button"
                             aria-label="Select Royal Pass"
-                            aria-pressed="false"
+                            aria-pressed="true"
                             data-royal-pass-option="{{ $royalProductKey }}"
                         >
                             <span class="store-royal-pass-copy">
@@ -171,12 +171,10 @@
                             data-buy-name="{{ $royalPass['emphasis'] ?? 'Royal Pass' }}"
                             data-buy-type="Membership"
                             data-buy-summary="Monthly membership with exclusive content, community and more."
-                            data-buy-image="{{ asset('images/store/crown-collection.png') }}"
+                            data-buy-image="{{ asset('images/store/royal-pass.png') }}"
                             data-buy-url="{{ route('store.checkout', ['product' => $royalProductKey]) }}"
-                            data-requires-plan-selection="true"
                             data-royal-pass-cta
-                            disabled
-                            aria-disabled="true"
+                            aria-disabled="false"
                             aria-label="{{ $royalCtaLabel }}"
                         >{{ $royalCtaLabel }}</button>
                     </section>
