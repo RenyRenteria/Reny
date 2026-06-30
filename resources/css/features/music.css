@@ -691,6 +691,21 @@
     background-size: cover;
 }
 
+.music-player-artwork.is-loading {
+    animation: music-player-artwork-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes music-player-artwork-pulse {
+    0%,
+    100% {
+        opacity: 0.72;
+    }
+
+    50% {
+        opacity: 1;
+    }
+}
+
 .music-player-copy {
     min-width: 0;
 }
@@ -770,7 +785,8 @@
 }
 
 .music-player-control svg,
-.music-player-close svg {
+.music-player-close svg,
+.music-player-restore svg {
     width: 1.125rem;
     height: 1.125rem;
     fill: none;
@@ -901,6 +917,66 @@
     color: #ffffff;
 }
 
+.music-player-restore {
+    position: fixed;
+    right: 1rem;
+    bottom: 1rem;
+    z-index: 59;
+    display: inline-flex;
+    align-items: center;
+    max-width: min(22rem, calc(100vw - 2rem));
+    padding: 0.5rem 0.75rem 0.5rem 0.5rem;
+    border: 1px solid rgba(153, 115, 50, 0.26);
+    border-radius: 999px;
+    background: rgba(255, 250, 243, 0.96);
+    box-shadow: 0 0.75rem 2rem rgba(28, 20, 12, 0.22);
+    color: var(--soft-ink);
+    cursor: pointer;
+    font-family: inherit;
+    gap: 0.5rem;
+}
+
+.music-player-restore[hidden] {
+    display: none;
+}
+
+.music-player-restore-icon {
+    display: grid;
+    width: 2rem;
+    aspect-ratio: 1;
+    flex: 0 0 auto;
+    place-items: center;
+    border-radius: 999px;
+    background: var(--red);
+    color: #ffffff;
+}
+
+.music-player-restore-copy {
+    display: grid;
+    min-width: 0;
+    text-align: left;
+}
+
+.music-player-restore-copy strong {
+    overflow: hidden;
+    max-width: 13rem;
+    font-size: 0.75rem;
+    font-weight: 950;
+    letter-spacing: 0;
+    line-height: 1.1;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.music-player-restore-copy span {
+    color: var(--accent);
+    font-size: 0.625rem;
+    font-weight: 950;
+    letter-spacing: 0.08em;
+    line-height: 1.1;
+    text-transform: uppercase;
+}
+
 @media (max-width: 53.75rem) {
     .music-player-layer {
         right: 0.75rem;
@@ -959,6 +1035,12 @@
     .music-player-actions > .music-player-close {
         flex: 0 0 2.25rem;
     }
+
+    .music-player-restore {
+        right: 0.75rem;
+        bottom: calc(4.5625rem + env(safe-area-inset-bottom));
+        max-width: min(18rem, calc(100vw - 1.5rem));
+    }
 }
 
 @media (max-width: 33.75rem) {
@@ -988,5 +1070,9 @@
 
     .music-player-actions > .music-player-close {
         flex-basis: 2rem;
+    }
+
+    .music-player-restore-copy strong {
+        max-width: 9.5rem;
     }
 }

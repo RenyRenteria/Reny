@@ -120,6 +120,10 @@ class MusicFlowsTest extends TestCase
             ->assertSee('id="musicPlayerNext"', false)
             ->assertSee('id="musicPlayerShuffle"', false)
             ->assertSee('id="musicPlayerRepeat"', false)
+            ->assertSee('id="musicPlayerQueueToggle"', false)
+            ->assertSee('aria-controls="musicPlayerTracks"', false)
+            ->assertSee('id="musicPlayerRestore"', false)
+            ->assertSee('preload="metadata"', false)
             ->assertSee('data-music-player-close', false)
             ->assertDontSee('id="musicPlayerDetail"', false);
 

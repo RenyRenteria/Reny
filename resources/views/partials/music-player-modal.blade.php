@@ -1,5 +1,5 @@
 <section class="music-player-layer" id="musicPlayerLayer" hidden data-global-music-player aria-label="Music player">
-    <audio id="musicPlayerAudio" preload="none"></audio>
+    <audio id="musicPlayerAudio" preload="metadata"></audio>
 
     <div class="music-player-artwork" id="musicPlayerArtwork" aria-hidden="true"></div>
 
@@ -42,6 +42,16 @@
                 <path d="M21 13v2a3 3 0 0 1-3 3H3"></path>
             </svg>
         </button>
+        <button class="music-player-control" id="musicPlayerQueueToggle" type="button" aria-label="Show queue" aria-expanded="false" aria-controls="musicPlayerTracks" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M8 6h13"></path>
+                <path d="M8 12h13"></path>
+                <path d="M8 18h13"></path>
+                <path d="M3 6h.01"></path>
+                <path d="M3 12h.01"></path>
+                <path d="M3 18h.01"></path>
+            </svg>
+        </button>
     </div>
 
     <div class="music-player-progress">
@@ -67,3 +77,17 @@
 
     <div class="music-player-tracks" id="musicPlayerTracks" hidden></div>
 </section>
+
+<button class="music-player-restore" id="musicPlayerRestore" type="button" aria-label="Show music player" hidden>
+    <span class="music-player-restore-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+            <path d="M9 18V5l12-2v13"></path>
+            <circle cx="6" cy="18" r="3"></circle>
+            <circle cx="18" cy="16" r="3"></circle>
+        </svg>
+    </span>
+    <span class="music-player-restore-copy">
+        <strong id="musicPlayerRestoreTitle">Music player</strong>
+        <span id="musicPlayerRestoreState">Paused</span>
+    </span>
+</button>
