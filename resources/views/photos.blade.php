@@ -102,6 +102,36 @@
         $photos = $publicCms['photos'];
     }
 
+    $photoGroups = [];
+
+    foreach ($photos as $index => $photo) {
+        $albumId = $photo['album_id'] ?? null;
+
+        if ($albumId !== null && $albumId !== '') {
+            $groupKey = 'album-' . $albumId;
+
+            if (! isset($photoGroups[$groupKey])) {
+                $photoGroups[$groupKey] = [
+                    'album_id' => $albumId,
+                    'title' => $photo['title'] ?? 'Photo album',
+                    'photos' => [],
+                ];
+            }
+
+            $photoGroups[$groupKey]['photos'][] = $photo;
+
+            continue;
+        }
+
+        $photoGroups['photo-' . $index] = [
+            'album_id' => null,
+            'title' => $photo['title'] ?? 'Photo',
+            'photos' => [$photo],
+        ];
+    }
+
+    $photoGroups = array_values($photoGroups);
+
     $royalProductKey = 'royal';
     $royalCtaLabel = 'Unlock Royal Pass';
 @endphp
@@ -188,33 +218,23 @@
                 </header>
 
                 <section class="photo-masonry" aria-label="Photos gallery">
-                    @foreach ($photos as $photo)
-                        @php
-                            $photoSrc = $photo['image_url'] ?? asset('images/photos/' . $photo['image']);
-                        @endphp
-                        <button
-                            class="photo-tile is-{{ $photo['size'] }}"
-                            type="button"
-                            data-photo-title="{{ $photo['title'] }}"
-                            data-photo-type="{{ $photo['type'] }}"
-                            data-photo-tone="{{ $photo['tone'] }}"
-                            data-photo-caption="{{ $photo['caption'] }}"
-                            data-photo-src="{{ $photoSrc }}"
-                            data-photo-id="{{ $photo['id'] ?? '' }}"
-                            data-photo-album-id="{{ $photo['album_id'] ?? '' }}"
-                            data-photo-locked="{{ ! empty($photo['locked']) ? 'true' : 'false' }}"
-                        >
-                            <img
-                                src="{{ $photoSrc }}"
-                                alt="{{ $photo['title'] }}"
-                                loading="lazy"
-                                decoding="async"
+                    @foreach ($photoGroups as $group)
+                        @if (! empty($group['album_id']) && count($group['photos']) > 1)
+                            <article
+                                class="photo-album-group"
+                                data-photo-album-group="{{ $group['album_id'] }}"
+                                data-photo-layout="horizontal-album"
+                                aria-label="{{ $group['title'] }}"
                             >
-                            <span class="photo-overlay" aria-hidden="true">
-                                <span>{{ $photo['type'] }} / {{ $photo['tone'] }}</span>
-                                <strong>{{ $photo['title'] }}</strong>
-                            </span>
-                        </button>
+                                <div class="photo-album-strip">
+                                    @foreach ($group['photos'] as $photo)
+                                        @include('partials.photo-tile', ['photo' => $photo])
+                                    @endforeach
+                                </div>
+                            </article>
+                        @else
+                            @include('partials.photo-tile', ['photo' => $group['photos'][0]])
+                        @endif
                     @endforeach
                 </section>
 

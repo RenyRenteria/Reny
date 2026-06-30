@@ -67,15 +67,27 @@ class AdminPhotoLibraryTest extends TestCase
 
         $guestResponse = $this->get('/photos')->assertOk();
         $guestResponse->assertSee('data-photo-locked="true"', false);
+        $guestResponse->assertSee('data-photo-album-group="'.$album->id.'"', false);
+        $guestResponse->assertSee('data-photo-layout="horizontal-album"', false);
+        $guestResponse->assertSee('data-photo-royal-crown', false);
         $guestResponse->assertSee(Storage::disk('public')->url($memberPhoto->blurred_path), false);
         $guestResponse->assertDontSee(route('photos.image.show', $memberPhoto), false);
+
+        $guestHtml = $guestResponse->getContent();
+        $publicPosition = strpos($guestHtml, 'data-photo-id="'.$publicPhoto->id.'"');
+        $memberPosition = strpos($guestHtml, 'data-photo-id="'.$memberPhoto->id.'"');
+
+        $this->assertNotFalse($publicPosition);
+        $this->assertNotFalse($memberPosition);
+        $this->assertLessThan($memberPosition, $publicPosition);
 
         $royalUser = User::factory()->royal()->create();
         $this->actingAs($royalUser)
             ->get('/photos')
             ->assertOk()
             ->assertSee('data-photo-locked="false"', false)
-            ->assertSee(route('photos.image.show', $memberPhoto), false);
+            ->assertSee(route('photos.image.show', $memberPhoto), false)
+            ->assertDontSee('data-photo-royal-crown', false);
     }
 
     public function test_member_only_optimized_image_route_requires_royal_access(): void
