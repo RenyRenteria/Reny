@@ -21,4 +21,14 @@ class HomeRouteContractTest extends TestCase
             ->assertSee('Latest Singles')
             ->assertSee('data-buy="royal"', false);
     }
+
+    public function test_home_browser_title_is_reny_renteria_even_when_app_name_is_stale(): void
+    {
+        config()->set('app.name', 'Legacy Site Name');
+
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('<title>Reny Renteria</title>', false)
+            ->assertDontSee('<title>Legacy Site Name</title>', false);
+    }
 }
