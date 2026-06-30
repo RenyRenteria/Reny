@@ -3,6 +3,10 @@ import {
     elementAnalyticsLabel,
     trackElementEvent,
 } from './analytics.js';
+import {
+    cloneMusicPlaybackPayload,
+    isCacheableMusicPlaybackPayload,
+} from './music-playback-cache.js';
 import { createMusicPlayerUiState } from './music-player-ui-state.js';
 import { smartShuffle, trackIdentity } from './smart-shuffle.js';
 
@@ -161,12 +165,6 @@ const rememberRecentlyPlayedTrack = (track) => {
     }
 };
 
-const cloneMusicPlaybackPayload = (payload = {}) => ({
-    ...payload,
-    queue: Array.isArray(payload.queue) ? payload.queue.map((track) => ({ ...track })) : payload.queue,
-    tracks: Array.isArray(payload.tracks) ? [...payload.tracks] : payload.tracks,
-});
-
 const fetchMusicPlaybackPayload = async (playUrl) => {
     const cacheKey = String(playUrl || '').trim();
 
@@ -181,7 +179,7 @@ const fetchMusicPlaybackPayload = async (playUrl) => {
     });
     const payload = await response.json().catch(() => ({}));
 
-    if (cacheKey && (response.ok || payload.state || payload.audio_url || Array.isArray(payload.queue))) {
+    if (cacheKey && isCacheableMusicPlaybackPayload(response, payload)) {
         musicPlaybackPayloadCache.set(cacheKey, cloneMusicPlaybackPayload(payload));
     }
 
