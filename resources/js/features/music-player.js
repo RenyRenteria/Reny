@@ -3,6 +3,8 @@ import {
     elementAnalyticsLabel,
     trackElementEvent,
 } from './analytics.js';
+import { createMusicPlayerUiState } from './music-player-ui-state.js';
+import { smartShuffle, trackIdentity } from './smart-shuffle.js';
 
 const musicPlayerLayer = document.getElementById('musicPlayerLayer');
 const musicPlayerAudio = document.getElementById('musicPlayerAudio');
@@ -19,14 +21,21 @@ const musicPlayerPrevious = document.getElementById('musicPlayerPrevious');
 const musicPlayerNext = document.getElementById('musicPlayerNext');
 const musicPlayerShuffle = document.getElementById('musicPlayerShuffle');
 const musicPlayerRepeat = document.getElementById('musicPlayerRepeat');
+const musicPlayerQueueToggle = document.getElementById('musicPlayerQueueToggle');
 const musicPlayerProgress = document.getElementById('musicPlayerProgress');
 const musicPlayerCurrentTime = document.getElementById('musicPlayerCurrentTime');
 const musicPlayerDuration = document.getElementById('musicPlayerDuration');
+const musicPlayerRestore = document.getElementById('musicPlayerRestore');
+const musicPlayerRestoreTitle = document.getElementById('musicPlayerRestoreTitle');
+const musicPlayerRestoreState = document.getElementById('musicPlayerRestoreState');
 let activeMusicButton = null;
 let activeMusicTrack = null;
 let isSeekingMusic = false;
 let musicQueue = [];
 let musicQueueIndex = -1;
+let musicShuffleBag = [];
+let recentlyPlayedQueue = [];
+let playedInCurrentShuffleBag = new Set();
 let isShuffleActive = false;
 let repeatMode = 'off';
 let musicPlaybackRequestId = 0;
@@ -34,10 +43,161 @@ let handledMusicFailureRequestId = 0;
 let musicAutoAdvanceAttempts = 0;
 let previousMusicClickTimer = null;
 let isMusicPlayerLoading = false;
+let musicArtworkRequestId = 0;
+let lastMusicSkipAt = 0;
 
 const previousMusicClickWindowMs = 350;
+const musicSkipDebounceMs = 220;
+const musicPlaybackPayloadCache = new Map();
+const musicPlayerUiState = createMusicPlayerUiState();
 
 const trapMusicFocus = () => {};
+
+const musicTrackId = (track) => trackIdentity(track);
+
+const musicShuffleLookbackSize = () => Math.min(5, Math.max(musicQueue.length - 1, 0));
+
+const isMusicAudioPlaying = () => Boolean(musicPlayerAudio && !musicPlayerAudio.paused && !musicPlayerAudio.ended);
+
+const hasRestorableMusicPlayer = () => Boolean(activeMusicTrack || musicPlayerAudio?.src || musicQueue.length || isMusicPlayerLoading);
+
+const updateMusicRestoreWidget = () => {
+    if (!musicPlayerRestore) {
+        return;
+    }
+
+    const { isPlayerBarVisible } = musicPlayerUiState.snapshot();
+    const shouldShowRestore = !isPlayerBarVisible && hasRestorableMusicPlayer();
+
+    musicPlayerRestore.hidden = !shouldShowRestore;
+    document.body.classList.toggle('has-music-player-widget', shouldShowRestore);
+
+    if (musicPlayerRestoreTitle) {
+        musicPlayerRestoreTitle.textContent = activeMusicTrack?.title || musicPlayerTitle?.textContent || 'Music player';
+    }
+
+    if (musicPlayerRestoreState) {
+        musicPlayerRestoreState.textContent = isMusicPlayerLoading
+            ? 'Loading'
+            : (isMusicAudioPlaying() ? 'Playing' : 'Paused');
+    }
+};
+
+const syncMusicQueueVisibility = () => {
+    const { isQueueVisible } = musicPlayerUiState.snapshot();
+    const hasTracks = Boolean(musicPlayerTracks?.childElementCount);
+    const shouldShowQueue = hasTracks && isQueueVisible;
+
+    if (!hasTracks && isQueueVisible) {
+        musicPlayerUiState.setQueueVisible(false);
+    }
+
+    if (musicPlayerTracks) {
+        musicPlayerTracks.hidden = !shouldShowQueue;
+    }
+
+    if (musicPlayerQueueToggle) {
+        musicPlayerQueueToggle.disabled = !hasTracks;
+        musicPlayerQueueToggle.classList.toggle('is-active', shouldShowQueue);
+        musicPlayerQueueToggle.setAttribute('aria-expanded', String(shouldShowQueue));
+        musicPlayerQueueToggle.setAttribute('aria-label', shouldShowQueue ? 'Hide queue' : 'Show queue');
+    }
+};
+
+const syncMusicPlayerVisibility = () => {
+    const { isPlayerBarVisible } = musicPlayerUiState.snapshot();
+
+    if (musicPlayerLayer) {
+        musicPlayerLayer.hidden = !isPlayerBarVisible;
+
+        if (isPlayerBarVisible) {
+            musicPlayerLayer.removeAttribute('inert');
+        } else {
+            musicPlayerLayer.setAttribute('inert', '');
+        }
+    }
+
+    document.body.classList.toggle('has-music-player', isPlayerBarVisible);
+    syncMusicQueueVisibility();
+    updateMusicRestoreWidget();
+};
+
+const setMusicPlayerBarVisible = (visible) => {
+    musicPlayerUiState.setPlayerBarVisible(visible);
+    syncMusicPlayerVisibility();
+};
+
+const setMusicQueueVisible = (visible) => {
+    musicPlayerUiState.setQueueVisible(visible);
+    syncMusicQueueVisibility();
+};
+
+const resetMusicShuffleTracking = () => {
+    musicShuffleBag = [];
+    recentlyPlayedQueue = [];
+    playedInCurrentShuffleBag = new Set();
+};
+
+const trimRecentlyPlayedQueue = () => {
+    const limit = Math.max(musicQueue.length * 2, musicShuffleLookbackSize(), 8);
+
+    recentlyPlayedQueue = recentlyPlayedQueue.slice(-limit);
+};
+
+const rememberRecentlyPlayedTrack = (track) => {
+    const identity = musicTrackId(track);
+
+    if (!identity) {
+        return;
+    }
+
+    if (recentlyPlayedQueue[recentlyPlayedQueue.length - 1] !== identity) {
+        recentlyPlayedQueue.push(identity);
+        trimRecentlyPlayedQueue();
+    }
+
+    if (isShuffleActive) {
+        playedInCurrentShuffleBag.add(identity);
+    }
+};
+
+const cloneMusicPlaybackPayload = (payload = {}) => ({
+    ...payload,
+    queue: Array.isArray(payload.queue) ? payload.queue.map((track) => ({ ...track })) : payload.queue,
+    tracks: Array.isArray(payload.tracks) ? [...payload.tracks] : payload.tracks,
+});
+
+const fetchMusicPlaybackPayload = async (playUrl) => {
+    const cacheKey = String(playUrl || '').trim();
+
+    if (cacheKey && musicPlaybackPayloadCache.has(cacheKey)) {
+        return cloneMusicPlaybackPayload(musicPlaybackPayloadCache.get(cacheKey));
+    }
+
+    const response = await fetch(playUrl, {
+        headers: {
+            'Accept': 'application/json',
+        },
+    });
+    const payload = await response.json().catch(() => ({}));
+
+    if (cacheKey && (response.ok || payload.state || payload.audio_url || Array.isArray(payload.queue))) {
+        musicPlaybackPayloadCache.set(cacheKey, cloneMusicPlaybackPayload(payload));
+    }
+
+    return payload;
+};
+
+const canHandleMusicSkip = () => {
+    const now = Date.now();
+
+    if (now - lastMusicSkipAt < musicSkipDebounceMs) {
+        return false;
+    }
+
+    lastMusicSkipAt = now;
+    return true;
+};
 
 const nextMusicRequestId = () => {
     musicPlaybackRequestId += 1;
@@ -98,6 +258,8 @@ const normalizeMusicTrack = (track = {}, index = 0) => {
     const audioUrl = String(track.audio_url || track.audioUrl || '').trim();
     const detailUrl = String(track.detail_url || track.detailUrl || '').trim();
     const imageUrl = String(track.image_url || track.imageUrl || '').trim();
+    const artist = String(track.artist || track.artist_name || track.artistName || '').trim();
+    const album = String(track.album || track.album_title || track.albumTitle || '').trim();
     const id = String(track.id || '').trim();
     const key = String(track.key || id || audioUrl || playUrl || `${title}-${index}`).trim();
 
@@ -109,6 +271,8 @@ const normalizeMusicTrack = (track = {}, index = 0) => {
         audio_url: audioUrl,
         detail_url: detailUrl,
         image_url: imageUrl,
+        artist,
+        album,
         state: track.state || track.access_state || 'ready',
         access_label: track.access_label || track.accessLabel || '',
         message: track.message || track.access_message || track.accessMessage || '',
@@ -177,6 +341,8 @@ const setMusicQueue = (tracks = [], currentTrack = null) => {
     if (musicQueueIndex === -1 && musicQueue.length) {
         musicQueueIndex = 0;
     }
+
+    resetMusicShuffleTracking();
 };
 
 const buildMusicQueueFromPage = (currentButton = null) => {
@@ -231,6 +397,8 @@ const updateMusicQueueControls = (playbackEnabled = Boolean(musicPlayerAudio?.sr
             one: 'Turn repeat off',
         }[repeatMode]);
     }
+
+    syncMusicQueueVisibility();
 };
 
 const setMusicControlsEnabled = (enabled) => {
@@ -252,6 +420,7 @@ const updateMusicToggle = () => {
     musicPlayerToggle?.setAttribute('aria-label', isPlaying ? 'Pause' : 'Play');
     musicPlayerToggleIcon?.classList.toggle('is-playing', isPlaying);
     updateMusicQueueControls(Boolean(musicPlayerAudio?.src) || musicQueue.length > 0);
+    updateMusicRestoreWidget();
 };
 
 const updateMusicProgress = () => {
@@ -282,14 +451,38 @@ const setMusicArtwork = (url) => {
         return;
     }
 
+    musicArtworkRequestId += 1;
+    const requestId = musicArtworkRequestId;
+
     if (!url) {
         musicPlayerArtwork.style.removeProperty('background-image');
-        musicPlayerArtwork.classList.remove('has-artwork');
+        musicPlayerArtwork.classList.remove('has-artwork', 'is-loading');
         return;
     }
 
-    musicPlayerArtwork.style.backgroundImage = `url(${JSON.stringify(url)})`;
-    musicPlayerArtwork.classList.add('has-artwork');
+    musicPlayerArtwork.classList.add('is-loading');
+
+    const artwork = new Image();
+
+    artwork.decoding = 'async';
+    artwork.onload = () => {
+        if (requestId !== musicArtworkRequestId) {
+            return;
+        }
+
+        musicPlayerArtwork.style.backgroundImage = `url(${JSON.stringify(url)})`;
+        musicPlayerArtwork.classList.add('has-artwork');
+        musicPlayerArtwork.classList.remove('is-loading');
+    };
+    artwork.onerror = () => {
+        if (requestId !== musicArtworkRequestId) {
+            return;
+        }
+
+        musicPlayerArtwork.style.removeProperty('background-image');
+        musicPlayerArtwork.classList.remove('has-artwork', 'is-loading');
+    };
+    artwork.src = url;
 };
 
 const openMusicPlayer = () => {
@@ -297,9 +490,7 @@ const openMusicPlayer = () => {
         return;
     }
 
-    musicPlayerLayer.hidden = false;
-    musicPlayerLayer.removeAttribute('inert');
-    document.body.classList.add('has-music-player');
+    setMusicPlayerBarVisible(true);
 };
 
 const closeMusicPlayer = () => {
@@ -307,10 +498,7 @@ const closeMusicPlayer = () => {
         return;
     }
 
-    musicPlayerAudio?.pause();
-    musicPlayerLayer.hidden = true;
-    musicPlayerLayer.setAttribute('inert', '');
-    document.body.classList.remove('has-music-player');
+    setMusicPlayerBarVisible(false);
     updateMusicToggle();
 };
 
@@ -331,7 +519,7 @@ const setMusicLoadingState = (button, options = {}) => {
     musicPlayerMessage.hidden = false;
     musicPlayerMessage.textContent = 'Checking access and audio availability.';
     musicPlayerLoading.hidden = false;
-    musicPlayerTracks.hidden = true;
+    setMusicQueueVisible(false);
     musicPlayerTracks.replaceChildren();
     musicPlayerCta.hidden = true;
     musicPlayerCta.removeAttribute('href');
@@ -351,7 +539,7 @@ const renderMusicTracks = (tracks = []) => {
     musicPlayerTracks.replaceChildren();
 
     if (!tracks.length) {
-        musicPlayerTracks.hidden = true;
+        setMusicQueueVisible(false);
         return;
     }
 
@@ -363,7 +551,7 @@ const renderMusicTracks = (tracks = []) => {
     });
 
     musicPlayerTracks.append(list);
-    musicPlayerTracks.hidden = false;
+    syncMusicQueueVisibility();
 };
 
 const musicPayloadQueue = (payload) => (Array.isArray(payload.queue) ? payload.queue : [])
@@ -455,6 +643,7 @@ const renderMusicPlayerPayload = (payload, button, options = {}) => {
             musicPlayerAudio.load();
         }
 
+        rememberRecentlyPlayedTrack(activeMusicTrack);
         setMusicControlsEnabled(true);
         musicPlayerAudio.play().catch(() => {
             handleMusicPlaybackFailure('play_rejected', requestId);
@@ -487,6 +676,71 @@ const renderMusicPlayerPayload = (payload, button, options = {}) => {
     return false;
 };
 
+const musicQueueIndexByIdentity = (identity) => musicQueue.findIndex((track) => musicTrackId(track) === identity);
+
+const shuffleRecentlyPlayedExclusions = () => {
+    if (playedInCurrentShuffleBag.size >= musicQueue.length) {
+        playedInCurrentShuffleBag = new Set();
+        musicShuffleBag = [];
+    }
+
+    return Array.from(new Set([
+        ...playedInCurrentShuffleBag,
+        ...recentlyPlayedQueue.slice(-musicShuffleLookbackSize()),
+    ]));
+};
+
+const refillMusicShuffleBag = () => {
+    const currentTrack = musicQueue[musicQueueIndex] || activeMusicTrack;
+
+    musicShuffleBag = smartShuffle(musicQueue, shuffleRecentlyPlayedExclusions(), {
+        currentTrack,
+        lookbackSize: musicShuffleLookbackSize(),
+    })
+        .map((track) => musicTrackId(track))
+        .filter(Boolean);
+};
+
+const previousSmartShuffleIndex = () => {
+    const currentId = musicTrackId(musicQueue[musicQueueIndex]);
+    const previousId = [...recentlyPlayedQueue]
+        .reverse()
+        .find((identity) => identity && identity !== currentId);
+
+    if (!previousId) {
+        return -1;
+    }
+
+    return musicQueueIndexByIdentity(previousId);
+};
+
+const nextSmartShuffleIndex = (direction = 1) => {
+    if (direction < 0) {
+        const previousIndex = previousSmartShuffleIndex();
+
+        if (previousIndex !== -1) {
+            return previousIndex;
+        }
+    }
+
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+        if (!musicShuffleBag.length) {
+            refillMusicShuffleBag();
+        }
+
+        while (musicShuffleBag.length) {
+            const identity = musicShuffleBag.shift();
+            const index = musicQueueIndexByIdentity(identity);
+
+            if (index !== -1 && index !== musicQueueIndex) {
+                return index;
+            }
+        }
+    }
+
+    return -1;
+};
+
 const nextMusicQueueIndex = (direction = 1) => {
     if (!musicQueue.length) {
         return -1;
@@ -501,11 +755,7 @@ const nextMusicQueueIndex = (direction = 1) => {
     }
 
     if (isShuffleActive) {
-        const availableIndexes = musicQueue
-            .map((_, index) => index)
-            .filter((index) => index !== musicQueueIndex);
-
-        return availableIndexes[Math.floor(Math.random() * availableIndexes.length)] ?? -1;
+        return nextSmartShuffleIndex(direction);
     }
 
     const candidate = musicQueueIndex + direction;
@@ -544,12 +794,7 @@ const playMusicQueueIndex = async (index, options = {}) => {
     const requestId = setMusicLoadingState(source, { preserveQueue: true });
 
     try {
-        const response = await fetch(track.play_url, {
-            headers: {
-                'Accept': 'application/json',
-            },
-        });
-        const payload = await response.json().catch(() => ({}));
+        const payload = await fetchMusicPlaybackPayload(track.play_url);
 
         if (!isCurrentMusicRequest(requestId)) {
             return false;
@@ -670,12 +915,7 @@ document.addEventListener('click', async (event) => {
     }
 
     try {
-        const response = await fetch(button.dataset.playUrl, {
-            headers: {
-                'Accept': 'application/json',
-            },
-        });
-        const payload = await response.json().catch(() => ({}));
+        const payload = await fetchMusicPlaybackPayload(button.dataset.playUrl);
 
         if (!isCurrentMusicRequest(requestId)) {
             return;
@@ -735,6 +975,8 @@ musicPlayerAudio?.addEventListener('error', () => {
 });
 
 musicPlayerToggle?.addEventListener('click', () => {
+    musicPlayerUiState.handlePlaybackToggle();
+
     if (!musicPlayerAudio?.src) {
         return;
     }
@@ -751,13 +993,29 @@ musicPlayerToggle?.addEventListener('click', () => {
 
 musicPlayerPrevious?.addEventListener('click', handlePreviousMusicClick);
 musicPlayerNext?.addEventListener('click', () => {
+    if (!canHandleMusicSkip()) {
+        return;
+    }
+
     musicAutoAdvanceAttempts = 0;
     playAdjacentMusicTrack(1, { autoAdvance: true });
 });
 
 musicPlayerShuffle?.addEventListener('click', () => {
     isShuffleActive = !isShuffleActive;
+    musicShuffleBag = [];
+
+    if (!isShuffleActive) {
+        playedInCurrentShuffleBag = new Set();
+    }
+
+    musicPlayerUiState.handleShuffleToggle();
     updateMusicQueueControls(Boolean(musicPlayerAudio?.src) || musicQueue.length > 0);
+});
+
+musicPlayerQueueToggle?.addEventListener('click', () => {
+    musicPlayerUiState.toggleQueue();
+    syncMusicQueueVisibility();
 });
 
 musicPlayerRepeat?.addEventListener('click', () => {
@@ -788,6 +1046,10 @@ document.querySelectorAll('[data-music-player-close]').forEach((button) => {
     button.addEventListener('click', closeMusicPlayer);
 });
 
+musicPlayerRestore?.addEventListener('click', () => {
+    openMusicPlayer();
+});
+
 musicPlayerCta?.addEventListener('click', () => {
     if (!activeMusicButton) {
         return;
@@ -799,6 +1061,8 @@ musicPlayerCta?.addEventListener('click', () => {
         result: 'clicked',
     });
 });
+
+syncMusicPlayerVisibility();
 
 export {
     closeMusicPlayer,
