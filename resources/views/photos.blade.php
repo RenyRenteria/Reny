@@ -101,6 +101,9 @@
     if (! empty($publicCms['photos'] ?? [])) {
         $photos = $publicCms['photos'];
     }
+
+    $royalProductKey = 'royal';
+    $royalCtaLabel = 'Unlock Royal Pass';
 @endphp
 
 <!DOCTYPE html>
@@ -111,6 +114,7 @@
 
         <title>Photos | Reny Renteria</title>
 
+        <meta name="csrf-token" content="{{ csrf_token() }}">
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body data-analytics-screen="photos">
@@ -196,6 +200,9 @@
                             data-photo-tone="{{ $photo['tone'] }}"
                             data-photo-caption="{{ $photo['caption'] }}"
                             data-photo-src="{{ $photoSrc }}"
+                            data-photo-id="{{ $photo['id'] ?? '' }}"
+                            data-photo-album-id="{{ $photo['album_id'] ?? '' }}"
+                            data-photo-locked="{{ ! empty($photo['locked']) ? 'true' : 'false' }}"
                         >
                             <img
                                 src="{{ $photoSrc }}"
@@ -252,6 +259,20 @@
                     </a>
                 </nav>
             </main>
+
+            <button
+                class="sr-only"
+                type="button"
+                data-photo-paywall-trigger
+                data-buy="{{ $royalProductKey }}"
+                data-buy-name="Royal Pass"
+                data-buy-type="Membership"
+                data-buy-summary="Monthly membership with exclusive content, community and more."
+                data-buy-image="{{ asset('images/store/royal-pass.png') }}"
+                data-buy-url="{{ route('store.checkout', ['product' => $royalProductKey]) }}"
+                aria-hidden="true"
+                tabindex="-1"
+            >{{ $royalCtaLabel }}</button>
         </div>
 
         <div class="photo-lightbox" id="photoLightbox" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="photoLightboxTitle">
@@ -268,5 +289,6 @@
             </div>
         </div>
         @include('partials.music-player-modal')
+        @include('partials.store-checkout-modals', ['detailPlaceholderImage' => 'images/store/royal-pass.png'])
     </body>
 </html>

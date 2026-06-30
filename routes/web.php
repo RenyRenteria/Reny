@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\EditorialActionController;
 use App\Http\Controllers\Admin\EditorialContentController;
 use App\Http\Controllers\Admin\MediaLibraryController;
+use App\Http\Controllers\Admin\PhotoLibraryController;
 use App\Http\Controllers\Admin\SiteEditorController;
 use App\Http\Controllers\AnalyticsEventController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
@@ -18,6 +19,7 @@ use App\Http\Controllers\CommunityInteractionController;
 use App\Http\Controllers\FreeEventRsvpController;
 use App\Http\Controllers\MusicController;
 use App\Http\Controllers\MuxWebhookController;
+use App\Http\Controllers\PhotoAssetController;
 use App\Http\Controllers\PointsController;
 use App\Http\Controllers\PublicContentController;
 use App\Http\Controllers\Royal\PremiumContentController;
@@ -67,6 +69,13 @@ Route::post('/api/community/register-free-event', FreeEventRsvpController::class
     ->name('community.free-event-rsvp.store');
 Route::get('/api/public-content/{page}', [PublicContentController::class, 'payload'])->name('public-content.payload');
 Route::get('/content/{content}', [PublicContentController::class, 'show'])->name('public.content.show');
+Route::get('/photos/{photo}/image', [PhotoAssetController::class, 'show'])
+    ->middleware(['auth', 'royal'])
+    ->name('photos.image.show');
+
+Route::post('/api/cms/photos/upload', [PhotoLibraryController::class, 'upload'])
+    ->middleware(['admin.access', 'admin.session', 'admin.cms'])
+    ->name('cms.photos.upload');
 
 Route::prefix(config('admin.path', 'admin'))->name('admin.')->group(function () {
     Route::get('/login', [AdminLoginController::class, 'create'])->name('login');
@@ -82,6 +91,11 @@ Route::prefix(config('admin.path', 'admin'))->name('admin.')->group(function () 
         Route::get('/site-editor/{page}', [SiteEditorController::class, 'show'])->middleware('admin.cms')->name('site-editor.show');
         Route::post('/site-editor/music/banner', [SiteEditorController::class, 'updateMusicBanner'])->middleware('admin.cms')->name('site-editor.music-banner.update');
         Route::post('/site-editor/store/storefront', [SiteEditorController::class, 'updateStorefront'])->middleware('admin.cms')->name('site-editor.storefront.update');
+        Route::get('/photos', [PhotoLibraryController::class, 'index'])->middleware('admin.cms')->name('photos.index');
+        Route::patch('/photos/{photo}', [PhotoLibraryController::class, 'update'])->middleware('admin.cms')->name('photos.update');
+        Route::delete('/photos/{photo}', [PhotoLibraryController::class, 'destroy'])->middleware('admin.cms')->name('photos.destroy');
+        Route::post('/photos/batch', [PhotoLibraryController::class, 'batch'])->middleware('admin.cms')->name('photos.batch');
+        Route::post('/photos/reorder', [PhotoLibraryController::class, 'reorder'])->middleware('admin.cms')->name('photos.reorder');
 
         // These CMS read screens are intentionally parked until the full admin UI is released.
         // Mutating routes below stay wired to real controllers and are gated by admin.cms.

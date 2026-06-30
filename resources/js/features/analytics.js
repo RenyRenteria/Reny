@@ -53,7 +53,7 @@ const dispatchAnalyticsEvent = (event) => {
     }
 };
 
-const persistedAnalyticsEvents = new Set(['page_view', 'permission_denied']);
+const persistedAnalyticsEvents = new Set(['page_view', 'permission_denied', 'paywall_triggered_from_photo']);
 
 const analyticsEndpoint = () => document.querySelector('meta[name="reny-analytics-endpoint"]')?.content
     || '/analytics/events';

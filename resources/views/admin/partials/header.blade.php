@@ -5,6 +5,7 @@
     $contentSection = request()->query('section');
     $isContentRoute = request()->routeIs('admin.content.*') || request()->routeIs('admin.editorial.*');
     $isSiteEditorRoute = request()->routeIs('admin.site-editor.*');
+    $isPhotosRoute = request()->routeIs('admin.photos.*');
 
     $headerTabs = [
         [
@@ -30,10 +31,10 @@
         ],
         [
             'label' => 'PHOTOS',
-            'href' => route('admin.site-editor.show', ['page' => 'photos']),
+            'href' => route('admin.photos.index'),
             'page' => 'photos',
             'content_section' => 'video',
-            'nav' => 'site-editor',
+            'nav' => 'photos',
         ],
         [
             'label' => 'COMMUNITY',
@@ -57,7 +58,11 @@
         ],
     ];
 
-    $isActiveHeaderTab = function (array $tab) use ($contentSection, $currentAdminSection, $currentPage, $isContentRoute, $isSiteEditorRoute): bool {
+    $isActiveHeaderTab = function (array $tab) use ($contentSection, $currentAdminSection, $currentPage, $isContentRoute, $isPhotosRoute, $isSiteEditorRoute): bool {
+        if ($isPhotosRoute && ($tab['nav'] ?? null) === 'photos') {
+            return true;
+        }
+
         if (($tab['section'] ?? null) === $currentAdminSection) {
             return true;
         }

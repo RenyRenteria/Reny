@@ -24,6 +24,8 @@ const publicPageFragmentIds = [
     'createGroupModal',
     'communityToast',
     'detailLayer',
+    'freeEventRsvpLayer',
+    'purchaseConfirmationLayer',
     'bagLayer',
     'storeToast',
 ];
