@@ -1438,7 +1438,7 @@ class RoyalPassCheckoutTest extends TestCase
 
         $this->get('/store')
             ->assertOk()
-            ->assertSee('Work in Progress')
+            ->assertDontSee('GET DELUXE')
             ->assertDontSee('data-detail="cms-digital-pack"', false)
             ->assertDontSee('data-detail="cms-art-drop"', false);
 

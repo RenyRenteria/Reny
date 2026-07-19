@@ -3,7 +3,6 @@
     $isAlbums = $section === 'albums';
     $isPlaylists = $section === 'playlists';
     $title = $isAlbums ? 'Albums' : ($isPlaylists ? 'Playlists' : 'Singles');
-    $deluxeUrl = route('store.checkout', ['product' => 'deluxe']);
 @endphp
 
 <!DOCTYPE html>
@@ -111,17 +110,6 @@
                                         @endif
                                         <h4><a href="{{ $album['detail_url'] }}">{{ $album['title'] }}</a></h4>
                                         <p>{{ $album['meta'] }}</p>
-                                        <button
-                                            class="album-deluxe-button"
-                                            type="button"
-                                            data-buy="deluxe"
-                                            data-buy-name="Deluxe Digital Album"
-                                            data-buy-type="Album"
-                                            data-buy-summary="Unlock {{ $album['title'] }} and the deluxe music package."
-                                            data-buy-image="{{ $album['image_url'] ?? asset('images/store/work-in-progress.png') }}"
-                                            data-buy-url="{{ $deluxeUrl }}"
-                                            aria-label="Buy Deluxe - {{ $album['title'] }}"
-                                        >Buy Deluxe</button>
                                     </article>
                                 @endforeach
                             </div>

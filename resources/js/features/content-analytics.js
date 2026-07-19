@@ -16,15 +16,3 @@ document.querySelectorAll('.view-all').forEach((button) => {
         });
     });
 });
-
-document.querySelectorAll('.album-deluxe-button').forEach((link) => {
-    link.addEventListener('click', () => {
-        const url = new URL(link.href, window.location.href);
-
-        trackElementEvent(link, 'music_deluxe_clicked', {
-            item_type: 'album',
-            destination: url.pathname,
-            result: 'clicked',
-        });
-    });
-});

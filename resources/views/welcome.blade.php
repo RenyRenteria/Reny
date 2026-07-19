@@ -17,7 +17,6 @@
     $cmsAlbums = $publicCms['albums'] ?? [];
     $cmsSingles = $publicCms['singles'] ?? [];
     $cmsPlaylists = $publicCms['playlists'] ?? [];
-    $deluxeUrl = route('store.checkout', ['product' => 'deluxe']);
     $fallbackPlayState = [
         'access_state' => 'playback_error',
         'access_label' => 'Audio unavailable',
@@ -192,17 +191,6 @@
                                         @endif
                                         <h4><a href="{{ $album['detail_url'] }}">{{ $album['title'] }}</a></h4>
                                         <p>{{ $album['meta'] }}</p>
-                                        <button
-                                            class="album-deluxe-button"
-                                            type="button"
-                                            data-buy="deluxe"
-                                            data-buy-name="Deluxe Digital Album"
-                                            data-buy-type="Album"
-                                            data-buy-summary="Unlock {{ $album['title'] }} and the deluxe music package."
-                                            data-buy-image="{{ $album['image_url'] ?? asset('images/store/work-in-progress.png') }}"
-                                            data-buy-url="{{ $deluxeUrl }}"
-                                            aria-label="Buy Deluxe - {{ $album['title'] }}"
-                                        >Buy Deluxe</button>
                                     </article>
                                 @endforeach
                             @else
@@ -219,17 +207,6 @@
                                         <span class="music-state-badge">{{ $album['access_label'] }}</span>
                                         <h4>{{ $album['title'] }}</h4>
                                         <p>{{ $album['meta'] }}</p>
-                                        <button
-                                            class="album-deluxe-button"
-                                            type="button"
-                                            data-buy="deluxe"
-                                            data-buy-name="Deluxe Digital Album"
-                                            data-buy-type="Album"
-                                            data-buy-summary="Unlock {{ $album['title'] }} and the deluxe music package."
-                                            data-buy-image="{{ asset('images/store/work-in-progress.png') }}"
-                                            data-buy-url="{{ $deluxeUrl }}"
-                                            aria-label="Buy Deluxe - {{ $album['title'] }}"
-                                        >Buy Deluxe</button>
                                     </article>
                                 @endforeach
                             @endif

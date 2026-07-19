@@ -98,9 +98,9 @@ class AdminStorefrontSettingsTest extends TestCase
             ->assertSee('Home CMS Show')
             ->assertSee('RESERVE')
             ->assertSee('data-free-event-rsvp="home-cms-show"', false)
-            ->assertSee('Home Deluxe Album')
-            ->assertSee('Home selected deluxe content')
-            ->assertSee('data-buy="home-deluxe"', false);
+            ->assertDontSee('Home Deluxe Album')
+            ->assertDontSee('Home selected deluxe content')
+            ->assertDontSee('data-buy="home-deluxe"', false);
     }
 
     public function test_storefront_event_update_syncs_to_cms_and_public_home_and_store(): void
@@ -205,16 +205,16 @@ class AdminStorefrontSettingsTest extends TestCase
             ->assertSee('data-free-event-rsvp="cms-free"', false)
             ->assertSee('data-countdown-at="2026-11-02T20:45:00-05:00"', false)
             ->assertSee('/storage/store/cms-event.png', false)
-            ->assertSee('CMS Deluxe Album')
-            ->assertSee('CMS selected album summary')
-            ->assertSee('data-buy="cms-deluxe"', false)
-            ->assertSee('/storage/store/cms-album.png', false);
+            ->assertDontSee('CMS Deluxe Album')
+            ->assertDontSee('CMS selected album summary')
+            ->assertDontSee('data-buy="cms-deluxe"', false)
+            ->assertDontSee('/storage/store/cms-album.png', false);
 
         $this->getJson(route('public-content.payload', 'store'))
             ->assertOk()
             ->assertJsonPath('storefront.slots.event_primary.title', 'CMS Free Night')
             ->assertJsonPath('storefront.slots.event_primary.countdown_at', '2026-11-02T20:45')
-            ->assertJsonPath('storefront.slots.album.title', 'CMS Deluxe Album');
+            ->assertJsonMissingPath('storefront.slots.album');
     }
 
     private function mediaAsset(string $title, string $path): MediaAsset

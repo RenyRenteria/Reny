@@ -24,7 +24,7 @@ class StorePageTest extends TestCase
         Cache::store('array')->flush();
     }
 
-    public function test_store_page_matches_four_slot_mockup_for_guest(): void
+    public function test_store_page_excludes_deluxe_slot_for_guest(): void
     {
         $response = $this->get('/store');
 
@@ -34,19 +34,17 @@ class StorePageTest extends TestCase
         $response->assertSee('Unlock Royal Pass');
         $response->assertSee('Reny Renteria en Concierto');
         $response->assertSee('Festival de la Rosa Dorada');
-        $response->assertSee('Work in Progress');
         $response->assertSee('Crown Collection');
         $response->assertSee('FREE');
         $response->assertSee('$15');
         $response->assertSee('GET TICKETS');
-        $response->assertSee('GET DELUXE');
+        $response->assertDontSee('GET DELUXE');
         $response->assertSee('GET MERCH');
         $response->assertSee('class="storefront-countdown"', false);
         $response->assertSee('data-countdown-at="2026-09-21T19:30:00-05:00"', false);
         $response->assertSee('data-countdown-at="2026-12-19T19:30:00-05:00"', false);
         $response->assertSee('images/store/reny-concert.png');
         $response->assertSee('images/store/rosa-dorada.png');
-        $response->assertSee('images/store/work-in-progress.png');
         $response->assertSee('images/store/crown-collection.png');
         $response->assertSee('images/store/royal-pass.png');
         $response->assertSee('Selected currency is a reference. PayPal checkout is charged in USD.');
@@ -57,11 +55,11 @@ class StorePageTest extends TestCase
         $response->assertSee('aria-pressed="true"', false);
         $response->assertSee('aria-disabled="false"', false);
         $response->assertSee('data-buy-image="'.asset('images/store/royal-pass.png').'"', false);
-        $response->assertSee('data-buy="deluxe"', false);
+        $response->assertDontSee('data-buy="deluxe"', false);
         $response->assertSee('data-buy="merch"', false);
         $response->assertSee('data-buy-image="'.asset('images/store/rosa-dorada.png').'"', false);
         $response->assertSee('data-buy-url="'.route('store.checkout', ['product' => 'listening']).'"', false);
-        $response->assertSee('data-buy-url="'.route('store.checkout', ['product' => 'deluxe']).'"', false);
+        $response->assertDontSee(route('store.checkout', ['product' => 'deluxe']), false);
         $response->assertSee('data-buy-url="'.route('store.checkout', ['product' => 'merch']).'"', false);
         $response->assertDontSee('data-buy="concert"', false);
         $response->assertSee('PayPal Checkout');
@@ -78,7 +76,7 @@ class StorePageTest extends TestCase
 
         $html = $response->getContent();
 
-        $this->assertSame(4, substr_count($html, 'storefront-card'));
+        $this->assertSame(3, substr_count($html, 'storefront-card'));
         $this->assertSame(2, substr_count($html, 'storefront-countdown'));
         $this->assertLessThan(strpos($html, 'Reny Renteria en Concierto'), strpos($html, 'Royal Pass'));
         $this->assertLessThan(strpos($html, 'Festival de la Rosa Dorada'), strpos($html, 'Reny Renteria en Concierto'));
@@ -95,6 +93,7 @@ class StorePageTest extends TestCase
         $this->assertStringNotContainsString('<iframe', $html);
         $this->assertStringNotContainsString('<video', $html);
         $this->assertStringNotContainsString('youtube', strtolower($html));
+        $this->assertStringNotContainsString('deluxe', strtolower($html));
     }
 
     public function test_store_page_hides_royal_pass_banner_for_logged_in_users(): void
@@ -158,6 +157,12 @@ class StorePageTest extends TestCase
             ->assertSee('data-create-order-endpoint="'.route('checkout.paypal.orders').'"', false)
             ->assertDontSee('Load PayPal checkout')
             ->assertSee('GET TICKETS');
+    }
+
+    public function test_deluxe_checkout_is_not_available_on_the_public_website(): void
+    {
+        $this->get(route('store.checkout', ['product' => 'deluxe']))
+            ->assertNotFound();
     }
 
     public function test_royal_pass_checkout_uses_membership_card_art(): void

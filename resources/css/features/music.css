@@ -468,37 +468,6 @@
     font-weight: 600;
 }
 
-.album-deluxe-button {
-    display: inline-flex;
-    width: fit-content;
-    min-height: 2.25rem;
-    align-items: center;
-    justify-content: center;
-    margin-top: 0.75rem;
-    padding: 0.625rem 0.875rem;
-    border: 1px solid var(--soft-ink);
-    border-radius: 0.5rem;
-    background: var(--soft-ink);
-    color: #ffffff;
-    cursor: pointer;
-    font-family: inherit;
-    font-size: 0.75rem;
-    font-weight: 950;
-    letter-spacing: 0.08em;
-    line-height: 1;
-    text-decoration: none;
-    text-transform: uppercase;
-    transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
-}
-
-.album-deluxe-button:hover,
-.album-deluxe-button:focus-visible {
-    border-color: var(--red);
-    background: var(--red);
-    outline: 0;
-    transform: translateY(-1px);
-}
-
 .singles {
     display: grid;
     grid-template-columns: repeat(2, minmax(15rem, 1fr));

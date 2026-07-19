@@ -100,7 +100,6 @@ class HomePayloadBuilder
                 : [
                     ...$storeAlbum,
                     'summary' => $storeAlbum['description'] ?? '',
-                    'buy_label' => 'Buy Deluxe',
                 ];
         }
 
@@ -110,8 +109,6 @@ class HomePayloadBuilder
             'image_url' => $album['image_url'] ?? null,
             'store_image' => $storeAlbum['image'] ?? null,
             'image_alt' => $storeAlbum['image_alt'] ?? $album['title'],
-            'product_key' => $storeAlbum['product_key'] ?? 'deluxe',
-            'buy_label' => 'Buy Deluxe',
         ];
     }
 }
