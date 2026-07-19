@@ -15,7 +15,6 @@ class ContentQuery
      */
     public const MUSIC_ALBUM_TYPES = [
         ContentType::MusicalAlbum,
-        ContentType::DeluxeAlbum,
     ];
 
     /**

@@ -861,14 +861,6 @@
         display: none;
     }
 
-    .album-deluxe-button {
-        width: 100%;
-        min-height: 2.5rem;
-        margin-top: 0.625rem;
-        padding-inline: 0.5rem;
-        font-size: 0.6875rem;
-    }
-
     .music-list-section .album h4,
     .music-list-section .album p {
         display: block;

@@ -29,7 +29,7 @@ class MusicFlowsTest extends TestCase
         Cache::store('array')->flush();
     }
 
-    public function test_home_music_buttons_have_real_play_and_checkout_actions(): void
+    public function test_home_music_keeps_play_actions_without_deluxe_checkout(): void
     {
         $album = $this->publishedMusic(ContentType::MusicalAlbum, 'Launch Album', [
             'release_date' => '2026-08-01',
@@ -63,16 +63,17 @@ class MusicFlowsTest extends TestCase
             ->assertSee('data-music-play', false)
             ->assertSee(route('music.play', $album), false)
             ->assertSee(route('music.play', $single), false)
-            ->assertSee('data-buy="deluxe"', false)
+            ->assertDontSee('data-buy="deluxe"', false)
+            ->assertDontSee(route('store.checkout', ['product' => 'deluxe']), false)
             ->assertSee('id="paypalButtons"', false)
             ->assertDontSee('Load PayPal checkout')
-            ->assertSee('Buy Deluxe')
+            ->assertDontSee('Buy Deluxe')
             ->assertSee('Launch Album')
             ->assertSee('Launch Single');
 
         $html = $response->getContent();
 
-        $this->assertSame(1, substr_count($html, 'class="home-buy-deluxe"'));
+        $this->assertStringNotContainsString('class="home-buy-deluxe"', $html);
         $this->assertStringNotContainsString('href="'.route('music.albums').'"', $html);
         $this->assertStringNotContainsString('href="'.route('music.singles').'"', $html);
     }
@@ -103,6 +104,33 @@ class MusicFlowsTest extends TestCase
             ->assertSee('data-play-url="'.route('music.play', $latestAlbum).'"', false)
             ->assertSee('data-detail-url="'.route('music.albums.show', $latestAlbum).'"', false)
             ->assertDontSee('data-play-url="'.route('music.play', $olderAlbum).'"', false);
+    }
+
+    public function test_published_deluxe_album_is_excluded_from_public_payloads_and_routes(): void
+    {
+        $deluxeAlbum = $this->publishedMusic(ContentType::DeluxeAlbum, 'QA Deluxe Album', [
+            'release_date' => '2026-09-01',
+            'audio_url' => 'https://audio.test/qa-deluxe-album.mp3',
+            'tracks' => [
+                ['track_name' => 'Deluxe Track'],
+            ],
+        ]);
+
+        foreach (['/', '/music', '/music/albums'] as $path) {
+            $this->get($path)
+                ->assertOk()
+                ->assertDontSee('QA Deluxe Album');
+        }
+
+        foreach (['home', 'music'] as $page) {
+            $this->getJson(route('public-content.payload', $page))
+                ->assertOk()
+                ->assertDontSee('QA Deluxe Album');
+        }
+
+        $this->get(route('music.albums.show', $deluxeAlbum))->assertNotFound();
+        $this->getJson(route('music.play', $deluxeAlbum))->assertNotFound();
+        $this->get(route('public.content.show', $deluxeAlbum))->assertNotFound();
     }
 
     public function test_music_route_renders_banner_and_public_nav_targets_music(): void
@@ -154,7 +182,6 @@ class MusicFlowsTest extends TestCase
 
     public function test_music_view_all_pages_and_empty_state_render(): void
     {
-        $deluxeUrl = route('store.checkout', ['product' => 'deluxe']);
         $album = $this->publishedMusic(ContentType::MusicalAlbum, 'Full Album One', [
             'release_date_member_view' => '2026-07-01T10:00',
             'release_date_open_view' => '2026-07-02T10:00',
@@ -170,18 +197,18 @@ class MusicFlowsTest extends TestCase
             ->assertOk()
             ->assertSee('Full Album One')
             ->assertSee('class="cover-play-area"', false)
-            ->assertSee('data-buy="deluxe"', false)
-            ->assertSee('data-buy-url="'.$deluxeUrl.'"', false)
+            ->assertDontSee('data-buy="deluxe"', false)
+            ->assertDontSee(route('store.checkout', ['product' => 'deluxe']), false)
             ->assertSee('id="bagLayer"', false)
             ->assertSee('name="csrf-token"', false)
             ->assertSee('id="paypalButtons"', false)
-            ->assertSee('Buy Deluxe')
+            ->assertDontSee('Buy Deluxe')
             ->assertSee('data-analytics-screen="music_albums"', false)
-            ->assertDontSee('href="'.$deluxeUrl.'"', false);
+            ->assertDontSee('Get Deluxe');
 
         $html = $response->getContent();
 
-        $this->assertSame(1, substr_count($html, 'class="album-deluxe-button"'));
+        $this->assertStringNotContainsString('class="album-deluxe-button"', $html);
         $this->assertSame(2, substr_count($html, 'data-play-url="'.route('music.play', $album).'"'));
         $this->assertStringContainsString('href="'.route('music.albums.show', $album).'"', $html);
         $this->assertStringNotContainsString('data-title="Full Album One"', $html);
@@ -265,7 +292,10 @@ class MusicFlowsTest extends TestCase
             ->assertSee('First Song')
             ->assertSee('Second Song')
             ->assertSee('data-play-url="'.route('music.play', ['content' => $album, 'track' => 0]).'"', false)
-            ->assertSee('data-play-url="'.route('music.play', ['content' => $album, 'track' => 1]).'"', false);
+            ->assertSee('data-play-url="'.route('music.play', ['content' => $album, 'track' => 1]).'"', false)
+            ->assertDontSee('Get Deluxe')
+            ->assertDontSee('data-buy=', false)
+            ->assertDontSee(route('store.checkout', ['product' => 'deluxe']), false);
 
         $this->getJson(route('music.play', ['content' => $album, 'track' => 1]))
             ->assertOk()

@@ -3,8 +3,6 @@
     $albumTitle = $album['title'] ?? 'Album';
     $albumImage = $album['image_url'] ?? asset('images/store/work-in-progress.png');
     $albumMeta = $album['meta'] ?? count($tracks).' tracks';
-    $albumProductKey = $album['product_key'] ?? 'deluxe';
-    $deluxeUrl = route('store.checkout', ['product' => $albumProductKey]);
 @endphp
 
 <!DOCTYPE html>
@@ -107,16 +105,6 @@
                                     type="button"
                                     @include('partials.music-play-trigger-attributes', ['item' => $album, 'type' => 'album', 'label' => "Play {$albumTitle}"])
                                 >Play</button>
-                                <button
-                                    class="album-detail-pill"
-                                    type="button"
-                                    data-buy="{{ $albumProductKey }}"
-                                    data-buy-name="{{ $albumTitle }}"
-                                    data-buy-type="Album"
-                                    data-buy-summary="{{ $album['summary'] ?? 'Deluxe album checkout' }}"
-                                    data-buy-image="{{ $albumImage }}"
-                                    data-buy-url="{{ $deluxeUrl }}"
-                                >Get Deluxe</button>
                             </div>
 
                             <div class="album-track-list" aria-label="{{ $albumTitle }} songs">

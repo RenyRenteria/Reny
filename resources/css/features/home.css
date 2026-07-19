@@ -165,8 +165,7 @@
 }
 
 .home-pill-button,
-.home-play-here,
-.home-buy-deluxe {
+.home-play-here {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -278,8 +277,7 @@
     gap: 1rem;
 }
 
-.home-play-here,
-.home-buy-deluxe {
+.home-play-here {
     min-width: 6rem;
 }
 
@@ -507,8 +505,7 @@
         gap: 0.375rem;
     }
 
-    .home-play-here,
-    .home-buy-deluxe {
+    .home-play-here {
         width: fit-content;
         min-width: 5.625rem;
         min-height: 1.875rem;
@@ -520,11 +517,6 @@
     .home-play-here {
         background: #f01437;
         color: #ffffff;
-    }
-
-    .home-buy-deluxe {
-        background: #ecd582;
-        color: #000000;
     }
 
     .home-royal-pass {
@@ -602,8 +594,7 @@
         grid-template-columns: minmax(0, 1fr) 6.5rem;
     }
 
-    .home-play-here,
-    .home-buy-deluxe {
+    .home-play-here {
         min-width: 5.25rem;
         padding-inline: 0.625rem;
     }

@@ -36,8 +36,8 @@ class HomePageTest extends TestCase
             ],
         ]);
 
-        $this->publishedContent(ContentType::DeluxeAlbum, [
-            'title' => 'CMS Deluxe Album',
+        $this->publishedContent(ContentType::MusicalAlbum, [
+            'title' => 'CMS Album',
             'metadata' => [
                 'track_count' => '27',
             ],
@@ -58,7 +58,7 @@ class HomePageTest extends TestCase
             ->assertSee('https://www.youtube.com/embed/dQw4w9WgXcQ', false)
             ->assertSee('Reny Renteria en Concierto')
             ->assertSee('Festival de la Rosa Dorada')
-            ->assertSee('CMS Deluxe Album')
+            ->assertSee('CMS Album')
             ->assertSee('CMS Lead Single')
             ->assertSee('data-buy="royal"', false)
             ->assertSee('data-royal-pass-option="royal"', false)
@@ -67,7 +67,9 @@ class HomePageTest extends TestCase
             ->assertSee('data-royal-pass-selected="true"', false)
             ->assertSee('aria-pressed="true"', false)
             ->assertSee('aria-disabled="false"', false)
-            ->assertSee('data-buy="deluxe"', false)
+            ->assertDontSee('data-buy="deluxe"', false)
+            ->assertDontSee('Buy Deluxe')
+            ->assertDontSee(route('store.checkout', ['product' => 'deluxe']), false)
             ->assertSee('data-free-event-rsvp="concert"', false);
 
         $html = $response->getContent();
@@ -234,6 +236,7 @@ class HomePageTest extends TestCase
             ->assertJsonPath('singles.0.title', 'Payload Single')
             ->assertJsonPath('events.0.title', 'Reny Renteria en Concierto')
             ->assertJsonPath('storefront.slots.event_primary.title', 'Reny Renteria en Concierto')
+            ->assertJsonMissingPath('storefront.slots.album')
             ->assertJsonPath('royal_pass.product_key', 'royal');
     }
 

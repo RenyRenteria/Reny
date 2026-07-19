@@ -145,8 +145,11 @@ class StorefrontSettingsService
      */
     public function publicPayload(): array
     {
+        $payload = $this->payloadFor($this->publishedSetting());
+        unset($payload['slots']['album']);
+
         return [
-            ...$this->payloadFor($this->publishedSetting()),
+            ...$payload,
             '_editor_status' => SitePageSetting::STATUS_PUBLISHED,
         ];
     }

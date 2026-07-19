@@ -78,7 +78,6 @@
         : asset('images/store/work-in-progress.png');
     $albumTitle = $album['title'] ?? 'Work in Progress';
     $albumMeta = $album['meta'] ?? '27 tracks';
-    $albumProductKey = $album['product_key'] ?? 'deluxe';
 @endphp
 
 <!DOCTYPE html>
@@ -361,16 +360,6 @@
                                     @else
                                         <a class="home-play-here" href="{{ route('music') }}">Play Here</a>
                                     @endif
-                                    <button
-                                        class="home-buy-deluxe"
-                                        type="button"
-                                        data-buy="{{ $albumProductKey }}"
-                                        data-buy-name="{{ $albumTitle }}"
-                                        data-buy-type="Album"
-                                        data-buy-summary="{{ $album['summary'] ?? 'Deluxe album checkout' }}"
-                                        data-buy-image="{{ $albumImage }}"
-                                        data-buy-url="{{ route('store.checkout', ['product' => $albumProductKey]) }}"
-                                    >Buy Deluxe</button>
                                 </div>
                             </article>
 

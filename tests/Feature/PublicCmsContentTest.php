@@ -28,7 +28,7 @@ class PublicCmsContentTest extends TestCase
     public function test_public_pages_consume_visible_cms_content(): void
     {
         $this->publishedContent(ContentType::MusicalAlbum, [
-            'title' => 'CMS Deluxe Album',
+            'title' => 'CMS Album',
             'summary' => 'CMS album summary',
             'metadata' => [
                 'tracks' => [
@@ -97,7 +97,7 @@ class PublicCmsContentTest extends TestCase
             ],
         ]);
 
-        $this->get('/')->assertOk()->assertSee('CMS Deluxe Album')->assertSee('CMS Lead Single');
+        $this->get('/')->assertOk()->assertSee('CMS Album')->assertSee('CMS Lead Single');
         $this->get('/videos')->assertOk()->assertSee('CMS Video Premiere');
         $this->get('/photos')->assertOk()->assertSee('CMS Photo Drop');
         $this->get('/store')
@@ -154,7 +154,8 @@ class PublicCmsContentTest extends TestCase
             ->assertJsonPath('album.meta', '2 tracks')
             ->assertJsonPath('album.access_state', 'ready')
             ->assertJsonPath('album.access_label', 'Open')
-            ->assertJsonPath('album.buy_label', 'Buy Deluxe')
+            ->assertJsonMissingPath('album.buy_label')
+            ->assertJsonMissingPath('album.product_key')
             ->assertJsonPath('singles.0.title', 'Contract Single')
             ->assertJsonPath('singles.0.kind', 'single')
             ->assertJsonPath('singles.0.play_url', route('music.play', $single))

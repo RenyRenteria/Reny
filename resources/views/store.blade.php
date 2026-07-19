@@ -3,7 +3,7 @@
     $royalPass = $storefront['royal_pass'] ?? [];
     $royalProductKey = $royalPass['product_key'] ?? 'royal';
     $royalCtaLabel = $royalPass['cta_label'] ?? 'Unlock Royal Pass';
-    $storefrontSlots = collect(['event_primary', 'event_secondary', 'album', 'merch'])
+    $storefrontSlots = collect(['event_primary', 'event_secondary', 'merch'])
         ->map(fn (string $key): array => data_get($storefront, "slots.{$key}", []))
         ->filter()
         ->values();
