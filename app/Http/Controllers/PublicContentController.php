@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\ContentType;
 use App\Enums\EditorialStatus;
 use App\Enums\VisibilityAudience;
 use App\Models\EditorialContent;
@@ -313,6 +314,8 @@ class PublicContentController extends Controller
 
     public function show(Request $request, EditorialContent $content): View|RedirectResponse|Response
     {
+        abort_if($content->type === ContentType::DeluxeAlbum, 404);
+
         $content->load(['mediaAssets', 'releaseWindows']);
 
         if ($content->status === EditorialStatus::Archived) {

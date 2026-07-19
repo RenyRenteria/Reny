@@ -106,6 +106,33 @@ class MusicFlowsTest extends TestCase
             ->assertDontSee('data-play-url="'.route('music.play', $olderAlbum).'"', false);
     }
 
+    public function test_published_deluxe_album_is_excluded_from_public_payloads_and_routes(): void
+    {
+        $deluxeAlbum = $this->publishedMusic(ContentType::DeluxeAlbum, 'QA Deluxe Album', [
+            'release_date' => '2026-09-01',
+            'audio_url' => 'https://audio.test/qa-deluxe-album.mp3',
+            'tracks' => [
+                ['track_name' => 'Deluxe Track'],
+            ],
+        ]);
+
+        foreach (['/', '/music', '/music/albums'] as $path) {
+            $this->get($path)
+                ->assertOk()
+                ->assertDontSee('QA Deluxe Album');
+        }
+
+        foreach (['home', 'music'] as $page) {
+            $this->getJson(route('public-content.payload', $page))
+                ->assertOk()
+                ->assertDontSee('QA Deluxe Album');
+        }
+
+        $this->get(route('music.albums.show', $deluxeAlbum))->assertNotFound();
+        $this->getJson(route('music.play', $deluxeAlbum))->assertNotFound();
+        $this->get(route('public.content.show', $deluxeAlbum))->assertNotFound();
+    }
+
     public function test_music_route_renders_banner_and_public_nav_targets_music(): void
     {
         $this->get(route('music'))

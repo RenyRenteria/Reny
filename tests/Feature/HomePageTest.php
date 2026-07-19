@@ -36,7 +36,7 @@ class HomePageTest extends TestCase
             ],
         ]);
 
-        $this->publishedContent(ContentType::DeluxeAlbum, [
+        $this->publishedContent(ContentType::MusicalAlbum, [
             'title' => 'CMS Album',
             'metadata' => [
                 'track_count' => '27',
