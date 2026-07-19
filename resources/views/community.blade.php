@@ -1,9 +1,7 @@
 @php
     $community = $community ?? [];
     $communityPosts = $community['posts'] ?? [];
-    $communityPoll = $community['poll'] ?? null;
-    $communityClubs = $community['clubs'] ?? [];
-    $activeClub = $community['active_club'] ?? ($communityClubs[0] ?? null);
+    $liveChat = $community['live_chat'] ?? [];
     $canUseCommunityActions = (bool) ($community['can_use_actions'] ?? false);
     $communityGateHref = auth()->check() ? route('store') : route('login');
     $communityGateCta = auth()->check() ? 'Get your Royal Pass' : 'Sign in';
@@ -86,67 +84,86 @@
                             alt="Reny Renteria"
                         >
                     </a>
-                    <div class="direct-posts">
-                        <span>
-                            <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M12 3l2.7 5.4 6 .9-4.4 4.2 1 6-5.3-2.8-5.3 2.8 1-6-4.4-4.2 6-.9L12 3Z"></path>
-                            </svg>
-                        </span>
-                        Reny Direct Posts
-                    </div>
+                    <span class="community-live-status"><span aria-hidden="true"></span> En vivo</span>
                 </header>
 
-                <div class="community-grid">
-                    <section class="feed-column" aria-label="Official community feed">
-                        <div class="feed-heading">
-                            <div>
-                                <p class="community-eyebrow">Fan-safe &amp; moderated</p>
-                                <h1>Official Feed</h1>
-                            </div>
-                            <div class="direct-posts">
-                                <span>
-                                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                                        <path d="M12 3l2.7 5.4 6 .9-4.4 4.2 1 6-5.3-2.8-5.3 2.8 1-6-4.4-4.2 6-.9L12 3Z"></path>
-                                    </svg>
-                                </span>
-                                Reny Direct Posts
+                <nav class="community-mobile-tabs" role="tablist" aria-label="Secciones de comunidad">
+                    <button
+                        class="is-active"
+                        id="communityFeedTab"
+                        type="button"
+                        role="tab"
+                        aria-selected="true"
+                        aria-controls="communityFeedPanel"
+                        data-community-tab="feed"
+                    >
+                        Posts
+                    </button>
+                    <button
+                        id="communityChatTab"
+                        type="button"
+                        role="tab"
+                        aria-selected="false"
+                        aria-controls="communityChatPanel"
+                        data-community-tab="chat"
+                    >
+                        Chat <span>Live</span>
+                    </button>
+                </nav>
+
+                <div class="community-experience">
+                    <section
+                        class="community-feed-panel"
+                        id="communityFeedPanel"
+                        role="tabpanel"
+                        aria-labelledby="communityFeedTab"
+                        aria-label="Posts oficiales de Reny"
+                        data-community-panel="feed"
+                    >
+                        <div class="community-welcome-card">
+                            <p>Comunidad oficial</p>
+                            <h1>Directo de Reny.<br>Cerca de la comunidad.</h1>
+                            <span>Posts oficiales, anuncios y momentos exclusivos de Reny. La conversación continúa en el Live Chat.</span>
+                            <div class="community-welcome-points" aria-label="Características de la comunidad">
+                                <strong>Solo Reny publica</strong>
+                                <strong>Chat moderado</strong>
+                                <strong>Actualización en vivo</strong>
                             </div>
                         </div>
 
-                        @foreach ($communityPosts as $post)
-                            <article class="post-card" id="{{ $post['key'] }}" data-title="{{ $post['title'] }}">
-                                <div class="post-head">
-                                    <div class="post-icon">
-                                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                                            <path d="M12 2v20"></path>
-                                            <path d="M8 7v5a4 4 0 0 0 8 0V7"></path>
-                                            <path d="M6 12a6 6 0 0 0 12 0"></path>
-                                        </svg>
-                                    </div>
-                                    <div>
-                                        <h2>{{ $post['title'] }}</h2>
-                                        <div class="post-time">{{ $post['time'] }}</div>
-                                    </div>
-                                </div>
+                        <div class="community-feed-heading">
+                            <h2>Posts de Reny</h2>
+                            <span><b aria-hidden="true">✓</b> Cuenta oficial</span>
+                        </div>
 
-                                <p class="post-copy">{{ $post['body'] }}</p>
+                        @forelse ($communityPosts as $post)
+                            <article class="community-post-card" id="{{ $post['key'] }}" data-title="{{ $post['title'] }}">
+                                <header class="community-post-head">
+                                    <div class="community-reny-avatar" aria-hidden="true">R</div>
+                                    <div>
+                                        <strong>Reny <span aria-label="Cuenta verificada">✓</span></strong>
+                                        <small>@renyoficial · {{ $post['time'] }}</small>
+                                    </div>
+                                </header>
+
+                                <h3>{{ $post['title'] }}</h3>
+                                <p class="community-post-copy">{{ $post['body'] }}</p>
 
                                 @if (! empty($post['image_url']))
-                                    <div class="media-frame">
+                                    <div class="community-post-media">
                                         <img src="{{ $post['image_url'] }}" alt="{{ $post['image_alt'] }}">
                                         @if (! empty($post['url']))
                                             <a
-                                                class="media-cta"
+                                                class="community-post-media-cta"
                                                 href="{{ $post['url'] }}"
                                                 data-analytics-id="{{ $post['key'] }}"
                                                 data-analytics-type="reny_note"
                                             >
-                                                {{ $post['cta'] }}
-                                                <span aria-hidden="true">-&gt;</span>
+                                                {{ $post['cta'] }} <span aria-hidden="true">→</span>
                                             </a>
                                         @else
                                             <button
-                                                class="media-cta"
+                                                class="community-post-media-cta"
                                                 type="button"
                                                 data-note-open
                                                 data-note-title="{{ $post['title'] }}"
@@ -154,18 +171,17 @@
                                                 data-analytics-id="{{ $post['key'] }}"
                                                 data-analytics-type="reny_note"
                                             >
-                                                {{ $post['cta'] }}
-                                                <span aria-hidden="true">-&gt;</span>
+                                                {{ $post['cta'] }} <span aria-hidden="true">→</span>
                                             </button>
                                         @endif
                                     </div>
                                 @endif
 
-                                <div class="post-actions">
-                                    <div class="post-metrics">
+                                <div class="community-post-actions">
+                                    <div>
                                         @if ($canUseCommunityActions)
                                             <button
-                                                class="metric heart reaction-button @if ($post['liked']) is-reacted @endif"
+                                                class="community-post-action reaction-button @if ($post['liked']) is-reacted @endif"
                                                 type="button"
                                                 data-community-like
                                                 data-endpoint="{{ $post['like_endpoint'] }}"
@@ -173,227 +189,145 @@
                                                 data-analytics-id="{{ $post['key'] }}"
                                                 data-analytics-type="reaction"
                                             >
-                                                <svg viewBox="0 0 24 24" aria-hidden="true">
-                                                    <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8Z"></path>
-                                                </svg>
+                                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8Z"></path></svg>
                                                 <span class="reaction-count">{{ $post['like_count'] }}</span>
                                             </button>
                                         @else
-                                            <span class="metric heart">
-                                                <svg viewBox="0 0 24 24" aria-hidden="true">
-                                                    <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8Z"></path>
-                                                </svg>
+                                            <span class="community-post-action">
+                                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8Z"></path></svg>
                                                 {{ $post['like_count'] }}
                                             </span>
                                         @endif
 
-                                        <span class="metric" data-reply-count="{{ $post['key'] }}">
-                                            <svg viewBox="0 0 24 24" aria-hidden="true">
-                                                <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z"></path>
-                                            </svg>
-                                            <span>{{ $post['reply_count'] }} replies</span>
+                                        <span class="community-post-action" data-reply-count="{{ $post['key'] }}">
+                                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z"></path></svg>
+                                            <span>{{ $post['reply_count'] }} respuestas</span>
                                         </span>
                                     </div>
                                     <button
-                                        class="share"
+                                        class="community-post-action share"
                                         type="button"
                                         data-share-url="{{ $post['share_url'] }}"
                                         data-share-title="{{ $post['title'] }}"
                                         data-analytics-id="{{ $post['key'] }}"
                                         data-analytics-type="post"
-                                        aria-label="Share {{ $post['title'] }}"
+                                        aria-label="Compartir {{ $post['title'] }}"
                                     >
-                                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                                            <circle cx="18" cy="5" r="3"></circle>
-                                            <circle cx="6" cy="12" r="3"></circle>
-                                            <circle cx="18" cy="19" r="3"></circle>
-                                            <path d="m8.6 13.5 6.8 4"></path>
-                                            <path d="m15.4 6.5-6.8 4"></path>
-                                        </svg>
+                                        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><path d="m8.6 13.5 6.8 4"></path><path d="m15.4 6.5-6.8 4"></path></svg>
+                                        Compartir
                                     </button>
                                 </div>
 
-                                <x-access-gate
-                                    section="community"
-                                    title="Sign in to reply"
-                                    preview="Replies stay visible as previews; posting requires Royal Pass."
-                                    :cta="$communityGateCta"
-                                    :href="$communityGateHref"
-                                >
+                                @if ($canUseCommunityActions)
                                     <form
-                                        class="country-reply-form community-reply-form"
+                                        class="community-inline-reply community-reply-form"
                                         data-community-reply-form
                                         data-endpoint="{{ $post['reply_endpoint'] }}"
                                         data-post-key="{{ $post['key'] }}"
                                     >
-                                        <label class="sr-only" for="reply-{{ $post['key'] }}">Reply to {{ $post['title'] }}</label>
-                                        <input id="reply-{{ $post['key'] }}" name="body" type="text" placeholder="Write a kind reply...">
-                                        <button type="submit">Reply</button>
+                                        <label class="sr-only" for="reply-{{ $post['key'] }}">Responder a {{ $post['title'] }}</label>
+                                        <input id="reply-{{ $post['key'] }}" name="body" type="text" maxlength="500" placeholder="Escribe una respuesta...">
+                                        <button type="submit">Responder</button>
                                         <p class="community-form-status" data-form-status></p>
                                     </form>
-                                </x-access-gate>
+                                @else
+                                    <a class="community-inline-gate" href="{{ $communityGateHref }}">{{ $communityGateCta }} para responder</a>
+                                @endif
                             </article>
-                        @endforeach
-
-                        @if ($communityPoll)
-                            <section
-                                class="vote-card"
-                                aria-labelledby="fan-votes-title"
-                                data-community-poll
-                                data-poll-key="{{ $communityPoll['key'] }}"
-                                data-vote-endpoint="{{ $communityPoll['vote_endpoint'] }}"
-                                data-voted="{{ $communityPoll['user_vote'] ? 'true' : 'false' }}"
-                            >
-                                <div class="section-kicker">
-                                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                                        <rect x="4" y="4" width="16" height="16" rx="2"></rect>
-                                        <path d="M8 9h8"></path>
-                                        <path d="M8 13h5"></path>
-                                        <path d="M8 17h8"></path>
-                                    </svg>
-                                    <span id="fan-votes-title">Fan Votes</span>
-                                </div>
-
-                                <h3>{{ $communityPoll['question'] }}</h3>
-
-                                <div class="poll-options">
-                                    @foreach ($communityPoll['options'] as $option)
-                                        @if ($canUseCommunityActions)
-                                            <button
-                                                class="poll-option @if ($option['selected']) is-voted @endif"
-                                                type="button"
-                                                data-option-key="{{ $option['key'] }}"
-                                                data-option-label="{{ $option['label'] }}"
-                                                data-percent="{{ $option['percent'] }}"
-                                                @disabled((bool) $communityPoll['user_vote'])
-                                            >
-                                                <span class="poll-option-top">
-                                                    <span>{{ $option['label'] }}</span>
-                                                    <strong>{{ $option['percent'] }}%</strong>
-                                                </span>
-                                                <span class="poll-meter"><span style="width: {{ $option['percent'] }}%"></span></span>
-                                            </button>
-                                        @else
-                                            <div class="poll-option" data-percent="{{ $option['percent'] }}">
-                                                <span class="poll-option-top">
-                                                    <span>{{ $option['label'] }}</span>
-                                                    <strong>{{ $option['percent'] }}%</strong>
-                                                </span>
-                                                <span class="poll-meter"><span style="width: {{ $option['percent'] }}%"></span></span>
-                                            </div>
-                                        @endif
-                                    @endforeach
-                                </div>
-
-                                <div class="vote-footer">
-                                    <span data-poll-total>{{ $communityPoll['total_votes_label'] }}</span>
-                                    @if ($communityPoll['user_vote'])
-                                        <span class="reply-chip">Vote saved</span>
-                                    @elseif (! $canUseCommunityActions)
-                                        <x-access-gate
-                                            section="community"
-                                            title="Sign in to vote"
-                                            preview="Poll results stay visible in Open mode."
-                                            :cta="$communityGateCta"
-                                            :href="$communityGateHref"
-                                        />
-                                    @else
-                                        <span class="reply-chip">Choose one option</span>
-                                    @endif
-                                </div>
-                            </section>
-                        @endif
+                        @empty
+                            <div class="community-empty-state">
+                                <strong>Próximamente</strong>
+                                <p>Los nuevos posts oficiales de Reny aparecerán aquí.</p>
+                            </div>
+                        @endforelse
                     </section>
 
-                    <aside class="side-column" aria-label="Community sidebar">
-                        <div class="side-head">
-                            <h2>Country Clubs</h2>
-                            <a href="#clubs">View all</a>
-                        </div>
-
-                        <div class="club-list" id="clubs">
-                            @foreach ($communityClubs as $club)
-                                <article class="club-card" data-club-key="{{ $club['key'] }}">
-                                    <div class="flag" aria-hidden="true">{{ $club['flag_label'] }}</div>
-                                    <div>
-                                        <strong><a href="{{ $club['detail_url'] }}">{{ $club['name'] }}</a></strong>
-                                        <span>{{ $club['members_label'] }} · {{ $club['activity'] }}</span>
-                                    </div>
-                                </article>
-                            @endforeach
-                        </div>
-
-                        @if ($activeClub)
-                            <x-access-gate
-                                section="community"
-                                title="Sign in to join"
-                                preview="Club previews stay public; creating or joining requires Royal Pass."
-                                :cta="$communityGateCta"
-                                :href="$communityGateHref"
-                            >
-                                <div class="club-actions">
-                                    <button class="outline-button" id="openCreateGroup" type="button">
-                                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                                            <path d="M12 5v14"></path>
-                                            <path d="M5 12h14"></path>
-                                        </svg>
-                                        Create group
-                                    </button>
-                                    <button
-                                        class="join-button"
-                                        type="button"
-                                        data-community-club-join
-                                        data-club-key="{{ $activeClub['key'] }}"
-                                        data-endpoint="{{ $activeClub['join_endpoint'] }}"
-                                        data-joined="{{ $activeClub['joined'] ? 'true' : 'false' }}"
-                                    >
-                                        {{ $activeClub['joined'] ? 'Joined' : 'Join group' }}
-                                    </button>
+                    <aside
+                        class="community-live-chat-panel"
+                        id="communityChatPanel"
+                        role="tabpanel"
+                        aria-labelledby="communityChatTab"
+                        aria-label="Live Chat"
+                        data-community-panel="chat"
+                        data-community-live-chat
+                        data-messages-endpoint="{{ $liveChat['messages_endpoint'] ?? '' }}"
+                        data-current-user-id="{{ $liveChat['current_user_id'] ?? '' }}"
+                    >
+                        <section class="community-live-chat-card">
+                            <header class="community-chat-head">
+                                <div>
+                                    <div><h2>Live Chat</h2><span>En vivo</span></div>
+                                    <p data-live-chat-status>Actualización automática · chat moderado</p>
                                 </div>
-                            </x-access-gate>
+                                <span class="community-live-pulse" aria-label="Chat activo"></span>
+                            </header>
 
-                            <div class="chat-wrap">
+                            <div class="community-pinned-message">
+                                <strong>Mensaje fijado</strong>
+                                <p>{{ $liveChat['pinned_message'] ?? '' }}</p>
+                            </div>
+
+                            <div class="community-live-messages" data-live-chat-messages aria-live="polite">
+                                @forelse (($liveChat['messages'] ?? []) as $message)
+                                    <article
+                                        @class([
+                                            'community-live-message',
+                                            'is-self' => $message['is_self'],
+                                            'is-host' => $message['is_host'],
+                                        ])
+                                        data-chat-message-id="{{ $message['id'] }}"
+                                        data-chat-user-id="{{ $message['user_id'] }}"
+                                    >
+                                        <div class="community-chat-avatar" aria-hidden="true">{{ $message['initials'] }}</div>
+                                        <div>
+                                            <header>
+                                                <strong>{{ $message['author'] }}</strong>
+                                                @if ($message['is_host'])
+                                                    <span>Host</span>
+                                                @endif
+                                                <time>{{ $message['time'] }}</time>
+                                            </header>
+                                            <p>{{ $message['text'] }}</p>
+                                            @if ($message['block_endpoint'] || $message['moderation_endpoint'])
+                                                <div class="community-live-message-actions">
+                                                    @if ($message['block_endpoint'])
+                                                        <button type="button" data-chat-block-endpoint="{{ $message['block_endpoint'] }}">Bloquear</button>
+                                                    @endif
+                                                    @if ($message['moderation_endpoint'])
+                                                        <button type="button" data-chat-moderate-endpoint="{{ $message['moderation_endpoint'] }}">Ocultar</button>
+                                                    @endif
+                                                </div>
+                                            @endif
+                                        </div>
+                                    </article>
+                                @empty
+                                    <div class="community-chat-empty" data-live-chat-empty>
+                                        <strong>El chat está listo</strong>
+                                        <p>Sé la primera persona en iniciar la conversación.</p>
+                                    </div>
+                                @endforelse
+                            </div>
+
+                            <footer class="community-chat-composer">
                                 <x-access-gate
                                     section="community"
-                                    title="Clubhouse Chat"
-                                    preview="Chat previews are visible in Open mode; sending messages requires Royal Pass."
+                                    title="Inicia sesión para escribir"
+                                    preview="Puedes leer el chat; enviar mensajes requiere Royal Pass."
                                     :cta="$communityGateCta"
                                     :href="$communityGateHref"
                                 >
-                                    <section class="chat-card" aria-labelledby="chat-title">
-                                        <div class="chat-head">
-                                            <div>
-                                                <h2 id="chat-title">Clubhouse Chat</h2>
-                                                <span class="reply-chip">{{ $activeClub['name'] }}</span>
-                                            </div>
-                                            <span class="status-dot" aria-label="Live chat"></span>
-                                        </div>
-
-                                        <div class="country-chat-feed" id="countryChatFeed">
-                                            @foreach ($activeClub['messages'] as $message)
-                                                <article class="chat-message">
-                                                    <strong>{{ $message['author'] }}</strong>
-                                                    <p>{{ $message['text'] }}</p>
-                                                </article>
-                                            @endforeach
-                                        </div>
-
-                                        <form
-                                            class="country-reply-form"
-                                            id="countryReplyForm"
-                                            data-community-club-message
-                                            data-endpoint="{{ $activeClub['message_endpoint'] }}"
-                                            data-club-key="{{ $activeClub['key'] }}"
-                                        >
-                                            <label class="sr-only" for="message">Type a message</label>
-                                            <input id="message" name="body" type="text" placeholder="Type a message...">
-                                            <button type="submit">Send</button>
-                                            <p class="community-form-status" data-form-status></p>
-                                        </form>
-                                    </section>
+                                    <form data-community-live-chat-form data-endpoint="{{ $liveChat['message_endpoint'] ?? '' }}">
+                                        <label class="sr-only" for="liveChatMessage">Mensaje de chat</label>
+                                        <input id="liveChatMessage" name="body" type="text" maxlength="300" placeholder="Escribe un mensaje...">
+                                        <button type="submit" aria-label="Enviar mensaje">
+                                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z"></path><path d="M22 2 11 13"></path></svg>
+                                        </button>
+                                        <p class="community-form-status" data-form-status></p>
+                                    </form>
                                 </x-access-gate>
-                            </div>
-                        @endif
+                                <p>Sé amable · El spam y el abuso se moderan</p>
+                            </footer>
+                        </section>
                     </aside>
                 </div>
 
@@ -452,32 +386,6 @@
                 <div class="community-note-body" id="communityNoteBody"></div>
             </div>
         </div>
-
-        @if ($canUseCommunityActions)
-            <div class="create-group-modal" id="createGroupModal" aria-hidden="true">
-                <div class="create-group-dialog" role="dialog" aria-modal="true" aria-labelledby="createGroupTitle">
-                    <div class="create-group-head">
-                        <div>
-                            <span>Country club</span>
-                            <h2 id="createGroupTitle">Create Country Club</h2>
-                        </div>
-                        <button class="create-group-close" id="closeCreateGroup" type="button">Close</button>
-                    </div>
-                    <form
-                        class="create-group-form"
-                        id="createGroupForm"
-                        data-endpoint="{{ route('community.clubs.store') }}"
-                    >
-                        <label for="createCountryName">Country or city</label>
-                        <input id="createCountryName" name="name" type="text" maxlength="80" required>
-                        <label for="createCountryActivity">Current activity</label>
-                        <input id="createCountryActivity" name="activity" type="text" maxlength="140" required>
-                        <button type="submit">Create</button>
-                        <p class="community-form-status" data-form-status></p>
-                    </form>
-                </div>
-            </div>
-        @endif
 
         <div class="community-toast" id="communityToast" role="status" aria-live="polite"></div>
         @include('partials.music-player-modal')

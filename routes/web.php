@@ -37,25 +37,45 @@ Route::get('/album/{album}', [MusicController::class, 'album'])->name('music.alb
 Route::get('/videos', [PublicContentController::class, 'videos'])->name('videos');
 Route::get('/photos', [PublicContentController::class, 'photos']);
 Route::get('/community', [PublicContentController::class, 'community']);
+Route::get('/community/live-chat/messages', [CommunityInteractionController::class, 'liveChatMessages'])
+    ->middleware('throttle:120,1')
+    ->name('community.live-chat.messages.index');
+Route::post('/community/live-chat/messages', [CommunityInteractionController::class, 'storeLiveChatMessage'])
+    ->middleware('throttle:community-chat')
+    ->name('community.live-chat.messages.store');
+Route::post('/community/live-chat/users/{user}/block', [CommunityInteractionController::class, 'blockLiveChatUser'])
+    ->whereNumber('user')
+    ->middleware(['auth', 'throttle:community-writes'])
+    ->name('community.live-chat.users.block');
+Route::delete('/community/live-chat/messages/{message}', [CommunityInteractionController::class, 'moderateLiveChatMessage'])
+    ->whereNumber('message')
+    ->middleware(['auth', 'throttle:community-writes'])
+    ->name('community.live-chat.messages.moderate');
 Route::get('/community/clubs/{club}', [CommunityInteractionController::class, 'showClub'])
     ->where('club', '[A-Za-z0-9._-]+')
     ->name('community.clubs.show');
 Route::post('/community/posts/{post}/like', [CommunityInteractionController::class, 'like'])
     ->where('post', '[A-Za-z0-9._-]+')
+    ->middleware('throttle:community-writes')
     ->name('community.posts.like');
 Route::post('/community/posts/{post}/replies', [CommunityInteractionController::class, 'reply'])
     ->where('post', '[A-Za-z0-9._-]+')
+    ->middleware('throttle:community-writes')
     ->name('community.posts.replies.store');
 Route::post('/community/polls/{poll}/vote', [CommunityInteractionController::class, 'vote'])
     ->where('poll', '[A-Za-z0-9._-]+')
+    ->middleware('throttle:community-writes')
     ->name('community.polls.vote');
 Route::post('/community/clubs', [CommunityInteractionController::class, 'storeClub'])
+    ->middleware('throttle:community-writes')
     ->name('community.clubs.store');
 Route::post('/community/clubs/{club}/join', [CommunityInteractionController::class, 'joinClub'])
     ->where('club', '[A-Za-z0-9._-]+')
+    ->middleware('throttle:community-writes')
     ->name('community.clubs.join');
 Route::post('/community/clubs/{club}/messages', [CommunityInteractionController::class, 'clubMessage'])
     ->where('club', '[A-Za-z0-9._-]+')
+    ->middleware('throttle:community-chat')
     ->name('community.clubs.messages.store');
 Route::get('/store', [PublicContentController::class, 'store'])->name('store');
 Route::get('/store/checkout/{product}', [PublicContentController::class, 'checkout'])

@@ -8,6 +8,7 @@ use App\Models\CommunityCountryClubMessage;
 use App\Models\CommunityPollVote;
 use App\Models\CommunityPostReaction;
 use App\Models\CommunityPostReply;
+use App\Models\CommunityUserBlock;
 use App\Models\User;
 use App\Support\EntitlementMatrix;
 use Illuminate\Support\Facades\DB;
@@ -17,6 +18,8 @@ use Illuminate\Validation\ValidationException;
 
 class CommunityInteractionService
 {
+    private const LIVE_CHAT_KEY = 'official-live-chat';
+
     /**
      * @param  array<string, mixed>  $publicCms
      * @return array<string, mixed>
@@ -30,6 +33,7 @@ class CommunityInteractionService
             'poll' => $this->poll($user, $publicCms['poll'] ?? null),
             'clubs' => $clubs,
             'active_club' => $clubs[0] ?? null,
+            'live_chat' => $this->liveChat($user),
             'can_use_actions' => EntitlementMatrix::canUseRoyalFeature($user),
             'login_url' => route('login'),
             'store_url' => route('store'),
@@ -47,6 +51,127 @@ class CommunityInteractionService
         abort_unless($club, 404);
 
         return $club;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function liveChat(?User $user): array
+    {
+        return [
+            'messages' => $this->liveChatMessages($user),
+            'pinned_message' => $this->stringValue(config('reny_catalog.community.live_chat.pinned_message'))
+                ?? 'Bienvenidos al chat oficial. Sé amable y mantén la conversación segura.',
+            'messages_endpoint' => route('community.live-chat.messages.index'),
+            'message_endpoint' => route('community.live-chat.messages.store'),
+            'current_user_id' => $user?->id,
+            'can_moderate' => $this->canModerate($user),
+        ];
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function liveChatMessages(?User $viewer): array
+    {
+        if (! Schema::hasTable('community_country_club_messages')) {
+            return [];
+        }
+
+        $blockedUserIds = $viewer && Schema::hasTable('community_user_blocks')
+            ? CommunityUserBlock::query()
+                ->where('blocker_id', $viewer->id)
+                ->pluck('blocked_id')
+                ->all()
+            : [];
+
+        return CommunityCountryClubMessage::query()
+            ->where('status', 'visible')
+            ->whereHas('club', fn ($query) => $query->where('key', self::LIVE_CHAT_KEY))
+            ->when($blockedUserIds !== [], fn ($query) => $query->whereNotIn('user_id', $blockedUserIds))
+            ->with(['club:id,key', 'user:id,name,username,role'])
+            ->latest('id')
+            ->limit(50)
+            ->get()
+            ->sortBy('id')
+            ->values()
+            ->map(fn (CommunityCountryClubMessage $message): array => $this->liveChatMessagePayload($message, $viewer))
+            ->all();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function createLiveChatMessage(User $user, string $body): array
+    {
+        $club = CommunityCountryClub::query()->firstOrCreate([
+            'key' => self::LIVE_CHAT_KEY,
+        ], [
+            'name' => 'Live Chat',
+            'flag_label' => 'LIVE',
+            'activity' => 'Official community live chat',
+            'status' => 'active',
+            'metadata' => ['source' => 'official_live_chat'],
+        ]);
+
+        $message = CommunityCountryClubMessage::create([
+            'community_country_club_id' => $club->id,
+            'user_id' => $user->id,
+            'body' => $body,
+            'status' => 'visible',
+        ])->load(['club:id,key', 'user:id,name,username,role']);
+
+        return [
+            'chat_message' => $this->liveChatMessagePayload($message, $user),
+            'message' => 'Mensaje enviado.',
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function blockLiveChatUser(User $blocker, User $blocked): array
+    {
+        if ($blocker->is($blocked)) {
+            throw ValidationException::withMessages([
+                'user' => 'No puedes bloquear tu propia cuenta.',
+            ]);
+        }
+
+        CommunityUserBlock::query()->firstOrCreate([
+            'blocker_id' => $blocker->id,
+            'blocked_id' => $blocked->id,
+        ]);
+
+        return [
+            'blocked_user_id' => $blocked->id,
+            'message' => 'Usuario bloqueado.',
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function moderateLiveChatMessage(CommunityCountryClubMessage $message): array
+    {
+        $message->loadMissing('club:id,key');
+        abort_unless($message->club?->key === self::LIVE_CHAT_KEY, 404);
+
+        $message->update(['status' => 'removed']);
+
+        return [
+            'removed_message_id' => $message->id,
+            'message' => 'Mensaje ocultado.',
+        ];
+    }
+
+    public function canModerate(?User $user): bool
+    {
+        return $user && in_array($user->role, [
+            User::ROLE_ADMIN,
+            User::ROLE_ARTIST_ADMIN,
+            User::ROLE_MODERATOR,
+        ], true);
     }
 
     /**
@@ -352,6 +477,7 @@ class CommunityInteractionService
         $persisted = Schema::hasTable('community_country_clubs')
             ? CommunityCountryClub::query()
                 ->where('status', 'active')
+                ->where('key', '!=', self::LIVE_CHAT_KEY)
                 ->withCount([
                     'memberships as active_memberships_count' => fn ($query) => $query->where('status', 'active'),
                 ])
@@ -469,6 +595,43 @@ class CommunityInteractionService
             'status' => 'active',
             'metadata' => ['source' => $default ? 'community_default' : 'community'],
         ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function liveChatMessagePayload(CommunityCountryClubMessage $message, ?User $viewer): array
+    {
+        $author = $message->user?->name ?? $message->user?->username ?? 'Miembro';
+        $canBlock = $viewer
+            && $message->user_id !== $viewer->id
+            && EntitlementMatrix::canUseRoyalFeature($viewer);
+
+        return [
+            'id' => $message->id,
+            'user_id' => $message->user_id,
+            'author' => $author,
+            'initials' => $this->initials($author),
+            'text' => $message->body,
+            'time' => $message->created_at?->diffForHumans() ?? 'ahora',
+            'is_self' => $viewer?->id === $message->user_id,
+            'is_host' => $message->user?->isStaff() ?? false,
+            'block_endpoint' => $canBlock ? route('community.live-chat.users.block', $message->user_id) : null,
+            'moderation_endpoint' => $this->canModerate($viewer)
+                ? route('community.live-chat.messages.moderate', $message)
+                : null,
+        ];
+    }
+
+    private function initials(string $name): string
+    {
+        return Str::of($name)
+            ->trim()
+            ->explode(' ')
+            ->filter()
+            ->take(2)
+            ->map(fn (string $part): string => Str::upper(Str::substr($part, 0, 1)))
+            ->implode('') ?: 'R';
     }
 
     /**

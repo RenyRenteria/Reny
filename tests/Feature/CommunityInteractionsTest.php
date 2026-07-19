@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Models\CommunityCountryClubMessage;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\RateLimiter;
 use Tests\TestCase;
 
 class CommunityInteractionsTest extends TestCase
@@ -16,12 +18,19 @@ class CommunityInteractionsTest extends TestCase
             ->assertUnauthorized()
             ->assertJsonPath('login_url', route('login'));
 
+        $this->postJson(route('community.live-chat.messages.store'), ['body' => 'Guest message'])
+            ->assertUnauthorized();
+
         $openUser = User::factory()->create();
 
         $this->actingAs($openUser)
             ->postJson(route('community.posts.like', 'studio-note-from-reny'))
             ->assertForbidden()
             ->assertJsonPath('store_url', route('store'));
+
+        $this->actingAs($openUser)
+            ->postJson(route('community.live-chat.messages.store'), ['body' => 'Open message'])
+            ->assertForbidden();
 
         $this->assertDatabaseCount('community_post_reactions', 0);
     }
@@ -63,7 +72,7 @@ class CommunityInteractionsTest extends TestCase
             ->get('/community')
             ->assertOk()
             ->assertSee('285')
-            ->assertSee('39 replies');
+            ->assertSee('39 respuestas');
     }
 
     public function test_poll_vote_persists_and_blocks_duplicate_vote(): void
@@ -93,10 +102,7 @@ class CommunityInteractionsTest extends TestCase
             'option_key' => 'studio-photos',
         ]);
 
-        $this->actingAs($user)
-            ->get('/community')
-            ->assertOk()
-            ->assertSee('Vote saved');
+        $this->assertDatabaseCount('community_poll_votes', 1);
     }
 
     public function test_country_club_detail_join_and_messages_are_persistent(): void
@@ -168,5 +174,114 @@ class CommunityInteractionsTest extends TestCase
             'created_by_id' => $user->id,
         ]);
         $this->assertDatabaseCount('community_country_club_memberships', 1);
+    }
+
+    public function test_royal_member_can_send_and_poll_live_chat_messages(): void
+    {
+        $user = User::factory()->royal()->create([
+            'name' => 'Live Fan',
+        ]);
+
+        $this->actingAs($user)
+            ->postJson(route('community.live-chat.messages.store'), [
+                'body' => 'Hola desde el live chat.',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('chat_message.author', 'Live Fan')
+            ->assertJsonPath('chat_message.text', 'Hola desde el live chat.')
+            ->assertJsonPath('chat_message.is_self', true);
+
+        $this->assertDatabaseHas('community_country_clubs', [
+            'key' => 'official-live-chat',
+        ]);
+        $this->assertDatabaseHas('community_country_club_messages', [
+            'user_id' => $user->id,
+            'body' => 'Hola desde el live chat.',
+            'status' => 'visible',
+        ]);
+
+        $this->actingAs($user)
+            ->getJson(route('community.live-chat.messages.index'))
+            ->assertOk()
+            ->assertJsonPath('messages.0.text', 'Hola desde el live chat.')
+            ->assertJsonPath('messages.0.is_self', true);
+    }
+
+    public function test_blocking_a_chat_user_hides_their_messages_for_the_blocker_only(): void
+    {
+        $blocked = User::factory()->royal()->create(['name' => 'Blocked Fan']);
+        $blocker = User::factory()->royal()->create(['name' => 'Safe Fan']);
+
+        $this->actingAs($blocked)
+            ->postJson(route('community.live-chat.messages.store'), ['body' => 'Message to hide'])
+            ->assertCreated();
+
+        $this->actingAs($blocker)
+            ->getJson(route('community.live-chat.messages.index'))
+            ->assertJsonPath('messages.0.text', 'Message to hide');
+
+        $this->actingAs($blocker)
+            ->postJson(route('community.live-chat.users.block', $blocked))
+            ->assertOk()
+            ->assertJsonPath('blocked_user_id', $blocked->id);
+
+        $this->assertDatabaseHas('community_user_blocks', [
+            'blocker_id' => $blocker->id,
+            'blocked_id' => $blocked->id,
+        ]);
+
+        $this->actingAs($blocker)
+            ->getJson(route('community.live-chat.messages.index'))
+            ->assertJsonCount(0, 'messages');
+
+        $this->actingAs($blocked)
+            ->getJson(route('community.live-chat.messages.index'))
+            ->assertJsonPath('messages.0.text', 'Message to hide');
+    }
+
+    public function test_moderator_can_hide_a_live_chat_message(): void
+    {
+        $fan = User::factory()->royal()->create();
+        $moderator = User::factory()->create([
+            'role' => User::ROLE_MODERATOR,
+        ]);
+
+        $response = $this->actingAs($fan)
+            ->postJson(route('community.live-chat.messages.store'), ['body' => 'Moderate this'])
+            ->assertCreated();
+        $message = CommunityCountryClubMessage::findOrFail($response->json('chat_message.id'));
+
+        $this->actingAs($moderator)
+            ->deleteJson(route('community.live-chat.messages.moderate', $message))
+            ->assertOk()
+            ->assertJsonPath('removed_message_id', $message->id);
+
+        $this->assertDatabaseHas('community_country_club_messages', [
+            'id' => $message->id,
+            'status' => 'removed',
+        ]);
+
+        $this->getJson(route('community.live-chat.messages.index'))
+            ->assertJsonCount(0, 'messages');
+    }
+
+    public function test_live_chat_rate_limit_rejects_bursts(): void
+    {
+        $user = User::factory()->royal()->create();
+        RateLimiter::clear((string) $user->id);
+
+        for ($index = 0; $index < 8; $index++) {
+            $this->actingAs($user)
+                ->postJson(route('community.live-chat.messages.store'), [
+                    'body' => 'Message '.($index + 1),
+                ])
+                ->assertCreated();
+        }
+
+        $this->actingAs($user)
+            ->postJson(route('community.live-chat.messages.store'), ['body' => 'One too many'])
+            ->assertTooManyRequests();
+
+        RateLimiter::clear((string) $user->id);
     }
 }
