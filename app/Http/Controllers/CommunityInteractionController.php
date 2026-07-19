@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CommunityCountryClubMessage;
+use App\Models\User;
 use App\Services\CommunityInteractionService;
 use App\Support\EntitlementMatrix;
 use Illuminate\Http\JsonResponse;
@@ -10,6 +12,55 @@ use Illuminate\View\View;
 
 class CommunityInteractionController extends Controller
 {
+    public function liveChatMessages(Request $request, CommunityInteractionService $community): JsonResponse
+    {
+        return response()->json([
+            'status' => 'ok',
+            'messages' => $community->liveChatMessages($request->user()),
+        ]);
+    }
+
+    public function storeLiveChatMessage(Request $request, CommunityInteractionService $community): JsonResponse
+    {
+        if ($blocked = $this->blockedResponse($request)) {
+            return $blocked;
+        }
+
+        $validated = $request->validate([
+            'body' => ['required', 'string', 'min:2', 'max:300'],
+        ]);
+
+        return response()->json([
+            'status' => 'created',
+            ...$community->createLiveChatMessage($request->user(), trim((string) $validated['body'])),
+        ], 201);
+    }
+
+    public function blockLiveChatUser(Request $request, CommunityInteractionService $community, User $user): JsonResponse
+    {
+        if ($blocked = $this->blockedResponse($request)) {
+            return $blocked;
+        }
+
+        return response()->json([
+            'status' => 'ok',
+            ...$community->blockLiveChatUser($request->user(), $user),
+        ]);
+    }
+
+    public function moderateLiveChatMessage(
+        Request $request,
+        CommunityInteractionService $community,
+        CommunityCountryClubMessage $message,
+    ): JsonResponse {
+        abort_unless($community->canModerate($request->user()), 403);
+
+        return response()->json([
+            'status' => 'ok',
+            ...$community->moderateLiveChatMessage($message),
+        ]);
+    }
+
     public function showClub(Request $request, CommunityInteractionService $community, string $club): View
     {
         return view('community-club', [

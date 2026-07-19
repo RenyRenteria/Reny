@@ -28,15 +28,15 @@ const communityRequestError = (message, reason = null) => Object.assign(new Erro
     userMessage: message,
 });
 
-const postCommunityJson = async (url, body = {}) => {
+const communityJsonRequest = async (url, { method = 'GET', body = null } = {}) => {
     const response = await fetch(url, {
-        method: 'POST',
+        method,
         headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
             'X-CSRF-TOKEN': communityCsrfToken(),
         },
-        body: JSON.stringify(body),
+        body: body === null ? null : JSON.stringify(body),
     });
     const payload = await response.json().catch(() => ({}));
 
@@ -57,6 +57,11 @@ const postCommunityJson = async (url, body = {}) => {
 
     return payload;
 };
+
+const postCommunityJson = (url, body = {}) => communityJsonRequest(url, {
+    method: 'POST',
+    body,
+});
 
 const setCommunityFormStatus = (form, message = '', isError = false) => {
     const status = form?.querySelector('[data-form-status]');
@@ -276,6 +281,290 @@ const renderChatMessage = (message, isSelf = false) => {
     return article;
 };
 
+const initializeCommunityMobileTabs = (root = document) => {
+    const tabs = [...root.querySelectorAll('[data-community-tab]')];
+    const panels = [...root.querySelectorAll('[data-community-panel]')];
+
+    if (tabs.length === 0 || panels.length === 0) {
+        return;
+    }
+
+    const media = window.matchMedia('(max-width: 860px)');
+    let activeTab = tabs.find((tab) => tab.classList.contains('is-active'))?.dataset.communityTab || 'feed';
+
+    const activate = (name) => {
+        activeTab = name;
+
+        tabs.forEach((tab) => {
+            const isActive = tab.dataset.communityTab === name;
+            tab.classList.toggle('is-active', isActive);
+            tab.setAttribute('aria-selected', String(isActive));
+            tab.tabIndex = isActive ? 0 : -1;
+        });
+
+        panels.forEach((panel) => {
+            panel.hidden = media.matches && panel.dataset.communityPanel !== name;
+        });
+    };
+
+    tabs.forEach((tab, index) => {
+        bindOnce(tab, 'community-mobile-tab', 'click', () => activate(tab.dataset.communityTab));
+        bindOnce(tab, 'community-mobile-tab-keydown', 'keydown', (event) => {
+            if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) {
+                return;
+            }
+
+            event.preventDefault();
+            const direction = event.key === 'ArrowRight' ? 1 : -1;
+            const nextTab = tabs[(index + direction + tabs.length) % tabs.length];
+            activate(nextTab.dataset.communityTab);
+            nextTab.focus();
+        });
+    });
+
+    const applyViewport = () => {
+        if (!document.contains(tabs[0])) {
+            media.removeEventListener('change', applyViewport);
+            return;
+        }
+
+        if (media.matches) {
+            activate(activeTab);
+        } else {
+            panels.forEach((panel) => {
+                panel.hidden = false;
+            });
+        }
+    };
+
+    applyViewport();
+    media.addEventListener('change', applyViewport);
+};
+
+const createLiveChatMessage = (message) => {
+    const article = document.createElement('article');
+    article.className = 'community-live-message';
+    article.dataset.chatMessageId = String(message.id);
+    article.dataset.chatUserId = String(message.user_id);
+    article.classList.toggle('is-self', Boolean(message.is_self));
+    article.classList.toggle('is-host', Boolean(message.is_host));
+
+    const avatar = document.createElement('div');
+    avatar.className = 'community-chat-avatar';
+    avatar.setAttribute('aria-hidden', 'true');
+    avatar.textContent = message.initials || 'R';
+
+    const content = document.createElement('div');
+    const header = document.createElement('header');
+    const author = document.createElement('strong');
+    author.textContent = message.author || 'Miembro';
+    header.append(author);
+
+    if (message.is_host) {
+        const host = document.createElement('span');
+        host.textContent = 'Host';
+        header.append(host);
+    }
+
+    const time = document.createElement('time');
+    time.textContent = message.time || 'ahora';
+    header.append(time);
+
+    const body = document.createElement('p');
+    body.textContent = message.text || '';
+    content.append(header, body);
+
+    if (message.block_endpoint || message.moderation_endpoint) {
+        const actions = document.createElement('div');
+        actions.className = 'community-live-message-actions';
+
+        if (message.block_endpoint) {
+            const block = document.createElement('button');
+            block.type = 'button';
+            block.dataset.chatBlockEndpoint = message.block_endpoint;
+            block.textContent = 'Bloquear';
+            actions.append(block);
+        }
+
+        if (message.moderation_endpoint) {
+            const moderate = document.createElement('button');
+            moderate.type = 'button';
+            moderate.dataset.chatModerateEndpoint = message.moderation_endpoint;
+            moderate.textContent = 'Ocultar';
+            actions.append(moderate);
+        }
+
+        content.append(actions);
+    }
+
+    article.append(avatar, content);
+
+    return article;
+};
+
+const renderLiveChatMessages = (container, messages) => {
+    const signature = messages.map((message) => `${message.id}:${message.text}`).join('|');
+
+    if (container.dataset.messagesSignature === signature) {
+        return false;
+    }
+
+    const wasNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 80;
+    container.replaceChildren();
+
+    if (messages.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'community-chat-empty';
+        empty.dataset.liveChatEmpty = '';
+
+        const title = document.createElement('strong');
+        title.textContent = 'El chat está listo';
+        const copy = document.createElement('p');
+        copy.textContent = 'Sé la primera persona en iniciar la conversación.';
+        empty.append(title, copy);
+        container.append(empty);
+    } else {
+        messages.forEach((message) => container.append(createLiveChatMessage(message)));
+    }
+
+    container.dataset.messagesSignature = signature;
+
+    if (wasNearBottom || !container.dataset.hasRenderedMessages) {
+        container.scrollTop = container.scrollHeight;
+    }
+
+    container.dataset.hasRenderedMessages = 'true';
+
+    return true;
+};
+
+let liveChatPollingTimer = null;
+
+const initializeCommunityLiveChat = (root = document) => {
+    window.clearTimeout(liveChatPollingTimer);
+
+    const chat = root.querySelector('[data-community-live-chat]');
+    const container = chat?.querySelector('[data-live-chat-messages]');
+    const status = chat?.querySelector('[data-live-chat-status]');
+    const form = chat?.querySelector('[data-community-live-chat-form]');
+
+    if (!chat || !container || !chat.dataset.messagesEndpoint) {
+        return;
+    }
+
+    const refresh = async () => {
+        if (!document.contains(chat)) {
+            return;
+        }
+
+        try {
+            const payload = await communityJsonRequest(chat.dataset.messagesEndpoint);
+            renderLiveChatMessages(container, payload.messages || []);
+
+            if (status) {
+                status.textContent = 'Actualización automática · chat moderado';
+            }
+        } catch (error) {
+            console.warn(error);
+
+            if (status) {
+                status.textContent = 'Reconectando el chat...';
+            }
+        } finally {
+            if (document.contains(chat)) {
+                liveChatPollingTimer = window.setTimeout(refresh, 5000);
+            }
+        }
+    };
+
+    bindOnce(container, 'community-live-chat-actions', 'click', async (event) => {
+        const blockButton = event.target.closest('[data-chat-block-endpoint]');
+        const moderateButton = event.target.closest('[data-chat-moderate-endpoint]');
+
+        if (!blockButton && !moderateButton) {
+            return;
+        }
+
+        const button = blockButton || moderateButton;
+        button.disabled = true;
+
+        try {
+            if (blockButton) {
+                const row = blockButton.closest('[data-chat-user-id]');
+                const userId = row?.dataset.chatUserId;
+                const payload = await postCommunityJson(blockButton.dataset.chatBlockEndpoint);
+
+                container.querySelectorAll(`[data-chat-user-id="${CSS.escape(userId || '')}"]`).forEach((message) => message.remove());
+                container.dataset.messagesSignature = '';
+                showCommunityToast(payload.message || 'Usuario bloqueado.');
+            } else {
+                const payload = await communityJsonRequest(moderateButton.dataset.chatModerateEndpoint, { method: 'DELETE' });
+                moderateButton.closest('[data-chat-message-id]')?.remove();
+                container.dataset.messagesSignature = '';
+                showCommunityToast(payload.message || 'Mensaje ocultado.');
+            }
+        } catch (error) {
+            console.error(error);
+            showCommunityToast(error.userMessage || 'No pudimos completar la acción.');
+        } finally {
+            button.disabled = false;
+        }
+    });
+
+    bindOnce(form, 'community-live-chat-submit', 'submit', async (event) => {
+        event.preventDefault();
+
+        const input = form.querySelector('input[name="body"]');
+        const body = input?.value.trim();
+
+        if (!body) {
+            setCommunityFormStatus(form, 'Escribe un mensaje primero.', true);
+            return;
+        }
+
+        const submit = form.querySelector('button[type="submit"]');
+        submit.disabled = true;
+        setCommunityFormStatus(form, 'Enviando...');
+
+        try {
+            const payload = await postCommunityJson(form.dataset.endpoint, { body });
+            input.value = '';
+            setCommunityFormStatus(form);
+
+            if (payload.chat_message) {
+                const currentMessages = [...container.querySelectorAll('[data-chat-message-id]')]
+                    .map((message) => Number(message.dataset.chatMessageId));
+
+                if (!currentMessages.includes(Number(payload.chat_message.id))) {
+                    container.querySelector('[data-live-chat-empty]')?.remove();
+                    container.append(createLiveChatMessage(payload.chat_message));
+                    container.scrollTop = container.scrollHeight;
+                    container.dataset.messagesSignature = '';
+                }
+            }
+
+            showCommunityToast(payload.message || 'Mensaje enviado.');
+            trackEvent('community_live_chat_message_sent', {
+                item_type: 'live_chat_message',
+                result: 'submitted',
+            });
+        } catch (error) {
+            console.error(error);
+            setCommunityFormStatus(form, error.userMessage || 'No pudimos enviar el mensaje.', true);
+            showCommunityToast(error.userMessage || 'No pudimos enviar el mensaje.');
+            trackEvent('community_live_chat_message_sent', {
+                item_type: 'live_chat_message',
+                reason: error.reason || error.message || 'message_failed',
+                result: 'failed',
+            });
+        } finally {
+            submit.disabled = false;
+        }
+    });
+
+    refresh();
+};
+
 const initializeCommunityClubLinks = (root = document) => {
     root.querySelectorAll('.club-card a, [data-community-club-open]').forEach((link) => {
         bindOnce(link, 'community-club-open', 'click', () => {
@@ -468,7 +757,7 @@ const initializeCreateGroupModal = () => {
 };
 
 const initializeCommunityNotes = (root = document) => {
-    root.querySelectorAll('.community-content .media-cta').forEach((button) => {
+    root.querySelectorAll('.community-content .media-cta, .community-content .community-post-media-cta').forEach((button) => {
         bindOnce(button, 'community-note-open', 'click', () => {
             if (button.dataset.noteOpen) {
                 const noteModal = document.getElementById('communityNoteModal');
@@ -563,7 +852,7 @@ const initializeCommunityReplyForms = (root = document) => {
                 const currentCount = Number((countNode?.textContent || '').replace(/[^0-9]/g, '')) || 0;
 
                 if (countNode) {
-                    countNode.textContent = `${currentCount + 1} replies`;
+                    countNode.textContent = `${currentCount + 1} respuestas`;
                 }
 
                 input.value = '';
@@ -650,6 +939,8 @@ const initializeCommunitySoftPollButtons = (root = document) => {
 };
 
 const initializeCommunityInteractions = (root = document) => {
+    initializeCommunityMobileTabs(root);
+    initializeCommunityLiveChat(root);
     initializeCommunityToastTriggers(root);
     initializeCommunityReactions(root);
     initializeCommunityPolls(root);

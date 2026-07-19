@@ -108,7 +108,13 @@ class PublicCmsContentTest extends TestCase
             ->assertOk()
             ->assertJsonPath('products.0.name', 'CMS Digital Product')
             ->assertJsonPath('events.0.name', 'CMS Listening Event');
-        $this->get('/community')->assertOk()->assertSee('CMS Community Post')->assertSee('CMS poll question?');
+        $this->get('/community')
+            ->assertOk()
+            ->assertSee('CMS Community Post')
+            ->assertDontSee('CMS poll question?');
+        $this->getJson(route('public-content.payload', 'community'))
+            ->assertOk()
+            ->assertJsonPath('poll.question', 'CMS poll question?');
     }
 
     public function test_public_payload_contract_keeps_home_music_and_video_keys_stable(): void

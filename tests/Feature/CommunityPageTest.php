@@ -26,12 +26,12 @@ class CommunityPageTest extends TestCase
         $response = $this->get('/community');
 
         $response->assertOk();
-        $response->assertSee('Official Feed');
-        $response->assertSee('Reny Direct Posts');
-        $response->assertSee('Fan Votes');
-        $response->assertSee('Country Clubs');
-        $response->assertSee('Clubhouse Chat');
-        $response->assertSee('Sign in to vote');
+        $response->assertSee('Directo de Reny.');
+        $response->assertSee('Posts de Reny');
+        $response->assertSee('Live Chat');
+        $response->assertSee('Solo Reny publica');
+        $response->assertSee('data-community-tab="feed"', false);
+        $response->assertSee('data-community-tab="chat"', false);
         $response->assertSee('class="tab is-active"', false);
         $response->assertSee('href="'.url('/community').'"', false);
         $response->assertSee('images/reny-renteria-logo.png');
@@ -39,19 +39,15 @@ class CommunityPageTest extends TestCase
         $html = $response->getContent();
 
         $this->assertSame(2, substr_count($html, 'images/reny-renteria-logo.png'));
-        $this->assertSame(1, substr_count($html, 'class="community-grid"'));
-        $this->assertSame(1, substr_count($html, 'class="side-column"'));
-        $this->assertSame(2, substr_count($html, 'class="post-card'));
-        $this->assertSame(1, substr_count($html, 'class="vote-card"'));
-        $this->assertSame(3, substr_count($html, 'class="club-card"'));
+        $this->assertSame(1, substr_count($html, 'class="community-experience"'));
+        $this->assertSame(1, substr_count($html, 'class="community-live-chat-panel"'));
+        $this->assertSame(2, substr_count($html, 'class="community-post-card'));
+        $this->assertSame(0, substr_count($html, 'class="vote-card"'));
+        $this->assertSame(0, substr_count($html, 'class="club-card"'));
         $this->assertStringNotContainsString('Create group', $html);
-        $this->assertStringNotContainsString('Who is going to the first meetup?', $html);
-        $this->assertStringNotContainsString('Reny Direct Posts</h1>', $html);
-        $this->assertStringNotContainsString('Country Groups', $html);
-        $this->assertStringNotContainsString('class="direct-post-card"', $html);
-        $this->assertStringNotContainsString('class="poll-card"', $html);
-        $this->assertStringNotContainsString('Main feed is Reny-only', $html);
-        $this->assertStringNotContainsString('Users cannot publish directly here', $html);
+        $this->assertStringNotContainsString('Country Clubs', $html);
+        $this->assertStringNotContainsString('Fan Votes', $html);
+        $this->assertStringNotContainsString('Publish post', $html);
         $this->assertStringNotContainsString('<iframe', $html);
         $this->assertStringNotContainsString('<video', $html);
         $this->assertStringNotContainsString('youtube', strtolower($html));
@@ -67,7 +63,7 @@ class CommunityPageTest extends TestCase
         }
     }
 
-    public function test_community_fallbacks_can_be_resolved_from_versioned_config(): void
+    public function test_community_post_fallbacks_can_be_resolved_from_versioned_config(): void
     {
         config()->set('reny_catalog.community.posts', [
             [
@@ -107,13 +103,13 @@ class CommunityPageTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Config community post');
-        $response->assertSee('Configured poll question?');
-        $response->assertSee('Mexico');
+        $response->assertDontSee('Configured poll question?');
+        $response->assertDontSee('Mexico');
         $response->assertDontSee('Studio note from Reny');
         $response->assertDontSee('Dominican Republic');
     }
 
-    public function test_cms_posts_and_poll_take_precedence_over_configured_fallbacks(): void
+    public function test_cms_posts_take_precedence_over_configured_fallbacks(): void
     {
         EditorialContent::factory()->published()->create([
             'type' => ContentType::Post->value,
@@ -135,12 +131,12 @@ class CommunityPageTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('CMS Priority Community Post');
-        $response->assertSee('CMS priority poll question?');
+        $response->assertDontSee('CMS priority poll question?');
         $response->assertDontSee('Studio note from Reny');
         $response->assertDontSee('Which drop should go first?');
     }
 
-    public function test_persisted_country_club_fields_take_precedence_over_configured_default(): void
+    public function test_country_clubs_stay_available_on_their_dedicated_routes(): void
     {
         CommunityCountryClub::create([
             'key' => 'panama',
@@ -150,12 +146,16 @@ class CommunityPageTest extends TestCase
             'status' => 'active',
         ]);
 
-        $response = $this->get('/community');
+        $response = $this->get(route('community.clubs.show', 'panama'));
 
         $response->assertOk();
         $response->assertSee('Panama DB Club');
         $response->assertSee('DB owned activity');
         $response->assertDontSee('Sharing radio clips');
+
+        $this->get('/community')
+            ->assertOk()
+            ->assertDontSee('Panama DB Club');
     }
 
     public function test_empty_or_invalid_community_config_does_not_render_fallback_cards(): void
@@ -174,7 +174,7 @@ class CommunityPageTest extends TestCase
 
         $html = $response->getContent();
 
-        $this->assertSame(0, substr_count($html, 'class="post-card'));
+        $this->assertSame(0, substr_count($html, 'class="community-post-card'));
         $this->assertStringNotContainsString('class="vote-card"', $html);
         $this->assertSame(0, substr_count($html, 'class="club-card"'));
 

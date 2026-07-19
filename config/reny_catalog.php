@@ -61,6 +61,9 @@ return [
     ],
 
     'community' => [
+        'live_chat' => [
+            'pinned_message' => 'Bienvenidos al chat oficial de Reny. Sé amable, evita spam y reporta cualquier situación al equipo.',
+        ],
         'posts' => [
             [
                 'key' => 'studio-note-from-reny',

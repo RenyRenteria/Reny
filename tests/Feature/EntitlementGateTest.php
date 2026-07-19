@@ -75,10 +75,10 @@ class EntitlementGateTest extends TestCase
     {
         $this->get('/community')
             ->assertOk()
-            ->assertSee('Country Clubs')
-            ->assertSee('Poll results stay visible in Open mode.')
-            ->assertSee('Club previews stay public')
-            ->assertDontSee('Create group')
-            ->assertDontSee('Who is going to the first meetup?');
+            ->assertSee('Posts de Reny')
+            ->assertSee('Inicia sesión para escribir')
+            ->assertSee('Puedes leer el chat; enviar mensajes requiere Royal Pass.')
+            ->assertDontSee('data-community-live-chat-form', false)
+            ->assertDontSee('Create group');
     }
 }
