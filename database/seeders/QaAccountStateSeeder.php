@@ -117,7 +117,7 @@ class QaAccountStateSeeder extends Seeder
                     'user_id' => $user->id,
                     'provider' => 'paypal',
                     'product_key' => 'royal',
-                    'amount_cents' => 499,
+                    'amount_cents' => 399,
                     'currency' => 'USD',
                     'status' => $account['order_status'],
                     'grants_royal_month' => true,

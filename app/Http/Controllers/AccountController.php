@@ -270,7 +270,7 @@ class AccountController extends Controller
                 ->first()
             : null;
 
-        $amountCents = (int) ($latestRoyalOrder?->amount_cents ?? $royalPass['amount_cents'] ?? 499);
+        $amountCents = (int) ($latestRoyalOrder?->amount_cents ?? $royalPass['amount_cents'] ?? 399);
         $currency = strtoupper((string) ($latestRoyalOrder?->currency ?? $royalPass['currency'] ?? 'USD'));
         $active = $profile && in_array($profile->status, ['active', 'past_due'], true);
 
