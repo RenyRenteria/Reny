@@ -93,7 +93,7 @@ class CommunityInteractionService
             ->where('status', 'visible')
             ->whereHas('club', fn ($query) => $query->where('key', self::LIVE_CHAT_KEY))
             ->when($blockedUserIds !== [], fn ($query) => $query->whereNotIn('user_id', $blockedUserIds))
-            ->with(['club:id,key', 'user:id,name,username,role'])
+            ->with(['club:id,key', 'user:id,name,username,role,avatar_path'])
             ->latest('id')
             ->limit(50)
             ->get()
@@ -123,7 +123,7 @@ class CommunityInteractionService
             'user_id' => $user->id,
             'body' => $body,
             'status' => 'visible',
-        ])->load(['club:id,key', 'user:id,name,username,role']);
+        ])->load(['club:id,key', 'user:id,name,username,role,avatar_path']);
 
         return [
             'chat_message' => $this->liveChatMessagePayload($message, $user),
@@ -660,6 +660,9 @@ class CommunityInteractionService
             'user_id' => $message->user_id,
             'author' => $author,
             'initials' => $this->initials($author),
+            'avatar_url' => $message->user?->avatar_path
+                ? asset($message->user->avatar_path)
+                : null,
             'text' => $message->body,
             'time' => $message->created_at?->diffForHumans() ?? 'ahora',
             'is_self' => $viewer?->id === $message->user_id,

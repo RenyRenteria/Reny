@@ -1258,10 +1258,32 @@ button.community-post-action {
 }
 
 .community-chat-avatar {
+    position: relative;
+    overflow: hidden;
     width: 1.875rem;
     background: linear-gradient(140deg, #7251c9, var(--accent) 55%, #171412 56%);
     font-size: 0.5625rem;
     aspect-ratio: 1;
+}
+
+.community-chat-avatar span {
+    display: grid;
+    width: 100%;
+    height: 100%;
+    place-items: center;
+}
+
+.community-chat-avatar img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    object-fit: cover;
+}
+
+.community-chat-avatar img.is-loaded {
+    opacity: 1;
 }
 
 .community-live-message.is-self .community-chat-avatar {
