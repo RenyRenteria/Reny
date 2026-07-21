@@ -562,16 +562,16 @@ class RoyalPassCheckoutTest extends TestCase
             ->assertJsonValidationErrors('local_reference');
     }
 
-    public function test_royal_pass_checkout_uses_four_ninety_nine_pricing(): void
+    public function test_royal_pass_checkout_uses_three_ninety_nine_pricing(): void
     {
-        $this->createPendingPayPalOrder('royal-price@renyrenteria.com', ['royal'], 'PAYPAL-ROYAL-499');
-        $this->fakeSuccessfulCapture('PAYPAL-ROYAL-499', '4.99');
+        $this->createPendingPayPalOrder('royal-price@renyrenteria.com', ['royal'], 'PAYPAL-ROYAL-399');
+        $this->fakeSuccessfulCapture('PAYPAL-ROYAL-399', '3.99');
 
         $response = $this->postJson('/checkout/paypal', [
             'identifier' => 'royal-price@renyrenteria.com',
             'product_keys' => ['royal'],
             'currency' => 'USD',
-            'paypal_order_id' => 'PAYPAL-ROYAL-499',
+            'paypal_order_id' => 'PAYPAL-ROYAL-399',
         ]);
 
         $response->assertOk();
@@ -580,9 +580,9 @@ class RoyalPassCheckoutTest extends TestCase
 
         $this->assertDatabaseHas('orders', [
             'user_id' => $user->id,
-            'provider_order_id' => 'PAYPAL-ROYAL-499-1-royal',
+            'provider_order_id' => 'PAYPAL-ROYAL-399-1-royal',
             'product_key' => 'royal',
-            'amount_cents' => 499,
+            'amount_cents' => 399,
             'currency' => 'USD',
             'status' => 'completed',
         ]);
@@ -1411,6 +1411,12 @@ class RoyalPassCheckoutTest extends TestCase
             ->assertDontSee('Load PayPal checkout')
             ->assertDontSee('Submit a bank/Yappy receipt')
             ->assertDontSee(route('checkout.local'));
+
+        $this->get('/store/checkout/royal')
+            ->assertOk()
+            ->assertSee('$3.99/mo')
+            ->assertSee('data-price-value="3.99"', false)
+            ->assertSee('data-buy-price-value="3.99"', false);
     }
 
     public function test_store_exposes_cms_digital_and_art_drop_purchase_keys(): void
