@@ -303,7 +303,12 @@
                                         data-chat-message-id="{{ $message['id'] }}"
                                         data-chat-user-id="{{ $message['user_id'] }}"
                                     >
-                                        <div class="community-chat-avatar" aria-hidden="true">{{ $message['initials'] }}</div>
+                                        <div class="community-chat-avatar" aria-hidden="true">
+                                            <span>{{ $message['initials'] }}</span>
+                                            @if ($message['avatar_url'] ?? null)
+                                                <img src="{{ $message['avatar_url'] }}" alt="" data-live-chat-avatar-image>
+                                            @endif
+                                        </div>
                                         <div>
                                             <header>
                                                 <strong>{{ $message['author'] }}</strong>

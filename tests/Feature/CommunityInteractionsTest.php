@@ -200,6 +200,7 @@ class CommunityInteractionsTest extends TestCase
     {
         $user = User::factory()->royal()->create([
             'name' => 'Live Fan',
+            'avatar_path' => 'storage/avatars/live-fan.jpg',
         ]);
 
         $this->actingAs($user)
@@ -208,6 +209,7 @@ class CommunityInteractionsTest extends TestCase
             ])
             ->assertCreated()
             ->assertJsonPath('chat_message.author', 'Live Fan')
+            ->assertJsonPath('chat_message.avatar_url', asset('storage/avatars/live-fan.jpg'))
             ->assertJsonPath('chat_message.text', 'Hola desde el live chat.')
             ->assertJsonPath('chat_message.is_self', true);
 
@@ -223,8 +225,34 @@ class CommunityInteractionsTest extends TestCase
         $this->actingAs($user)
             ->getJson(route('community.live-chat.messages.index'))
             ->assertOk()
+            ->assertJsonPath('messages.0.avatar_url', asset('storage/avatars/live-fan.jpg'))
             ->assertJsonPath('messages.0.text', 'Hola desde el live chat.')
             ->assertJsonPath('messages.0.is_self', true);
+
+        $this->actingAs($user)
+            ->get('/community')
+            ->assertOk()
+            ->assertSee('src="'.asset('storage/avatars/live-fan.jpg').'"', false)
+            ->assertSee('data-live-chat-avatar-image', false);
+    }
+
+    public function test_live_chat_uses_initials_when_the_author_has_no_avatar(): void
+    {
+        $user = User::factory()->royal()->create([
+            'name' => 'Royal Reader',
+            'avatar_path' => null,
+        ]);
+
+        $this->actingAs($user)
+            ->postJson(route('community.live-chat.messages.store'), ['body' => 'Sin foto.'])
+            ->assertCreated()
+            ->assertJsonPath('chat_message.initials', 'RR')
+            ->assertJsonPath('chat_message.avatar_url', null);
+
+        $response = $this->actingAs($user)->get('/community')->assertOk();
+
+        $response->assertSee('<span>RR</span>', false);
+        $this->assertSame(0, substr_count($response->getContent(), 'data-live-chat-avatar-image'));
     }
 
     public function test_blocking_a_chat_user_hides_their_messages_for_the_blocker_only(): void

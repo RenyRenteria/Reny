@@ -341,6 +341,30 @@ const initializeCommunityMobileTabs = (root = document) => {
     media.addEventListener('change', applyViewport);
 };
 
+const initializeLiveChatAvatarImage = (avatar) => {
+    const image = avatar.querySelector('[data-live-chat-avatar-image]');
+
+    if (!image) {
+        return;
+    }
+
+    const showImage = () => image.classList.add('is-loaded');
+    const showInitials = () => image.remove();
+
+    if (image.complete) {
+        if (image.naturalWidth > 0) {
+            showImage();
+        } else {
+            showInitials();
+        }
+
+        return;
+    }
+
+    image.addEventListener('load', showImage, { once: true });
+    image.addEventListener('error', showInitials, { once: true });
+};
+
 const createLiveChatMessage = (message) => {
     const article = document.createElement('article');
     article.className = 'community-live-message';
@@ -352,7 +376,19 @@ const createLiveChatMessage = (message) => {
     const avatar = document.createElement('div');
     avatar.className = 'community-chat-avatar';
     avatar.setAttribute('aria-hidden', 'true');
-    avatar.textContent = message.initials || 'R';
+
+    const initials = document.createElement('span');
+    initials.textContent = message.initials || 'R';
+    avatar.append(initials);
+
+    if (message.avatar_url) {
+        const image = document.createElement('img');
+        image.src = message.avatar_url;
+        image.alt = '';
+        image.dataset.liveChatAvatarImage = '';
+        avatar.append(image);
+        initializeLiveChatAvatarImage(avatar);
+    }
 
     const content = document.createElement('div');
     const header = document.createElement('header');
@@ -403,7 +439,9 @@ const createLiveChatMessage = (message) => {
 };
 
 const renderLiveChatMessages = (container, messages) => {
-    const signature = messages.map((message) => `${message.id}:${message.text}`).join('|');
+    const signature = messages
+        .map((message) => `${message.id}:${message.text}:${message.avatar_url || ''}`)
+        .join('|');
 
     if (container.dataset.messagesSignature === signature) {
         return false;
@@ -451,6 +489,8 @@ const initializeCommunityLiveChat = (root = document) => {
     if (!chat || !container || !chat.dataset.messagesEndpoint) {
         return;
     }
+
+    container.querySelectorAll('.community-chat-avatar').forEach(initializeLiveChatAvatarImage);
 
     const refresh = async () => {
         if (!document.contains(chat)) {
