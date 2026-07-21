@@ -16,7 +16,7 @@ return [
         ],
         'royal' => [
             'title' => 'Royal Pass',
-            'amount_cents' => 499,
+            'amount_cents' => 399,
             'kind' => 'subscription',
             'unlock_type' => null,
         ],

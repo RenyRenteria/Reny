@@ -24,7 +24,7 @@ const initializeStoreInteractions = (root = document) => {
 
     const prices = {
         singles: 8,
-        royal: 4.99,
+        royal: 3.99,
         merch: 48,
         print: 86,
         concert: 0,
