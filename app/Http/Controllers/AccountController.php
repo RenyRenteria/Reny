@@ -64,6 +64,13 @@ class AccountController extends Controller
             fn (): Collection => $this->registeredEventCards($user, $storefrontPayload, $products),
             collect(),
         );
+        $billingSummary = $billingProfileAvailable
+            ? $this->accountData(
+                'billing_summary',
+                fn (): array => $this->billingSummary($user, $products),
+                $this->fallbackBillingSummary($user, true),
+            )
+            : $this->fallbackBillingSummary($user, false);
 
         return view('account.show', [
             'availableEvents' => $this->accountData(
@@ -72,11 +79,7 @@ class AccountController extends Controller
                 collect(),
             ),
             'billingProfile' => $user->billingProfile,
-            'billingSummary' => $this->accountData(
-                'billing_summary',
-                fn (): array => $this->billingSummary($user, $products),
-                $this->fallbackBillingSummary($user, $billingProfileAvailable),
-            ),
+            'billingSummary' => $billingSummary,
             'currencies' => config('user_hub.currencies', []),
             'initials' => $this->initials($user->name),
             'languages' => config('user_hub.languages', []),

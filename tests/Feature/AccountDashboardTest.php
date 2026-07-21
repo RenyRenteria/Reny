@@ -301,6 +301,48 @@ class AccountDashboardTest extends TestCase
             ->assertDontSee('Reactivate subscription');
     }
 
+    public function test_account_dashboard_hides_billing_actions_when_profile_loading_fails(): void
+    {
+        $storedUser = User::factory()->royal()->create([
+            'name' => 'Unavailable Billing Fan',
+        ]);
+
+        BillingProfile::create([
+            'user_id' => $storedUser->id,
+            'provider' => 'paypal',
+            'provider_subscription_id' => 'SUB-QA-ACTIVE-100',
+            'status' => 'active',
+            'current_period_ends_at' => now()->addMonth(),
+        ]);
+
+        $user = new class extends User
+        {
+            public function getForeignKey()
+            {
+                return 'user_id';
+            }
+
+            public function load($relations)
+            {
+                if ($relations === 'billingProfile') {
+                    throw new RuntimeException('Billing database unavailable.');
+                }
+
+                return parent::load($relations);
+            }
+        };
+
+        $user->setRawAttributes($storedUser->getAttributes(), true);
+        $user->exists = true;
+        $user->setConnection($storedUser->getConnectionName());
+
+        $this->actingAs($user)
+            ->get('/account')
+            ->assertOk()
+            ->assertDontSee('data-account-modal-open="pauseSubscriptionModal"', false)
+            ->assertDontSee('Reactivate subscription');
+    }
+
     public function test_user_can_update_profile_preferences_and_avatar(): void
     {
         Storage::fake('public');
