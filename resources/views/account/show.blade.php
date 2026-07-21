@@ -240,9 +240,9 @@
                             </div>
                         </dl>
 
-                        @if ($billingSummary['active'])
+                        @if ($billingSummary['action'] === 'pause')
                             <button class="account-ghost-button" type="button" data-account-modal-open="pauseSubscriptionModal">Pause subscription</button>
-                        @else
+                        @elseif ($billingSummary['action'] === 'reactivate')
                             <a class="account-ghost-button" href="{{ $billingSummary['reactivate_url'] }}">Reactivate subscription</a>
                         @endif
                     </section>

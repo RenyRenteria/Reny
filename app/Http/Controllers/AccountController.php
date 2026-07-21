@@ -11,6 +11,7 @@ use App\Services\PayPalService;
 use App\Services\PointLedgerService;
 use App\Services\PublicCmsContentService;
 use App\Services\StorefrontSettingsService;
+use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -21,6 +22,8 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use RuntimeException;
+use Throwable;
 
 class AccountController extends Controller
 {
@@ -41,19 +44,55 @@ class AccountController extends Controller
         StorefrontSettingsService $storefront,
     ): View {
         $user = $request->user();
-        $this->loadBillingProfile($user);
-        $storefrontPayload = $storefront->publicPayload();
-        $registeredEvents = $this->registeredEventCards($user, $storefrontPayload, $products);
+        $billingProfileAvailable = $this->accountData('billing_profile', function () use ($user): bool {
+            $this->loadBillingProfile($user);
+
+            return true;
+        }, false);
+
+        if (! $user->relationLoaded('billingProfile')) {
+            $user->setRelation('billingProfile', null);
+        }
+
+        $storefrontPayload = $this->accountData(
+            'storefront',
+            fn (): array => $storefront->publicPayload(),
+            ['slots' => []],
+        );
+        $registeredEvents = $this->accountData(
+            'registered_events',
+            fn (): Collection => $this->registeredEventCards($user, $storefrontPayload, $products),
+            collect(),
+        );
+        $billingSummary = $billingProfileAvailable
+            ? $this->accountData(
+                'billing_summary',
+                fn (): array => $this->billingSummary($user, $products),
+                $this->fallbackBillingSummary($user, true),
+            )
+            : $this->fallbackBillingSummary($user, false);
 
         return view('account.show', [
-            'availableEvents' => $this->availableEventCards($user, $storefrontPayload, $products, $registeredEvents),
+            'availableEvents' => $this->accountData(
+                'available_events',
+                fn (): Collection => $this->availableEventCards($user, $storefrontPayload, $products, $registeredEvents),
+                collect(),
+            ),
             'billingProfile' => $user->billingProfile,
-            'billingSummary' => $this->billingSummary($user, $products),
+            'billingSummary' => $billingSummary,
             'currencies' => config('user_hub.currencies', []),
             'initials' => $this->initials($user->name),
             'languages' => config('user_hub.languages', []),
-            'pointBalance' => $this->pointBalance($user, $points),
-            'purchases' => $this->purchaseRows($user, $products),
+            'pointBalance' => $this->accountData(
+                'point_balance',
+                fn (): int => $this->pointBalance($user, $points),
+                0,
+            ),
+            'purchases' => $this->accountData(
+                'purchases',
+                fn (): Collection => $this->purchaseRows($user, $products),
+                collect(),
+            ),
             'registeredEvents' => $registeredEvents,
             'user' => $user,
         ]);
@@ -276,6 +315,7 @@ class AccountController extends Controller
 
         return [
             'active' => $active,
+            'action' => $active ? 'pause' : 'reactivate',
             'amount' => $this->moneyLabel($amountCents, $currency),
             'method' => $profile?->payment_method_summary ?: 'PayPal',
             'next_payment_date' => $active
@@ -284,6 +324,31 @@ class AccountController extends Controller
             'paypal_manage_url' => config('user_hub.paypal_manage_url'),
             'reactivate_url' => route('store.checkout', ['product' => 'royal']),
             'status' => $profile?->status ? str($profile->status)->replace('_', ' ')->headline()->toString() : 'Inactive',
+            'subscription_id' => $profile?->provider_subscription_id,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function fallbackBillingSummary(User $user, bool $billingProfileAvailable): array
+    {
+        $profile = $billingProfileAvailable ? $user->billingProfile : null;
+        $amountCents = (int) config('reny_catalog.products.royal.amount_cents', 499);
+        $currency = strtoupper((string) config('reny_catalog.products.royal.currency', 'USD'));
+        $active = $profile && in_array($profile->status, ['active', 'past_due'], true);
+
+        return [
+            'active' => $active,
+            'action' => ! $billingProfileAvailable ? null : ($active ? 'pause' : 'reactivate'),
+            'amount' => $this->moneyLabel($amountCents, $currency),
+            'method' => $profile?->payment_method_summary ?: 'PayPal',
+            'next_payment_date' => $active
+                ? $profile->current_period_ends_at?->timezone($this->accountTimezone($user))->format('F d, Y')
+                : null,
+            'paypal_manage_url' => config('user_hub.paypal_manage_url'),
+            'reactivate_url' => route('store.checkout', ['product' => 'royal']),
+            'status' => $profile?->status ? str($profile->status)->replace('_', ' ')->headline()->toString() : 'Unavailable',
             'subscription_id' => $profile?->provider_subscription_id,
         ];
     }
@@ -378,7 +443,7 @@ class AccountController extends Controller
 
         try {
             return Carbon::parse((string) $value, config('admin.publishing_timezone', config('app.timezone')));
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return null;
         }
     }
@@ -546,7 +611,7 @@ class AccountController extends Controller
             new \DateTimeZone($candidate);
 
             return $candidate;
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return $fallback;
         }
     }
@@ -561,5 +626,23 @@ class AccountController extends Controller
         $key = "{$table}.{$column}";
 
         return $this->columnCache[$key] ??= ($this->hasTable($table) && Schema::hasColumn($table, $column));
+    }
+
+    /**
+     * @template TValue
+     *
+     * @param  Closure(): TValue  $callback
+     * @param  TValue  $fallback
+     * @return TValue
+     */
+    private function accountData(string $section, Closure $callback, mixed $fallback): mixed
+    {
+        try {
+            return $callback();
+        } catch (Throwable $exception) {
+            report(new RuntimeException("Account data section [{$section}] failed.", 0, $exception));
+
+            return $fallback;
+        }
     }
 }

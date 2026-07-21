@@ -9,10 +9,14 @@ use App\Models\PointLedgerEntry;
 use App\Models\Rsvp;
 use App\Models\Ticket;
 use App\Models\User;
+use App\Services\Commerce\ProductCatalog;
+use App\Services\PointLedgerService;
+use App\Services\StorefrontSettingsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use RuntimeException;
 use Tests\TestCase;
 
 class AccountDashboardTest extends TestCase
@@ -223,6 +227,120 @@ class AccountDashboardTest extends TestCase
             ->assertSee('Timezone Edge Fan')
             ->assertSee('Pause subscription')
             ->assertSee('Royal Pass');
+    }
+
+    public function test_account_dashboard_keeps_rendering_when_dynamic_sections_fail(): void
+    {
+        $user = User::factory()->create([
+            'name' => 'Historical Data Fan',
+            'royal_status' => 'open',
+        ]);
+
+        Order::create([
+            'user_id' => $user->id,
+            'provider' => 'paypal',
+            'provider_order_id' => 'PAYPAL-HISTORICAL-100',
+            'product_key' => 'legacy-product',
+            'amount_cents' => 2400,
+            'currency' => 'USD',
+            'status' => 'completed',
+            'grants_royal_month' => false,
+        ]);
+
+        $this->mock(StorefrontSettingsService::class)
+            ->shouldReceive('publicPayload')
+            ->once()
+            ->andThrow(new RuntimeException('Malformed storefront data.'));
+        $this->mock(PointLedgerService::class)
+            ->shouldReceive('balance')
+            ->once()
+            ->andThrow(new RuntimeException('Malformed points data.'));
+        $this->mock(ProductCatalog::class)
+            ->shouldReceive('find')
+            ->andThrow(new RuntimeException('Malformed product data.'));
+
+        $this->actingAs($user)
+            ->get('/account')
+            ->assertOk()
+            ->assertSee('Historical Data Fan')
+            ->assertSee('No upcoming events')
+            ->assertSee('No new events')
+            ->assertSee('0 pts')
+            ->assertSee('No purchases yet')
+            ->assertSee('$4.99')
+            ->assertSee('Reactivate subscription');
+    }
+
+    public function test_account_dashboard_preserves_active_subscription_when_catalog_fails(): void
+    {
+        $renewalDate = now()->addMonth();
+        $user = User::factory()->royal()->create([
+            'name' => 'Active Subscriber',
+        ]);
+
+        BillingProfile::create([
+            'user_id' => $user->id,
+            'provider' => 'paypal',
+            'provider_customer_id' => 'PAYER-ACTIVE-100',
+            'provider_subscription_id' => 'SUB-ACTIVE-100',
+            'status' => 'active',
+            'payment_method_summary' => 'PayPal',
+            'current_period_ends_at' => $renewalDate,
+            'last_synced_at' => now(),
+        ]);
+
+        $this->mock(ProductCatalog::class)
+            ->shouldReceive('find')
+            ->andThrow(new RuntimeException('Catalog unavailable.'));
+
+        $this->actingAs($user)
+            ->get('/account')
+            ->assertOk()
+            ->assertSee($renewalDate->timezone(config('admin.publishing_timezone', config('app.timezone')))->format('F d, Y'))
+            ->assertSee('Pause subscription')
+            ->assertDontSee('Reactivate subscription');
+    }
+
+    public function test_account_dashboard_hides_billing_actions_when_profile_loading_fails(): void
+    {
+        $storedUser = User::factory()->royal()->create([
+            'name' => 'Unavailable Billing Fan',
+        ]);
+
+        BillingProfile::create([
+            'user_id' => $storedUser->id,
+            'provider' => 'paypal',
+            'provider_subscription_id' => 'SUB-QA-ACTIVE-100',
+            'status' => 'active',
+            'current_period_ends_at' => now()->addMonth(),
+        ]);
+
+        $user = new class extends User
+        {
+            public function getForeignKey()
+            {
+                return 'user_id';
+            }
+
+            public function load($relations)
+            {
+                if ($relations === 'billingProfile') {
+                    throw new RuntimeException('Billing database unavailable.');
+                }
+
+                return parent::load($relations);
+            }
+        };
+
+        $user->setRawAttributes($storedUser->getAttributes(), true);
+        $user->exists = true;
+        $user->setConnection($storedUser->getConnectionName());
+
+        $this->actingAs($user)
+            ->get('/account')
+            ->assertOk()
+            ->assertDontSee('data-account-modal-open="pauseSubscriptionModal"', false)
+            ->assertDontSee('Reactivate subscription');
     }
 
     public function test_user_can_update_profile_preferences_and_avatar(): void
