@@ -4,6 +4,7 @@ use App\Http\Middleware\EnsureAdminAccess;
 use App\Http\Middleware\EnsureAdminCanPublish;
 use App\Http\Middleware\EnsureAdminCmsIsEnabled;
 use App\Http\Middleware\EnsureAdminSessionIsFresh;
+use App\Http\Middleware\EnsureCommunityPostEditor;
 use App\Http\Middleware\EnsureRoyalAccess;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -21,6 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin.cms' => EnsureAdminCmsIsEnabled::class,
             'admin.publish' => EnsureAdminCanPublish::class,
             'admin.session' => EnsureAdminSessionIsFresh::class,
+            'admin.community-posts' => EnsureCommunityPostEditor::class,
             'royal' => EnsureRoyalAccess::class,
         ]);
 

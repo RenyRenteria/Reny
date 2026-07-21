@@ -1493,6 +1493,263 @@ body.admin-cms-body[data-theme="royal"] {
     text-transform: uppercase;
 }
 
+.community-posts-cms,
+.community-manage-section,
+.community-post-admin-list,
+.community-comment-admin-list,
+.community-post-form,
+.community-rich-field {
+    display: grid;
+    gap: 1rem;
+}
+
+.community-cms-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    padding: 0.375rem;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    background: var(--bg-surface);
+    gap: 0.375rem;
+}
+
+.community-cms-tabs a {
+    padding: 0.625rem 0.875rem;
+    border-radius: 0.375rem;
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    font-weight: 800;
+}
+
+.community-cms-tabs a:hover,
+.community-cms-tabs a:focus-visible {
+    background: var(--community-soft);
+    color: var(--community-accent);
+}
+
+.community-post-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.community-post-form-grid label,
+.community-media-urls {
+    display: grid;
+    min-width: 0;
+    align-content: start;
+    gap: 0.375rem;
+}
+
+.community-post-form-grid label > span,
+.community-media-urls > span,
+.community-rich-field > span {
+    color: var(--text-primary);
+    font-size: 0.75rem;
+    font-weight: 800;
+}
+
+.community-post-form-grid input,
+.community-media-urls textarea {
+    width: 100%;
+    min-height: 2.75rem;
+    padding: 0.625rem 0.75rem;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    background: var(--bg-surface);
+    color: var(--text-primary);
+}
+
+.community-media-urls textarea {
+    resize: vertical;
+}
+
+.community-media-urls small {
+    color: var(--text-secondary);
+    font-size: 0.6875rem;
+}
+
+.community-rich-field {
+    gap: 0.375rem;
+}
+
+.community-rich-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    padding: 0.375rem;
+    border: 1px solid var(--border-default);
+    border-bottom: 0;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    background: var(--bg-subtle);
+    gap: 0.25rem;
+}
+
+.community-rich-toolbar button {
+    min-height: 2rem;
+    padding: 0.375rem 0.625rem;
+    border: 1px solid transparent;
+    border-radius: 0.25rem;
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    cursor: pointer;
+    font-size: 0.6875rem;
+    font-weight: 800;
+}
+
+.community-rich-toolbar button:hover,
+.community-rich-toolbar button:focus-visible {
+    border-color: var(--community-accent);
+    color: var(--community-accent);
+}
+
+.community-rich-editor {
+    min-height: 14rem;
+    padding: 1rem;
+    overflow-wrap: anywhere;
+    border: 1px solid var(--border-default);
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    line-height: 1.6;
+    outline: 0;
+}
+
+.community-rich-editor:focus {
+    border-color: var(--community-accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--community-accent) 14%, transparent);
+}
+
+.community-rich-editor:empty::before {
+    color: var(--text-disabled);
+    content: attr(data-placeholder);
+    pointer-events: none;
+}
+
+.community-comments-toggle {
+    width: fit-content;
+}
+
+.community-post-submit-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-default);
+    gap: 0.5rem;
+}
+
+.community-post-admin-card {
+    padding: 0;
+    overflow: hidden;
+}
+
+.community-post-admin-card > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+    cursor: pointer;
+    gap: 1rem;
+    list-style: none;
+}
+
+.community-post-admin-card > summary::-webkit-details-marker {
+    display: none;
+}
+
+.community-post-admin-card > summary > div {
+    display: grid;
+    min-width: 0;
+    gap: 0.25rem;
+}
+
+.community-post-admin-card > summary strong {
+    overflow: hidden;
+    font-size: 0.875rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.community-post-admin-card > summary span {
+    color: var(--text-secondary);
+    font-size: 0.6875rem;
+}
+
+.community-post-admin-card[open] > summary {
+    border-bottom: 1px solid var(--border-default);
+    background: var(--community-soft);
+}
+
+.community-post-admin-card > form {
+    margin: 1.25rem;
+}
+
+.community-post-admin-card > form:last-child {
+    margin-top: 0;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-default);
+}
+
+.community-current-cover {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    background: var(--bg-subtle);
+    gap: 1rem;
+}
+
+.community-current-cover img {
+    width: 7rem;
+    height: 5rem;
+    border-radius: 0.375rem;
+    object-fit: cover;
+}
+
+.community-comment-admin-list article {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    background: var(--bg-subtle);
+    gap: 1rem;
+}
+
+.community-comment-admin-list article.is-removed {
+    opacity: 0.62;
+}
+
+.community-comment-admin-list article > div:first-child {
+    display: grid;
+    min-width: 0;
+    gap: 0.25rem;
+}
+
+.community-comment-admin-list strong {
+    font-size: 0.8125rem;
+}
+
+.community-comment-admin-list span,
+.community-comment-admin-list small {
+    color: var(--text-secondary);
+    font-size: 0.6875rem;
+}
+
+.community-comment-admin-list p {
+    margin: 0.25rem 0;
+    color: var(--text-primary);
+    font-size: 0.8125rem;
+    line-height: 1.5;
+}
+
+.community-comment-admin-list form {
+    margin: 0;
+}
+
 .music-cms-screens {
     display: grid;
     gap: 1.5rem;
@@ -2420,6 +2677,10 @@ body.admin-cms-body[data-theme="royal"] {
         grid-template-columns: 1fr;
     }
 
+    .community-post-form-grid {
+        grid-template-columns: 1fr;
+    }
+
     .admin-page-heading,
     .admin-hero-row,
     .admin-alert-card,
@@ -2433,6 +2694,19 @@ body.admin-cms-body[data-theme="royal"] {
     .music-banner-publish-strip {
         align-items: stretch;
         flex-direction: column;
+    }
+
+    .community-comment-admin-list article,
+    .community-current-cover {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .community-post-submit-row .admin-button,
+    .community-comment-admin-list .admin-actions,
+    .community-comment-admin-list .admin-actions form,
+    .community-comment-admin-list .admin-actions button {
+        width: 100%;
     }
 
     .admin-content-card {

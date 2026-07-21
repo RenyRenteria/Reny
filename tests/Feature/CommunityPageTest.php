@@ -41,7 +41,7 @@ class CommunityPageTest extends TestCase
         $this->assertSame(2, substr_count($html, 'images/reny-renteria-logo.png'));
         $this->assertSame(1, substr_count($html, 'class="community-experience"'));
         $this->assertSame(1, substr_count($html, 'class="community-live-chat-panel"'));
-        $this->assertSame(2, substr_count($html, 'class="community-post-card'));
+        $this->assertSame(0, substr_count($html, 'class="community-post-card'));
         $this->assertSame(0, substr_count($html, 'class="vote-card"'));
         $this->assertSame(0, substr_count($html, 'class="club-card"'));
         $this->assertStringNotContainsString('Create group', $html);

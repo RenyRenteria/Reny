@@ -3,8 +3,10 @@
     $communityPosts = $community['posts'] ?? [];
     $liveChat = $community['live_chat'] ?? [];
     $canUseCommunityActions = (bool) ($community['can_use_actions'] ?? false);
+    $canUsePostActions = (bool) ($community['can_use_post_actions'] ?? false);
     $communityGateHref = auth()->check() ? route('store') : route('login');
     $communityGateCta = auth()->check() ? 'Get your Royal Pass' : 'Sign in';
+    $postGateHref = route('login');
 @endphp
 
 <!DOCTYPE html>
@@ -147,39 +149,47 @@
                                 </header>
 
                                 <h3>{{ $post['title'] }}</h3>
-                                <p class="community-post-copy">{{ $post['body'] }}</p>
+                                <div class="community-post-copy">{!! $post['body_html'] !!}</div>
 
                                 @if (! empty($post['image_url']))
                                     <div class="community-post-media">
                                         <img src="{{ $post['image_url'] }}" alt="{{ $post['image_alt'] }}">
-                                        @if (! empty($post['url']))
-                                            <a
-                                                class="community-post-media-cta"
-                                                href="{{ $post['url'] }}"
-                                                data-analytics-id="{{ $post['key'] }}"
-                                                data-analytics-type="reny_note"
-                                            >
-                                                {{ $post['cta'] }} <span aria-hidden="true">→</span>
-                                            </a>
-                                        @else
-                                            <button
-                                                class="community-post-media-cta"
-                                                type="button"
-                                                data-note-open
-                                                data-note-title="{{ $post['title'] }}"
-                                                data-note-body="{{ $post['full_body'] }}"
-                                                data-analytics-id="{{ $post['key'] }}"
-                                                data-analytics-type="reny_note"
-                                            >
-                                                {{ $post['cta'] }} <span aria-hidden="true">→</span>
-                                            </button>
-                                        @endif
+                                    </div>
+                                @endif
+
+                                @if (! empty($post['media_items']))
+                                    <div class="community-post-embeds">
+                                        @foreach ($post['media_items'] as $media)
+                                            @if ($media['type'] === 'image')
+                                                <img src="{{ $media['url'] }}" alt="Contenido visual de {{ $post['title'] }}" loading="lazy">
+                                            @elseif ($media['type'] === 'video')
+                                                <video controls preload="metadata">
+                                                    <source src="{{ $media['url'] }}">
+                                                </video>
+                                            @elseif ($media['type'] === 'audio')
+                                                <audio controls preload="metadata">
+                                                    <source src="{{ $media['url'] }}">
+                                                </audio>
+                                            @elseif ($media['type'] === 'embed')
+                                                <iframe
+                                                    src="{{ $media['embed_url'] }}"
+                                                    title="{{ $media['label'] }} en {{ $post['title'] }}"
+                                                    loading="lazy"
+                                                    allow="autoplay; encrypted-media; picture-in-picture"
+                                                    allowfullscreen
+                                                ></iframe>
+                                            @else
+                                                <a href="{{ $media['url'] }}" target="_blank" rel="noopener noreferrer nofollow">
+                                                    {{ $media['label'] }} <span aria-hidden="true">↗</span>
+                                                </a>
+                                            @endif
+                                        @endforeach
                                     </div>
                                 @endif
 
                                 <div class="community-post-actions">
                                     <div>
-                                        @if ($canUseCommunityActions)
+                                        @if ($canUsePostActions)
                                             <button
                                                 class="community-post-action reaction-button @if ($post['liked']) is-reacted @endif"
                                                 type="button"
@@ -218,20 +228,35 @@
                                     </button>
                                 </div>
 
-                                @if ($canUseCommunityActions)
-                                    <form
-                                        class="community-inline-reply community-reply-form"
-                                        data-community-reply-form
-                                        data-endpoint="{{ $post['reply_endpoint'] }}"
-                                        data-post-key="{{ $post['key'] }}"
-                                    >
-                                        <label class="sr-only" for="reply-{{ $post['key'] }}">Responder a {{ $post['title'] }}</label>
-                                        <input id="reply-{{ $post['key'] }}" name="body" type="text" maxlength="500" placeholder="Escribe una respuesta...">
-                                        <button type="submit">Responder</button>
-                                        <p class="community-form-status" data-form-status></p>
-                                    </form>
+                                @if ($post['comments_enabled'])
+                                    @if (! empty($post['replies']))
+                                        <section class="community-post-comments" aria-label="Comentarios de {{ $post['title'] }}">
+                                            @foreach ($post['replies'] as $reply)
+                                                <article>
+                                                    <header><strong>{{ $reply['author'] }}</strong><time>{{ $reply['time'] }}</time></header>
+                                                    <p>{{ $reply['body'] }}</p>
+                                                </article>
+                                            @endforeach
+                                        </section>
+                                    @endif
+
+                                    @if ($canUsePostActions)
+                                        <form
+                                            class="community-inline-reply community-reply-form"
+                                            data-community-reply-form
+                                            data-endpoint="{{ $post['reply_endpoint'] }}"
+                                            data-post-key="{{ $post['key'] }}"
+                                        >
+                                            <label class="sr-only" for="reply-{{ $post['key'] }}">Responder a {{ $post['title'] }}</label>
+                                            <input id="reply-{{ $post['key'] }}" name="body" type="text" maxlength="500" placeholder="Escribe un comentario...">
+                                            <button type="submit">Comentar</button>
+                                            <p class="community-form-status" data-form-status></p>
+                                        </form>
+                                    @else
+                                        <a class="community-inline-gate" href="{{ $postGateHref }}">Inicia sesión para comentar</a>
+                                    @endif
                                 @else
-                                    <a class="community-inline-gate" href="{{ $communityGateHref }}">{{ $communityGateCta }} para responder</a>
+                                    <p class="community-comments-disabled">Los comentarios están desactivados para este post.</p>
                                 @endif
                             </article>
                         @empty
@@ -372,19 +397,6 @@
                     </a>
                 </nav>
             </main>
-        </div>
-
-        <div class="create-group-modal" id="communityNoteModal" aria-hidden="true">
-            <div class="create-group-dialog" role="dialog" aria-modal="true" aria-labelledby="communityNoteTitle">
-                <div class="create-group-head">
-                    <div>
-                        <span>Reny note</span>
-                        <h2 id="communityNoteTitle">Reny note</h2>
-                    </div>
-                    <button class="create-group-close" id="closeCommunityNote" type="button">Close</button>
-                </div>
-                <div class="community-note-body" id="communityNoteBody"></div>
-            </div>
         </div>
 
         <div class="community-toast" id="communityToast" role="status" aria-live="polite"></div>

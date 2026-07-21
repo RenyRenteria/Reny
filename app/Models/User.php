@@ -158,4 +158,13 @@ class User extends Authenticatable
     {
         return in_array($this->role, self::PUBLISHING_ROLES, true);
     }
+
+    public function canManageCommunityPosts(): bool
+    {
+        $editorEmail = strtolower(trim((string) config('admin.community_editor_email')));
+
+        return $this->canAccessAdmin()
+            && $editorEmail !== ''
+            && strtolower(trim((string) $this->email)) === $editorEmail;
+    }
 }

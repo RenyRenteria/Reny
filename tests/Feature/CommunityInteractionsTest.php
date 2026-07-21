@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ContentType;
 use App\Models\CommunityCountryClubMessage;
+use App\Models\EditorialContent;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\RateLimiter;
@@ -12,9 +14,15 @@ class CommunityInteractionsTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_guest_and_open_accounts_are_gated_from_community_mutations(): void
+    public function test_post_interactions_require_login_while_royal_features_keep_their_existing_gate(): void
     {
-        $this->postJson(route('community.posts.like', 'studio-note-from-reny'))
+        $post = EditorialContent::factory()->published()->create([
+            'type' => ContentType::Post->value,
+            'metadata' => ['comments_enabled' => true],
+        ]);
+        $postKey = 'cms-post-'.$post->id;
+
+        $this->postJson(route('community.posts.like', $postKey))
             ->assertUnauthorized()
             ->assertJsonPath('login_url', route('login'));
 
@@ -24,37 +32,49 @@ class CommunityInteractionsTest extends TestCase
         $openUser = User::factory()->create();
 
         $this->actingAs($openUser)
-            ->postJson(route('community.posts.like', 'studio-note-from-reny'))
-            ->assertForbidden()
-            ->assertJsonPath('store_url', route('store'));
+            ->postJson(route('community.posts.like', $postKey))
+            ->assertOk()
+            ->assertJsonPath('liked', true);
+
+        $this->actingAs($openUser)
+            ->postJson(route('community.posts.replies.store', $postKey), ['body' => 'Cuenta abierta con login.'])
+            ->assertCreated();
 
         $this->actingAs($openUser)
             ->postJson(route('community.live-chat.messages.store'), ['body' => 'Open message'])
             ->assertForbidden();
 
-        $this->assertDatabaseCount('community_post_reactions', 0);
+        $this->assertDatabaseCount('community_post_reactions', 1);
+        $this->assertDatabaseCount('community_post_replies', 1);
     }
 
     public function test_royal_member_can_like_and_reply_to_posts(): void
     {
+        $post = EditorialContent::factory()->published()->create([
+            'type' => ContentType::Post->value,
+            'title' => 'Studio note from Reny',
+            'body' => '<p>Studio update.</p>',
+            'metadata' => ['comments_enabled' => true],
+        ]);
+        $postKey = 'cms-post-'.$post->id;
         $user = User::factory()->royal()->create([
             'name' => 'Royal Fan',
         ]);
 
         $this->actingAs($user)
-            ->postJson(route('community.posts.like', 'studio-note-from-reny'))
+            ->postJson(route('community.posts.like', $postKey))
             ->assertOk()
             ->assertJsonPath('liked', true)
             ->assertJsonPath('count', 1);
 
         $this->assertDatabaseHas('community_post_reactions', [
             'user_id' => $user->id,
-            'post_key' => 'studio-note-from-reny',
+            'post_key' => $postKey,
             'reaction' => 'like',
         ]);
 
         $this->actingAs($user)
-            ->postJson(route('community.posts.replies.store', 'studio-note-from-reny'), [
+            ->postJson(route('community.posts.replies.store', $postKey), [
                 'body' => 'Love this studio update.',
             ])
             ->assertCreated()
@@ -63,7 +83,7 @@ class CommunityInteractionsTest extends TestCase
 
         $this->assertDatabaseHas('community_post_replies', [
             'user_id' => $user->id,
-            'post_key' => 'studio-note-from-reny',
+            'post_key' => $postKey,
             'body' => 'Love this studio update.',
             'status' => 'visible',
         ]);
@@ -71,8 +91,8 @@ class CommunityInteractionsTest extends TestCase
         $this->actingAs($user)
             ->get('/community')
             ->assertOk()
-            ->assertSee('285')
-            ->assertSee('39 respuestas');
+            ->assertSee('1 respuestas')
+            ->assertSee('Love this studio update.');
     }
 
     public function test_poll_vote_persists_and_blocks_duplicate_vote(): void

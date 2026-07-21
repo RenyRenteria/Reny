@@ -14,4 +14,5 @@ return [
         : filter_var($cmsEnabled, FILTER_VALIDATE_BOOLEAN),
     'session_lifetime_minutes' => (int) env('ADMIN_SESSION_LIFETIME', env('SESSION_LIFETIME', 120)),
     'publishing_timezone' => env('ADMIN_PUBLISHING_TIMEZONE', 'America/Panama'),
+    'community_editor_email' => env('ADMIN_COMMUNITY_EDITOR_EMAIL', 'reny@portierstrategy.com'),
 ];
