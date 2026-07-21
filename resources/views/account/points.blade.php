@@ -62,8 +62,12 @@
 
                 <section class="account-hero" aria-labelledby="points-title">
                     <div class="account-profile">
-                        <div class="account-avatar" aria-hidden="true">
-                            <span>{{ strtoupper(substr($user->name, 0, 1)) }}</span>
+                        <div class="account-avatar" aria-hidden="true" data-profile-avatar-display>
+                            @if ($user->avatar_path)
+                                <img src="{{ asset($user->avatar_path) }}" alt="">
+                            @else
+                                <span>{{ strtoupper(substr($user->name, 0, 1)) }}</span>
+                            @endif
                         </div>
                         <div>
                             <p class="account-kicker">Leaderboard</p>

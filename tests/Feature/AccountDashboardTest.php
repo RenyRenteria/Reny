@@ -14,6 +14,7 @@ use App\Services\PointLedgerService;
 use App\Services\StorefrontSettingsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
@@ -346,10 +347,12 @@ class AccountDashboardTest extends TestCase
     public function test_user_can_update_profile_preferences_and_avatar(): void
     {
         Storage::fake('public');
+        Storage::disk('public')->put('avatars/previous.jpg', 'previous-avatar');
         $user = User::factory()->create([
             'name' => 'Original Name',
             'locale' => 'en',
             'preferred_currency' => 'USD',
+            'avatar_path' => 'storage/avatars/previous.jpg',
         ]);
 
         $this->actingAs($user)
@@ -380,7 +383,51 @@ class AccountDashboardTest extends TestCase
 
         $avatarPath = str_replace('storage/', '', $response->json('avatar_path'));
         Storage::disk('public')->assertExists($avatarPath);
-        $this->assertStringStartsWith('storage/avatars/', $user->fresh()->avatar_path);
+        Storage::disk('public')->assertMissing('avatars/previous.jpg');
+
+        $user->refresh();
+        $this->assertStringStartsWith('storage/avatars/', $user->avatar_path);
+
+        $this->actingAs($user)
+            ->get(route('account.show'))
+            ->assertOk()
+            ->assertSee($response->json('avatar_url'), false)
+            ->assertSee('data-profile-avatar-display', false)
+            ->assertSee('data-account-avatar-preview', false);
+
+        $this->actingAs($user)
+            ->get(route('points.index'))
+            ->assertOk()
+            ->assertSee($response->json('avatar_url'), false)
+            ->assertSee('data-profile-avatar-display', false);
+    }
+
+    public function test_avatar_upload_does_not_report_success_when_storage_fails(): void
+    {
+        $blockedDiskRoot = storage_path('framework/testing/avatar-upload-blocked');
+        File::ensureDirectoryExists(dirname($blockedDiskRoot));
+        File::put($blockedDiskRoot, 'not-a-directory');
+
+        config(['filesystems.disks.public.root' => $blockedDiskRoot]);
+        Storage::forgetDisk('public');
+
+        $user = User::factory()->create([
+            'avatar_path' => 'storage/avatars/current.jpg',
+        ]);
+
+        try {
+            $this->actingAs($user)
+                ->postJson(route('account.avatar.update'), [
+                    'avatar' => UploadedFile::fake()->image('replacement.jpg'),
+                ])
+                ->assertUnprocessable()
+                ->assertJsonValidationErrors(['avatar']);
+
+            $this->assertSame('storage/avatars/current.jpg', $user->fresh()->avatar_path);
+        } finally {
+            Storage::forgetDisk('public');
+            File::delete($blockedDiskRoot);
+        }
     }
 
     public function test_user_can_pause_local_subscription_state_without_paypal_subscription_id(): void

@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use RuntimeException;
 use Throwable;
@@ -120,7 +121,23 @@ class AccountController extends Controller
         ]);
 
         $user = $request->user();
-        $path = $validated['avatar']->store('avatars', 'public');
+
+        try {
+            $path = $validated['avatar']->store('avatars', 'public');
+        } catch (Throwable $exception) {
+            report($exception);
+
+            throw ValidationException::withMessages([
+                'avatar' => 'Profile photo could not be saved. Please try again.',
+            ]);
+        }
+
+        if (! is_string($path) || $path === '') {
+            throw ValidationException::withMessages([
+                'avatar' => 'Profile photo could not be saved. Please try again.',
+            ]);
+        }
+
         $avatarPath = 'storage/'.$path;
         $previousPath = $user->avatar_path;
 

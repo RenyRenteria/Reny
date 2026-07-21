@@ -5,7 +5,11 @@
 @endphp
 
 <div class="member-card" data-access-state="{{ $state['state'] }}">
-    <div class="member-avatar" aria-hidden="true"></div>
+    <div class="member-avatar" aria-hidden="true" data-profile-avatar-display>
+        @if ($user?->avatar_path)
+            <img src="{{ asset($user->avatar_path) }}" alt="">
+        @endif
+    </div>
     <div>
         <strong>{{ $user?->name ?? 'Guest' }}</strong>
         <span id="tierLabel">{{ $state['member_label'] }}</span>

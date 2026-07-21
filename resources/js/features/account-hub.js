@@ -71,6 +71,21 @@ const initializeAccountHub = () => {
         current.replaceWith(image);
     };
 
+    const setProfileAvatarDisplays = (url) => {
+        document.querySelectorAll('[data-profile-avatar-display]').forEach((display) => {
+            let image = display.querySelector('img');
+
+            if (!image) {
+                image = document.createElement('img');
+                image.alt = '';
+                image.decoding = 'async';
+                display.replaceChildren(image);
+            }
+
+            image.src = url;
+        });
+    };
+
     document.querySelectorAll('[data-account-avatar-form]').forEach((form) => {
         const input = form.querySelector('[data-account-avatar-input]');
 
@@ -106,6 +121,7 @@ const initializeAccountHub = () => {
 
                 if (payload.avatar_url) {
                     setAvatarPreview(form, payload.avatar_url);
+                    setProfileAvatarDisplays(payload.avatar_url);
                 }
 
                 setAvatarStatus(form, payload.message || 'Avatar updated.');
