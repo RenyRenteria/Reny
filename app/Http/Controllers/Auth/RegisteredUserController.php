@@ -77,7 +77,7 @@ class RegisteredUserController extends Controller
         Auth::login($user);
         $request->session()->regenerate();
 
-        return redirect()->route('account.show');
+        return redirect()->route('music');
     }
 
     private function normalizePhone(string $value): string
