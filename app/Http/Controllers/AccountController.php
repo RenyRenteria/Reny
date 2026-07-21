@@ -44,7 +44,11 @@ class AccountController extends Controller
         StorefrontSettingsService $storefront,
     ): View {
         $user = $request->user();
-        $this->accountData('billing_profile', fn () => $this->loadBillingProfile($user), null);
+        $billingProfileAvailable = $this->accountData('billing_profile', function () use ($user): bool {
+            $this->loadBillingProfile($user);
+
+            return true;
+        }, false);
 
         if (! $user->relationLoaded('billingProfile')) {
             $user->setRelation('billingProfile', null);
@@ -71,7 +75,7 @@ class AccountController extends Controller
             'billingSummary' => $this->accountData(
                 'billing_summary',
                 fn (): array => $this->billingSummary($user, $products),
-                $this->fallbackBillingSummary(),
+                $this->fallbackBillingSummary($user, $billingProfileAvailable),
             ),
             'currencies' => config('user_hub.currencies', []),
             'initials' => $this->initials($user->name),
@@ -308,6 +312,7 @@ class AccountController extends Controller
 
         return [
             'active' => $active,
+            'action' => $active ? 'pause' : 'reactivate',
             'amount' => $this->moneyLabel($amountCents, $currency),
             'method' => $profile?->payment_method_summary ?: 'PayPal',
             'next_payment_date' => $active
@@ -323,20 +328,25 @@ class AccountController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function fallbackBillingSummary(): array
+    private function fallbackBillingSummary(User $user, bool $billingProfileAvailable): array
     {
+        $profile = $billingProfileAvailable ? $user->billingProfile : null;
         $amountCents = (int) config('reny_catalog.products.royal.amount_cents', 499);
         $currency = strtoupper((string) config('reny_catalog.products.royal.currency', 'USD'));
+        $active = $profile && in_array($profile->status, ['active', 'past_due'], true);
 
         return [
-            'active' => false,
+            'active' => $active,
+            'action' => ! $billingProfileAvailable ? null : ($active ? 'pause' : 'reactivate'),
             'amount' => $this->moneyLabel($amountCents, $currency),
-            'method' => 'PayPal',
-            'next_payment_date' => null,
+            'method' => $profile?->payment_method_summary ?: 'PayPal',
+            'next_payment_date' => $active
+                ? $profile->current_period_ends_at?->timezone($this->accountTimezone($user))->format('F d, Y')
+                : null,
             'paypal_manage_url' => config('user_hub.paypal_manage_url'),
             'reactivate_url' => route('store.checkout', ['product' => 'royal']),
-            'status' => 'Unavailable',
-            'subscription_id' => null,
+            'status' => $profile?->status ? str($profile->status)->replace('_', ' ')->headline()->toString() : 'Unavailable',
+            'subscription_id' => $profile?->provider_subscription_id,
         ];
     }
 

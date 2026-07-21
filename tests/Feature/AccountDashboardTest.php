@@ -271,6 +271,36 @@ class AccountDashboardTest extends TestCase
             ->assertSee('Reactivate subscription');
     }
 
+    public function test_account_dashboard_preserves_active_subscription_when_catalog_fails(): void
+    {
+        $renewalDate = now()->addMonth();
+        $user = User::factory()->royal()->create([
+            'name' => 'Active Subscriber',
+        ]);
+
+        BillingProfile::create([
+            'user_id' => $user->id,
+            'provider' => 'paypal',
+            'provider_customer_id' => 'PAYER-ACTIVE-100',
+            'provider_subscription_id' => 'SUB-ACTIVE-100',
+            'status' => 'active',
+            'payment_method_summary' => 'PayPal',
+            'current_period_ends_at' => $renewalDate,
+            'last_synced_at' => now(),
+        ]);
+
+        $this->mock(ProductCatalog::class)
+            ->shouldReceive('find')
+            ->andThrow(new RuntimeException('Catalog unavailable.'));
+
+        $this->actingAs($user)
+            ->get('/account')
+            ->assertOk()
+            ->assertSee($renewalDate->timezone(config('admin.publishing_timezone', config('app.timezone')))->format('F d, Y'))
+            ->assertSee('Pause subscription')
+            ->assertDontSee('Reactivate subscription');
+    }
+
     public function test_user_can_update_profile_preferences_and_avatar(): void
     {
         Storage::fake('public');
