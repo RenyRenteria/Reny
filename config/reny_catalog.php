@@ -64,30 +64,7 @@ return [
         'live_chat' => [
             'pinned_message' => 'Bienvenidos al chat oficial de Reny. Sé amable, evita spam y reporta cualquier situación al equipo.',
         ],
-        'posts' => [
-            [
-                'key' => 'studio-note-from-reny',
-                'title' => 'Studio note from Reny',
-                'time' => 'Today',
-                'body' => 'Finishing the next release window with final vocal edits, choreography notes, and visuals for the fan club first.',
-                'full_body' => 'Finishing the next release window with final vocal edits, choreography notes, and visuals for the fan club first. I am keeping the first look inside the community because the next chapter should feel close, early, and built with the people who keep showing up.',
-                'image_url' => 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=1400&q=80',
-                'image_alt' => 'Warm recording studio with microphone and instruments',
-                'base_likes' => 284,
-                'base_replies' => 38,
-            ],
-            [
-                'key' => 'capri-photo-drop',
-                'title' => 'Capri photo drop',
-                'time' => 'This week',
-                'body' => 'A few frames from the travel archive are moving into the Photos tab. More country-specific drops coming next.',
-                'full_body' => 'A few frames from the travel archive are moving into the Photos tab. More country-specific drops coming next, especially where fans have been organizing watch parties and meetups.',
-                'image_url' => 'https://images.unsplash.com/photo-1533105079780-92b9be482077?auto=format&fit=crop&w=1400&q=80',
-                'image_alt' => 'Capri coastline and turquoise sea',
-                'base_likes' => 319,
-                'base_replies' => 51,
-            ],
-        ],
+        'posts' => [],
         'poll' => [
             'key' => 'which-drop-should-go-first',
             'question' => 'Which drop should go first?',

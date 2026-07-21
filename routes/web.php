@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\Admin\AdminLoginController;
+use App\Http\Controllers\Admin\CommunityPostController as AdminCommunityPostController;
 use App\Http\Controllers\Admin\CommunityRsvpController as AdminCommunityRsvpController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\EditorialActionController;
@@ -108,6 +109,12 @@ Route::prefix(config('admin.path', 'admin'))->name('admin.')->group(function () 
         Route::get('/site-editor', [SiteEditorController::class, 'index'])->middleware('admin.cms')->name('site-editor.index');
         Route::get('/site-editor/{page}/preview', [SiteEditorController::class, 'preview'])->middleware('admin.cms')->name('site-editor.preview');
         Route::get('/site-editor/community/rsvps.csv', AdminCommunityRsvpController::class)->middleware('admin.cms')->name('site-editor.community-rsvps.export');
+        Route::middleware(['admin.cms', 'admin.community-posts'])->group(function () {
+            Route::post('/site-editor/community/posts', [AdminCommunityPostController::class, 'store'])->name('site-editor.community-posts.store');
+            Route::patch('/site-editor/community/posts/{post}', [AdminCommunityPostController::class, 'update'])->whereNumber('post')->name('site-editor.community-posts.update');
+            Route::delete('/site-editor/community/posts/{post}', [AdminCommunityPostController::class, 'destroy'])->whereNumber('post')->name('site-editor.community-posts.destroy');
+            Route::patch('/site-editor/community/comments/{reply}', [AdminCommunityPostController::class, 'moderateReply'])->whereNumber('reply')->name('site-editor.community-comments.moderate');
+        });
         Route::get('/site-editor/{page}', [SiteEditorController::class, 'show'])->middleware('admin.cms')->name('site-editor.show');
         Route::post('/site-editor/music/banner', [SiteEditorController::class, 'updateMusicBanner'])->middleware('admin.cms')->name('site-editor.music-banner.update');
         Route::post('/site-editor/store/storefront', [SiteEditorController::class, 'updateStorefront'])->middleware('admin.cms')->name('site-editor.storefront.update');

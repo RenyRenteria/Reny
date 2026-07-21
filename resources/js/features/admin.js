@@ -114,6 +114,48 @@ const syncAdminPreview = () => {
     }
 };
 
+const initializeCommunityRichEditors = () => {
+    document.querySelectorAll('[data-community-rich-field]').forEach((field) => {
+        const editor = field.querySelector('[data-community-rich-editor]');
+        const input = field.querySelector('[data-community-rich-input]');
+
+        if (!editor || !input) {
+            return;
+        }
+
+        const sync = () => {
+            input.value = editor.innerHTML.trim();
+        };
+
+        field.querySelectorAll('[data-rich-command]').forEach((button) => {
+            button.addEventListener('mousedown', (event) => event.preventDefault());
+            button.addEventListener('click', () => {
+                editor.focus();
+                document.execCommand(button.dataset.richCommand, false, button.dataset.richValue || null);
+                sync();
+            });
+        });
+
+        field.querySelector('[data-rich-link]')?.addEventListener('mousedown', (event) => event.preventDefault());
+        field.querySelector('[data-rich-link]')?.addEventListener('click', () => {
+            const url = window.prompt('Pega el link completo (https://...)');
+
+            if (!url) {
+                return;
+            }
+
+            editor.focus();
+            document.execCommand('createLink', false, url);
+            sync();
+        });
+
+        editor.addEventListener('input', sync);
+        editor.addEventListener('blur', sync);
+        editor.closest('form')?.addEventListener('submit', sync);
+        sync();
+    });
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     if (!document.body.classList.contains('admin-cms-body')) {
         return;
@@ -188,6 +230,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById(id)?.addEventListener('change', syncAdminPreview);
     });
     syncAdminPreview();
+    initializeCommunityRichEditors();
 
     document.querySelectorAll('[data-admin-action-select]').forEach((select) => {
         const syncSchedule = () => {

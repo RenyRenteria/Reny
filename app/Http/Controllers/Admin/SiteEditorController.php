@@ -6,11 +6,13 @@ use App\Enums\ContentType;
 use App\Enums\MediaAssetType;
 use App\Enums\VisibilityAudience;
 use App\Http\Controllers\Controller;
+use App\Models\CommunityPostReply;
 use App\Models\EditorialContent;
 use App\Models\MediaAsset;
 use App\Models\Rsvp;
 use App\Models\SitePageSetting;
 use App\Models\User;
+use App\Services\CommunityInteractionService;
 use App\Services\Media\MediaLibraryService;
 use App\Services\Media\MediaUploadException;
 use App\Services\MusicBannerSettingsService;
@@ -62,6 +64,9 @@ class SiteEditorController extends Controller
                 : null,
             'communityRsvps' => $page === 'community'
                 ? $this->communityRsvpData($request)
+                : null,
+            'communityPostForm' => $page === 'community'
+                ? $this->communityPostFormData($request)
                 : null,
             'blocks' => $this->blocksFor($pageConfig['blocks']),
             'timezone' => config('admin.publishing_timezone', 'America/Panama'),
@@ -195,6 +200,35 @@ class SiteEditorController extends Controller
         ];
     }
 
+    /**
+     * @return array<string, mixed>
+     */
+    private function communityPostFormData(Request $request): array
+    {
+        $posts = EditorialContent::query()
+            ->where('type', ContentType::Post->value)
+            ->with(['mediaAssets', 'createdBy:id,name,email'])
+            ->orderByRaw("CASE status WHEN 'scheduled' THEN 0 WHEN 'published' THEN 1 WHEN 'draft' THEN 2 ELSE 3 END")
+            ->latest()
+            ->limit(100)
+            ->get();
+        $postKeys = $posts->map(fn (EditorialContent $post): string => 'cms-post-'.$post->id);
+        $comments = CommunityPostReply::query()
+            ->whereIn('post_key', $postKeys)
+            ->with('user:id,name,username,email')
+            ->latest()
+            ->limit(250)
+            ->get();
+
+        return [
+            'can_manage' => $request->user()?->canManageCommunityPosts() ?? false,
+            'editor_email' => config('admin.community_editor_email'),
+            'posts' => $posts,
+            'comments' => $comments,
+            'timezone' => config('admin.publishing_timezone', 'America/Panama'),
+        ];
+    }
+
     public function updateMusicBanner(
         Request $request,
         MusicBannerSettingsService $settings,
@@ -255,8 +289,12 @@ class SiteEditorController extends Controller
                 : 'Borrador de '.str($returnPage)->headline()->lower()->toString().' guardado.');
     }
 
-    public function preview(Request $request, PublicCmsContentService $cms, string $page): View
-    {
+    public function preview(
+        Request $request,
+        PublicCmsContentService $cms,
+        CommunityInteractionService $community,
+        string $page,
+    ): View {
         $pageConfig = $this->registry->page($page);
 
         abort_unless($pageConfig !== null, 404);
@@ -281,7 +319,8 @@ class SiteEditorController extends Controller
                 'publicCms' => $this->publicPayload($cms, $page),
             ]),
             'community' => view('community', [
-                'publicCms' => $this->publicPayload($cms, $page),
+                'publicCms' => $communityPayload = $this->publicPayload($cms, $page),
+                'community' => $community->viewModel(null, $communityPayload),
             ]),
         };
     }

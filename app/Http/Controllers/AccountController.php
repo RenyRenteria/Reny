@@ -334,7 +334,7 @@ class AccountController extends Controller
     private function fallbackBillingSummary(User $user, bool $billingProfileAvailable): array
     {
         $profile = $billingProfileAvailable ? $user->billingProfile : null;
-        $amountCents = (int) config('reny_catalog.products.royal.amount_cents', 499);
+        $amountCents = (int) config('reny_catalog.products.royal.amount_cents', 399);
         $currency = strtoupper((string) config('reny_catalog.products.royal.currency', 'USD'));
         $active = $profile && in_array($profile->status, ['active', 'past_due'], true);
 

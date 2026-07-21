@@ -838,7 +838,7 @@ const initializeCommunityReplyForms = (root = document) => {
             const body = input?.value.trim();
 
             if (!body) {
-                setCommunityFormStatus(form, 'Write a reply first.', true);
+                setCommunityFormStatus(form, 'Escribe un comentario primero.', true);
                 return;
             }
 
@@ -855,9 +855,34 @@ const initializeCommunityReplyForms = (root = document) => {
                     countNode.textContent = `${currentCount + 1} respuestas`;
                 }
 
+                const postCard = form.closest('.community-post-card');
+                let comments = postCard?.querySelector('.community-post-comments');
+
+                if (postCard && !comments) {
+                    comments = document.createElement('section');
+                    comments.className = 'community-post-comments';
+                    comments.setAttribute('aria-label', `Comentarios de ${postCard.dataset.title || 'este post'}`);
+                    postCard.insertBefore(comments, form);
+                }
+
+                if (comments) {
+                    const article = document.createElement('article');
+                    const header = document.createElement('header');
+                    const author = document.createElement('strong');
+                    const time = document.createElement('time');
+                    const copy = document.createElement('p');
+
+                    author.textContent = payload.author || 'Miembro';
+                    time.textContent = payload.time || 'ahora';
+                    copy.textContent = payload.body || body;
+                    header.append(author, time);
+                    article.append(header, copy);
+                    comments.append(article);
+                }
+
                 input.value = '';
-                setCommunityFormStatus(form, payload.message || 'Reply posted.');
-                showCommunityToast(payload.message || 'Reply posted.');
+                setCommunityFormStatus(form, payload.message || 'Comentario publicado.');
+                showCommunityToast(payload.message || 'Comentario publicado.');
                 trackEvent('community_reply_submitted', {
                     item_type: 'post_reply',
                     item_id: form.dataset.postKey,
@@ -865,8 +890,8 @@ const initializeCommunityReplyForms = (root = document) => {
                 });
             } catch (error) {
                 console.error(error);
-                setCommunityFormStatus(form, error.userMessage || 'Reply could not be posted.', true);
-                showCommunityToast(error.userMessage || 'Reply could not be posted.');
+                setCommunityFormStatus(form, error.userMessage || 'No se pudo publicar el comentario.', true);
+                showCommunityToast(error.userMessage || 'No se pudo publicar el comentario.');
                 trackEvent('community_reply_submitted', {
                     item_type: 'post_reply',
                     item_id: form.dataset.postKey,

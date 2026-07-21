@@ -5,6 +5,8 @@ namespace App\Services\PublicCms;
 use App\Enums\ContentType;
 use App\Models\EditorialContent;
 use App\Models\User;
+use App\Support\CommunityPostContent;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Arr;
 
 class CommunityPayloadBuilder
@@ -22,12 +24,21 @@ class CommunityPayloadBuilder
         $contents = $this->contentQuery->visibleContents($user, [ContentType::Post, ContentType::Poll])->get();
         $poll = $contents->firstWhere('type', ContentType::Poll);
 
+        $posts = $contents
+            ->where('type', ContentType::Post)
+            ->values()
+            ->map(fn (EditorialContent $content): array => $this->post($content))
+            ->sortByDesc('sort_date')
+            ->values()
+            ->map(function (array $post): array {
+                unset($post['sort_date']);
+
+                return $post;
+            })
+            ->all();
+
         return [
-            'posts' => $contents
-                ->where('type', ContentType::Post)
-                ->values()
-                ->map(fn (EditorialContent $content): array => $this->post($content))
-                ->all(),
+            'posts' => $posts,
             'poll' => $poll instanceof EditorialContent ? $this->poll($poll) : null,
         ];
     }
@@ -37,14 +48,23 @@ class CommunityPayloadBuilder
      */
     private function post(EditorialContent $content): array
     {
+        $publishedOn = trim((string) $this->media->metadata($content, 'published_on', ''));
+        $displayDate = $publishedOn !== ''
+            ? CarbonImmutable::parse($publishedOn, config('admin.publishing_timezone', 'America/Panama'))
+            : ($content->published_at ?? $content->scheduled_at ?? $content->created_at);
+
         return [
             'key' => 'cms-post-'.$content->id,
             'title' => $content->title,
-            'time' => $content->published_at?->diffForHumans() ?? 'Published',
-            'body' => $content->body ?: $content->summary ?: '',
+            'time' => $displayDate?->format('M j, Y') ?? 'Publicado',
+            'sort_date' => $displayDate?->getTimestamp() ?? 0,
+            'body_html' => CommunityPostContent::sanitize($content->body ?: $content->summary ?: ''),
             'image_url' => $this->media->mediaUrl($content, ['image_asset_id']),
-            'cta' => 'View Reny note',
-            'url' => route('public.content.show', $content),
+            'image_alt' => $content->title,
+            'media_items' => CommunityPostContent::normalizeMediaUrls(
+                Arr::wrap($this->media->metadata($content, 'media_items', []))
+            ),
+            'comments_enabled' => (bool) $this->media->metadata($content, 'comments_enabled', true),
         ];
     }
 

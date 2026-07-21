@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\ContentType;
 use App\Models\CommunityCountryClub;
 use App\Models\CommunityCountryClubMembership;
 use App\Models\CommunityCountryClubMessage;
@@ -9,7 +10,9 @@ use App\Models\CommunityPollVote;
 use App\Models\CommunityPostReaction;
 use App\Models\CommunityPostReply;
 use App\Models\CommunityUserBlock;
+use App\Models\EditorialContent;
 use App\Models\User;
+use App\Support\CommunityPostContent;
 use App\Support\EntitlementMatrix;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -35,6 +38,7 @@ class CommunityInteractionService
             'active_club' => $clubs[0] ?? null,
             'live_chat' => $this->liveChat($user),
             'can_use_actions' => EntitlementMatrix::canUseRoyalFeature($user),
+            'can_use_post_actions' => $user !== null,
             'login_url' => route('login'),
             'store_url' => route('store'),
         ];
@@ -180,6 +184,7 @@ class CommunityInteractionService
     public function toggleLike(User $user, string $postKey): array
     {
         $postKey = $this->normalizeKey($postKey);
+        $this->assertPostExists($user, $postKey);
 
         return DB::transaction(function () use ($postKey, $user): array {
             $existing = CommunityPostReaction::query()
@@ -214,9 +219,18 @@ class CommunityInteractionService
      */
     public function createReply(User $user, string $postKey, string $body): array
     {
+        $postKey = $this->normalizeKey($postKey);
+        $post = $this->assertPostExists($user, $postKey);
+
+        if (! (bool) ($post['comments_enabled'] ?? true)) {
+            throw ValidationException::withMessages([
+                'body' => 'Los comentarios están desactivados para este post.',
+            ]);
+        }
+
         $reply = CommunityPostReply::create([
             'user_id' => $user->id,
-            'post_key' => $this->normalizeKey($postKey),
+            'post_key' => $postKey,
             'body' => $body,
             'status' => 'visible',
             'metadata' => ['source' => 'community'],
@@ -228,8 +242,9 @@ class CommunityInteractionService
             'id' => $reply->id,
             'body' => $reply->body,
             'author' => $user->name,
+            'time' => 'ahora',
             'reply_count' => $this->persistedReplyCount($reply->post_key),
-            'message' => 'Reply posted.',
+            'message' => 'Comentario publicado.',
         ];
     }
 
@@ -365,23 +380,26 @@ class CommunityInteractionService
     {
         $sourcePosts = collect($cmsPosts ?: $this->fallbackPosts())
             ->filter(fn (mixed $post): bool => is_array($post))
-            ->take(2)
             ->values()
             ->map(function (array $post, int $index): array {
                 $title = $this->stringValue($post['title'] ?? null) ?? 'Community post '.($index + 1);
                 $body = $this->stringValue($post['body'] ?? null) ?? '';
                 $key = $this->stringValue($post['key'] ?? null) ?? $this->normalizeKey($title);
+                $bodyHtml = $this->stringValue($post['body_html'] ?? null)
+                    ?? $this->stringValue($post['full_body'] ?? null)
+                    ?? $body;
 
                 return [
                     'key' => $key,
                     'title' => $title,
                     'time' => $this->stringValue($post['time'] ?? null) ?? 'Published',
-                    'body' => $body,
-                    'full_body' => $this->stringValue($post['full_body'] ?? null) ?? $body,
+                    'body_html' => CommunityPostContent::sanitize($bodyHtml),
                     'image_url' => $this->stringValue($post['image_url'] ?? null),
                     'image_alt' => $this->stringValue($post['image_alt'] ?? null) ?? $title,
-                    'cta' => $this->stringValue($post['cta'] ?? null) ?? 'View Reny note',
-                    'url' => $this->stringValue($post['url'] ?? null),
+                    'media_items' => CommunityPostContent::normalizeMediaUrls(
+                        is_array($post['media_items'] ?? null) ? $post['media_items'] : []
+                    ),
+                    'comments_enabled' => (bool) ($post['comments_enabled'] ?? true),
                     'base_likes' => is_numeric($post['base_likes'] ?? null) ? (int) $post['base_likes'] : 0,
                     'base_replies' => is_numeric($post['base_replies'] ?? null) ? (int) $post['base_replies'] : 0,
                 ];
@@ -390,6 +408,7 @@ class CommunityInteractionService
         $keys = $sourcePosts->pluck('key')->all();
         $likeCounts = $this->reactionCounts($keys);
         $replyCounts = $this->replyCounts($keys);
+        $replies = $this->visibleReplies($keys);
         $likedKeys = $this->likedKeys($user, $keys);
 
         return $sourcePosts
@@ -397,12 +416,41 @@ class CommunityInteractionService
                 ...$post,
                 'like_count' => $post['base_likes'] + (int) ($likeCounts[$post['key']] ?? 0),
                 'reply_count' => $post['base_replies'] + (int) ($replyCounts[$post['key']] ?? 0),
+                'replies' => $replies[$post['key']] ?? [],
                 'liked' => in_array($post['key'], $likedKeys, true),
                 'like_endpoint' => route('community.posts.like', $post['key']),
                 'reply_endpoint' => route('community.posts.replies.store', $post['key']),
-                'share_url' => $post['url'] ?? url('/community').'#'.$post['key'],
+                'share_url' => url('/community').'#'.$post['key'],
             ])
             ->all();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function assertPostExists(User $user, string $postKey): array
+    {
+        if (preg_match('/^cms-post-(\d+)$/', $postKey, $matches)) {
+            $content = EditorialContent::query()
+                ->whereKey((int) $matches[1])
+                ->where('type', ContentType::Post->value)
+                ->visibleFor($user)
+                ->first();
+
+            abort_unless($content, 404);
+
+            return [
+                'comments_enabled' => (bool) data_get($content->metadata ?? [], 'comments_enabled', true),
+            ];
+        }
+
+        $fallback = collect($this->fallbackPosts())
+            ->filter(fn (mixed $post): bool => is_array($post))
+            ->first(fn (array $post): bool => $this->normalizeKey((string) ($post['key'] ?? $post['title'] ?? '')) === $postKey);
+
+        abort_unless(is_array($fallback), 404);
+
+        return $fallback;
     }
 
     /**
@@ -673,6 +721,37 @@ class CommunityInteractionService
             ->groupBy('post_key')
             ->pluck('aggregate', 'post_key')
             ->map(fn ($count): int => (int) $count)
+            ->all();
+    }
+
+    /**
+     * @param  array<int, string>  $postKeys
+     * @return array<string, array<int, array<string, mixed>>>
+     */
+    private function visibleReplies(array $postKeys): array
+    {
+        if ($postKeys === [] || ! Schema::hasTable('community_post_replies')) {
+            return [];
+        }
+
+        return CommunityPostReply::query()
+            ->whereIn('post_key', $postKeys)
+            ->where('status', 'visible')
+            ->with('user:id,name,username')
+            ->oldest()
+            ->limit(250)
+            ->get()
+            ->groupBy('post_key')
+            ->map(fn ($replies): array => $replies
+                ->take(20)
+                ->map(fn (CommunityPostReply $reply): array => [
+                    'id' => $reply->id,
+                    'author' => $reply->user?->name ?? $reply->user?->username ?? 'Miembro',
+                    'body' => $reply->body,
+                    'time' => $reply->created_at?->diffForHumans() ?? 'ahora',
+                ])
+                ->values()
+                ->all())
             ->all();
     }
 

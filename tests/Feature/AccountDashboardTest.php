@@ -267,7 +267,7 @@ class AccountDashboardTest extends TestCase
             ->assertSee('No new events')
             ->assertSee('0 pts')
             ->assertSee('No purchases yet')
-            ->assertSee('$4.99')
+            ->assertSee('$3.99')
             ->assertSee('Reactivate subscription');
     }
 

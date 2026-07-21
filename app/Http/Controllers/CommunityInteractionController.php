@@ -71,7 +71,7 @@ class CommunityInteractionController extends Controller
 
     public function like(Request $request, CommunityInteractionService $community, string $post): JsonResponse
     {
-        if ($blocked = $this->blockedResponse($request)) {
+        if ($blocked = $this->loginRequiredResponse($request)) {
             return $blocked;
         }
 
@@ -83,7 +83,7 @@ class CommunityInteractionController extends Controller
 
     public function reply(Request $request, CommunityInteractionService $community, string $post): JsonResponse
     {
-        if ($blocked = $this->blockedResponse($request)) {
+        if ($blocked = $this->loginRequiredResponse($request)) {
             return $blocked;
         }
 
@@ -179,14 +179,11 @@ class CommunityInteractionController extends Controller
 
     private function blockedResponse(Request $request): ?JsonResponse
     {
-        $user = $request->user();
-
-        if (! $user) {
-            return response()->json([
-                'message' => 'Sign in to use community actions.',
-                'login_url' => route('login'),
-            ], 401);
+        if ($blocked = $this->loginRequiredResponse($request)) {
+            return $blocked;
         }
+
+        $user = $request->user();
 
         if (! EntitlementMatrix::canUseRoyalFeature($user)) {
             return response()->json([
@@ -196,5 +193,17 @@ class CommunityInteractionController extends Controller
         }
 
         return null;
+    }
+
+    private function loginRequiredResponse(Request $request): ?JsonResponse
+    {
+        if ($request->user()) {
+            return null;
+        }
+
+        return response()->json([
+            'message' => 'Sign in to use community actions.',
+            'login_url' => route('login'),
+        ], 401);
     }
 }
