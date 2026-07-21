@@ -80,6 +80,7 @@ class EditorialWorkflowService
             $content->forceFill([
                 'status' => EditorialStatus::Published->value,
                 'needs_approval' => false,
+                'scheduled_at' => null,
                 'approved_by_id' => $actor->id,
                 'published_by_id' => $actor->id,
                 'approved_at' => now(),
@@ -112,6 +113,7 @@ class EditorialWorkflowService
                 ...$this->basePayload($attributes),
                 'status' => EditorialStatus::Published->value,
                 'needs_approval' => false,
+                'scheduled_at' => null,
                 'created_by_id' => $actor->id,
                 'updated_by_id' => $actor->id,
                 'approved_by_id' => $actor->id,

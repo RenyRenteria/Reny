@@ -142,6 +142,44 @@ class CommunityPostCmsTest extends TestCase
         );
     }
 
+    public function test_publishing_scheduled_post_now_clears_schedule_and_shows_it_in_feed(): void
+    {
+        $reny = $this->communityEditor();
+        $futureSchedule = now()->addDay()->format('Y-m-d\TH:i');
+
+        $this->actingAsAdmin($reny)
+            ->post(route('admin.site-editor.community-posts.store'), $this->postPayload([
+                'title' => 'Programado para publicar ahora',
+                'action' => 'schedule',
+                'scheduled_at' => $futureSchedule,
+            ]))
+            ->assertRedirect();
+
+        $post = EditorialContent::query()->sole();
+
+        $this->get('/community')
+            ->assertOk()
+            ->assertDontSee('Programado para publicar ahora');
+
+        $this->actingAsAdmin($reny)
+            ->patch(route('admin.site-editor.community-posts.update', $post), $this->postPayload([
+                'title' => 'Programado para publicar ahora',
+                'action' => 'publish',
+                'scheduled_at' => $futureSchedule,
+            ]))
+            ->assertRedirect(route('admin.site-editor.show', ['page' => 'community']))
+            ->assertSessionHas('status', 'Post "Programado para publicar ahora" publicado.');
+
+        $post->refresh();
+
+        $this->assertSame(EditorialStatus::Published, $post->status);
+        $this->assertNull($post->scheduled_at);
+
+        $this->get('/community')
+            ->assertOk()
+            ->assertSee('Programado para publicar ahora');
+    }
+
     public function test_logged_in_account_can_comment_and_editor_can_hide_or_delete_it(): void
     {
         $reny = $this->communityEditor();
