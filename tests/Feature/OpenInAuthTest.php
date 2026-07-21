@@ -46,7 +46,7 @@ class OpenInAuthTest extends TestCase
             'password_confirmation' => 'password',
         ]);
 
-        $response->assertRedirect('/account');
+        $response->assertRedirect('/music');
         $this->assertAuthenticated();
 
         $this->assertDatabaseHas('users', [
@@ -74,7 +74,7 @@ class OpenInAuthTest extends TestCase
             'password_confirmation' => 'password',
         ]);
 
-        $response->assertRedirect('/account');
+        $response->assertRedirect('/music');
         $this->assertAuthenticated();
 
         $this->assertDatabaseHas('users', [
