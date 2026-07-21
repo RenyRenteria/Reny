@@ -9,10 +9,14 @@ use App\Models\PointLedgerEntry;
 use App\Models\Rsvp;
 use App\Models\Ticket;
 use App\Models\User;
+use App\Services\Commerce\ProductCatalog;
+use App\Services\PointLedgerService;
+use App\Services\StorefrontSettingsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use RuntimeException;
 use Tests\TestCase;
 
 class AccountDashboardTest extends TestCase
@@ -223,6 +227,48 @@ class AccountDashboardTest extends TestCase
             ->assertSee('Timezone Edge Fan')
             ->assertSee('Pause subscription')
             ->assertSee('Royal Pass');
+    }
+
+    public function test_account_dashboard_keeps_rendering_when_dynamic_sections_fail(): void
+    {
+        $user = User::factory()->create([
+            'name' => 'Historical Data Fan',
+            'royal_status' => 'open',
+        ]);
+
+        Order::create([
+            'user_id' => $user->id,
+            'provider' => 'paypal',
+            'provider_order_id' => 'PAYPAL-HISTORICAL-100',
+            'product_key' => 'legacy-product',
+            'amount_cents' => 2400,
+            'currency' => 'USD',
+            'status' => 'completed',
+            'grants_royal_month' => false,
+        ]);
+
+        $this->mock(StorefrontSettingsService::class)
+            ->shouldReceive('publicPayload')
+            ->once()
+            ->andThrow(new RuntimeException('Malformed storefront data.'));
+        $this->mock(PointLedgerService::class)
+            ->shouldReceive('balance')
+            ->once()
+            ->andThrow(new RuntimeException('Malformed points data.'));
+        $this->mock(ProductCatalog::class)
+            ->shouldReceive('find')
+            ->andThrow(new RuntimeException('Malformed product data.'));
+
+        $this->actingAs($user)
+            ->get('/account')
+            ->assertOk()
+            ->assertSee('Historical Data Fan')
+            ->assertSee('No upcoming events')
+            ->assertSee('No new events')
+            ->assertSee('0 pts')
+            ->assertSee('No purchases yet')
+            ->assertSee('$4.99')
+            ->assertSee('Reactivate subscription');
     }
 
     public function test_user_can_update_profile_preferences_and_avatar(): void
