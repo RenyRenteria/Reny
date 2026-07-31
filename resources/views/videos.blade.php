@@ -62,8 +62,8 @@
     ];
 
     $featuredVideo = [
-        'id' => 'Ue8orNrHw9s',
-        'title' => 'Reny Renteria - I Swear (Official Music Video)',
+        'id' => 'UWDLtZCoTag',
+        'title' => 'Reny Renteria - Take a bite (Official Music Video)',
         'meta' => 'Featured YouTube premiere',
     ];
 

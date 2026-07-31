@@ -37,6 +37,9 @@ class VideosPageTest extends TestCase
         $response->assertSee('href="'.route('videos', ['category' => 'performances']).'"', false);
         $response->assertSee('href="'.route('videos', ['category' => 'behind_the_scenes']).'"', false);
         $response->assertSee('href="'.route('videos', ['category' => 'vlogs']).'"', false);
+        $response->assertSee('https://www.youtube.com/embed/UWDLtZCoTag', false);
+        $response->assertSee('https://www.youtube.com/watch?v=UWDLtZCoTag', false);
+        $response->assertSee('Reny Renteria - Take a bite (Official Music Video)');
 
         $html = $response->getContent();
 
