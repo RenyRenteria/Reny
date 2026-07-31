@@ -1,9 +1,9 @@
 @php
     $defaultVideo = [
-        'id' => 'Ue8orNrHw9s',
-        'title' => 'Reny Renteria - I Swear (Official Music Video)',
+        'id' => 'UWDLtZCoTag',
+        'title' => 'Reny Renteria - Take a bite (Official Music Video)',
         'meta' => 'Featured YouTube premiere',
-        'external_url' => 'https://www.youtube.com/watch?v=Ue8orNrHw9s',
+        'external_url' => 'https://www.youtube.com/watch?v=UWDLtZCoTag',
     ];
     $featuredVideo = array_filter($publicCms['featured_video'] ?? []) ? $publicCms['featured_video'] : $defaultVideo;
     $featuredVideo['external_url'] = $featuredVideo['external_url']

@@ -83,6 +83,15 @@ class HomePageTest extends TestCase
         $this->assertStringNotContainsString('role="button"', $html);
     }
 
+    public function test_home_page_uses_take_a_bite_as_the_default_video_premiere(): void
+    {
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('https://www.youtube.com/embed/UWDLtZCoTag', false)
+            ->assertSee('https://www.youtube.com/watch?v=UWDLtZCoTag', false)
+            ->assertSee('Reny Renteria - Take a bite (Official Music Video)');
+    }
+
     public function test_mobile_navigation_uses_shared_compact_sizing_across_public_tabs(): void
     {
         $paths = [
