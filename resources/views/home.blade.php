@@ -40,7 +40,6 @@
             ->values();
     }
     $album = $publicCms['album'] ?? null;
-    $singles = collect($publicCms['singles'] ?? [])->take(3)->values();
     $royalPass = $publicCms['royal_pass'] ?? [];
     $royalProductKey = $royalPass['product_key'] ?? 'royal';
     $royalCtaLabel = $royalPass['cta_label'] ?? 'Unlock Royal Pass';
@@ -324,14 +323,6 @@
                                 </div>
                             </article>
 
-                            <section class="home-singles" aria-labelledby="home-singles-title">
-                                <h2 id="home-singles-title">Latest Singles</h2>
-                                <div class="home-single-list">
-                                    @foreach ($singles as $single)
-                                        @include('partials.music-single-card', ['single' => $single])
-                                    @endforeach
-                                </div>
-                            </section>
                         </div>
                     </section>
                 </div>

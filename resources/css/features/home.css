@@ -214,8 +214,7 @@
     grid-column: 2;
 }
 
-.home-album-heading span,
-.home-singles h2 {
+.home-album-heading span {
     display: block;
     margin: 0 0 0.75rem;
     color: #000000;
@@ -279,19 +278,6 @@
 
 .home-play-here {
     min-width: 6rem;
-}
-
-.home-singles {
-    grid-column: 2;
-    width: 100%;
-    margin-top: 2.25rem;
-    border-top: 2px solid #000000;
-    padding-top: 0.75rem;
-}
-
-.home-single-list {
-    display: grid;
-    gap: 0.75rem;
 }
 
 @media (max-width: 75rem) {

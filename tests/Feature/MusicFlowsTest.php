@@ -29,7 +29,7 @@ class MusicFlowsTest extends TestCase
         Cache::store('array')->flush();
     }
 
-    public function test_home_music_keeps_play_actions_without_deluxe_checkout(): void
+    public function test_home_music_keeps_album_play_actions_without_singles_or_deluxe_checkout(): void
     {
         $album = $this->publishedMusic(ContentType::MusicalAlbum, 'Launch Album', [
             'release_date' => '2026-08-01',
@@ -62,14 +62,14 @@ class MusicFlowsTest extends TestCase
             ->assertOk()
             ->assertSee('data-music-play', false)
             ->assertSee(route('music.play', $album), false)
-            ->assertSee(route('music.play', $single), false)
+            ->assertDontSee(route('music.play', $single), false)
             ->assertDontSee('data-buy="deluxe"', false)
             ->assertDontSee(route('store.checkout', ['product' => 'deluxe']), false)
             ->assertSee('id="paypalButtons"', false)
             ->assertDontSee('Load PayPal checkout')
             ->assertDontSee('Buy Deluxe')
             ->assertSee('Launch Album')
-            ->assertSee('Launch Single');
+            ->assertDontSee('Launch Single');
 
         $html = $response->getContent();
 

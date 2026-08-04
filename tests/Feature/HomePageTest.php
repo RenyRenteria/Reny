@@ -59,7 +59,8 @@ class HomePageTest extends TestCase
             ->assertSee('Reny Renteria en Concierto')
             ->assertSee('Festival de la Rosa Dorada')
             ->assertSee('CMS Album')
-            ->assertSee('CMS Lead Single')
+            ->assertDontSee('CMS Lead Single')
+            ->assertDontSee('Latest Singles')
             ->assertSee('data-buy="royal"', false)
             ->assertSee('data-royal-pass-option="royal"', false)
             ->assertSee('data-buy-image="'.asset('images/store/royal-pass.png').'"', false)
@@ -141,7 +142,7 @@ class HomePageTest extends TestCase
         );
     }
 
-    public function test_home_preserves_guest_content_for_authenticated_users(): void
+    public function test_home_preserves_guest_content_for_authenticated_users_without_singles(): void
     {
         $this->publishedContent(ContentType::Song, [
             'title' => 'Authenticated Single',
@@ -153,7 +154,8 @@ class HomePageTest extends TestCase
         $user = User::factory()->create();
         $guestHtml = $this->get('/')
             ->assertOk()
-            ->assertSee('Authenticated Single')
+            ->assertDontSee('Authenticated Single')
+            ->assertDontSee('Latest Singles')
             ->getContent();
 
         $memberResponse = $this->actingAs($user)
@@ -164,17 +166,20 @@ class HomePageTest extends TestCase
             ->assertSee('Reny Renteria en Concierto')
             ->assertSee('Festival de la Rosa Dorada')
             ->assertSee('Watch more')
-            ->assertSee('Latest Singles')
-            ->assertSee('Authenticated Single')
-            ->assertSee('class="single music-item"', false)
-            ->assertSee('class="mini-play"', false);
+            ->assertDontSee('Latest Singles')
+            ->assertDontSee('Authenticated Single')
+            ->assertDontSee('class="single music-item"', false)
+            ->assertDontSee('class="mini-play"', false);
 
         $memberHtml = $memberResponse->getContent();
 
-        foreach (['home-royal-pass', 'home-video-hero', 'home-shows', 'home-music', 'home-singles'] as $class) {
+        foreach (['home-royal-pass', 'home-video-hero', 'home-shows', 'home-music'] as $class) {
             $this->assertStringContainsString($class, $guestHtml);
             $this->assertStringContainsString($class, $memberHtml);
         }
+
+        $this->assertStringNotContainsString('home-singles', $guestHtml);
+        $this->assertStringNotContainsString('home-singles', $memberHtml);
     }
 
     public function test_home_falls_back_to_storefront_events_when_payload_events_are_empty(): void
@@ -250,7 +255,7 @@ class HomePageTest extends TestCase
             ->assertJsonPath('royal_pass.product_key', 'royal');
     }
 
-    public function test_home_renders_latest_singles_with_music_tab_card(): void
+    public function test_home_does_not_render_singles_section(): void
     {
         $this->publishedContent(ContentType::Song, [
             'title' => 'I swear',
@@ -269,22 +274,15 @@ class HomePageTest extends TestCase
 
         $response = $this->get('/')
             ->assertOk()
-            ->assertSeeInOrder(['Latest Singles', 'I swear', 'Aguita de coco'])
-            ->assertSee('data-music-play', false)
-            ->assertSee('class="mini-play"', false)
-            ->assertSee('class="single music-item"', false)
-            ->assertDontSee('home-single-row', false)
-            ->assertDontSee('home-single-play', false);
-
-        preg_match('/<section class="home-singles".*?<\/section>/s', $response->getContent(), $matches);
-        $singlesHtml = $matches[0] ?? '';
-
-        $this->assertSame(2, substr_count($singlesHtml, 'class="single music-item"'));
-        $this->assertSame(2, substr_count($singlesHtml, 'class="mini-play"'));
-        $this->assertStringContainsString('/music/play/', $singlesHtml);
+            ->assertDontSee('Latest Singles')
+            ->assertDontSee('I swear')
+            ->assertDontSee('Aguita de coco')
+            ->assertDontSee('home-singles', false)
+            ->assertDontSee('home-single-list', false)
+            ->assertSee('Latest Album');
     }
 
-    public function test_authenticated_home_single_playback_is_ready(): void
+    public function test_authenticated_single_playback_remains_available_outside_homepage(): void
     {
         $single = $this->publishedContent(ContentType::Song, [
             'title' => 'Member Play Single',
@@ -297,8 +295,8 @@ class HomePageTest extends TestCase
         $this->actingAs($user)
             ->get('/')
             ->assertOk()
-            ->assertSee('Member Play Single')
-            ->assertSee('data-play-url="'.route('music.play', $single).'"', false);
+            ->assertDontSee('Member Play Single')
+            ->assertDontSee('data-play-url="'.route('music.play', $single).'"', false);
 
         $this->actingAs($user)
             ->getJson(route('music.play', $single))
@@ -307,7 +305,7 @@ class HomePageTest extends TestCase
             ->assertJsonPath('audio_url', 'https://audio.test/member-play-single.mp3');
     }
 
-    public function test_authenticated_home_keeps_singles_when_home_payload_falls_back(): void
+    public function test_authenticated_home_hides_singles_when_home_payload_falls_back(): void
     {
         $this->publishedContent(ContentType::Song, [
             'title' => 'Fallback Visible Single',
@@ -321,10 +319,10 @@ class HomePageTest extends TestCase
         $this->actingAs(User::factory()->create())
             ->get('/')
             ->assertOk()
-            ->assertSee('Latest Singles')
-            ->assertSee('Fallback Visible Single')
-            ->assertSee('class="single music-item"', false)
-            ->assertSee('class="mini-play"', false);
+            ->assertDontSee('Latest Singles')
+            ->assertDontSee('Fallback Visible Single')
+            ->assertDontSee('class="single music-item"', false)
+            ->assertDontSee('class="mini-play"', false);
     }
 
     /**

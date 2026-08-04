@@ -97,7 +97,8 @@ class PublicCmsContentTest extends TestCase
             ],
         ]);
 
-        $this->get('/')->assertOk()->assertSee('CMS Album')->assertSee('CMS Lead Single');
+        $this->get('/')->assertOk()->assertSee('CMS Album')->assertDontSee('CMS Lead Single');
+        $this->get('/music')->assertOk()->assertSee('CMS Album')->assertSee('CMS Lead Single');
         $this->get('/videos')->assertOk()->assertSee('CMS Video Premiere');
         $this->get('/photos')->assertOk()->assertSee('CMS Photo Drop');
         $this->get('/store')
@@ -432,6 +433,11 @@ class PublicCmsContentTest extends TestCase
 
         $this->actingAs($expiredRoyal)
             ->get('/')
+            ->assertOk()
+            ->assertDontSee('Purchased Deluxe Track');
+
+        $this->actingAs($expiredRoyal)
+            ->get('/music')
             ->assertOk()
             ->assertSee('Purchased Deluxe Track');
     }
