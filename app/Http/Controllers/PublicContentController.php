@@ -73,6 +73,18 @@ class PublicContentController extends Controller
         return view('store', [
             'publicCms' => $publicCms,
             'rsvpTickets' => $this->rsvpTickets($request, $ticketCodes),
+            'storePage' => 'store',
+        ]);
+    }
+
+    public function shows(Request $request, PublicCmsContentService $cms, TicketCodeService $ticketCodes): View
+    {
+        $publicCms = $cms->store($request->user());
+
+        return view('store', [
+            'publicCms' => $publicCms,
+            'rsvpTickets' => $this->rsvpTickets($request, $ticketCodes),
+            'storePage' => 'shows',
         ]);
     }
 

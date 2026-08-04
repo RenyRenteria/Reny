@@ -22,13 +22,7 @@
                         <img class="brand-logo" src="{{ asset('images/reny-renteria-logo.png') }}" alt="Reny Renteria">
                     </a>
 
-                    <nav class="tabs" aria-label="Main menu">
-                        <a class="tab" href="{{ route('music') }}"><span>Music</span></a>
-                        <a class="tab" href="{{ url('/videos') }}"><span>Videos</span></a>
-                        <a class="tab" href="{{ url('/photos') }}"><span>Photos</span></a>
-                        <a class="tab is-active" href="{{ url('/community') }}" aria-current="page"><span>Community</span></a>
-                        <a class="tab" href="{{ url('/store') }}"><span>Store</span></a>
-                    </nav>
+                    <x-public-navigation active="royals" />
                 </div>
 
                 <x-member-card />

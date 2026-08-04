@@ -108,6 +108,28 @@ class StorePageTest extends TestCase
             ->assertSee('Reny Renteria en Concierto');
     }
 
+    public function test_shows_page_duplicates_only_the_two_store_concerts_and_purchase_flows(): void
+    {
+        $response = $this->get(route('shows'));
+
+        $response
+            ->assertOk()
+            ->assertSee('<title>Shows | Reny Renteria</title>', false)
+            ->assertSee('data-analytics-screen="shows"', false)
+            ->assertSee('Reny Renteria en Concierto')
+            ->assertSee('Festival de la Rosa Dorada')
+            ->assertSee('data-free-event-rsvp="concert"', false)
+            ->assertSee('data-buy="listening"', false)
+            ->assertSee('data-buy-url="'.route('store.checkout', ['product' => 'listening']).'"', false)
+            ->assertSee('id="paypalButtons"', false)
+            ->assertDontSee('Crown Collection')
+            ->assertDontSee('data-buy="merch"', false)
+            ->assertDontSee('class="store-royal-pass', false)
+            ->assertSee('class="tab is-active" href="'.route('shows').'" aria-current="page"', false);
+
+        $this->assertSame(2, substr_count($response->getContent(), 'storefront-card'));
+    }
+
     public function test_store_page_normalizes_legacy_royal_pass_cta_label(): void
     {
         SitePageSetting::create([

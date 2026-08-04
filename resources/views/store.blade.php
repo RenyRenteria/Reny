@@ -1,9 +1,13 @@
 @php
+    $isShowsPage = ($storePage ?? 'store') === 'shows';
+    $activeNavigation = $isShowsPage ? 'shows' : 'store';
     $storefront = $publicCms['storefront'] ?? app(\App\Services\StorefrontSettingsService::class)->publicPayload();
     $royalPass = $storefront['royal_pass'] ?? [];
     $royalProductKey = $royalPass['product_key'] ?? 'royal';
     $royalCtaLabel = $royalPass['cta_label'] ?? 'Unlock Royal Pass';
-    $storefrontSlots = collect(['event_primary', 'event_secondary', 'merch'])
+    $storefrontSlots = collect($isShowsPage
+        ? ['event_primary', 'event_secondary']
+        : ['event_primary', 'event_secondary', 'merch'])
         ->map(fn (string $key): array => data_get($storefront, "slots.{$key}", []))
         ->filter()
         ->values();
@@ -68,14 +72,14 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title>Store | Reny Renteria</title>
+        <title>{{ $isShowsPage ? 'Shows' : 'Store' }} | Reny Renteria</title>
 
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;500&display=swap" rel="stylesheet">
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body data-analytics-screen="store" data-preferred-currency="{{ auth()->user()?->preferred_currency ?? 'USD' }}">
+    <body data-analytics-screen="{{ $isShowsPage ? 'shows' : 'store' }}" data-preferred-currency="{{ auth()->user()?->preferred_currency ?? 'USD' }}">
         <div class="store-shell" data-public-page-root>
             <aside class="sidebar" aria-label="Primary navigation">
                 <div>
@@ -87,52 +91,13 @@
                         >
                     </a>
 
-                    <nav class="tabs" aria-label="Main menu">
-                        <a class="tab" href="{{ route('music') }}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                                <path d="M9 18V5l10-2v13"></path>
-                                <circle cx="7" cy="18" r="3"></circle>
-                                <circle cx="17" cy="16" r="3"></circle>
-                            </svg>
-                            <span>MUSIC</span>
-                        </a>
-                        <a class="tab" href="{{ url('/videos') }}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                                <path d="m22 8-6 4 6 4V8Z"></path>
-                                <rect x="2" y="6" width="14" height="12" rx="2"></rect>
-                            </svg>
-                            <span>VIDEOS</span>
-                        </a>
-                        <a class="tab" href="{{ url('/photos') }}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                                <rect x="3" y="3" width="18" height="18" rx="2"></rect>
-                                <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                                <path d="m21 15-5-5L5 21"></path>
-                            </svg>
-                            <span>PHOTOS</span>
-                        </a>
-                        <a class="tab" href="{{ url('/community') }}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                                <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z"></path>
-                            </svg>
-                            <span>COMMUNITY</span>
-                        </a>
-                        <a class="tab is-active" href="{{ url('/store') }}" aria-current="page">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                                <path d="M4 10h16"></path>
-                                <path d="M5 10l1.5-5h11L19 10"></path>
-                                <path d="M6 10v9h12v-9"></path>
-                                <path d="M9 19v-5h6v5"></path>
-                            </svg>
-                            <span>STORE</span>
-                        </a>
-                    </nav>
+                    <x-public-navigation :active="$activeNavigation" />
                 </div>
 
                 <x-member-card />
             </aside>
 
-            <main class="main-content store-content" id="store">
+            <main class="main-content store-content" id="{{ $isShowsPage ? 'shows' : 'store' }}">
                 <header class="mobile-header">
                     <div class="mobile-brand">
                         <a class="brand-link" href="{{ url('/') }}" aria-label="Reny Renteria home">
@@ -145,7 +110,7 @@
                     </div>
                 </header>
 
-                @if ($shouldShowRoyalPass)
+                @if (! $isShowsPage && $shouldShowRoyalPass)
                     <section
                         class="store-royal-pass is-selected"
                         data-royal-pass-container
@@ -180,7 +145,7 @@
                     </section>
                 @endif
 
-                <section class="storefront" aria-label="Store products">
+                <section class="storefront" aria-label="{{ $isShowsPage ? 'Shows' : 'Store products' }}">
                     <div class="storefront-grid">
                         @foreach ($storefrontSlots as $slot)
                             @php
@@ -290,46 +255,7 @@
                     </div>
                 </section>
 
-                <nav class="mobile-bottom-nav" aria-label="Mobile menu">
-                    <a href="{{ route('music') }}">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                            <path d="M9 18V5l10-2v13"></path>
-                            <circle cx="7" cy="18" r="3"></circle>
-                            <circle cx="17" cy="16" r="3"></circle>
-                        </svg>
-                        <span class="sr-only">MUSIC</span>
-                    </a>
-                    <a href="{{ url('/videos') }}">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                            <path d="m22 8-6 4 6 4V8Z"></path>
-                            <rect x="2" y="6" width="14" height="12" rx="2"></rect>
-                        </svg>
-                        <span class="sr-only">VIDEOS</span>
-                    </a>
-                    <a href="{{ url('/photos') }}">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                            <rect x="3" y="3" width="18" height="18" rx="2"></rect>
-                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                            <path d="m21 15-5-5L5 21"></path>
-                        </svg>
-                        <span class="sr-only">PHOTOS</span>
-                    </a>
-                    <a href="{{ url('/community') }}">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                            <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z"></path>
-                        </svg>
-                        <span class="sr-only">COMMUNITY</span>
-                    </a>
-                    <a class="is-active" href="{{ url('/store') }}" aria-current="page">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                            <path d="M4 10h16"></path>
-                            <path d="M5 10l1.5-5h11L19 10"></path>
-                            <path d="M6 10v9h12v-9"></path>
-                            <path d="M9 19v-5h6v5"></path>
-                        </svg>
-                        <span class="sr-only">STORE</span>
-                    </a>
-                </nav>
+                <x-public-navigation :active="$activeNavigation" mobile />
             </main>
         </div>
 

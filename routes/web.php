@@ -78,6 +78,7 @@ Route::post('/community/clubs/{club}/messages', [CommunityInteractionController:
     ->where('club', '[A-Za-z0-9._-]+')
     ->middleware('throttle:community-chat')
     ->name('community.clubs.messages.store');
+Route::get('/shows', [PublicContentController::class, 'shows'])->name('shows');
 Route::get('/store', [PublicContentController::class, 'store'])->name('store');
 Route::get('/store/checkout/{product}', [PublicContentController::class, 'checkout'])
     ->where('product', '[A-Za-z0-9._-]+')
