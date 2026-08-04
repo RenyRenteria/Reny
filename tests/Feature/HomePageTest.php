@@ -55,7 +55,7 @@ class HomePageTest extends TestCase
             ->assertOk()
             ->assertSee('data-analytics-screen="home"', false)
             ->assertSee('CMS Home Video')
-            ->assertSee('https://www.youtube.com/embed/dQw4w9WgXcQ', false)
+            ->assertSee('https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&amp;mute=1&amp;playsinline=1&amp;rel=0', false)
             ->assertSee('Reny Renteria en Concierto')
             ->assertSee('Festival de la Rosa Dorada')
             ->assertSee('CMS Album')
@@ -88,9 +88,11 @@ class HomePageTest extends TestCase
     {
         $this->get('/')
             ->assertOk()
-            ->assertSee('https://www.youtube.com/embed/UWDLtZCoTag', false)
+            ->assertSee('https://www.youtube.com/embed/UWDLtZCoTag?autoplay=1&amp;mute=1&amp;playsinline=1&amp;rel=0', false)
             ->assertSee('https://www.youtube.com/watch?v=UWDLtZCoTag', false)
-            ->assertSee('Reny Renteria - Take a bite (Official Music Video)');
+            ->assertSee('Reny Renteria - Take a bite (Official Music Video)')
+            ->assertSee('class="stage-lights"', false)
+            ->assertSee(asset('images/reny-renteria-logo-white.png'), false);
     }
 
     public function test_mobile_navigation_uses_shared_compact_sizing_across_public_tabs(): void
