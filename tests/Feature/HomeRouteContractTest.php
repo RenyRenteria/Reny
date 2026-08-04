@@ -18,7 +18,8 @@ class HomeRouteContractTest extends TestCase
             ->assertSee('Watch<br>Now', false)
             ->assertSee('Royal Pass')
             ->assertSee('Upcoming Shows')
-            ->assertSee('Latest Singles')
+            ->assertDontSee('Latest Singles')
+            ->assertDontSee('home-singles', false)
             ->assertSee('data-buy="royal"', false);
     }
 
