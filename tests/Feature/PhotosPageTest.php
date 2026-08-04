@@ -11,10 +11,9 @@ class PhotosPageTest extends TestCase
         $response = $this->get('/photos');
 
         $response->assertOk();
-        $response->assertSee('PHOTOS');
+        $response->assertSee('<title>Photos | Reny Renteria</title>', false);
         $response->assertSee('class="photo-masonry"', false);
-        $response->assertSee('class="tab is-active"', false);
-        $response->assertSee('href="'.url('/photos').'"', false);
+        $response->assertDontSee('class="tab is-active"', false);
 
         $html = $response->getContent();
 
@@ -28,16 +27,10 @@ class PhotosPageTest extends TestCase
         $this->assertStringNotContainsString('i.ytimg.com', strtolower($html));
     }
 
-    public function test_music_and_videos_link_to_photos_route(): void
+    public function test_photos_route_stays_available_after_leaving_the_main_navigation(): void
     {
-        $this->get('/')
+        $this->get('/photos')
             ->assertOk()
-            ->assertSee('href="'.url('/photos').'"', false)
-            ->assertDontSee('href="#photos"', false);
-
-        $this->get('/videos')
-            ->assertOk()
-            ->assertSee('href="'.url('/photos').'"', false)
-            ->assertDontSee('href="#photos"', false);
+            ->assertSee('class="photo-masonry"', false);
     }
 }

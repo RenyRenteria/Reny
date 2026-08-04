@@ -19,33 +19,7 @@
                         <img class="brand-logo" src="{{ asset('images/reny-renteria-logo.png') }}" alt="Reny Renteria">
                     </a>
 
-                    <nav class="tabs" aria-label="Main menu">
-                        <a class="tab" href="{{ route('music') }}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                                <path d="M9 18V5l10-2v13"></path>
-                                <circle cx="7" cy="18" r="3"></circle>
-                                <circle cx="17" cy="16" r="3"></circle>
-                            </svg>
-                            <span>MUSIC</span>
-                        </a>
-                        <a class="tab" href="{{ route('account.show') }}">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                                <circle cx="12" cy="8" r="4"></circle>
-                                <path d="M4 21a8 8 0 0 1 16 0"></path>
-                            </svg>
-                            <span>ACCOUNT</span>
-                        </a>
-                        <a class="tab is-active" href="{{ route('points.index') }}" aria-current="page">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                                <path d="M8 21h8"></path>
-                                <path d="M12 17v4"></path>
-                                <path d="M7 4h10v4a5 5 0 0 1-10 0V4Z"></path>
-                                <path d="M5 5H3v2a4 4 0 0 0 4 4"></path>
-                                <path d="M19 5h2v2a4 4 0 0 1-4 4"></path>
-                            </svg>
-                            <span>POINTS</span>
-                        </a>
-                    </nav>
+                    <x-public-navigation />
                 </div>
 
                 <x-member-card />

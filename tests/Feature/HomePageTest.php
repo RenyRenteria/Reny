@@ -100,6 +100,7 @@ class HomePageTest extends TestCase
             '/videos' => 'mobile-bottom-nav',
             '/photos' => 'mobile-bottom-nav',
             '/community' => 'mobile-bottom-nav',
+            '/shows' => 'mobile-bottom-nav',
             '/store' => 'mobile-bottom-nav',
         ];
 
