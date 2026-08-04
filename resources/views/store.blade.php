@@ -3,8 +3,6 @@
     $activeNavigation = $isShowsPage ? 'shows' : 'store';
     $storefront = $publicCms['storefront'] ?? app(\App\Services\StorefrontSettingsService::class)->publicPayload();
     $royalPass = $storefront['royal_pass'] ?? [];
-    $royalProductKey = $royalPass['product_key'] ?? 'royal';
-    $royalCtaLabel = $royalPass['cta_label'] ?? 'Unlock Royal Pass';
     $storefrontSlots = collect($isShowsPage
         ? ['event_primary', 'event_secondary']
         : ['event_primary', 'event_secondary', 'merch'])
@@ -12,8 +10,6 @@
         ->filter()
         ->values();
     $rsvpTickets = $rsvpTickets ?? [];
-    $isGuestPreview = (bool) request()->attributes->get('site_editor_guest_preview', false);
-    $shouldShowRoyalPass = $isGuestPreview || auth()->guest();
     $slotImage = fn (array $slot): string => $slot['image_url'] ?? asset($slot['image'] ?? 'images/store/work-in-progress.png');
     $slotType = fn (array $slot): string => $slot['eyebrow'] ?: str($slot['kind'] ?? 'product')->headline()->toString();
     $isFreeEventPrice = function (string $price): bool {
@@ -110,40 +106,7 @@
                     </div>
                 </header>
 
-                @if (! $isShowsPage && $shouldShowRoyalPass)
-                    <section
-                        class="store-royal-pass is-selected"
-                        data-royal-pass-container
-                        data-royal-pass-selected="true"
-                    >
-                        <button
-                            class="store-royal-pass-selector"
-                            type="button"
-                            aria-label="Select Royal Pass"
-                            aria-pressed="true"
-                            data-royal-pass-option="{{ $royalProductKey }}"
-                        >
-                            <span class="store-royal-pass-copy">
-                                {{ $royalPass['copy_before'] ?? 'Get your' }}
-                                <strong>{{ $royalPass['emphasis'] ?? 'Royal Pass' }}</strong>
-                                {{ $royalPass['copy_after'] ?? 'to unlock exclusive content, community and more' }}
-                            </span>
-                        </button>
-                        <button
-                            class="store-button store-royal-pass-button"
-                            type="button"
-                            data-buy="{{ $royalProductKey }}"
-                            data-buy-name="{{ $royalPass['emphasis'] ?? 'Royal Pass' }}"
-                            data-buy-type="Membership"
-                            data-buy-summary="Monthly membership with exclusive content, community and more."
-                            data-buy-image="{{ asset('images/store/royal-pass.png') }}"
-                            data-buy-url="{{ route('store.checkout', ['product' => $royalProductKey]) }}"
-                            data-royal-pass-cta
-                            aria-disabled="false"
-                            aria-label="{{ $royalCtaLabel }}"
-                        >{{ $royalCtaLabel }}</button>
-                    </section>
-                @endif
+                <x-royal-pass-banner :pass="$royalPass" />
 
                 <section class="storefront" aria-label="{{ $isShowsPage ? 'Shows' : 'Store products' }}">
                     <div class="storefront-grid">

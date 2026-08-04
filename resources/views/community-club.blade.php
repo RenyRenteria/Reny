@@ -1,6 +1,7 @@
 @php
     $communityGateHref = auth()->check() ? route('store') : route('login');
     $communityGateCta = auth()->check() ? 'Get your Royal Pass' : 'Sign in';
+    $communityGateTitle = auth()->check() ? 'Royal Pass required' : 'Sign in to join';
 @endphp
 
 <!DOCTYPE html>
@@ -56,7 +57,7 @@
 
                         <x-access-gate
                             section="community"
-                            title="Sign in to join"
+                            :title="$communityGateTitle"
                             preview="Club detail is visible; joining and posting require Royal Pass."
                             :cta="$communityGateCta"
                             :href="$communityGateHref"

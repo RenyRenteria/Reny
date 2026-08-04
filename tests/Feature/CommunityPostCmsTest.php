@@ -180,10 +180,10 @@ class CommunityPostCmsTest extends TestCase
             ->assertSee('Programado para publicar ahora');
     }
 
-    public function test_logged_in_account_can_comment_and_editor_can_hide_or_delete_it(): void
+    public function test_royal_account_can_comment_and_editor_can_hide_or_delete_it(): void
     {
         $reny = $this->communityEditor();
-        $fan = User::factory()->create(['name' => 'Fan con login']);
+        $fan = User::factory()->royal()->create(['name' => 'Fan con Royal Pass']);
 
         $this->actingAsAdmin($reny)
             ->post(route('admin.site-editor.community-posts.store'), $this->postPayload([

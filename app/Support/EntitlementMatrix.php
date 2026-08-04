@@ -13,8 +13,8 @@ class EntitlementMatrix
     {
         return [
             'music' => [
-                'public' => 'Albums, public singles, preview clips',
-                'royal' => 'Royal-only songs, full premium mixes, downloads',
+                'public' => 'Published catalog metadata; playback requires a free account',
+                'royal' => 'No additional music gate beyond the authenticated account',
             ],
             'videos' => [
                 'public' => 'Trailers, public videos, metadata',
@@ -25,8 +25,8 @@ class EntitlementMatrix
                 'royal' => 'Full premium sets and protected downloads',
             ],
             'community' => [
-                'public' => 'Read-only previews of feed, polls, groups and chats',
-                'royal' => 'Chat, voting, posting, group creation and reactions',
+                'public' => 'Full read-only feed, comments, groups and chats',
+                'royal' => 'Chat messages, comments, votes, group participation and reactions',
             ],
             'store' => [
                 'public' => 'Public products and guest checkout',

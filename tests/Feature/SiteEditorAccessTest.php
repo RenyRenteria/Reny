@@ -201,7 +201,7 @@ class SiteEditorAccessTest extends TestCase
 
         $this->get(route('admin.site-editor.preview', ['page' => 'store']))
             ->assertOk()
-            ->assertSee('class="store-royal-pass is-selected"', false)
+            ->assertSee('data-royal-pass-banner', false)
             ->assertSee('Royal Pass')
             ->assertSee('Guest')
             ->assertDontSee($admin->name);

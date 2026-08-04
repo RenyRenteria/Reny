@@ -83,6 +83,8 @@
                     </div>
                 </header>
 
+                <x-royal-pass-banner />
+
                 <section class="tab-panel is-active" id="music" data-tab-panel="music">
                     <section class="hero" aria-label="Featured album">
                         <div class="hero-content">

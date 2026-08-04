@@ -71,7 +71,7 @@ class CommunityInteractionController extends Controller
 
     public function like(Request $request, CommunityInteractionService $community, string $post): JsonResponse
     {
-        if ($blocked = $this->loginRequiredResponse($request)) {
+        if ($blocked = $this->blockedResponse($request)) {
             return $blocked;
         }
 
@@ -83,7 +83,7 @@ class CommunityInteractionController extends Controller
 
     public function reply(Request $request, CommunityInteractionService $community, string $post): JsonResponse
     {
-        if ($blocked = $this->loginRequiredResponse($request)) {
+        if ($blocked = $this->blockedResponse($request)) {
             return $blocked;
         }
 

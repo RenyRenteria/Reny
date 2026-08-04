@@ -2,7 +2,6 @@
 
 namespace App\Services\PublicCms;
 
-use App\Enums\VisibilityAudience;
 use App\Models\EditorialContent;
 use App\Models\User;
 
@@ -13,62 +12,24 @@ class AccessPayloadBuilder
      */
     public function music(EditorialContent $content, ?User $user): array
     {
-        if ($content->isVisibleTo($user)) {
-            return [
-                'state' => 'ready',
-                'access_state' => 'ready',
-                'access_label' => match ($content->visibility) {
-                    VisibilityAudience::Open => 'Open',
-                    VisibilityAudience::Member => 'Member',
-                    VisibilityAudience::Royal => 'Royal',
-                    VisibilityAudience::Purchased => 'Unlocked',
-                },
-                'access_message' => 'Ready for this account.',
-                'cta_label' => null,
-                'cta_url' => null,
-            ];
-        }
-
         if ($user === null) {
             return [
                 'state' => 'login_required',
                 'access_state' => 'login_required',
-                'access_label' => 'Login required',
-                'access_message' => 'Sign in to check access for this music item.',
-                'cta_label' => 'Sign in',
-                'cta_url' => route('login'),
-            ];
-        }
-
-        if ($content->visibility === VisibilityAudience::Royal) {
-            return [
-                'state' => 'royal_required',
-                'access_state' => 'royal_required',
-                'access_label' => 'Royal required',
-                'access_message' => 'This music item requires an active Royal Pass.',
-                'cta_label' => 'Get Royal Pass',
-                'cta_url' => route('store'),
-            ];
-        }
-
-        if ($content->visibility === VisibilityAudience::Purchased) {
-            return [
-                'state' => 'content_locked',
-                'access_state' => 'content_locked',
-                'access_label' => 'Locked',
-                'access_message' => 'This music item unlocks after purchase.',
-                'cta_label' => 'Open store',
-                'cta_url' => route('store'),
+                'access_label' => 'Free account required',
+                'access_message' => 'Create a free account to listen to this music.',
+                'cta_label' => 'Create free account',
+                'cta_url' => route('register'),
             ];
         }
 
         return [
-            'state' => 'content_locked',
-            'access_state' => 'content_locked',
-            'access_label' => 'Locked',
-            'access_message' => 'This release window is not open for this account.',
-            'cta_label' => 'View details',
-            'cta_url' => $this->musicDetailUrl($content),
+            'state' => 'ready',
+            'access_state' => 'ready',
+            'access_label' => 'Free account',
+            'access_message' => 'Ready for this account.',
+            'cta_label' => null,
+            'cta_url' => null,
         ];
     }
 
@@ -91,12 +52,5 @@ class AccessPayloadBuilder
             'royal:'.($user->hasRoyalAccess() || $user->isStaff() ? '1' : '0'),
             'unlocks:'.$availableUnlocks,
         ]));
-    }
-
-    private function musicDetailUrl(EditorialContent $content): string
-    {
-        return in_array($content->type, ContentQuery::MUSIC_ALBUM_TYPES, true)
-            ? route('music.albums.show', $content)
-            : route('public.content.show', $content);
     }
 }

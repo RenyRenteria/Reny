@@ -14,7 +14,7 @@ class CommunityInteractionsTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_post_interactions_require_login_while_royal_features_keep_their_existing_gate(): void
+    public function test_every_community_write_requires_an_active_royal_pass(): void
     {
         $post = EditorialContent::factory()->published()->create([
             'type' => ContentType::Post->value,
@@ -33,19 +33,20 @@ class CommunityInteractionsTest extends TestCase
 
         $this->actingAs($openUser)
             ->postJson(route('community.posts.like', $postKey))
-            ->assertOk()
-            ->assertJsonPath('liked', true);
+            ->assertForbidden()
+            ->assertJsonPath('store_url', route('store'));
 
         $this->actingAs($openUser)
             ->postJson(route('community.posts.replies.store', $postKey), ['body' => 'Cuenta abierta con login.'])
-            ->assertCreated();
+            ->assertForbidden()
+            ->assertJsonPath('store_url', route('store'));
 
         $this->actingAs($openUser)
             ->postJson(route('community.live-chat.messages.store'), ['body' => 'Open message'])
             ->assertForbidden();
 
-        $this->assertDatabaseCount('community_post_reactions', 1);
-        $this->assertDatabaseCount('community_post_replies', 1);
+        $this->assertDatabaseCount('community_post_reactions', 0);
+        $this->assertDatabaseCount('community_post_replies', 0);
     }
 
     public function test_royal_member_can_like_and_reply_to_posts(): void

@@ -153,8 +153,8 @@ class PublicCmsContentTest extends TestCase
             ->assertJsonPath('album.title', 'Contract Album')
             ->assertJsonPath('album.kind', 'album')
             ->assertJsonPath('album.meta', '2 tracks')
-            ->assertJsonPath('album.access_state', 'ready')
-            ->assertJsonPath('album.access_label', 'Open')
+            ->assertJsonPath('album.access_state', 'login_required')
+            ->assertJsonPath('album.access_label', 'Free account required')
             ->assertJsonMissingPath('album.buy_label')
             ->assertJsonMissingPath('album.product_key')
             ->assertJsonPath('singles.0.title', 'Contract Single')
@@ -166,7 +166,7 @@ class PublicCmsContentTest extends TestCase
             ->assertOk()
             ->assertJsonPath('albums.0.title', 'Contract Album')
             ->assertJsonPath('albums.0.detail_url', route('music.albums.show', $album))
-            ->assertJsonPath('albums.0.access_state', 'ready')
+            ->assertJsonPath('albums.0.access_state', 'login_required')
             ->assertJsonPath('singles.0.title', 'Contract Single')
             ->assertJsonPath('singles.0.has_audio_source', true);
 
