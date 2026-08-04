@@ -6,7 +6,9 @@
     $canUsePostActions = (bool) ($community['can_use_post_actions'] ?? false);
     $communityGateHref = auth()->check() ? route('store') : route('login');
     $communityGateCta = auth()->check() ? 'Get your Royal Pass' : 'Sign in';
-    $postGateHref = route('login');
+    $communityGateTitle = auth()->check() ? 'Royal Pass requerido' : 'Inicia sesión para escribir';
+    $reactionGateLabel = auth()->check() ? 'Obtén Royal Pass para reaccionar' : 'Inicia sesión para reaccionar';
+    $commentGateLabel = auth()->check() ? 'Obtén Royal Pass para comentar' : 'Inicia sesión para comentar';
 @endphp
 
 <!DOCTYPE html>
@@ -49,6 +51,8 @@
                     </a>
                     <span class="community-live-status"><span aria-hidden="true"></span> En vivo</span>
                 </header>
+
+                <x-royal-pass-banner />
 
                 <nav class="community-mobile-tabs" role="tablist" aria-label="Secciones de comunidad">
                     <button
@@ -164,10 +168,10 @@
                                                 <span class="reaction-count">{{ $post['like_count'] }}</span>
                                             </button>
                                         @else
-                                            <span class="community-post-action">
+                                            <a class="community-post-action community-action-gate" href="{{ $communityGateHref }}" aria-label="{{ $reactionGateLabel }}">
                                                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8Z"></path></svg>
                                                 {{ $post['like_count'] }}
-                                            </span>
+                                            </a>
                                         @endif
 
                                         <span class="community-post-action" data-reply-count="{{ $post['key'] }}">
@@ -214,7 +218,7 @@
                                             <p class="community-form-status" data-form-status></p>
                                         </form>
                                     @else
-                                        <a class="community-inline-gate" href="{{ $postGateHref }}">Inicia sesión para comentar</a>
+                                        <a class="community-inline-gate" href="{{ $communityGateHref }}">{{ $commentGateLabel }}</a>
                                     @endif
                                 @else
                                     <p class="community-comments-disabled">Los comentarios están desactivados para este post.</p>
@@ -302,7 +306,7 @@
                             <footer class="community-chat-composer">
                                 <x-access-gate
                                     section="community"
-                                    title="Inicia sesión para escribir"
+                                    :title="$communityGateTitle"
                                     preview="Puedes leer el chat; enviar mensajes requiere Royal Pass."
                                     :cta="$communityGateCta"
                                     :href="$communityGateHref"

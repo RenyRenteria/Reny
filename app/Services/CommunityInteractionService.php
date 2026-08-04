@@ -38,7 +38,7 @@ class CommunityInteractionService
             'active_club' => $clubs[0] ?? null,
             'live_chat' => $this->liveChat($user),
             'can_use_actions' => EntitlementMatrix::canUseRoyalFeature($user),
-            'can_use_post_actions' => $user !== null,
+            'can_use_post_actions' => EntitlementMatrix::canUseRoyalFeature($user),
             'login_url' => route('login'),
             'store_url' => route('store'),
         ];

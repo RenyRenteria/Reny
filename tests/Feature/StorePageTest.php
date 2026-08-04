@@ -85,8 +85,8 @@ class StorePageTest extends TestCase
         $this->assertStringNotContainsString('Reny Shop', $html);
         $this->assertStringNotContainsString('data-filter=', $html);
         $this->assertStringNotContainsString('role="tab"', $html);
-        $this->assertStringContainsString('class="store-royal-pass is-selected"', $html);
-        $this->assertStringContainsString('class="store-royal-pass-selector"', $html);
+        $this->assertStringContainsString('class="home-royal-pass is-selected"', $html);
+        $this->assertStringContainsString('data-royal-pass-banner', $html);
         $this->assertStringNotContainsString('data-requires-plan-selection="true"', $html);
         $this->assertStringNotContainsString('role="button"', $html);
         $this->assertStringNotContainsString('aria-selected', $html);
@@ -96,14 +96,24 @@ class StorePageTest extends TestCase
         $this->assertStringNotContainsString('deluxe', strtolower($html));
     }
 
-    public function test_store_page_hides_royal_pass_banner_for_logged_in_users(): void
+    public function test_store_page_keeps_royal_pass_banner_for_free_accounts(): void
     {
         $user = User::factory()->create();
 
         $this->actingAs($user)
             ->get('/store')
             ->assertOk()
-            ->assertDontSee('class="store-royal-pass"', false)
+            ->assertSee('data-royal-pass-banner', false)
+            ->assertSee('Unlock Royal Pass')
+            ->assertSee('Reny Renteria en Concierto');
+    }
+
+    public function test_store_page_hides_royal_pass_banner_for_active_royal_accounts(): void
+    {
+        $this->actingAs(User::factory()->royal()->create())
+            ->get('/store')
+            ->assertOk()
+            ->assertDontSee('data-royal-pass-banner', false)
             ->assertDontSee('Unlock Royal Pass')
             ->assertSee('Reny Renteria en Concierto');
     }
@@ -124,7 +134,7 @@ class StorePageTest extends TestCase
             ->assertSee('id="paypalButtons"', false)
             ->assertDontSee('Crown Collection')
             ->assertDontSee('data-buy="merch"', false)
-            ->assertDontSee('class="store-royal-pass', false)
+            ->assertSee('data-royal-pass-banner', false)
             ->assertSee('class="tab is-active" href="'.route('shows').'" aria-current="page"', false);
 
         $this->assertSame(2, substr_count($response->getContent(), 'storefront-card'));
@@ -197,7 +207,9 @@ class StorePageTest extends TestCase
             ->assertSee('Unlock Royal Pass')
             ->assertSee('src="'.$royalPassImage.'"', false)
             ->assertSee('alt="Royal Pass membership card"', false)
-            ->assertSee('data-buy-image="'.$royalPassImage.'"', false);
+            ->assertSee('data-buy-image="'.$royalPassImage.'"', false)
+            ->assertDontSee('free trial', false)
+            ->assertDontSee('trial period', false);
     }
 
     public function test_checkout_screen_uses_published_event_image_for_page_and_modal_data(): void

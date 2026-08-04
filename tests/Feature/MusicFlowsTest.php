@@ -10,7 +10,6 @@ use App\Enums\VisibilityAudience;
 use App\Models\EditorialContent;
 use App\Models\MediaAsset;
 use App\Models\User;
-use App\Models\UserUnlock;
 use App\Services\PublicCmsContentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -176,7 +175,7 @@ class MusicFlowsTest extends TestCase
         $this->get(route('music'))
             ->assertOk()
             ->assertSee('Royal Preview Single')
-            ->assertSee('Login required')
+            ->assertSee('Free account required')
             ->assertDontSee('https://audio.test/royal-preview.mp3');
     }
 
@@ -297,7 +296,8 @@ class MusicFlowsTest extends TestCase
             ->assertDontSee('data-buy=', false)
             ->assertDontSee(route('store.checkout', ['product' => 'deluxe']), false);
 
-        $this->getJson(route('music.play', ['content' => $album, 'track' => 1]))
+        $this->actingAs(User::factory()->create())
+            ->getJson(route('music.play', ['content' => $album, 'track' => 1]))
             ->assertOk()
             ->assertJsonPath('state', 'ready')
             ->assertJsonPath('audio_url', $secondAudio->publicUrl())
@@ -333,7 +333,8 @@ class MusicFlowsTest extends TestCase
             ],
         ]);
 
-        $this->getJson(route('music.play', $playlist))
+        $this->actingAs(User::factory()->create())
+            ->getJson(route('music.play', $playlist))
             ->assertOk()
             ->assertJsonPath('state', 'ready')
             ->assertJsonPath('audio_url', $singleAudio->publicUrl())
@@ -388,7 +389,7 @@ class MusicFlowsTest extends TestCase
             ->assertSee('Future CMS Single');
     }
 
-    public function test_music_playback_endpoint_returns_ready_error_and_access_states(): void
+    public function test_music_playback_requires_a_free_account_and_unlocks_all_published_music(): void
     {
         $open = $this->publishedMusic(ContentType::Song, 'Open Audio', [
             'release_date_member_view' => '2026-07-01T10:00',
@@ -429,9 +430,26 @@ class MusicFlowsTest extends TestCase
         $royalUser = User::factory()->royal()->create();
 
         $this->getJson(route('music.play', $open))
+            ->assertUnauthorized()
+            ->assertJsonPath('state', 'login_required')
+            ->assertJsonPath('access_state', 'login_required')
+            ->assertJsonPath('cta_label', 'Create free account')
+            ->assertJsonPath('cta_url', route('register'));
+
+        $this->getJson(route('music.play', $member))
+            ->assertStatus(401)
+            ->assertJsonPath('state', 'login_required')
+            ->assertJsonPath('access_state', 'login_required')
+            ->assertJsonPath('cta_label', 'Create free account')
+            ->assertJsonPath('detail_url', route('public.content.show', $member));
+
+        $this->getJson(route('music.play', $royal))
+            ->assertStatus(401)
+            ->assertJsonPath('state', 'login_required');
+
+        $this->actingAs($registered)
+            ->getJson(route('music.play', $open))
             ->assertOk()
-            ->assertJsonPath('state', 'ready')
-            ->assertJsonPath('access_state', 'ready')
             ->assertJsonPath('audio_url', 'https://audio.test/open.mp3')
             ->assertJsonPath('image_url', $open->mediaAssets->first()->publicUrl())
             ->assertJsonPath('message', 'Open Audio')
@@ -442,22 +460,12 @@ class MusicFlowsTest extends TestCase
             ->assertJsonMissingExact(['message' => 'Playback is ready.'])
             ->assertJsonMissingExact(['access_label' => 'Ready to play']);
 
-        $this->getJson(route('music.play', $missingAudio))
+        $this->actingAs($registered)
+            ->getJson(route('music.play', $missingAudio))
             ->assertStatus(422)
             ->assertJsonPath('state', 'playback_error')
             ->assertJsonPath('access_state', 'ready')
             ->assertJsonPath('cta_label', 'Open details');
-
-        $this->getJson(route('music.play', $member))
-            ->assertStatus(401)
-            ->assertJsonPath('state', 'login_required')
-            ->assertJsonPath('access_state', 'login_required')
-            ->assertJsonPath('cta_label', 'Sign in')
-            ->assertJsonPath('detail_url', route('public.content.show', $member));
-
-        $this->getJson(route('music.play', $royal))
-            ->assertStatus(401)
-            ->assertJsonPath('state', 'login_required');
 
         $this->actingAs($registered)
             ->getJson(route('music.play', $member))
@@ -466,10 +474,9 @@ class MusicFlowsTest extends TestCase
 
         $this->actingAs($registered)
             ->getJson(route('music.play', $royal))
-            ->assertForbidden()
-            ->assertJsonPath('state', 'royal_required')
-            ->assertJsonPath('access_state', 'royal_required')
-            ->assertJsonPath('cta_url', route('store'));
+            ->assertOk()
+            ->assertJsonPath('state', 'ready')
+            ->assertJsonPath('audio_url', 'https://audio.test/royal.mp3');
 
         $this->actingAs($royalUser)
             ->getJson(route('music.play', $royal))
@@ -478,23 +485,8 @@ class MusicFlowsTest extends TestCase
 
         $this->actingAs($registered)
             ->getJson(route('music.play', $purchased))
-            ->assertForbidden()
-            ->assertJsonPath('state', 'content_locked');
-
-        UserUnlock::create([
-            'user_id' => $registered->id,
-            'unlock_type' => 'content',
-            'product_key' => 'purchased-audio',
-            'title' => $purchased->title,
-            'source_type' => 'editorial_content',
-            'source_id' => (string) $purchased->id,
-            'status' => 'available',
-            'unlocked_at' => now(),
-        ]);
-
-        $this->actingAs($registered->fresh())
-            ->getJson(route('music.play', $purchased))
             ->assertOk()
+            ->assertJsonPath('state', 'ready')
             ->assertJsonPath('audio_url', 'https://audio.test/purchased.mp3');
     }
 

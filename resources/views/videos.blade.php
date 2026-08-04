@@ -152,6 +152,8 @@
                     </div>
                 </header>
 
+                <x-royal-pass-banner />
+
                 <section class="video-hero" aria-label="Featured video">
                     <div class="hero-content">
                         <p class="eyebrow">Video<br>Premiere</p>
