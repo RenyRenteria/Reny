@@ -91,14 +91,23 @@
         <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body data-analytics-screen="home" data-preferred-currency="{{ auth()->user()?->preferred_currency ?? 'USD' }}">
+    <body class="home-page" data-analytics-screen="home" data-preferred-currency="{{ auth()->user()?->preferred_currency ?? 'USD' }}">
         <div class="store-shell home-shell" data-public-page-root>
+            <div class="stage-lights" aria-hidden="true">
+                <span class="stage-light stage-light--one"></span>
+                <span class="stage-light stage-light--two"></span>
+                <span class="stage-light stage-light--three"></span>
+                <span class="stage-light-fixture stage-light-fixture--one"></span>
+                <span class="stage-light-fixture stage-light-fixture--two"></span>
+                <span class="stage-light-fixture stage-light-fixture--three"></span>
+            </div>
+
             <aside class="sidebar" aria-label="Primary navigation">
                 <div>
                     <a class="brand-link" href="{{ route('home') }}" aria-label="Reny Renteria home">
                         <img
                             class="brand-logo"
-                            src="{{ asset('images/reny-renteria-logo.png') }}"
+                            src="{{ asset('images/reny-renteria-logo-white.png') }}"
                             alt="Reny Renteria"
                         >
                     </a>
@@ -115,7 +124,7 @@
                         <a class="brand-link" href="{{ route('home') }}" aria-label="Reny Renteria home">
                             <img
                                 class="brand-logo"
-                                src="{{ asset('images/reny-renteria-logo.png') }}"
+                                src="{{ asset('images/reny-renteria-logo-white.png') }}"
                                 alt="Reny Renteria"
                             >
                         </a>
@@ -140,9 +149,11 @@
                         <div class="featured-video">
                             <div class="video-frame">
                                 <iframe
-                                    src="https://www.youtube.com/embed/{{ $featuredVideo['id'] }}"
+                                    src="https://www.youtube.com/embed/{{ $featuredVideo['id'] }}?autoplay=1&amp;mute=1&amp;playsinline=1&amp;rel=0"
                                     title="{{ $featuredVideo['title'] }}"
                                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                    loading="eager"
+                                    referrerpolicy="strict-origin-when-cross-origin"
                                     allowfullscreen>
                                 </iframe>
                             </div>
