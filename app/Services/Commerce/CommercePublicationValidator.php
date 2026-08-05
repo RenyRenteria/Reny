@@ -96,6 +96,8 @@ class CommercePublicationValidator
 
         if (preg_match('/^[A-Z]{3}$/', $metadata['currency']) !== 1) {
             $errors['metadata.currency'] = 'Currency must be a three-letter ISO code such as USD.';
+        } elseif ($actionType === 'buy' && $metadata['currency'] !== 'USD') {
+            $errors['metadata.currency'] = 'Checkout currently settles in USD; publish buy actions in USD.';
         }
 
         if (! $metadata['is_active'] || ($actionType === 'buy' && ! $metadata['checkout_enabled'])) {
@@ -111,20 +113,20 @@ class CommercePublicationValidator
         $availableFrom = data_get($metadata, 'available_from') ?? data_get($metadata, 'availability_starts_at');
         $availableUntil = data_get($metadata, 'available_until') ?? data_get($metadata, 'availability_ends_at');
         $referenceTime = filled($payload['scheduled_at'] ?? null)
-            ? Carbon::parse((string) $payload['scheduled_at'])
+            ? $this->publicationDate((string) $payload['scheduled_at'])
             : now();
 
         try {
             if (filled($availableFrom) && filled($availableUntil)
-                && Carbon::parse((string) $availableUntil)->lte(Carbon::parse((string) $availableFrom))) {
+                && $this->publicationDate((string) $availableUntil)->lte($this->publicationDate((string) $availableFrom))) {
                 $errors['metadata.available_until'] = 'Availability must end after it starts.';
             }
 
-            if (filled($availableFrom) && Carbon::parse((string) $availableFrom)->gt($referenceTime)) {
+            if (filled($availableFrom) && $this->publicationDate((string) $availableFrom)->gt($referenceTime)) {
                 $errors['metadata.available_from'] = 'Content cannot publish before its availability window opens.';
             }
 
-            if (filled($availableUntil) && Carbon::parse((string) $availableUntil)->lte($referenceTime)) {
+            if (filled($availableUntil) && $this->publicationDate((string) $availableUntil)->lte($referenceTime)) {
                 $errors['metadata.available_until'] = 'Content cannot publish after its availability window closes.';
             }
         } catch (Throwable) {
@@ -172,5 +174,10 @@ class CommercePublicationValidator
 
         return in_array($scheme, ['http', 'https'], true)
             && filter_var($url, FILTER_VALIDATE_URL) !== false;
+    }
+
+    private function publicationDate(string $value): Carbon
+    {
+        return Carbon::parse($value, config('admin.publishing_timezone', 'America/Panama'));
     }
 }

@@ -356,13 +356,15 @@ class MediaLibraryService
     {
         if (! is_array($payload)) {
             return $key !== null
-                && str_ends_with($key, '_asset_id')
+                && (str_ends_with($key, '_asset_id') || str_ends_with($key, '_asset_ids'))
                 && is_numeric($payload)
                 && (int) $payload === $assetId;
         }
 
         foreach ($payload as $childKey => $value) {
-            if ($this->payloadReferencesAsset($value, $assetId, (string) $childKey)) {
+            $referenceKey = is_int($childKey) ? $key : (string) $childKey;
+
+            if ($this->payloadReferencesAsset($value, $assetId, $referenceKey)) {
                 return true;
             }
         }

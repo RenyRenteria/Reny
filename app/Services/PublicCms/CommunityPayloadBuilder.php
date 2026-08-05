@@ -22,7 +22,15 @@ class CommunityPayloadBuilder
     public function build(?User $user): array
     {
         $contents = $this->contentQuery->visibleContents($user, [ContentType::Post, ContentType::Poll])->get();
-        $poll = $contents->firstWhere('type', ContentType::Poll);
+        $poll = $contents->first(function (EditorialContent $content): bool {
+            if ($content->type !== ContentType::Poll) {
+                return false;
+            }
+
+            $closesAt = $this->media->metadata($content, 'closes_at');
+
+            return blank($closesAt) || CarbonImmutable::parse((string) $closesAt)->isFuture();
+        });
 
         $posts = $contents
             ->where('type', ContentType::Post)
@@ -84,10 +92,13 @@ class CommunityPayloadBuilder
             ->all();
 
         return [
+            'content_id' => $content->id,
             'key' => 'cms-poll-'.$content->id,
             'question' => $this->media->metadata($content, 'question', $content->title),
             'options' => $options,
             'votes' => $this->media->metadata($content, 'votes', 'CMS poll'),
+            'eligibility' => $this->media->metadata($content, 'eligibility', 'royal'),
+            'closes_at' => $this->media->metadata($content, 'closes_at'),
         ];
     }
 }

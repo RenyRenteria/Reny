@@ -99,7 +99,11 @@ class CommunityInteractionController extends Controller
 
     public function vote(Request $request, CommunityInteractionService $community, string $poll): JsonResponse
     {
-        if ($blocked = $this->blockedResponse($request)) {
+        $blocked = str_starts_with($poll, 'cms-poll-')
+            ? $this->loginRequiredResponse($request)
+            : $this->blockedResponse($request);
+
+        if ($blocked) {
             return $blocked;
         }
 

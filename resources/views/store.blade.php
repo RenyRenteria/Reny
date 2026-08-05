@@ -168,15 +168,17 @@
 
                 <x-royal-pass-banner :pass="$royalPass" />
 
-                <section class="public-page-intro" aria-labelledby="store-page-title">
-                    <p>{{ $pageSettings['eyebrow'] ?? 'Official Store' }}</p>
-                    <h1 id="store-page-title">{{ $pageSettings['title'] ?? 'Shows and releases' }}</h1>
-                    <strong>{{ $pageSettings['subtitle'] ?? 'Tickets, music and limited products' }}</strong>
-                    <span>{{ $pageSettings['description'] ?? '' }}</span>
-                    @if (filled($pageSettings['cover_url'] ?? null))
-                        <img src="{{ $pageSettings['cover_url'] }}" alt="{{ $pageSettings['cover_alt'] ?? '' }}">
-                    @endif
-                </section>
+                @unless ($isShowsPage)
+                    <section class="public-page-intro" aria-labelledby="store-page-title">
+                        <p>{{ $pageSettings['eyebrow'] ?? 'Official Store' }}</p>
+                        <h1 id="store-page-title">{{ $pageSettings['title'] ?? 'Shows and releases' }}</h1>
+                        <strong>{{ $pageSettings['subtitle'] ?? 'Tickets, music and limited products' }}</strong>
+                        <span>{{ $pageSettings['description'] ?? '' }}</span>
+                        @if (filled($pageSettings['cover_url'] ?? null))
+                            <img src="{{ $pageSettings['cover_url'] }}" alt="{{ $pageSettings['cover_alt'] ?? '' }}">
+                        @endif
+                    </section>
+                @endunless
 
                 <section class="storefront" aria-label="{{ $isShowsPage ? 'Shows' : 'Store products' }}">
                     <div class="storefront-grid">

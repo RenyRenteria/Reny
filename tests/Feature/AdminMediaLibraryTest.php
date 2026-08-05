@@ -178,6 +178,12 @@ class AdminMediaLibraryTest extends TestCase
 
         $replacementPath = $asset->path;
         $content->mediaAssets()->detach($asset);
+        $content->update(['metadata' => ['gallery_asset_ids' => [$assetId]]]);
+        $this->delete(route('admin.media.destroy', $asset))
+            ->assertSessionHasErrors('asset');
+        $this->assertDatabaseHas('media_assets', ['id' => $assetId]);
+
+        $content->update(['metadata' => []]);
         $this->delete(route('admin.media.destroy', $asset))->assertRedirect();
 
         $this->assertDatabaseMissing('media_assets', ['id' => $assetId]);

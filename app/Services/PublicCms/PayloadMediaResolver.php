@@ -20,12 +20,17 @@ class PayloadMediaResolver
             ->filter()
             ->first();
 
-        $asset = $content->mediaAssets
+        $assets = $content->mediaAssets->filter(fn (MediaAsset $asset): bool => in_array(
+            $asset->type,
+            [MediaAssetType::Image, MediaAssetType::Thumbnail],
+            true,
+        ));
+        $asset = $assets
             ->when($assetId, fn (Collection $assets): Collection => $assets->where('id', (int) $assetId))
             ->first();
 
         if (! $asset instanceof MediaAsset) {
-            $asset = $content->mediaAssets->first();
+            $asset = $assets->first();
         }
 
         return $asset?->publicUrl();

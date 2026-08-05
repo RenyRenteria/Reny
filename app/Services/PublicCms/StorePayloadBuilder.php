@@ -27,8 +27,6 @@ class StorePayloadBuilder
             ContentType::Event,
             ContentType::Drop,
             ContentType::Exclusive,
-            ContentType::MusicalAlbum,
-            ContentType::DeluxeAlbum,
         ], null)->get();
 
         return [
@@ -38,8 +36,6 @@ class StorePayloadBuilder
                     ContentType::Product,
                     ContentType::Drop,
                     ContentType::Exclusive,
-                    ContentType::MusicalAlbum,
-                    ContentType::DeluxeAlbum,
                 ])
                 ->values()
                 ->map(fn (EditorialContent $content): ?array => $this->product($content))

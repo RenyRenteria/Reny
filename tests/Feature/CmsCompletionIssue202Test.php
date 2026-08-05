@@ -224,6 +224,16 @@ class CmsCompletionIssue202Test extends TestCase
             ->assertUnprocessable()
             ->assertJsonValidationErrors('metadata.action_url');
 
+        $this->postJson(route('admin.content.store'), [
+            ...$this->productPayload(),
+            'metadata' => [
+                ...$this->productPayload()['metadata'],
+                'currency' => 'EUR',
+            ],
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('metadata.currency');
+
         $this->assertDatabaseCount('editorial_contents', 0);
     }
 
@@ -285,18 +295,18 @@ class CmsCompletionIssue202Test extends TestCase
             ->assertJsonPath('products.0.content_id', $product->id)
             ->assertJsonPath('products.0.key', 'issue-202-product')
             ->assertJsonPath('products.0.amount_cents', 1999)
-            ->assertJsonPath('products.0.currency', 'EUR')
+            ->assertJsonPath('products.0.currency', 'USD')
             ->assertJsonPath('products.0.checkout_url', route('store.checkout', ['product' => 'issue-202-product']));
         $this->get('/store')
             ->assertOk()
             ->assertSee('Issue 202 Product')
-            ->assertSee('EUR 19.99')
+            ->assertSee('$19.99')
             ->assertSee('data-buy="issue-202-product"', false)
             ->assertSee('data-buy-price-value="19.99"', false);
         $this->get(route('store.checkout', ['product' => 'issue-202-product']))
             ->assertOk()
             ->assertSee('Issue 202 Product')
-            ->assertSee('EUR 19.99')
+            ->assertSee('$19.99')
             ->assertSee('data-buy-price-value="19.99"', false);
         $this->get(route('public.content.show', $product))
             ->assertOk()
@@ -530,7 +540,23 @@ class CmsCompletionIssue202Test extends TestCase
             ->assertSee('Canonical Store')
             ->assertSee('Sign in to vote');
 
+        $member = User::factory()->create();
+        $this->actingAs($member)
+            ->postJson(route('community.polls.vote', $pollKey), [
+                'option_key' => 'option-1',
+                'option_label' => 'Canonical Store',
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('poll');
+
         $royal = User::factory()->royal()->create();
+        $this->actingAs($royal)
+            ->postJson(route('community.polls.vote', $pollKey), [
+                'option_key' => 'forged-option',
+                'option_label' => 'Forged option',
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('option_key');
         $this->actingAs($royal)
             ->postJson(route('community.polls.vote', $pollKey), [
                 'option_key' => 'option-1',
@@ -603,7 +629,7 @@ class CmsCompletionIssue202Test extends TestCase
                 'product_kind' => 'digital',
                 'sku' => 'ISSUE-202',
                 'price_cents' => 1999,
-                'currency' => 'EUR',
+                'currency' => 'USD',
                 'inventory' => 20,
                 'checkout_enabled' => true,
                 'is_active' => true,

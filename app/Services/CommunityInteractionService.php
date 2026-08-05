@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\ContentType;
+use App\Enums\VisibilityAudience;
 use App\Models\CommunityCountryClub;
 use App\Models\CommunityCountryClubMembership;
 use App\Models\CommunityCountryClubMessage;
@@ -14,6 +15,7 @@ use App\Models\EditorialContent;
 use App\Models\User;
 use App\Support\CommunityPostContent;
 use App\Support\EntitlementMatrix;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -259,6 +261,14 @@ class CommunityInteractionService
     {
         $pollKey = $this->normalizeKey($pollKey);
         $optionKey = $this->normalizeKey($optionKey);
+        $cmsPoll = $this->cmsPollForVote($user, $pollKey);
+
+        if ($cmsPoll instanceof EditorialContent) {
+            $this->assertCmsPollEligibility($cmsPoll, $user);
+            $optionLabel = $this->canonicalCmsPollOption($cmsPoll, $optionKey);
+        } else {
+            $optionLabel = $this->canonicalFallbackPollOption($user, $pollKey, $optionKey);
+        }
 
         $existing = CommunityPollVote::query()
             ->where('user_id', $user->id)
@@ -290,6 +300,78 @@ class CommunityInteractionService
             'option_key' => $vote->option_key,
             'option_label' => $vote->option_label,
         ];
+    }
+
+    private function cmsPollForVote(User $user, string $pollKey): ?EditorialContent
+    {
+        if (! str_starts_with($pollKey, 'cms-poll-')) {
+            return null;
+        }
+
+        $contentId = (int) Str::after($pollKey, 'cms-poll-');
+        $poll = EditorialContent::query()
+            ->visibleFor($user)
+            ->whereKey($contentId)
+            ->where('type', ContentType::Poll->value)
+            ->first();
+
+        abort_unless($poll, 404);
+
+        return $poll;
+    }
+
+    private function assertCmsPollEligibility(EditorialContent $poll, User $user): void
+    {
+        $eligibility = VisibilityAudience::tryFrom((string) data_get($poll->metadata, 'eligibility'))
+            ?? VisibilityAudience::Royal;
+        $closesAt = data_get($poll->metadata, 'closes_at');
+
+        if (filled($closesAt) && Carbon::parse((string) $closesAt)->lte(now())) {
+            throw ValidationException::withMessages(['poll' => 'This poll is closed.']);
+        }
+
+        if (! $poll->audienceAllows($eligibility, $user)) {
+            throw ValidationException::withMessages(['poll' => 'Your account is not eligible to vote in this poll.']);
+        }
+    }
+
+    private function canonicalCmsPollOption(EditorialContent $poll, string $optionKey): string
+    {
+        $option = collect(data_get($poll->metadata, 'options', []))
+            ->values()
+            ->map(fn (mixed $label, int $index): array => [
+                'key' => 'option-'.($index + 1),
+                'label' => trim((string) $label),
+            ])
+            ->firstWhere('key', $optionKey);
+
+        if (! is_array($option) || $option['label'] === '') {
+            throw ValidationException::withMessages(['option_key' => 'Choose a valid poll option.']);
+        }
+
+        return $option['label'];
+    }
+
+    private function canonicalFallbackPollOption(User $user, string $pollKey, string $optionKey): string
+    {
+        if (! EntitlementMatrix::canUseRoyalFeature($user)) {
+            throw ValidationException::withMessages(['poll' => 'Royal Pass is required to vote in this poll.']);
+        }
+
+        $poll = $this->fallbackPoll();
+        $configuredKey = $this->normalizeKey((string) ($poll['key'] ?? $poll['question'] ?? ''));
+        abort_unless($poll !== [] && $configuredKey === $pollKey, 404);
+
+        $option = collect($poll['options'] ?? [])->first(function (mixed $option) use ($optionKey): bool {
+            return is_array($option)
+                && $this->normalizeKey((string) ($option['key'] ?? $option['label'] ?? '')) === $optionKey;
+        });
+
+        if (! is_array($option)) {
+            throw ValidationException::withMessages(['option_key' => 'Choose a valid poll option.']);
+        }
+
+        return (string) ($option['label'] ?? $optionKey);
     }
 
     /**
@@ -518,7 +600,30 @@ class CommunityInteractionService
             'total_votes' => $totalVotes,
             'total_votes_label' => number_format($totalVotes).' total votes',
             'vote_endpoint' => route('community.polls.vote', $pollKey),
+            'can_vote' => $this->canVoteInPoll($user, $source),
         ];
+    }
+
+    /** @param array<string, mixed> $source */
+    private function canVoteInPoll(?User $user, array $source): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        if (filled($source['closes_at'] ?? null) && Carbon::parse((string) $source['closes_at'])->lte(now())) {
+            return false;
+        }
+
+        $eligibility = VisibilityAudience::tryFrom((string) ($source['eligibility'] ?? 'royal'))
+            ?? VisibilityAudience::Royal;
+
+        return match ($eligibility) {
+            VisibilityAudience::Open, VisibilityAudience::Member => true,
+            VisibilityAudience::Royal => EntitlementMatrix::canUseRoyalFeature($user),
+            VisibilityAudience::Purchased => isset($source['content_id'])
+                && (EditorialContent::query()->find($source['content_id'])?->hasPurchasedAccess($user) ?? false),
+        };
     }
 
     /**

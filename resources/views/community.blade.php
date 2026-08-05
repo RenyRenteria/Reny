@@ -2,6 +2,7 @@
     $community = $community ?? [];
     $communityPosts = $community['posts'] ?? [];
     $communityPoll = $community['poll'] ?? null;
+    $canVoteOnPoll = (bool) ($communityPoll['can_vote'] ?? false);
     $pageSettings = $publicCms['page'] ?? [];
     $liveChat = $community['live_chat'] ?? [];
     $canUseCommunityActions = (bool) ($community['can_use_actions'] ?? false);
@@ -93,6 +94,7 @@
                         <div class="community-welcome-card">
                             <p>{{ $pageSettings['eyebrow'] ?? 'Comunidad oficial' }}</p>
                             <h1>{!! nl2br(e($pageSettings['title'] ?? 'Directo de Reny. Cerca de la comunidad.')) !!}</h1>
+                            <strong>{{ $pageSettings['subtitle'] ?? 'Posts, polls and live conversation' }}</strong>
                             <span>{{ $pageSettings['description'] ?? '' }}</span>
                             @if (filled($pageSettings['cover_url'] ?? null))
                                 <img class="public-page-cover" src="{{ $pageSettings['cover_url'] }}" alt="{{ $pageSettings['cover_alt'] ?? '' }}">
@@ -118,7 +120,7 @@
                                 </div>
                                 <div class="poll-options">
                                     @foreach ($communityPoll['options'] as $option)
-                                        @if ($canUseCommunityActions && empty($communityPoll['user_vote']))
+                                        @if ($canVoteOnPoll && empty($communityPoll['user_vote']))
                                             <button
                                                 class="poll-option"
                                                 type="button"
@@ -130,14 +132,14 @@
                                                 <span class="poll-meter"><span style="width: {{ $option['percent'] }}%"></span></span>
                                             </button>
                                         @else
-                                            <a class="poll-option @if (($communityPoll['user_vote'] ?? null) === $option['key']) is-voted @endif" href="{{ $canUseCommunityActions ? '#' : $communityGateHref }}" data-percent="{{ $option['percent'] }}" @if ($canUseCommunityActions) aria-disabled="true" @endif>
+                                            <a class="poll-option @if (($communityPoll['user_vote'] ?? null) === $option['key']) is-voted @endif" href="{{ $canVoteOnPoll ? '#' : $communityGateHref }}" data-percent="{{ $option['percent'] }}" @if ($canVoteOnPoll) aria-disabled="true" @endif>
                                                 <span class="poll-option-top"><span>{{ $option['label'] }}</span><strong>{{ $option['percent'] }}%</strong></span>
                                                 <span class="poll-meter"><span style="width: {{ $option['percent'] }}%"></span></span>
                                             </a>
                                         @endif
                                     @endforeach
                                 </div>
-                                @if (! $canUseCommunityActions)<small>{{ $communityGateCta }} to vote</small>@endif
+                                @if (! $canVoteOnPoll)<small>{{ $communityGateCta }} to vote</small>@endif
                             </section>
                         @endif
 

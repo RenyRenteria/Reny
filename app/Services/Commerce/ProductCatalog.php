@@ -4,6 +4,7 @@ namespace App\Services\Commerce;
 
 use App\Enums\ContentType;
 use App\Enums\EditorialStatus;
+use App\Enums\MediaAssetType;
 use App\Models\EditorialContent;
 use App\Models\MediaAsset;
 use App\Models\User;
@@ -97,7 +98,7 @@ class ProductCatalog
         $key = trim((string) ($content->purchase_key ?: $requestedKey));
         $currency = strtoupper((string) data_get($content->metadata, 'currency', 'USD'));
 
-        if ($key === '' || preg_match('/^[A-Z]{3}$/', $currency) !== 1) {
+        if ($key === '' || $currency !== 'USD') {
             return null;
         }
 
@@ -333,12 +334,17 @@ class ProductCatalog
             ->filter()
             ->first();
 
-        $asset = $content->mediaAssets
+        $assets = $content->mediaAssets->filter(fn (MediaAsset $asset): bool => in_array(
+            $asset->type,
+            [MediaAssetType::Image, MediaAssetType::Thumbnail],
+            true,
+        ));
+        $asset = $assets
             ->when($assetId, fn (Collection $assets): Collection => $assets->where('id', (int) $assetId))
             ->first();
 
         if (! $asset instanceof MediaAsset) {
-            $asset = $content->mediaAssets->first();
+            $asset = $assets->first();
         }
 
         return $asset;
@@ -384,11 +390,13 @@ class ProductCatalog
                 ?? data_get($content->metadata, 'available_until')
                 ?? data_get($content->metadata, 'closes_at');
 
-            if (filled($availableFrom) && Carbon::parse((string) $availableFrom)->gt($now)) {
+            $timezone = config('admin.publishing_timezone', 'America/Panama');
+
+            if (filled($availableFrom) && Carbon::parse((string) $availableFrom, $timezone)->gt($now)) {
                 return false;
             }
 
-            if (filled($availableUntil) && Carbon::parse((string) $availableUntil)->lte($now)) {
+            if (filled($availableUntil) && Carbon::parse((string) $availableUntil, $timezone)->lte($now)) {
                 return false;
             }
         } catch (Throwable) {

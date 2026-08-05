@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\ContentType;
+use App\Enums\MediaAssetType;
 use App\Models\EditorialContent;
 use App\Models\MediaAsset;
 use App\Models\SitePageSetting;
@@ -343,6 +344,11 @@ class StorefrontSettingsService
         $assetId = (int) ($slot['image_asset_id'] ?? 0);
         $asset = $album->relationLoaded('mediaAssets')
             ? $album->mediaAssets
+                ->filter(fn (MediaAsset $asset): bool => in_array(
+                    $asset->type,
+                    [MediaAssetType::Image, MediaAssetType::Thumbnail],
+                    true,
+                ))
                 ->when($assetId > 0, fn (Collection $assets): Collection => $assets->where('id', $assetId))
                 ->first()
             : null;
@@ -405,7 +411,13 @@ class StorefrontSettingsService
         $product = $this->products->forContent($content);
         $isRsvp = $content->type === ContentType::Event
             && data_get($content->metadata, 'ticketing_mode') === 'rsvp';
-        $asset = $content->relationLoaded('mediaAssets') ? $content->mediaAssets->first() : null;
+        $asset = $content->relationLoaded('mediaAssets')
+            ? $content->mediaAssets->first(fn (MediaAsset $asset): bool => in_array(
+                $asset->type,
+                [MediaAssetType::Image, MediaAssetType::Thumbnail],
+                true,
+            ))
+            : null;
         $requestedAction = (string) data_get($content->metadata, 'action_type', $isRsvp ? 'rsvp' : 'buy');
         $actionType = match (true) {
             $requestedAction === 'link' && filled(data_get($content->metadata, 'action_url')) => 'link',

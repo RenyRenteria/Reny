@@ -49,7 +49,7 @@ Close issue #202 in one PR by making the existing editorial domain the source of
 
 ## Verification record
 
-- Laravel integration and contract suite: 309 tests passing with 3,214 assertions, including end-to-end HTTP lifecycle coverage for Video, Poll, Product, Event, page settings, album reassignment, and media replacement/reference safety.
+- Laravel integration and contract suite: 309 tests passing with 3,226 assertions, including end-to-end HTTP lifecycle coverage for Video, Poll, Product, Event, page settings, album reassignment, and media replacement/reference safety.
 - JavaScript suite: 7 tests passing.
 - Vite production build: passing.
 - Pint: passing.
