@@ -81,6 +81,8 @@
                     </article>
                 </section>
             </main>
+
+            <x-public-navigation mobile />
         </div>
     </body>
 </html>

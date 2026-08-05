@@ -4,6 +4,17 @@
     'extraClass' => '',
 ])
 
+@php
+    $viewer = request()->attributes->get('site_editor_guest_preview', false) ? null : auth()->user();
+    $mobileAccountState = $mobile ? \App\Support\AccountStateView::for($viewer) : null;
+    $mobileAccountLabel = $viewer ? 'Account' : 'Sign in';
+    $mobileAccountStatus = ! $viewer
+        ? 'Guest'
+        : ($viewer->hasRoyalAccess() || $viewer->isStaff() ? 'Royal' : 'Logged in');
+    $mobileAccountUrl = $viewer ? route('account.show') : route('login');
+    $mobileAccountIsActive = request()->routeIs('account.*', 'login', 'register', 'password.*');
+@endphp
+
 <nav class="{{ trim(($mobile ? 'mobile-bottom-nav' : 'tabs').' '.$extraClass) }}" aria-label="{{ $mobile ? 'Mobile menu' : 'Main menu' }}">
     <a @class(['tab' => ! $mobile, 'is-active' => $active === 'royals']) href="{{ url('/community') }}"@if ($active === 'royals') aria-current="page"@endif>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
@@ -43,4 +54,24 @@
         </svg>
         <span @class(['sr-only' => $mobile])>Store</span>
     </a>
+    @if ($mobile)
+        <a
+            @class(['mobile-nav-account', 'account-action', 'is-active' => $mobileAccountIsActive])
+            href="{{ $mobileAccountUrl }}"
+            aria-label="{{ $mobileAccountLabel }} — {{ $mobileAccountStatus }}"
+            data-access-state="{{ $mobileAccountState['state'] }}"
+            data-analytics-id="mobile_{{ $viewer ? 'account' : 'sign_in' }}"
+            data-analytics-type="mobile_navigation"
+            @if ($mobileAccountIsActive) aria-current="page" @endif
+        >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                <circle cx="12" cy="8" r="4"></circle>
+                <path d="M4.5 21a7.5 7.5 0 0 1 15 0"></path>
+            </svg>
+            <span class="mobile-nav-account-copy" aria-hidden="true">
+                <span class="mobile-nav-account-label">{{ $mobileAccountLabel }}</span>
+                <span class="mobile-nav-account-status">{{ $mobileAccountStatus }}</span>
+            </span>
+        </a>
+    @endif
 </nav>
