@@ -96,3 +96,18 @@ test('SPA navigation removes optional metadata that is absent from the destinati
     assert.equal(currentDocument.head.querySelector('meta[property="og:image"]'), null);
     assert.equal(currentDocument.head.querySelector('meta[name="twitter:image"]'), null);
 });
+
+test('SPA navigation loads the DM Sans stylesheet required by the destination page', () => {
+    const selector = 'link[rel="stylesheet"][href*="fonts.googleapis.com/css2?family=DM+Sans"]';
+    const currentDocument = createDocument({});
+    const nextDocument = createDocument({
+        [selector]: ['href', 'https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap'],
+    });
+
+    syncPublicPageHead(nextDocument, currentDocument);
+
+    assert.equal(
+        currentDocument.head.querySelector(selector)?.getAttribute('href'),
+        nextDocument.head.querySelector(selector)?.getAttribute('href'),
+    );
+});

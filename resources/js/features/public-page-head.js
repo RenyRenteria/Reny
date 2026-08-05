@@ -1,5 +1,6 @@
 const publicPageHeadElements = [
     ['link[rel="canonical"]', 'href'],
+    ['link[rel="stylesheet"][href*="fonts.googleapis.com/css2?family=DM+Sans"]', 'href'],
     ['meta[name="description"]', 'content'],
     ['meta[property="og:type"]', 'content'],
     ['meta[property="og:title"]', 'content'],
