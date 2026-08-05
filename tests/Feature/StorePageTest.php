@@ -168,6 +168,10 @@ class StorePageTest extends TestCase
 
         $response
             ->assertOk()
+            ->assertSee('class="golden-stage-page checkout-page"', false)
+            ->assertSee('class="store-shell home-shell golden-stage-shell checkout-stage-shell"', false)
+            ->assertSee(asset('images/reny-renteria-logo-white.png'), false)
+            ->assertSee('class="stage-lights"', false)
             ->assertSee('Festival de la Rosa Dorada')
             ->assertSee('Rock &amp; Folk Pty, Ciudad de Panama', false)
             ->assertSee('Dec 16, 2026 - 7:30 PM')

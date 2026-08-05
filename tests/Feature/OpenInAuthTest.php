@@ -13,18 +13,29 @@ class OpenInAuthTest extends TestCase
 
     public function test_auth_routes_render_open_in_screens(): void
     {
-        $this->get('/login')
+        $login = $this->get('/login')
             ->assertOk()
             ->assertSee('Sign in')
-            ->assertSee('Email or phone');
+            ->assertSee('Email or phone')
+            ->assertSee('class="golden-stage-page auth-page"', false)
+            ->assertSee('class="auth-shell home-shell auth-stage-shell"', false)
+            ->assertSee(asset('images/reny-renteria-logo-white.png'), false)
+            ->assertSee('class="stage-lights"', false);
 
-        $this->get('/register')
+        $register = $this->get('/register')
             ->assertOk()
             ->assertSee('Create account')
             ->assertSee('Public username')
             ->assertSee('Country')
             ->assertSee('brand-link-centered', false)
+            ->assertSee('class="golden-stage-page auth-page"', false)
+            ->assertSee('class="auth-shell home-shell auth-stage-shell"', false)
+            ->assertSee(asset('images/reny-renteria-logo-white.png'), false)
+            ->assertSee('class="stage-lights"', false)
             ->assertDontSee('Open access');
+
+        $this->assertSame(3, substr_count($login->getContent(), 'stage-light stage-light--'));
+        $this->assertSame(3, substr_count($register->getContent(), 'stage-light stage-light--'));
 
         $this->get('/forgot-password')
             ->assertOk()
