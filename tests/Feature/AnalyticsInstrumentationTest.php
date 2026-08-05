@@ -22,6 +22,7 @@ class AnalyticsInstrumentationTest extends TestCase
             '/login' => 'auth_login',
             '/register' => 'auth_register',
             '/forgot-password' => 'auth_forgot_password',
+            '/reset-password/test-token?email=test@example.com' => 'auth_reset_password',
         ];
 
         foreach ($screens as $path => $screen) {
@@ -77,6 +78,7 @@ class AnalyticsInstrumentationTest extends TestCase
             'auth_login_started',
             'auth_register_started',
             'auth_password_recovery_started',
+            'auth_password_reset_started',
             'account_navigation_clicked',
             'account_viewed',
             'access_state',

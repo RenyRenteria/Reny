@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Support\SecurityRateLimits;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -25,7 +26,7 @@ class AuthenticatedSessionController extends Controller
         ]);
 
         $identifier = trim($credentials['identifier']);
-        $phone = $this->normalizePhone($identifier);
+        $phone = SecurityRateLimits::normalizePhone($identifier);
 
         $user = User::query()
             ->where('email', strtolower($identifier))
@@ -40,6 +41,10 @@ class AuthenticatedSessionController extends Controller
 
         Auth::login($user, $request->boolean('remember'));
         $request->session()->regenerate();
+        SecurityRateLimits::clearNamed(
+            SecurityRateLimits::PUBLIC_LOGIN,
+            SecurityRateLimits::publicLoginKey($request),
+        );
 
         return redirect()
             ->intended(route('account.show'))
@@ -54,10 +59,5 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerateToken();
 
         return redirect()->route('home');
-    }
-
-    private function normalizePhone(string $value): string
-    {
-        return preg_replace('/\D+/', '', $value) ?? '';
     }
 }
