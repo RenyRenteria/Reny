@@ -834,12 +834,18 @@
     }
 
     .account-stage-shell .account-event-row {
-        margin-inline: -1.25rem;
-        padding-inline: 1.25rem;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        overflow-x: visible;
+        margin-inline: 0;
+        padding: 0;
+        scroll-snap-type: none;
     }
 
     .account-stage-shell .account-event-group {
-        flex-basis: min(21rem, 86vw);
+        width: 100%;
+        flex-basis: auto;
+        scroll-snap-align: none;
     }
 
     .checkout-page .store-dialog,
@@ -904,8 +910,8 @@
     }
 
     .account-stage-shell .account-event-row {
-        margin-inline: -1rem;
-        padding-inline: 1rem;
+        margin-inline: 0;
+        padding-inline: 0;
     }
 
     .account-stage-shell .account-avatar-button {
