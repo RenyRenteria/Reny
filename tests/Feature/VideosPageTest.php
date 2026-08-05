@@ -73,4 +73,80 @@ class VideosPageTest extends TestCase
         $response->assertDontSee('Performances videos');
         $response->assertDontSee('Behind the scenes');
     }
+
+    public function test_video_cards_escape_cms_text_once_and_preserve_utf8(): void
+    {
+        EditorialContent::factory()->published()->create([
+            'type' => ContentType::Video->value,
+            'title' => 'Canción & "Sol" <script>alert("xss-156")</script>',
+            'summary' => 'Tu Mañana <img src=x onerror="alert(1)"> & café',
+            'metadata' => [
+                'youtube_url' => 'https://www.youtube.com/watch?v=abc12345678',
+                'category' => 'music-video',
+            ],
+        ]);
+
+        $response = $this->get('/videos');
+
+        $response->assertOk();
+        $response->assertSee(
+            '<h4>Canción &amp; &quot;Sol&quot; &lt;script&gt;alert(&quot;xss-156&quot;)&lt;/script&gt;</h4>',
+            false,
+        );
+        $response->assertSee(
+            '<p>Tu Mañana &lt;img src=x onerror=&quot;alert(1)&quot;&gt; &amp; café</p>',
+            false,
+        );
+        $response->assertSee(
+            'data-youtube-title="Reny Renteria - Canción &amp; &quot;Sol&quot; alert(&quot;xss-156&quot;)"',
+            false,
+        );
+        $response->assertSee(
+            'data-analytics-label="Canción &amp; &quot;Sol&quot; alert(&quot;xss-156&quot;)"',
+            false,
+        );
+        $response->assertSee(
+            'aria-label="Play Reny Renteria - Canción &amp; &quot;Sol&quot; alert(&quot;xss-156&quot;)"',
+            false,
+        );
+        $response->assertDontSee('&amp;amp;', false);
+        $response->assertDontSee('<script>alert("xss-156")</script>', false);
+        $response->assertDontSee('<img src=x onerror="alert(1)">', false);
+    }
+
+    public function test_playlist_cards_escape_cms_text_once_and_preserve_utf8(): void
+    {
+        EditorialContent::factory()->published()->create([
+            'type' => ContentType::Video->value,
+            'title' => 'Sesión & "Música" <script>alert("playlist")</script>',
+            'summary' => 'Conversación <b>en vivo</b> & café',
+            'metadata' => [
+                'youtube_url' => 'https://example.com/not-a-video',
+                'category' => 'series',
+            ],
+        ]);
+
+        $response = $this->get('/videos');
+
+        $response->assertOk();
+        $response->assertSee(
+            '<h4>Sesión &amp; &quot;Música&quot; &lt;script&gt;alert(&quot;playlist&quot;)&lt;/script&gt;</h4>',
+            false,
+        );
+        $response->assertSee(
+            '<p>Conversación &lt;b&gt;en vivo&lt;/b&gt; &amp; café</p>',
+            false,
+        );
+        $response->assertSee(
+            'data-youtube-title="Sesión &amp; &quot;Música&quot; alert(&quot;playlist&quot;)"',
+            false,
+        );
+        $response->assertSee(
+            'data-analytics-label="Sesión &amp; &quot;Música&quot; alert(&quot;playlist&quot;)"',
+            false,
+        );
+        $response->assertDontSee('&amp;amp;', false);
+        $response->assertDontSee('<script>alert("playlist")</script>', false);
+        $response->assertDontSee('<b>en vivo</b>', false);
+    }
 }

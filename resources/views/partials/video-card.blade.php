@@ -2,7 +2,7 @@
     $youtubeId = $video['id'] ?? null;
     $title = $video['title'] ?? 'Untitled video';
     $meta = $video['meta'] ?? 'Video';
-    $safeTitle = e(strip_tags(html_entity_decode($title)));
+    $plainTitle = strip_tags((string) $title);
     $externalUrl = $video['external_url'] ?? ($youtubeId ? "https://www.youtube.com/watch?v={$youtubeId}" : null);
     $playState = $video['play_state'] ?? ($youtubeId ? 'ready' : 'unavailable');
 @endphp
@@ -16,11 +16,11 @@
             @if ($youtubeId) data-youtube-id="{{ $youtubeId }}" @endif
             @if ($externalUrl) data-youtube-url="{{ $externalUrl }}" @endif
             @if (! empty($video['url'])) data-detail-url="{{ $video['url'] }}" @endif
-            data-youtube-title="Reny Renteria - {{ $safeTitle }}"
+            data-youtube-title="Reny Renteria - {{ $plainTitle }}"
             data-video-state="{{ $playState }}"
             data-analytics-type="video"
-            data-analytics-label="{{ $safeTitle }}"
-            aria-label="{{ $youtubeId ? 'Play' : 'Open unavailable video state for' }} Reny Renteria - {{ $safeTitle }}"
+            data-analytics-label="{{ $plainTitle }}"
+            aria-label="{{ $youtubeId ? 'Play' : 'Open unavailable video state for' }} Reny Renteria - {{ $plainTitle }}"
         >
             @if ($youtubeId)
                 <img
@@ -42,8 +42,8 @@
             @endif
         </noscript>
     </div>
-    <h4>{!! $title !!}</h4>
-    <p>{!! $meta !!}</p>
+    <h4>{{ $title }}</h4>
+    <p>{{ $meta }}</p>
     @if ($externalUrl)
         <a
             class="video-card-external"
@@ -51,7 +51,7 @@
             target="_blank"
             rel="noreferrer"
             data-analytics-type="video"
-            data-analytics-label="{{ $safeTitle }}"
+            data-analytics-label="{{ $plainTitle }}"
         >YouTube</a>
     @elseif ($playState !== 'ready')
         <span class="video-card-state">Unavailable</span>
