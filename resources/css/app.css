@@ -43,6 +43,8 @@
 @import './features/music-golden-stage.css';
 
 @import './features/golden-stage-access-commerce.css';
+
+@import './features/store-golden-stage.css';
 .public-page-intro {
     display: grid;
     gap: 0.45rem;

@@ -1,0 +1,371 @@
+/* Golden Stage reskin for the CMS-backed Shows and Store pages. */
+.store-stage-page {
+    color: var(--home-cream);
+}
+
+.store-stage-shell .store-stage-main {
+    width: 100%;
+    max-width: 92rem;
+    padding: clamp(2rem, 5vw, 4.25rem) clamp(1.5rem, 5vw, 5.5rem) 8rem clamp(1.5rem, 4vw, 4rem);
+    color: var(--home-cream);
+}
+
+.store-stage-stack {
+    display: flex;
+    width: min(100%, 52rem);
+    flex-direction: column;
+    margin-inline: auto;
+    gap: 1.5rem;
+}
+
+.store-stage-stack > [data-royal-pass-banner] {
+    order: 0;
+    width: 100%;
+    margin: 0;
+}
+
+.store-stage-shell .public-page-intro,
+.store-stage-shell .storefront {
+    position: relative;
+    isolation: isolate;
+    width: 100%;
+}
+
+.store-stage-shell .public-page-intro {
+    overflow: hidden;
+    margin: 0;
+    padding: clamp(1.25rem, 3vw, 1.75rem);
+    border: 1px solid rgba(255, 228, 153, 0.5);
+    border-radius: 1.2rem;
+    background:
+        radial-gradient(circle at 100% 0, rgba(231, 170, 81, 0.18), transparent 36%),
+        linear-gradient(145deg, rgba(23, 17, 11, 0.98), rgba(43, 31, 20, 0.94));
+    box-shadow: 0 1.5rem 3.75rem rgba(74, 41, 7, 0.24), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+    color: var(--home-cream);
+    gap: 0.55rem;
+}
+
+.store-stage-shell .public-page-intro::before,
+.store-stage-shell .storefront::before {
+    position: absolute;
+    z-index: 1;
+    top: 0;
+    right: 0;
+    left: 0;
+    height: 0.28rem;
+    background: linear-gradient(90deg, var(--home-gold-deep), var(--home-gold-light), var(--home-gold-bright), var(--home-gold-deep));
+    background-size: 200% 100%;
+    content: "";
+    pointer-events: none;
+    animation: home-section-line 8s linear infinite;
+}
+
+.store-stage-shell .public-page-intro > * {
+    position: relative;
+    z-index: 2;
+}
+
+.store-stage-shell .public-page-intro p {
+    color: var(--home-gold-light);
+    font-size: 0.75rem;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.store-stage-shell .public-page-intro h1 {
+    background: linear-gradient(110deg, var(--home-gold-warm), var(--home-gold-light), var(--home-cream));
+    background-clip: text;
+    color: var(--home-cream);
+    font-size: clamp(2.6rem, 6vw, 4.5rem);
+    font-weight: 900;
+    letter-spacing: -0.045em;
+    line-height: 0.94;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.store-stage-shell .public-page-intro strong {
+    color: var(--home-cream);
+    font-size: clamp(1rem, 2vw, 1.2rem);
+    font-weight: 800;
+}
+
+.store-stage-shell .public-page-intro span {
+    color: var(--home-cream-muted);
+    font-size: 0.95rem;
+    font-weight: 500;
+    line-height: 1.55;
+}
+
+.store-stage-shell .public-page-intro img {
+    width: 100%;
+    max-height: 22rem;
+    overflow: hidden;
+    border: 1px solid rgba(255, 228, 153, 0.3);
+    border-radius: 0.9rem;
+    object-fit: cover;
+}
+
+.store-stage-shell .storefront {
+    overflow: hidden;
+    padding: 1.5rem;
+    border: 1px solid rgba(255, 228, 153, 0.5);
+    border-radius: 1.2rem;
+    background:
+        radial-gradient(circle at 100% 0, rgba(231, 170, 81, 0.14), transparent 30%),
+        linear-gradient(145deg, rgba(23, 17, 11, 0.98), rgba(43, 31, 20, 0.94));
+    box-shadow: 0 1.5rem 3.75rem rgba(74, 41, 7, 0.22), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.store-stage-shell .storefront-grid {
+    position: relative;
+    z-index: 2;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 0;
+    gap: 1.25rem;
+}
+
+.store-stage-shell #shows .storefront-grid {
+    grid-template-columns: 1fr;
+}
+
+.store-stage-shell .storefront-card {
+    position: relative;
+    overflow: hidden;
+    min-width: 0;
+    padding: 0.75rem;
+    border: 1px solid rgba(255, 228, 153, 0.24);
+    border-radius: 0.9rem;
+    background: linear-gradient(135deg, rgba(255, 228, 153, 0.075), rgba(231, 165, 81, 0.025));
+    color: var(--home-cream);
+    box-shadow: 0 0.9rem 2rem rgba(0, 0, 0, 0.16);
+    transition: border-color 220ms ease, box-shadow 220ms ease, transform 220ms ease;
+}
+
+.store-stage-shell .storefront-card:hover {
+    border-color: rgba(255, 228, 153, 0.46);
+    box-shadow: 0 1.15rem 2.4rem rgba(0, 0, 0, 0.22), 0 0 1.5rem rgba(231, 170, 81, 0.08);
+    transform: translateY(-0.12rem);
+}
+
+.store-stage-shell #shows .storefront-card {
+    grid-template-columns: 11rem minmax(0, 1fr);
+    align-items: center;
+    gap: 1.25rem;
+}
+
+.store-stage-shell .storefront-image {
+    overflow: hidden;
+    border: 1px solid rgba(255, 228, 153, 0.26);
+    border-radius: 0.72rem;
+    background: linear-gradient(135deg, rgba(255, 248, 229, 0.96), rgba(231, 165, 81, 0.44));
+    box-shadow: 0 0.75rem 1.75rem rgba(0, 0, 0, 0.18);
+    transition: filter 260ms ease, transform 260ms ease;
+}
+
+.store-stage-shell .storefront-card.is-event .storefront-image,
+.store-stage-shell .storefront-card.is-product .storefront-image {
+    aspect-ratio: 1;
+    object-fit: cover;
+}
+
+.store-stage-shell .storefront-card:hover .storefront-image {
+    filter: saturate(1.08) contrast(1.03);
+    transform: scale(1.012);
+}
+
+.store-stage-shell .storefront-copy {
+    align-content: start;
+    justify-items: start;
+    min-width: 0;
+    padding: 1rem 0.25rem 0.25rem;
+    gap: 0.32rem;
+}
+
+.store-stage-shell #shows .storefront-copy {
+    padding: 0.5rem 0.75rem 0.5rem 0;
+}
+
+.store-stage-shell .storefront-copy > span {
+    color: var(--home-gold-light);
+    font-size: 0.7rem;
+    font-weight: 900;
+    letter-spacing: 0.1em;
+    line-height: 1.2;
+    text-transform: uppercase;
+}
+
+.store-stage-shell .storefront-copy h2 {
+    margin: 0.1rem 0 0.15rem;
+    color: var(--home-cream);
+    font-size: clamp(1.15rem, 2.3vw, 1.45rem);
+    font-weight: 900;
+    letter-spacing: -0.025em;
+    line-height: 1.05;
+}
+
+.store-stage-shell .storefront-copy p {
+    margin: 0;
+    color: var(--home-cream-muted);
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.45;
+}
+
+.store-stage-shell .storefront-price {
+    margin-top: 0.25rem;
+    color: var(--home-cream);
+    font-size: 1rem;
+    font-weight: 900;
+    line-height: 1.2;
+}
+
+.store-stage-shell .storefront-action-row {
+    width: 100%;
+    align-items: center;
+    margin-top: 0.65rem;
+    gap: 0.6rem;
+}
+
+.store-stage-shell .storefront-copy .store-button,
+.store-stage-page .store-dialog .store-button {
+    display: inline-flex;
+    min-width: 9.125rem;
+    min-height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    padding: 0 1rem;
+    border: 1px solid rgba(255, 228, 153, 0.88);
+    border-radius: 0.72rem;
+    background: linear-gradient(110deg, var(--home-gold-deep), var(--home-gold-warm) 42%, var(--home-gold-light) 76%, var(--home-gold-bright));
+    background-size: 180% 100%;
+    box-shadow: 0 0.6rem 1.5rem rgba(91, 50, 8, 0.22), inset 0 1px rgba(255, 255, 255, 0.3);
+    color: var(--home-ink);
+    font-size: 0.78rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    animation: home-button-gold 8s ease-in-out infinite alternate;
+}
+
+.store-stage-shell .storefront-copy .store-button[aria-disabled="true"] {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.store-stage-shell .storefront-countdown {
+    min-height: 2.75rem;
+    padding: 0 0.75rem;
+    border-color: rgba(255, 228, 153, 0.34);
+    border-radius: 0.72rem;
+    background: rgba(23, 17, 11, 0.74);
+    color: var(--home-gold-light);
+    font-size: 0.7rem;
+    font-weight: 800;
+}
+
+.store-stage-shell .storefront-rsvp-status:not(.sr-only) {
+    color: var(--home-cream-muted);
+}
+
+.store-stage-page.has-modal-open .store-stage-shell,
+.store-stage-page.has-modal-open .store-stage-shell *,
+.store-stage-page.has-modal-open .store-stage-shell *::before,
+.store-stage-page.has-modal-open .store-stage-shell *::after {
+    animation-play-state: paused !important;
+}
+
+@media (max-width: 53.75rem) {
+    .store-stage-shell .store-stage-main {
+        max-width: none;
+        padding: 0.75rem 0.7rem calc(6.35rem + env(safe-area-inset-bottom));
+    }
+
+    .store-stage-stack {
+        gap: 1rem;
+    }
+
+    .store-stage-stack > [data-royal-pass-banner] {
+        width: min(100%, 24.375rem);
+        margin-inline: auto;
+    }
+
+    .store-stage-shell .public-page-intro,
+    .store-stage-shell .storefront {
+        border-radius: 0.9rem;
+    }
+
+    .store-stage-shell .public-page-intro {
+        padding: 1.25rem;
+    }
+
+    .store-stage-shell .storefront {
+        padding: 1rem;
+    }
+
+    .store-stage-shell .public-page-intro::before,
+    .store-stage-shell .storefront::before {
+        display: none;
+    }
+
+    .store-stage-shell .storefront-grid {
+        padding-bottom: 0;
+        gap: 1rem;
+    }
+
+    .store-stage-shell .storefront-card:hover,
+    .store-stage-shell .storefront-card:hover .storefront-image {
+        transform: none;
+    }
+}
+
+@media (max-width: 38rem) {
+    .store-stage-shell .storefront-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .store-stage-shell #shows .storefront-card {
+        grid-template-columns: 7.5rem minmax(0, 1fr);
+        padding: 0.65rem;
+        gap: 0.75rem;
+    }
+
+    .store-stage-shell #shows .storefront-copy {
+        padding: 0.2rem 0.15rem 0.2rem 0;
+    }
+
+    .store-stage-shell .storefront-copy h2 {
+        font-size: 1.05rem;
+    }
+
+    .store-stage-shell .storefront-copy p {
+        font-size: 0.875rem;
+    }
+
+    .store-stage-shell #shows .storefront-action-row {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .store-stage-shell #shows .storefront-action-row .store-button,
+    .store-stage-shell #shows .storefront-countdown {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .store-stage-shell .storefront-card:not(.is-event) .store-button {
+        width: 100%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .store-stage-shell *,
+    .store-stage-shell *::before,
+    .store-stage-shell *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
