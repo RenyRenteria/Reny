@@ -239,8 +239,7 @@ class PhotoLibraryController extends Controller
         ];
 
         $validator = Validator::make($data, [
-            'album_title' => ['nullable', 'string', 'max:160'],
-            'album_description' => ['nullable', 'string', 'max:500'],
+            'album_id' => ['nullable', 'integer', Rule::exists('photo_albums', 'id')],
             'visibility' => ['nullable', 'array'],
             'visibility.*' => ['nullable', Rule::in(PhotoVisibility::values())],
             'captions' => ['nullable', 'array'],
@@ -259,8 +258,7 @@ class PhotoLibraryController extends Controller
 
         return [
             [
-                'album_title' => $validated['album_title'] ?? null,
-                'album_description' => $validated['album_description'] ?? null,
+                'album_id' => $validated['album_id'] ?? null,
                 'visibility' => $validated['visibility'] ?? [],
                 'captions' => $validated['captions'] ?? [],
             ],

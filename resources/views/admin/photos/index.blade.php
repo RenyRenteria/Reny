@@ -39,17 +39,18 @@
                 >
                     @csrf
 
-                    <div class="admin-form-grid admin-form-grid-wide">
-                        <label>
-                            <span>Titulo del album</span>
-                            <input name="album_title" type="text" maxlength="160" placeholder="Ej: Backstage Junio">
-                        </label>
-
-                        <label>
-                            <span>Descripcion</span>
-                            <input name="album_description" type="text" maxlength="500" placeholder="Contexto del carrete">
-                        </label>
-                    </div>
+                    <label>
+                        <span>Album existente</span>
+                        <select name="album_id">
+                            <option value="">Foto suelta</option>
+                            @foreach ($albums as $album)
+                                <option value="{{ $album->id }}" @selected((string) old('album_id') === (string) $album->id)>
+                                    {{ $album->title }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <small>Crea el album en Acciones rapidas y seleccionalo aqui antes de subir las fotos.</small>
+                    </label>
 
                     <label class="photo-dropzone" data-photo-dropzone>
                         <input

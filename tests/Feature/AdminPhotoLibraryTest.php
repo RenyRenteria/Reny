@@ -24,10 +24,14 @@ class AdminPhotoLibraryTest extends TestCase
         Storage::fake('public');
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
         $this->actingAsAdmin($admin);
+        $album = PhotoAlbum::create([
+            'title' => 'Backstage Junio',
+            'description' => 'Carrete del show',
+            'created_by_id' => $admin->id,
+        ]);
 
         $response = $this->post(route('cms.photos.upload'), [
-            'album_title' => 'Backstage Junio',
-            'album_description' => 'Carrete del show',
+            'album_id' => $album->id,
             'visibility' => [
                 0 => PhotoVisibility::Public->value,
                 1 => PhotoVisibility::MemberOnly->value,
@@ -48,7 +52,6 @@ class AdminPhotoLibraryTest extends TestCase
             ->assertJsonPath('photos.0.visibility', PhotoVisibility::Public->value)
             ->assertJsonPath('photos.1.visibility', PhotoVisibility::MemberOnly->value);
 
-        $album = PhotoAlbum::query()->where('title', 'Backstage Junio')->firstOrFail();
         $this->assertSame(2, $album->photos()->count());
 
         $publicPhoto = Photo::query()->where('caption', 'Public frame')->firstOrFail();
@@ -208,7 +211,6 @@ class AdminPhotoLibraryTest extends TestCase
             ->all();
 
         $this->post(route('cms.photos.upload'), [
-            'album_title' => 'Batch grande',
             'files' => $files,
         ], ['Accept' => 'application/json'])
             ->assertCreated()
@@ -330,6 +332,44 @@ class AdminPhotoLibraryTest extends TestCase
             'caption' => 'Preserved album photo',
         ]);
         $this->assertSame($photo->id, $target->fresh()->cover_photo_id);
+    }
+
+    public function test_uploader_assigns_photos_to_an_existing_album_without_creating_a_duplicate(): void
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $this->actingAsAdmin($admin);
+        $initialAlbumCount = PhotoAlbum::query()->count();
+
+        $this->post(route('admin.photos.albums.store'), [
+            'title' => 'Golden Tour',
+            'description' => 'Album creado desde Acciones rapidas.',
+        ])->assertRedirect();
+
+        $album = PhotoAlbum::query()->where('title', 'Golden Tour')->sole();
+
+        $this->get(route('admin.photos.index'))
+            ->assertOk()
+            ->assertSee('name="album_id"', false)
+            ->assertSee('value="'.$album->id.'"', false)
+            ->assertDontSee('name="album_title"', false);
+
+        $this->post(route('cms.photos.upload'), [
+            'album_id' => $album->id,
+            'album_title' => 'Golden Tour',
+            'files' => [
+                UploadedFile::fake()->image('golden-tour.jpg', 80, 60)->size(512),
+            ],
+        ], ['Accept' => 'application/json'])
+            ->assertCreated()
+            ->assertJsonPath('album_id', $album->id)
+            ->assertJsonPath('photos.0.album_id', $album->id);
+
+        $this->assertSame(1, PhotoAlbum::query()->where('title', 'Golden Tour')->count());
+        $this->assertSame($initialAlbumCount + 1, PhotoAlbum::query()->count());
+        $this->assertSame(1, $album->photos()->count());
+        $this->assertSame($album->photos()->value('id'), $album->fresh()->cover_photo_id);
     }
 
     private function actingAsAdmin(User $user): void
