@@ -28,61 +28,6 @@
     color: var(--royals-ink);
 }
 
-.royals-shell [data-royal-pass-banner] {
-    width: min(100%, 78.125rem);
-    min-height: 5.25rem;
-    margin-bottom: 1.25rem;
-    padding: 0.85rem 1rem 0.85rem 1.35rem;
-    border-radius: 1.1rem;
-}
-
-.royals-shell .home-royal-pass-selector {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    min-height: 3rem;
-    text-align: left;
-}
-
-.royals-shell .home-royal-pass-copy {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 0.15rem;
-}
-
-.royals-shell .home-royal-pass-heading {
-    color: var(--home-cream);
-    font-size: clamp(1.05rem, 2vw, 1.35rem);
-    font-weight: 600;
-    letter-spacing: -0.03em;
-}
-
-.royals-shell .home-royal-pass-description {
-    color: rgba(255, 248, 232, 0.72);
-    font-size: 0.76rem;
-}
-
-.royals-shell .home-royal-pass-images {
-    display: flex;
-    align-items: center;
-    padding-left: 1rem;
-}
-
-.royals-shell .home-royal-pass-images img {
-    width: 2.25rem;
-    border: 2px solid #7d0d21;
-    object-fit: cover;
-    aspect-ratio: 1;
-}
-
-.royals-shell .home-royal-pass-images img + img {
-    margin-left: -0.72rem;
-}
-
-.royals-shell .home-unlock-button {
-    min-width: 10rem;
-    min-height: 2.8rem;
-}
-
 .royals-shell .community-experience {
     grid-template-columns: minmax(0, 1fr) minmax(19rem, 22rem);
     width: min(100%, 78.125rem);
@@ -506,43 +451,6 @@
         border-radius: 0.6rem;
         background: rgba(255, 248, 232, 0.48);
         backdrop-filter: blur(1rem);
-    }
-
-    .royals-shell [data-royal-pass-banner] {
-        width: 100%;
-        min-height: 0;
-        padding: 0.95rem;
-        border-radius: 1rem;
-    }
-
-    .royals-shell .home-royal-pass-selector {
-        grid-template-columns: 1fr;
-        text-align: left;
-    }
-
-    .royals-shell .home-royal-pass-copy {
-        display: flex;
-        align-items: flex-start;
-    }
-
-    .royals-shell .home-royal-pass-heading,
-    .royals-shell .home-royal-pass-description {
-        margin-inline: 0;
-        text-align: left;
-    }
-
-    .royals-shell .home-royal-pass-images {
-        display: grid;
-        width: 100%;
-        padding-left: 0;
-    }
-
-    .royals-shell .home-royal-pass-images img {
-        width: 100%;
-    }
-
-    .royals-shell .home-royal-pass-images img + img {
-        margin-left: 0;
     }
 
     .royals-shell .community-mobile-tabs {

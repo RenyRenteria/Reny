@@ -1,6 +1,7 @@
 @props([
     'pass' => [],
     'images' => [],
+    'showImages' => true,
 ])
 
 @php
@@ -49,11 +50,13 @@
                 <span class="home-royal-pass-heading">Get your <strong>Royal Pass</strong></span>
                 <span class="home-royal-pass-description">to unlock access to our community.</span>
             </span>
-            <span class="home-royal-pass-images" aria-hidden="true">
-                @foreach ($royalImages as $image)
-                    <img src="{{ $image }}" alt="">
-                @endforeach
-            </span>
+            @if ($showImages && $royalImages->isNotEmpty())
+                <span class="home-royal-pass-images" aria-hidden="true">
+                    @foreach ($royalImages as $image)
+                        <img src="{{ $image }}" alt="">
+                    @endforeach
+                </span>
+            @endif
         </button>
         <button
             class="store-button home-unlock-button"

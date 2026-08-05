@@ -65,7 +65,7 @@
                     <span class="community-live-status"><span aria-hidden="true"></span> En vivo</span>
                 </header>
 
-                <x-royal-pass-banner />
+                <x-royal-pass-banner :show-images="false" />
 
                 <nav class="community-mobile-tabs" role="tablist" aria-label="Secciones de Royals" aria-orientation="horizontal">
                     <button
