@@ -14,6 +14,7 @@ import {
 import { initializePhotoInteractions } from './photos.js';
 import { initializeCommunityInteractions } from './community.js';
 import { initializeStoreInteractions } from './checkout.js';
+import { syncPublicPageHead } from './public-page-head.js';
 
 const publicPageRoot = () => document.querySelector('[data-public-page-root]');
 
@@ -73,6 +74,7 @@ const syncPublicPageFragments = (nextDocument) => {
     });
 
     updateHeadMeta(nextDocument, 'meta[name="csrf-token"]');
+    syncPublicPageHead(nextDocument);
     document.body.classList.remove('has-modal-open');
 };
 
