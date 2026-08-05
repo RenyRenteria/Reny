@@ -10,6 +10,8 @@ document.querySelectorAll('.auth-form').forEach((form) => {
         const action = new URL(form.action, window.location.href).pathname;
         const eventName = action.includes('register')
             ? 'auth_register_started'
+            : action.includes('reset-password')
+                ? 'auth_password_reset_submitted'
             : action.includes('forgot-password')
                 ? 'auth_password_recovery_started'
                 : 'auth_login_started';

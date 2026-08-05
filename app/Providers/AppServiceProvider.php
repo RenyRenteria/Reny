@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Services\CmsPreviewContext;
+use App\Support\SecurityRateLimitKeys;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -23,6 +24,22 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        RateLimiter::for('auth-login', function (Request $request) {
+            return Limit::perMinute(5)->by(SecurityRateLimitKeys::publicLogin($request));
+        });
+
+        RateLimiter::for('admin-login', function (Request $request) {
+            return Limit::perMinute(3)->by(SecurityRateLimitKeys::adminLogin($request));
+        });
+
+        RateLimiter::for('password-reset', function (Request $request) {
+            return Limit::perMinute(3)->by(SecurityRateLimitKeys::passwordReset($request));
+        });
+
+        RateLimiter::for('checkout', function (Request $request) {
+            return Limit::perMinute(20)->by(SecurityRateLimitKeys::checkout($request));
+        });
+
         RateLimiter::for('analytics-events', function (Request $request) {
             return Limit::perMinute(60)->by($request->ip() ?: 'anonymous');
         });
