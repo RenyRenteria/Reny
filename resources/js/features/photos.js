@@ -31,6 +31,27 @@ const photoLightboxElements = () => ({
     toast: document.getElementById('photoToast'),
 });
 
+const photoLightboxFocusable = () => [...(photoLightboxElements().layer?.querySelectorAll('button, [href], [tabindex]:not([tabindex="-1"])') || [])]
+    .filter((node) => !node.disabled && node.offsetParent !== null);
+
+const trapPhotoLightboxFocus = (event) => {
+    const focusable = photoLightboxFocusable();
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    if (!first || !last) {
+        return;
+    }
+
+    if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+    }
+};
+
 const showPhotoToast = (message) => {
     const { toast } = photoLightboxElements();
 
@@ -478,7 +499,9 @@ const initializePhotoInteractions = (root = document) => {
             return;
         }
 
-        if (event.key === 'Escape') {
+        if (event.key === 'Tab') {
+            trapPhotoLightboxFocus(event);
+        } else if (event.key === 'Escape') {
             closePhotoLightbox();
         } else if (event.key === 'ArrowLeft') {
             event.preventDefault();
