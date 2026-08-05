@@ -52,15 +52,17 @@
         <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body data-analytics-screen="music">
-        <div class="music-shell" data-public-page-root>
+    <body class="home-page music-page" data-analytics-screen="music">
+        <div class="music-shell home-shell music-stage-shell" data-public-page-root>
+            @include('partials.stage-lights')
+
             @include('partials.cms-preview-banner')
             <aside class="sidebar" aria-label="Primary navigation">
                 <div>
                     <a class="brand-link" href="/" aria-label="Reny Renteria home">
                         <img
                             class="brand-logo"
-                            src="{{ asset('images/reny-renteria-logo.png') }}"
+                            src="{{ asset('images/reny-renteria-logo-white.png') }}"
                             alt="Reny Renteria"
                         >
                     </a>
@@ -71,20 +73,20 @@
                 <x-member-card />
             </aside>
 
-            <main class="main-content" id="music-page">
-                <header class="mobile-header">
+            <main class="main-content music-stage-main" id="music-page">
+                <header class="mobile-header home-mobile-header music-mobile-header">
                     <div class="mobile-brand">
                         <a class="brand-link" href="/" aria-label="Reny Renteria home">
                             <img
                                 class="brand-logo"
-                                src="{{ asset('images/reny-renteria-logo.png') }}"
+                                src="{{ asset('images/reny-renteria-logo-white.png') }}"
                                 alt="Reny Renteria"
                             >
                         </a>
                     </div>
                 </header>
 
-                <x-royal-pass-banner />
+                <x-royal-pass-banner :show-images="false" />
 
                 <section class="tab-panel is-active" id="music" data-tab-panel="music">
                     <section class="hero" aria-label="Featured album">

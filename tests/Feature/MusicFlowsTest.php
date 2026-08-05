@@ -138,9 +138,13 @@ class MusicFlowsTest extends TestCase
 
     public function test_music_route_renders_banner_and_public_nav_targets_music(): void
     {
-        $this->get(route('music'))
+        $response = $this->get(route('music'))
             ->assertOk()
             ->assertSee('data-analytics-screen="music"', false)
+            ->assertSee('class="home-page music-page"', false)
+            ->assertSee('class="music-shell home-shell music-stage-shell"', false)
+            ->assertSee('class="stage-lights"', false)
+            ->assertSee('images/reny-renteria-logo-white.png', false)
             ->assertSee('Biggest')
             ->assertSee('Comeback Album!')
             ->assertSee('href="'.route('music').'"', false)
@@ -157,6 +161,8 @@ class MusicFlowsTest extends TestCase
             ->assertSee('preload="metadata"', false)
             ->assertSee('data-music-player-close', false)
             ->assertDontSee('id="musicPlayerDetail"', false);
+
+        $this->assertStringNotContainsString('class="home-royal-pass-images"', $response->getContent());
 
         foreach (['/videos', '/photos', '/community', '/store'] as $path) {
             $this->get($path)
@@ -198,6 +204,9 @@ class MusicFlowsTest extends TestCase
 
         $response
             ->assertOk()
+            ->assertSee('class="home-page music-page"', false)
+            ->assertSee('class="stage-lights"', false)
+            ->assertSee('images/reny-renteria-logo-white.png', false)
             ->assertSee('Full Album One')
             ->assertSee('class="cover-play-area"', false)
             ->assertDontSee('data-buy="deluxe"', false)
@@ -290,6 +299,9 @@ class MusicFlowsTest extends TestCase
         $response
             ->assertOk()
             ->assertSee('data-analytics-screen="album_detail"', false)
+            ->assertSee('class="home-page music-page"', false)
+            ->assertSee('class="stage-lights"', false)
+            ->assertSee('images/reny-renteria-logo-white.png', false)
             ->assertSee('class="album-detail-cover-button"', false)
             ->assertSee('Work in Progress')
             ->assertSee('First Song')
