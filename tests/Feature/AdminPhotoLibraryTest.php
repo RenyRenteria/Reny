@@ -73,6 +73,8 @@ class AdminPhotoLibraryTest extends TestCase
         $guestResponse->assertSee('data-photo-album-group="'.$album->id.'"', false);
         $guestResponse->assertSee('data-photo-layout="horizontal-album"', false);
         $guestResponse->assertSee('data-photo-royal-crown', false);
+        $guestResponse->assertSee('data-photo-slug="photo-'.$publicPhoto->id.'"', false);
+        $guestResponse->assertSee('data-photo-share-url="'.route('photos', ['photo' => 'photo-'.$memberPhoto->id]).'"', false);
         $guestResponse->assertSee(Storage::disk('public')->url($memberPhoto->blurred_path), false);
         $guestResponse->assertDontSee(route('photos.image.show', $memberPhoto), false);
 
