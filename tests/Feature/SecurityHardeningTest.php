@@ -139,14 +139,33 @@ class SecurityHardeningTest extends TestCase
     public function test_paypal_and_local_checkout_mutations_share_a_throttle_budget(): void
     {
         for ($attempt = 0; $attempt < 10; $attempt++) {
-            $this->postJson(route('checkout.paypal.orders'), [])->assertUnprocessable();
+            $this->postJson(route('checkout.paypal.orders'), [
+                'identifier' => 'FAN@example.com',
+            ])->assertUnprocessable();
         }
 
         for ($attempt = 0; $attempt < 10; $attempt++) {
-            $this->postJson(route('checkout.local'), [])->assertUnprocessable();
+            $this->postJson(route('checkout.local'), [
+                'identifier' => 'fan@example.com',
+            ])->assertUnprocessable();
         }
 
-        $this->postJson(route('checkout.paypal'), [])->assertTooManyRequests();
+        $this->postJson(route('checkout.paypal'), [
+            'identifier' => ' fan@EXAMPLE.COM ',
+        ])->assertTooManyRequests();
+    }
+
+    public function test_paypal_cancel_with_real_payload_shares_the_guest_checkout_budget(): void
+    {
+        for ($attempt = 0; $attempt < 20; $attempt++) {
+            $this->postJson(route('checkout.paypal.orders'), [
+                'identifier' => 'cancel-budget@example.com',
+            ])->assertUnprocessable();
+        }
+
+        $this->postJson(route('checkout.paypal.orders.cancel'), [
+            'paypal_order_id' => 'ORDER-NOT-FOUND',
+        ])->assertTooManyRequests();
     }
 
     public function test_authenticated_checkout_has_a_separate_budget_from_guest_checkout(): void

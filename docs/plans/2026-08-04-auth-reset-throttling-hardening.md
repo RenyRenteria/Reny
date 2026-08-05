@@ -17,7 +17,7 @@ Close the public auth, admin auth, password recovery, and checkout abuse gaps wi
 
 - Feature tests prove public login returns 429 after five attempts and a valid login clears previous failures.
 - Feature tests prove admin login returns 429 after three attempts, clears after success, and logs invalid/non-admin failures without raw email.
-- Feature tests prove PayPal and local checkout endpoints share a 20-request limiter and return 429 after the threshold.
+- Feature tests prove PayPal/local guest mutations share a 20-request identifier/IP limiter, including cancel requests that recover the opaque identity from the signed checkout session, and return 429 after the threshold.
 - Feature tests prove recovery works from email and phone, unknown accounts receive the same public response, reset tokens update the password, and reset-email requests are throttled.
 - Run focused auth/security tests, the full PHP suite, formatting, and browser smoke checks for the forgot/reset forms when a local runtime is available.
 
@@ -25,5 +25,5 @@ Close the public auth, admin auth, password recovery, and checkout abuse gaps wi
 
 - Named throttle middleware hashes cache keys internally. A shared helper computes the exact named key when clearing after success, with regression coverage around reset behavior.
 - Password recovery can leak account existence. Controller responses remain identical for known and unknown identifiers.
-- Checkout clients make multiple calls per purchase. A shared 20/minute customer/IP budget leaves room for create, cancel, and capture retries while limiting automated abuse.
+- Checkout clients make multiple calls per purchase. A shared 20/minute customer/IP budget leaves room for create, cancel, and capture retries; the signed session carries only an opaque identity hash so cancel cannot bypass the budget despite omitting the identifier.
 - Admin logs can expose personal data. Only a one-way email hash, IP, and failure reason are recorded; passwords and raw identifiers are never logged.
