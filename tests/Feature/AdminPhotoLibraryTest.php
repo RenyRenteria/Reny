@@ -24,10 +24,14 @@ class AdminPhotoLibraryTest extends TestCase
         Storage::fake('public');
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
         $this->actingAsAdmin($admin);
+        $album = PhotoAlbum::create([
+            'title' => 'Backstage Junio',
+            'description' => 'Carrete del show',
+            'created_by_id' => $admin->id,
+        ]);
 
         $response = $this->post(route('cms.photos.upload'), [
-            'album_title' => 'Backstage Junio',
-            'album_description' => 'Carrete del show',
+            'album_id' => $album->id,
             'visibility' => [
                 0 => PhotoVisibility::Public->value,
                 1 => PhotoVisibility::MemberOnly->value,
@@ -48,7 +52,6 @@ class AdminPhotoLibraryTest extends TestCase
             ->assertJsonPath('photos.0.visibility', PhotoVisibility::Public->value)
             ->assertJsonPath('photos.1.visibility', PhotoVisibility::MemberOnly->value);
 
-        $album = PhotoAlbum::query()->where('title', 'Backstage Junio')->firstOrFail();
         $this->assertSame(2, $album->photos()->count());
 
         $publicPhoto = Photo::query()->where('caption', 'Public frame')->firstOrFail();
@@ -208,7 +211,6 @@ class AdminPhotoLibraryTest extends TestCase
             ->all();
 
         $this->post(route('cms.photos.upload'), [
-            'album_title' => 'Batch grande',
             'files' => $files,
         ], ['Accept' => 'application/json'])
             ->assertCreated()
@@ -273,6 +275,101 @@ class AdminPhotoLibraryTest extends TestCase
         foreach ($paths as [$disk, $path]) {
             Storage::disk($disk)->assertMissing($path);
         }
+    }
+
+    public function test_admin_can_manage_album_metadata_cover_order_and_safe_reassignment(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $this->actingAsAdmin($admin);
+
+        $this->post(route('admin.photos.albums.store'), [
+            'title' => 'Issue 202 Source Album',
+            'description' => 'Original album metadata.',
+            'order_index' => 4,
+        ])->assertRedirect();
+        $this->post(route('admin.photos.albums.store'), [
+            'title' => 'Issue 202 Target Album',
+            'description' => 'Target album metadata.',
+            'order_index' => 1,
+        ])->assertRedirect();
+
+        $source = PhotoAlbum::query()->where('title', 'Issue 202 Source Album')->firstOrFail();
+        $target = PhotoAlbum::query()->where('title', 'Issue 202 Target Album')->firstOrFail();
+        $photo = Photo::create([
+            'album_id' => $source->id,
+            'visibility' => PhotoVisibility::Public->value,
+            'status' => PhotoStatus::Active->value,
+            'order_index' => 0,
+            'caption' => 'Preserved album photo',
+            'metadata' => ['source' => 'issue-202-test'],
+        ]);
+
+        $this->patch(route('admin.photos.albums.update', $source), [
+            'title' => 'Issue 202 Source Album Updated',
+            'description' => 'Updated album metadata.',
+            'order_index' => 2,
+            'cover_photo_id' => $photo->id,
+        ])->assertRedirect();
+
+        $source->refresh();
+        $this->assertSame('Issue 202 Source Album Updated', $source->title);
+        $this->assertSame(2, $source->order_index);
+        $this->assertSame($photo->id, $source->cover_photo_id);
+        $this->assertSame($admin->id, $source->updated_by_id);
+
+        $this->delete(route('admin.photos.albums.destroy', $source))
+            ->assertSessionHasErrors('reassign_album_id');
+        $this->assertDatabaseHas('photo_albums', ['id' => $source->id]);
+
+        $this->delete(route('admin.photos.albums.destroy', $source), [
+            'reassign_album_id' => $target->id,
+        ])->assertRedirect();
+
+        $this->assertDatabaseMissing('photo_albums', ['id' => $source->id]);
+        $this->assertDatabaseHas('photos', [
+            'id' => $photo->id,
+            'album_id' => $target->id,
+            'caption' => 'Preserved album photo',
+        ]);
+        $this->assertSame($photo->id, $target->fresh()->cover_photo_id);
+    }
+
+    public function test_uploader_assigns_photos_to_an_existing_album_without_creating_a_duplicate(): void
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $this->actingAsAdmin($admin);
+        $initialAlbumCount = PhotoAlbum::query()->count();
+
+        $this->post(route('admin.photos.albums.store'), [
+            'title' => 'Golden Tour',
+            'description' => 'Album creado desde Acciones rapidas.',
+        ])->assertRedirect();
+
+        $album = PhotoAlbum::query()->where('title', 'Golden Tour')->sole();
+
+        $this->get(route('admin.photos.index'))
+            ->assertOk()
+            ->assertSee('name="album_id"', false)
+            ->assertSee('value="'.$album->id.'"', false)
+            ->assertDontSee('name="album_title"', false);
+
+        $this->post(route('cms.photos.upload'), [
+            'album_id' => $album->id,
+            'album_title' => 'Golden Tour',
+            'files' => [
+                UploadedFile::fake()->image('golden-tour.jpg', 80, 60)->size(512),
+            ],
+        ], ['Accept' => 'application/json'])
+            ->assertCreated()
+            ->assertJsonPath('album_id', $album->id)
+            ->assertJsonPath('photos.0.album_id', $album->id);
+
+        $this->assertSame(1, PhotoAlbum::query()->where('title', 'Golden Tour')->count());
+        $this->assertSame($initialAlbumCount + 1, PhotoAlbum::query()->count());
+        $this->assertSame(1, $album->photos()->count());
+        $this->assertSame($album->photos()->value('id'), $album->fresh()->cover_photo_id);
     }
 
     private function actingAsAdmin(User $user): void

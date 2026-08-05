@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\ContentType;
+use App\Models\EditorialContent;
 use App\Models\Rsvp;
 use App\Services\StorefrontSettingsService;
 use App\Support\CountryOptions;
@@ -80,6 +82,26 @@ class FreeEventRsvpController extends Controller
 
                 return $slotKey === $eventKey || strcasecmp($slotName, $eventName) === 0;
             });
+
+        if (! $event) {
+            $content = EditorialContent::query()
+                ->visibleFor(null)
+                ->where('type', ContentType::Event->value)
+                ->where(function ($query) use ($eventKey, $eventName): void {
+                    $query->where('purchase_key', $eventKey)
+                        ->orWhere('slug', $eventKey)
+                        ->orWhere('title', $eventName);
+                })
+                ->first();
+
+            if ($content && data_get($content->metadata, 'ticketing_mode') === 'rsvp') {
+                $event = [
+                    'product_key' => $content->purchase_key ?: $content->slug,
+                    'title' => $content->title,
+                    'price_label' => 'FREE',
+                ];
+            }
+        }
 
         if (! $event || ! $this->isFreePrice((string) ($event['price_label'] ?? ''))) {
             throw ValidationException::withMessages([

@@ -125,6 +125,7 @@
                         <div class="admin-media-thumb">{{ strtoupper(str_replace('_', ' ', $asset->type->value)) }}</div>
                         <h3>{{ $asset->title ?: $asset->original_filename }}</h3>
                         <p>{{ $asset->original_filename }} · {{ number_format($asset->size_bytes / 1024, 1) }} KB</p>
+                        <p>{{ $asset->editorial_contents_count }} editorial reference{{ $asset->editorial_contents_count === 1 ? '' : 's' }}</p>
                         <footer>
                             <span>{{ $asset->processing_status->value }}</span>
                             <span>{{ $asset->is_public ? 'public' : 'private' }}</span>
@@ -132,6 +133,47 @@
                                 <span>Mux</span>
                             @endif
                         </footer>
+
+                        <details>
+                            <summary>Edit metadata</summary>
+                            <form class="admin-form-grid" method="POST" action="{{ route('admin.media.update', $asset) }}">
+                                @csrf
+                                @method('PATCH')
+
+                                <label>
+                                    <span>Title</span>
+                                    <input name="title" value="{{ $asset->title }}" maxlength="160" required>
+                                </label>
+                                <label>
+                                    <span>Alt text</span>
+                                    <input name="alt_text" value="{{ $asset->alt_text }}" maxlength="180">
+                                </label>
+                                <button class="admin-button admin-button-soft" type="submit">Save metadata</button>
+                            </form>
+                        </details>
+
+                        @if ($asset->type !== \App\Enums\MediaAssetType::ShortVideo)
+                            <details>
+                                <summary>Replace file</summary>
+                                <form class="admin-form-grid" method="POST" action="{{ route('admin.media.replace', $asset) }}" enctype="multipart/form-data">
+                                    @csrf
+                                    <input name="title" type="hidden" value="{{ $asset->title }}">
+                                    <input name="alt_text" type="hidden" value="{{ $asset->alt_text }}">
+                                    <input name="is_public" type="hidden" value="{{ $asset->is_public ? 1 : 0 }}">
+                                    <label>
+                                        <span>New file</span>
+                                        <input name="file" type="file" required>
+                                    </label>
+                                    <button class="admin-button admin-button-soft" type="submit">Replace without breaking references</button>
+                                </form>
+                            </details>
+                        @endif
+
+                        <form method="POST" action="{{ route('admin.media.destroy', $asset) }}" onsubmit="return confirm('Delete this unreferenced asset?')">
+                            @csrf
+                            @method('DELETE')
+                            <button class="admin-button admin-button-danger" type="submit">Delete if unreferenced</button>
+                        </form>
                     </article>
                 @empty
                     <div class="admin-empty-state">No media assets yet.</div>

@@ -45,16 +45,18 @@ return [
                 'timezone' => 'America/Panama',
             ],
         ],
+        // Transitional checkout fallback. A published CMS Event with this key wins.
         'listening' => [
             'title' => 'Festival de la Rosa Dorada',
             'amount_cents' => 1500,
+            'currency' => 'USD',
             'kind' => 'ticket',
             'unlock_type' => null,
             'event' => [
                 'title' => 'Festival de la Rosa Dorada',
                 'venue' => 'Rock & Folk Pty, Ciudad de Panama',
                 'address' => 'Rock & Folk Pty, Ciudad de Panama',
-                'starts_at' => '2026-12-19 19:30:00',
+                'starts_at' => '2026-12-16 19:30:00',
                 'timezone' => 'America/Panama',
             ],
         ],

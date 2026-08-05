@@ -22,6 +22,7 @@ class MediaLibraryController extends Controller
     {
         return view('admin.media', [
             'assets' => MediaAsset::query()
+                ->withCount('editorialContents')
                 ->latest()
                 ->limit(24)
                 ->get(),
@@ -50,6 +51,61 @@ class MediaLibraryController extends Controller
         }
 
         return redirect()->route('admin.media.index')->with('status', $message);
+    }
+
+    public function update(Request $request, MediaAsset $asset, MediaLibraryService $library): RedirectResponse
+    {
+        $validated = $request->validate([
+            'title' => ['required', 'string', 'max:160'],
+            'alt_text' => [
+                Rule::requiredIf($asset->type->requiresAltTextWhenPublic() && $asset->is_public),
+                'nullable',
+                'string',
+                'max:180',
+            ],
+        ]);
+
+        $library->updateMetadata($asset, $validated);
+
+        return back()->with('status', 'Media asset updated.');
+    }
+
+    public function replace(Request $request, MediaAsset $asset, MediaLibraryService $library): RedirectResponse
+    {
+        $file = $request->file('file');
+        $data = [
+            'type' => $asset->type->value,
+            'title' => $request->input('title', $asset->title),
+            'alt_text' => $request->input('alt_text', $asset->alt_text),
+            'is_public' => $request->boolean('is_public', $asset->is_public),
+        ];
+        $validator = Validator::make([...$data, 'file' => $file], [
+            'title' => ['required', 'string', 'max:160'],
+            'alt_text' => ['nullable', 'string', 'max:180'],
+            'is_public' => ['required', 'boolean'],
+            'file' => ['required', 'file'],
+        ]);
+
+        $validator->after(function ($validator) use ($data, $file): void {
+            $files = $file instanceof UploadedFile ? [$file] : [];
+            $this->validateMediaConstraints($validator, $data['type'], $files, $data);
+        });
+        $validated = $validator->validate();
+
+        try {
+            $library->replaceUpload($request->user(), $asset, $file, $validated);
+        } catch (MediaUploadException $exception) {
+            return back()->withErrors(['file' => $exception->getMessage()]);
+        }
+
+        return back()->with('status', 'Media file replaced without breaking its references.');
+    }
+
+    public function destroy(MediaAsset $asset, MediaLibraryService $library): RedirectResponse
+    {
+        $library->delete($asset);
+
+        return back()->with('status', 'Unreferenced media asset deleted.');
     }
 
     public function createMuxDirectUpload(

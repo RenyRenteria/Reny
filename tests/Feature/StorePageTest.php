@@ -24,7 +24,7 @@ class StorePageTest extends TestCase
         Cache::store('array')->flush();
     }
 
-    public function test_store_page_excludes_deluxe_slot_for_guest(): void
+    public function test_store_page_renders_all_four_configured_slots_for_guest(): void
     {
         $response = $this->get('/store');
 
@@ -34,15 +34,16 @@ class StorePageTest extends TestCase
         $response->assertSee('Unlock Royal Pass');
         $response->assertSee('Reny Renteria en Concierto');
         $response->assertSee('Festival de la Rosa Dorada');
+        $response->assertSee('Work in Progress');
         $response->assertSee('Crown Collection');
         $response->assertSee('FREE');
         $response->assertSee('$15');
         $response->assertSee('GET TICKETS');
-        $response->assertDontSee('GET DELUXE');
+        $response->assertSee('LISTEN');
         $response->assertSee('GET MERCH');
         $response->assertSee('class="storefront-countdown"', false);
         $response->assertSee('data-countdown-at="2026-09-21T19:30:00-05:00"', false);
-        $response->assertSee('data-countdown-at="2026-12-19T19:30:00-05:00"', false);
+        $response->assertSee('data-countdown-at="2026-12-16T19:30:00-05:00"', false);
         $response->assertSee('images/store/reny-concert.png');
         $response->assertSee('images/store/rosa-dorada.png');
         $response->assertSee('images/store/crown-collection.png');
@@ -56,6 +57,7 @@ class StorePageTest extends TestCase
         $response->assertSee('aria-disabled="false"', false);
         $response->assertSee('data-buy-image="'.asset('images/store/royal-pass.png').'"', false);
         $response->assertDontSee('data-buy="deluxe"', false);
+        $response->assertSee('href="'.url('/music').'"', false);
         $response->assertSee('data-buy="merch"', false);
         $response->assertSee('data-buy-image="'.asset('images/store/rosa-dorada.png').'"', false);
         $response->assertSee('data-buy-url="'.route('store.checkout', ['product' => 'listening']).'"', false);
@@ -76,7 +78,7 @@ class StorePageTest extends TestCase
 
         $html = $response->getContent();
 
-        $this->assertSame(3, substr_count($html, 'storefront-card'));
+        $this->assertSame(4, substr_count($html, 'storefront-card'));
         $this->assertSame(2, substr_count($html, 'storefront-countdown'));
         $this->assertLessThan(strpos($html, 'Reny Renteria en Concierto'), strpos($html, 'Royal Pass'));
         $this->assertLessThan(strpos($html, 'Festival de la Rosa Dorada'), strpos($html, 'Reny Renteria en Concierto'));
@@ -93,7 +95,7 @@ class StorePageTest extends TestCase
         $this->assertStringNotContainsString('<iframe', $html);
         $this->assertStringNotContainsString('<video', $html);
         $this->assertStringNotContainsString('youtube', strtolower($html));
-        $this->assertStringNotContainsString('deluxe', strtolower($html));
+        $this->assertStringContainsString('deluxe album', strtolower($html));
     }
 
     public function test_store_page_keeps_royal_pass_banner_for_free_accounts(): void
@@ -168,6 +170,7 @@ class StorePageTest extends TestCase
             ->assertOk()
             ->assertSee('Festival de la Rosa Dorada')
             ->assertSee('Rock &amp; Folk Pty, Ciudad de Panama', false)
+            ->assertSee('Dec 16, 2026 - 7:30 PM')
             ->assertSee('$15')
             ->assertSee('images/store/rosa-dorada.png')
             ->assertSee('data-buy="listening"', false)
@@ -191,10 +194,12 @@ class StorePageTest extends TestCase
             ->assertSee('GET TICKETS');
     }
 
-    public function test_deluxe_checkout_is_not_available_on_the_public_website(): void
+    public function test_deluxe_checkout_is_available_when_the_catalog_product_is_valid(): void
     {
         $this->get(route('store.checkout', ['product' => 'deluxe']))
-            ->assertNotFound();
+            ->assertOk()
+            ->assertSee('Work in Progress')
+            ->assertSee('$24');
     }
 
     public function test_royal_pass_checkout_uses_membership_card_art(): void
@@ -300,6 +305,16 @@ class StorePageTest extends TestCase
         $this->assertStringContainsString('object-fit: contain;', $css);
         $this->assertStringNotContainsString('storefront-card.is-event-secondary .storefront-image', $css);
         $this->assertStringNotContainsString('aspect-ratio: 1;'."\n    }\n\n    .storefront-copy", $css);
+    }
+
+    public function test_store_intro_uses_accessible_text_color(): void
+    {
+        $css = $this->frontendCssSource();
+
+        $this->assertMatchesRegularExpression(
+            '/\.store-content \.public-page-intro\s*\{[^}]*color:\s*#ffffff;/s',
+            $css,
+        );
     }
 
     public function test_existing_tabs_link_to_store_route(): void

@@ -27,7 +27,7 @@ class PhotoLibraryService
      */
     public function storeUploads(User $actor, array $attributes, array $files): array
     {
-        $album = $this->albumForUpload($actor, $attributes, count($files));
+        $album = $this->albumForUpload($attributes);
         $queued = count($files) > (int) config('photos.large_batch_threshold', 15);
         $photos = collect();
         $startOrder = $album
@@ -195,23 +195,15 @@ class PhotoLibraryService
     /**
      * @param  array<string, mixed>  $attributes
      */
-    private function albumForUpload(User $actor, array $attributes, int $fileCount): ?PhotoAlbum
+    private function albumForUpload(array $attributes): ?PhotoAlbum
     {
-        $title = trim((string) ($attributes['album_title'] ?? ''));
-        $description = trim((string) ($attributes['album_description'] ?? ''));
+        $albumId = (int) ($attributes['album_id'] ?? 0);
 
-        if ($title === '' && $fileCount === 1) {
+        if ($albumId === 0) {
             return null;
         }
 
-        return PhotoAlbum::create([
-            'title' => $title !== '' ? $title : 'Photo album '.now()->format('M j, Y g:i A'),
-            'description' => $description !== '' ? $description : null,
-            'created_by_id' => $actor->id,
-            'metadata' => [
-                'source' => 'cms_upload',
-            ],
-        ]);
+        return PhotoAlbum::query()->findOrFail($albumId);
     }
 
     /**

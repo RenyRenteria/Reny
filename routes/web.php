@@ -109,6 +109,7 @@ Route::prefix(config('admin.path', 'admin'))->name('admin.')->group(function () 
 
         Route::get('/site-editor', [SiteEditorController::class, 'index'])->middleware('admin.cms')->name('site-editor.index');
         Route::get('/site-editor/{page}/preview', [SiteEditorController::class, 'preview'])->middleware('admin.cms')->name('site-editor.preview');
+        Route::post('/site-editor/{page}/settings', [SiteEditorController::class, 'updatePageSettings'])->middleware('admin.cms')->name('site-editor.page-settings.update');
         Route::get('/site-editor/community/rsvps.csv', AdminCommunityRsvpController::class)->middleware('admin.cms')->name('site-editor.community-rsvps.export');
         Route::middleware(['admin.cms', 'admin.community-posts'])->group(function () {
             Route::post('/site-editor/community/posts', [AdminCommunityPostController::class, 'store'])->name('site-editor.community-posts.store');
@@ -120,27 +121,32 @@ Route::prefix(config('admin.path', 'admin'))->name('admin.')->group(function () 
         Route::post('/site-editor/music/banner', [SiteEditorController::class, 'updateMusicBanner'])->middleware('admin.cms')->name('site-editor.music-banner.update');
         Route::post('/site-editor/store/storefront', [SiteEditorController::class, 'updateStorefront'])->middleware('admin.cms')->name('site-editor.storefront.update');
         Route::get('/photos', [PhotoLibraryController::class, 'index'])->middleware('admin.cms')->name('photos.index');
+        Route::post('/photos/albums', [PhotoLibraryController::class, 'storeAlbum'])->middleware('admin.cms')->name('photos.albums.store');
+        Route::patch('/photos/albums/{album}', [PhotoLibraryController::class, 'updateAlbum'])->middleware('admin.cms')->name('photos.albums.update');
+        Route::delete('/photos/albums/{album}', [PhotoLibraryController::class, 'destroyAlbum'])->middleware('admin.cms')->name('photos.albums.destroy');
         Route::patch('/photos/{photo}', [PhotoLibraryController::class, 'update'])->middleware('admin.cms')->name('photos.update');
         Route::delete('/photos/{photo}', [PhotoLibraryController::class, 'destroy'])->middleware('admin.cms')->name('photos.destroy');
         Route::post('/photos/batch', [PhotoLibraryController::class, 'batch'])->middleware('admin.cms')->name('photos.batch');
         Route::post('/photos/reorder', [PhotoLibraryController::class, 'reorder'])->middleware('admin.cms')->name('photos.reorder');
 
-        // These CMS read screens are intentionally parked until the full admin UI is released.
-        // Mutating routes below stay wired to real controllers and are gated by admin.cms.
-        Route::get('/content', [AdminLoginController::class, 'create'])->name('content.index');
-        Route::get('/content/create', [AdminLoginController::class, 'create'])->name('content.create');
+        Route::get('/content', [EditorialContentController::class, 'index'])->middleware('admin.cms')->name('content.index');
+        Route::get('/content/create', [EditorialContentController::class, 'create'])->middleware('admin.cms')->name('content.create');
         Route::post('/content', [EditorialContentController::class, 'store'])->middleware('admin.cms')->name('content.store');
         Route::post('/content/album-track-audio', [EditorialContentController::class, 'storeAlbumTrackAudio'])->middleware('admin.cms')->name('content.album-track-audio.store');
-        Route::get('/content/{content}/edit', [AdminLoginController::class, 'create'])->name('content.edit');
+        Route::get('/content/{content}/edit', [EditorialContentController::class, 'edit'])->middleware('admin.cms')->name('content.edit');
         Route::match(['put', 'patch'], '/content/{content}', [EditorialContentController::class, 'update'])->middleware('admin.cms')->name('content.update');
         Route::delete('/content/{content}', [EditorialContentController::class, 'destroy'])->middleware('admin.cms')->name('content.destroy');
-        Route::get('/content/{content}/preview', [AdminLoginController::class, 'create'])->name('content.preview');
-        Route::get('/media', [AdminLoginController::class, 'create'])->name('media.index');
+        Route::post('/content/{content}/archive', [EditorialContentController::class, 'archive'])->middleware(['admin.cms', 'admin.publish'])->name('content.archive');
+        Route::get('/content/{content}/preview', [EditorialContentController::class, 'preview'])->middleware('admin.cms')->name('content.preview');
+        Route::get('/media', [MediaLibraryController::class, 'index'])->middleware('admin.cms')->name('media.index');
         Route::post('/media', [MediaLibraryController::class, 'store'])->middleware('admin.cms')->name('media.store');
+        Route::patch('/media/{asset}', [MediaLibraryController::class, 'update'])->middleware('admin.cms')->name('media.update');
+        Route::post('/media/{asset}/replace', [MediaLibraryController::class, 'replace'])->middleware('admin.cms')->name('media.replace');
+        Route::delete('/media/{asset}', [MediaLibraryController::class, 'destroy'])->middleware('admin.cms')->name('media.destroy');
         Route::post('/media/mux/direct-uploads', [MediaLibraryController::class, 'createMuxDirectUpload'])->middleware('admin.cms')->name('media.mux.direct-uploads.store');
-        Route::get('/editorial', [AdminLoginController::class, 'create'])->name('editorial.index');
-        Route::get('/editorial/{content}/edit', [AdminLoginController::class, 'create'])->name('editorial.edit');
-        Route::get('/editorial/{content}/preview', [AdminLoginController::class, 'create'])->name('editorial.preview');
+        Route::get('/editorial', [EditorialActionController::class, 'index'])->middleware('admin.cms')->name('editorial.index');
+        Route::get('/editorial/{content}/edit', [EditorialActionController::class, 'edit'])->middleware('admin.cms')->name('editorial.edit');
+        Route::get('/editorial/{content}/preview', [EditorialActionController::class, 'preview'])->middleware('admin.cms')->name('editorial.preview');
         Route::post('/editorial/drafts', [EditorialActionController::class, 'saveDraft'])->middleware('admin.cms')->name('editorial.drafts.store');
         Route::post('/editorial/publish', [EditorialActionController::class, 'publish'])
             ->middleware(['admin.cms', 'admin.publish'])

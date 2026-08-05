@@ -4,12 +4,16 @@ namespace App\Services\PublicCms;
 
 use App\Enums\ContentType;
 use App\Enums\EditorialStatus;
+use App\Enums\VisibilityAudience;
 use App\Models\EditorialContent;
 use App\Models\User;
+use App\Services\CmsPreviewContext;
 use Illuminate\Database\Eloquent\Builder;
 
 class ContentQuery
 {
+    public function __construct(private readonly CmsPreviewContext $previewContext) {}
+
     /**
      * @var array<int, ContentType>
      */
@@ -47,17 +51,20 @@ class ContentQuery
     /**
      * @param  array<int, ContentType>  $types
      */
-    public function visibleContents(?User $user, array $types): Builder
+    public function visibleContents(?User $user, array $types, ?int $limit = 24): Builder
     {
-        return EditorialContent::query()
+        $query = EditorialContent::query()
             ->with([
                 'mediaAssets' => fn ($query) => $query->orderBy('content_media_assets.sort_order'),
                 'releaseWindows',
             ])
-            ->whereIn('type', $this->typeValues($types))
-            ->visibleFor($user)
+            ->whereIn('type', $this->typeValues($types));
+
+        $this->applyVisibilityConstraint($query, $user);
+
+        return $query
             ->orderByRaw('COALESCE(published_at, scheduled_at, created_at) DESC')
-            ->limit(24);
+            ->when($limit !== null, fn (Builder $query): Builder => $query->limit($limit));
     }
 
     public function listableMusicContents(string $section): Builder
@@ -69,13 +76,20 @@ class ContentQuery
             default => $this->musicTypes(),
         };
 
-        return EditorialContent::query()
+        $query = EditorialContent::query()
             ->with([
                 'mediaAssets' => fn ($query) => $query->orderBy('content_media_assets.sort_order'),
                 'releaseWindows',
             ])
-            ->whereIn('type', $this->typeValues($types))
-            ->where(fn (Builder $query): Builder => $this->applyPublishedNowConstraint($query))
+            ->whereIn('type', $this->typeValues($types));
+
+        if ($this->previewContext->active()) {
+            $this->applyPreviewConstraint($query);
+        } else {
+            $query->where(fn (Builder $query): Builder => $this->applyPublishedNowConstraint($query));
+        }
+
+        return $query
             ->when(
                 $section === 'albums',
                 fn (Builder $query): Builder => $this->orderByMusicReleaseDate($query),
@@ -86,6 +100,15 @@ class ContentQuery
     public function latestAlbumContent(): ?EditorialContent
     {
         return $this->listableMusicContents('albums')->first();
+    }
+
+    public function albumContentById(int $id): ?EditorialContent
+    {
+        if ($id <= 0) {
+            return null;
+        }
+
+        return $this->listableMusicContents('albums')->whereKey($id)->first();
     }
 
     /**
@@ -159,6 +182,38 @@ class ContentQuery
                             ->whereNotNull('scheduled_at')
                             ->where('scheduled_at', '<=', $now);
                     });
+            });
+    }
+
+    private function applyVisibilityConstraint(Builder $query, ?User $user): void
+    {
+        if ($this->previewContext->active()) {
+            $this->applyPreviewConstraint($query);
+
+            return;
+        }
+
+        $query->visibleFor($user);
+    }
+
+    private function applyPreviewConstraint(Builder $query): Builder
+    {
+        $audience = $this->previewContext->audience() ?? VisibilityAudience::Open;
+        $audiences = match ($audience) {
+            VisibilityAudience::Open => [VisibilityAudience::Open->value],
+            VisibilityAudience::Member => [VisibilityAudience::Open->value, VisibilityAudience::Member->value],
+            VisibilityAudience::Royal => [VisibilityAudience::Open->value, VisibilityAudience::Member->value, VisibilityAudience::Royal->value],
+            VisibilityAudience::Purchased => VisibilityAudience::values(),
+        };
+
+        return $query
+            ->where('status', '!=', EditorialStatus::Archived->value)
+            ->where(function (Builder $query) use ($audiences): void {
+                $query
+                    ->where(function (Builder $query) use ($audiences): void {
+                        $query->whereDoesntHave('releaseWindows')->whereIn('visibility', $audiences);
+                    })
+                    ->orWhereHas('releaseWindows', fn (Builder $query): Builder => $query->whereIn('audience', $audiences));
             });
     }
 

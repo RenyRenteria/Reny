@@ -94,8 +94,6 @@ class PublicContentController extends Controller
         ProductCatalog $products,
         string $product,
     ): View {
-        abort_if(strcasecmp(trim($product), 'deluxe') === 0, 404);
-
         $catalogProduct = $products->find($product, $request->user());
 
         abort_unless($catalogProduct, 404);

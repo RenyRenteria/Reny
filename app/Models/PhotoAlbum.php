@@ -11,7 +11,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'title',
     'description',
     'cover_photo_id',
+    'order_index',
     'created_by_id',
+    'updated_by_id',
     'metadata',
 ])]
 class PhotoAlbum extends Model
@@ -19,6 +21,7 @@ class PhotoAlbum extends Model
     protected function casts(): array
     {
         return [
+            'order_index' => 'integer',
             'metadata' => 'array',
         ];
     }
@@ -36,5 +39,10 @@ class PhotoAlbum extends Model
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by_id');
+    }
+
+    public function updatedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'updated_by_id');
     }
 }

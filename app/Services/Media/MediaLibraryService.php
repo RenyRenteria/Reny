@@ -4,14 +4,18 @@ namespace App\Services\Media;
 
 use App\Enums\MediaAssetType;
 use App\Enums\MediaProcessingStatus;
+use App\Models\EditorialContent;
 use App\Models\MediaAsset;
+use App\Models\SitePageSetting;
 use App\Models\User;
+use App\Services\PublicCmsContentService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 
 class MediaLibraryService
@@ -119,6 +123,108 @@ class MediaLibraryService
         ];
     }
 
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    public function updateMetadata(MediaAsset $asset, array $attributes): MediaAsset
+    {
+        $asset->fill([
+            'title' => $attributes['title'],
+            'alt_text' => $attributes['alt_text'] ?? null,
+        ])->save();
+
+        PublicCmsContentService::bumpCacheVersion();
+
+        return $asset->fresh() ?? $asset;
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    public function replaceUpload(User $actor, MediaAsset $asset, UploadedFile $file, array $attributes): MediaAsset
+    {
+        if ($asset->type === MediaAssetType::ShortVideo) {
+            throw new MediaUploadException('Mux videos must be replaced with a new direct upload.');
+        }
+
+        $replacement = $this->storeUploads($actor, [
+            'type' => $asset->type->value,
+            'title' => $attributes['title'] ?? $asset->title,
+            'alt_text' => $attributes['alt_text'] ?? $asset->alt_text,
+            'is_public' => (bool) ($attributes['is_public'] ?? $asset->is_public),
+            'duration_seconds' => $asset->duration_seconds,
+            'metadata' => $asset->metadata ?? [],
+        ], [$file])->first();
+
+        if (! $replacement instanceof MediaAsset) {
+            throw new MediaUploadException('Replacement upload did not create a media asset.');
+        }
+
+        $oldDisk = $asset->disk;
+        $oldPath = $asset->path;
+
+        try {
+            DB::transaction(function () use ($actor, $asset, $replacement): void {
+                $asset->forceFill([
+                    'title' => $replacement->title,
+                    'disk' => $replacement->disk,
+                    'path' => $replacement->path,
+                    'original_filename' => $replacement->original_filename,
+                    'mime_type' => $replacement->mime_type,
+                    'extension' => $replacement->extension,
+                    'size_bytes' => $replacement->size_bytes,
+                    'checksum' => $replacement->checksum,
+                    'is_public' => $replacement->is_public,
+                    'alt_text' => $replacement->alt_text,
+                    'width' => $replacement->width,
+                    'height' => $replacement->height,
+                    'processing_status' => $replacement->processing_status,
+                    'uploaded_by_id' => $actor->id,
+                    'metadata' => [
+                        ...($replacement->metadata ?? []),
+                        'replaced_at' => now()->toISOString(),
+                    ],
+                ])->save();
+
+                $replacement->delete();
+            });
+        } catch (Throwable $exception) {
+            Storage::disk($replacement->disk)->delete($replacement->path);
+            MediaAsset::query()->whereKey($replacement->id)->delete();
+            report($exception);
+
+            throw new MediaUploadException('Replacement failed before references could be preserved.', previous: $exception);
+        }
+
+        if ($oldDisk && $oldPath && $oldDisk !== 'mux') {
+            Storage::disk($oldDisk)->delete($oldPath);
+        }
+
+        PublicCmsContentService::bumpCacheVersion();
+
+        return $asset->fresh() ?? $asset;
+    }
+
+    public function delete(MediaAsset $asset): void
+    {
+        if ($this->isReferenced($asset)) {
+            throw ValidationException::withMessages([
+                'asset' => 'This media asset is still referenced. Replace or detach it before deleting.',
+            ]);
+        }
+
+        $disk = $asset->disk;
+        $path = $asset->path;
+
+        $asset->delete();
+
+        if ($disk && $path && $disk !== 'mux') {
+            Storage::disk($disk)->delete($path);
+        }
+
+        PublicCmsContentService::bumpCacheVersion();
+    }
+
     public function applyMuxWebhook(array $event): ?MediaAsset
     {
         $eventType = (string) Arr::get($event, 'type');
@@ -219,5 +325,50 @@ class MediaLibraryService
             ?: Arr::get($data, 'error.message')
             ?: Arr::get($data, 'error')
             ?: 'Mux reported a processing error.';
+    }
+
+    private function isReferenced(MediaAsset $asset): bool
+    {
+        if ($asset->editorialContents()->exists()) {
+            return true;
+        }
+
+        if (SitePageSetting::query()->where('media_asset_id', $asset->id)->exists()) {
+            return true;
+        }
+
+        $referencedInSettings = SitePageSetting::query()
+            ->select(['id', 'payload'])
+            ->get()
+            ->contains(fn (SitePageSetting $setting): bool => $this->payloadReferencesAsset($setting->payload, $asset->id));
+
+        if ($referencedInSettings) {
+            return true;
+        }
+
+        return EditorialContent::query()
+            ->select(['id', 'metadata'])
+            ->get()
+            ->contains(fn (EditorialContent $content): bool => $this->payloadReferencesAsset($content->metadata, $asset->id));
+    }
+
+    private function payloadReferencesAsset(mixed $payload, int $assetId, ?string $key = null): bool
+    {
+        if (! is_array($payload)) {
+            return $key !== null
+                && (str_ends_with($key, '_asset_id') || str_ends_with($key, '_asset_ids'))
+                && is_numeric($payload)
+                && (int) $payload === $assetId;
+        }
+
+        foreach ($payload as $childKey => $value) {
+            $referenceKey = is_int($childKey) ? $key : (string) $childKey;
+
+            if ($this->payloadReferencesAsset($value, $assetId, $referenceKey)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

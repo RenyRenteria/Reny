@@ -39,17 +39,18 @@
                 >
                     @csrf
 
-                    <div class="admin-form-grid admin-form-grid-wide">
-                        <label>
-                            <span>Titulo del album</span>
-                            <input name="album_title" type="text" maxlength="160" placeholder="Ej: Backstage Junio">
-                        </label>
-
-                        <label>
-                            <span>Descripcion</span>
-                            <input name="album_description" type="text" maxlength="500" placeholder="Contexto del carrete">
-                        </label>
-                    </div>
+                    <label>
+                        <span>Album existente</span>
+                        <select name="album_id">
+                            <option value="">Foto suelta</option>
+                            @foreach ($albums as $album)
+                                <option value="{{ $album->id }}" @selected((string) old('album_id') === (string) $album->id)>
+                                    {{ $album->title }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <small>Crea el album en Acciones rapidas y seleccionalo aqui antes de subir las fotos.</small>
+                    </label>
 
                     <label class="photo-dropzone" data-photo-dropzone>
                         <input
@@ -88,17 +89,57 @@
                 </div>
 
                 <div class="photo-album-list">
+                    <form class="admin-form-grid" method="POST" action="{{ route('admin.photos.albums.store') }}">
+                        @csrf
+                        <label><span>Nuevo album</span><input name="title" maxlength="160" required placeholder="Titulo"></label>
+                        <label><span>Descripcion</span><input name="description" maxlength="500"></label>
+                        <label><span>Orden</span><input name="order_index" type="number" min="0" value="{{ $albums->count() }}"></label>
+                        <button class="admin-button admin-button-primary" type="submit">Crear album</button>
+                    </form>
+
                     @forelse ($albums as $album)
                         <article class="photo-album-row">
-                            <div>
-                                <strong>{{ $album->title }}</strong>
+                            <form class="admin-form-grid" method="POST" action="{{ route('admin.photos.albums.update', $album) }}">
+                                @csrf
+                                @method('PATCH')
+                                <label><span>Titulo</span><input name="title" value="{{ $album->title }}" maxlength="160" required></label>
+                                <label><span>Descripcion</span><input name="description" value="{{ $album->description }}" maxlength="500"></label>
+                                <label><span>Orden</span><input name="order_index" type="number" min="0" value="{{ $album->order_index }}" required></label>
+                                <label>
+                                    <span>Portada</span>
+                                    <select name="cover_photo_id">
+                                        <option value="">Sin portada</option>
+                                        @foreach ($album->photos as $albumPhoto)
+                                            <option value="{{ $albumPhoto->id }}" @selected($album->cover_photo_id === $albumPhoto->id)>
+                                                #{{ $albumPhoto->id }} · {{ $albumPhoto->caption ?: data_get($albumPhoto->metadata, 'original_filename', 'Photo') }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </label>
+                                <button class="admin-button admin-button-soft" type="submit">Guardar album</button>
                                 <small>{{ $album->photos_count }} fotos</small>
-                            </div>
+                            </form>
                             <form method="POST" action="{{ route('admin.photos.batch') }}">
                                 @csrf
                                 <input type="hidden" name="album_id" value="{{ $album->id }}">
                                 <button class="admin-button admin-button-soft" type="submit" name="action" value="mark_public">Publicar todo</button>
                                 <button class="admin-button admin-button-ghost" type="submit" name="action" value="mark_member_only">Marcar miembro</button>
+                            </form>
+                            <form method="POST" action="{{ route('admin.photos.albums.destroy', $album) }}">
+                                @csrf
+                                @method('DELETE')
+                                @if ($album->photos_count > 0)
+                                    <label>
+                                        <span>Reasignar antes de eliminar</span>
+                                        <select name="reassign_album_id" required>
+                                            <option value="">Selecciona album</option>
+                                            @foreach ($albums->where('id', '!=', $album->id) as $targetAlbum)
+                                                <option value="{{ $targetAlbum->id }}">{{ $targetAlbum->title }}</option>
+                                            @endforeach
+                                        </select>
+                                    </label>
+                                @endif
+                                <button class="admin-button admin-button-danger" type="submit" onclick="return confirm('Eliminar album y conservar/reasignar sus fotos?')">Eliminar album</button>
                             </form>
                         </article>
                     @empty

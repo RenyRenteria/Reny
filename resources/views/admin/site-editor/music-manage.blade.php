@@ -118,16 +118,18 @@
                             </div>
                         </details>
 
-                        <form
-                            class="music-manage-delete"
-                            method="POST"
-                            action="{{ route('admin.content.destroy', $content) }}"
-                            onsubmit="return confirm(@js('Eliminar '.$content->title.' de Music?'))"
-                        >
-                            @csrf
-                            @method('DELETE')
-                            <button class="admin-button admin-button-danger" type="submit" @disabled(! $canDelete)>Eliminar</button>
-                        </form>
+                        @if ($content->status === \App\Enums\EditorialStatus::Draft)
+                            <form class="music-manage-delete" method="POST" action="{{ route('admin.content.destroy', $content) }}" onsubmit="return confirm(@js('Eliminar borrador '.$content->title.'?'))">
+                                @csrf
+                                @method('DELETE')
+                                <button class="admin-button admin-button-danger" type="submit" @disabled(! $canDelete)>Eliminar borrador</button>
+                            </form>
+                        @elseif ($content->status !== \App\Enums\EditorialStatus::Archived)
+                            <form class="music-manage-delete" method="POST" action="{{ route('admin.content.archive', $content) }}" onsubmit="return confirm(@js('Archivar '.$content->title.' y retirarlo del website?'))">
+                                @csrf
+                                <button class="admin-button admin-button-danger" type="submit" @disabled(! $canDelete)>Archivar</button>
+                            </form>
+                        @endif
                     </article>
                 @empty
                     <div class="music-manage-empty">No hay {{ strtolower($group['label']) }} todavia.</div>

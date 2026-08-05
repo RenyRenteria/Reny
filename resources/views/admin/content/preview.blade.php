@@ -8,6 +8,10 @@
 @endsection
 
 @section('content')
+    @php
+        $audienceRanks = ['open' => 0, 'member' => 1, 'royal' => 2, 'purchased' => 3];
+        $hasPreviewAccess = ($audienceRanks[$previewAudience] ?? 0) >= ($audienceRanks[$content->visibility->value] ?? 0);
+    @endphp
     <section class="admin-dashboard-section is-active">
         <div class="page-hero admin-hero-row">
             <div>
@@ -20,6 +24,17 @@
                 <a class="admin-button admin-button-ghost" href="{{ route('admin.content.index') }}">Content</a>
             </div>
         </div>
+
+        <nav class="admin-actions" aria-label="Preview audience">
+            @foreach ($previewAudiences as $audience)
+                <a @class(['admin-button', 'admin-button-primary' => $audience->value === $previewAudience, 'admin-button-ghost' => $audience->value !== $previewAudience]) href="{{ route('admin.content.preview', ['content' => $content, 'audience' => $audience->value]) }}">
+                    {{ $audience === \App\Enums\VisibilityAudience::Open ? 'Guest' : str($audience->value)->headline() }}
+                </a>
+            @endforeach
+            <span class="admin-status-pill {{ $hasPreviewAccess ? 'admin-status-success' : 'admin-status-warning' }}">
+                {{ $hasPreviewAccess ? 'Accessible' : 'Locked' }} for this preview
+            </span>
+        </nav>
 
         <section class="admin-panel" aria-labelledby="preview-title">
             <div class="admin-section-head">
@@ -119,6 +134,17 @@
                     </article>
                 @empty
                     <div class="admin-empty-state">No attached assets.</div>
+                @endforelse
+            </div>
+        </section>
+
+        <section class="admin-panel" aria-labelledby="audit-title">
+            <div class="admin-section-head"><div><p class="admin-kicker">History</p><h2 id="audit-title">Audit log</h2></div></div>
+            <div class="admin-media-list">
+                @forelse ($content->auditLogs as $log)
+                    <article class="admin-media-row"><div><span>{{ $log->action->value }}</span><strong>{{ $log->actor?->name ?? 'System' }}</strong><small>{{ $log->created_at->timezone($timezone)->format('M j, Y g:i A') }} Panama</small></div></article>
+                @empty
+                    <div class="admin-empty-state">No workflow history yet.</div>
                 @endforelse
             </div>
         </section>

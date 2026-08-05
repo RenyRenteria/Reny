@@ -38,6 +38,18 @@
                 <footer>
                     <a class="admin-button admin-button-ghost" href="{{ $content['previewUrl'] }}">Ver antes</a>
                     <a class="admin-button admin-button-soft" href="{{ $content['editUrl'] }}">Editar</a>
+                    @if (($content['status'] ?? null) === 'draft' && filled($content['deleteUrl'] ?? null))
+                        <form method="POST" action="{{ $content['deleteUrl'] }}" onsubmit="return confirm('Delete this draft?')">
+                            @csrf
+                            @method('DELETE')
+                            <button class="admin-button admin-button-danger" type="submit">Eliminar borrador</button>
+                        </form>
+                    @elseif (($content['status'] ?? null) !== 'archived' && filled($content['archiveUrl'] ?? null) && auth()->user()?->canPublishContent())
+                        <form method="POST" action="{{ $content['archiveUrl'] }}" onsubmit="return confirm('Archive this content and remove it from public pages?')">
+                            @csrf
+                            <button class="admin-button admin-button-danger" type="submit">Archivar</button>
+                        </form>
+                    @endif
                 </footer>
             </div>
         </article>

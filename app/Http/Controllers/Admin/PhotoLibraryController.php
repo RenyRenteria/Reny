@@ -8,10 +8,12 @@ use App\Http\Controllers\Controller;
 use App\Models\Photo;
 use App\Models\PhotoAlbum;
 use App\Services\Photos\PhotoLibraryService;
+use App\Services\PublicCmsContentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
@@ -44,8 +46,9 @@ class PhotoLibraryController extends Controller
         return view('admin.photos.index', [
             'albums' => PhotoAlbum::query()
                 ->withCount('photos')
-                ->with('coverPhoto')
-                ->latest()
+                ->with(['coverPhoto', 'photos:id,album_id,caption,metadata'])
+                ->orderBy('order_index')
+                ->orderBy('id')
                 ->get(),
             'filters' => $filters,
             'photos' => $query->ordered()->get(),
@@ -78,6 +81,80 @@ class PhotoLibraryController extends Controller
         }
 
         return redirect()->route('admin.photos.index')->with('status', $message);
+    }
+
+    public function storeAlbum(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'title' => ['required', 'string', 'max:160'],
+            'description' => ['nullable', 'string', 'max:500'],
+            'order_index' => ['nullable', 'integer', 'min:0'],
+        ]);
+
+        PhotoAlbum::create([
+            ...$validated,
+            'order_index' => (int) ($validated['order_index'] ?? PhotoAlbum::query()->max('order_index') + 1),
+            'created_by_id' => $request->user()?->id,
+            'updated_by_id' => $request->user()?->id,
+            'metadata' => ['source' => 'cms'],
+        ]);
+        PublicCmsContentService::bumpCacheVersion();
+
+        return back()->with('status', 'Album creado. Ahora puedes asignarle fotos y portada.');
+    }
+
+    public function updateAlbum(Request $request, PhotoAlbum $album): RedirectResponse
+    {
+        $validated = $request->validate([
+            'title' => ['required', 'string', 'max:160'],
+            'description' => ['nullable', 'string', 'max:500'],
+            'order_index' => ['required', 'integer', 'min:0'],
+            'cover_photo_id' => ['nullable', 'integer', Rule::exists('photos', 'id')->where('album_id', $album->id)],
+        ]);
+
+        $album->update([
+            ...$validated,
+            'cover_photo_id' => $validated['cover_photo_id'] ?? null,
+            'updated_by_id' => $request->user()?->id,
+        ]);
+        PublicCmsContentService::bumpCacheVersion();
+
+        return back()->with('status', 'Album actualizado.');
+    }
+
+    public function destroyAlbum(Request $request, PhotoAlbum $album): RedirectResponse
+    {
+        $validated = $request->validate([
+            'reassign_album_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('photo_albums', 'id'),
+                Rule::notIn([$album->id]),
+            ],
+        ]);
+        $photoCount = $album->photos()->count();
+        $reassignAlbumId = isset($validated['reassign_album_id']) ? (int) $validated['reassign_album_id'] : null;
+
+        if ($photoCount > 0 && $reassignAlbumId === null) {
+            return back()->withErrors([
+                'reassign_album_id' => 'Reassign the album photos before deleting it.',
+            ]);
+        }
+
+        DB::transaction(function () use ($album, $reassignAlbumId, $request): void {
+            if ($reassignAlbumId !== null) {
+                $album->photos()->update(['album_id' => $reassignAlbumId]);
+                $target = PhotoAlbum::query()->findOrFail($reassignAlbumId);
+                $target->cover_photo_id ??= $target->photos()->value('id');
+                $target->updated_by_id = $request->user()?->id;
+                $target->save();
+            }
+
+            $album->delete();
+        });
+        PublicCmsContentService::bumpCacheVersion();
+
+        return back()->with('status', 'Album eliminado; las fotos y sus URLs se conservaron.');
     }
 
     public function update(Request $request, Photo $photo, PhotoLibraryService $photos): RedirectResponse
@@ -162,8 +239,7 @@ class PhotoLibraryController extends Controller
         ];
 
         $validator = Validator::make($data, [
-            'album_title' => ['nullable', 'string', 'max:160'],
-            'album_description' => ['nullable', 'string', 'max:500'],
+            'album_id' => ['nullable', 'integer', Rule::exists('photo_albums', 'id')],
             'visibility' => ['nullable', 'array'],
             'visibility.*' => ['nullable', Rule::in(PhotoVisibility::values())],
             'captions' => ['nullable', 'array'],
@@ -182,8 +258,7 @@ class PhotoLibraryController extends Controller
 
         return [
             [
-                'album_title' => $validated['album_title'] ?? null,
-                'album_description' => $validated['album_description'] ?? null,
+                'album_id' => $validated['album_id'] ?? null,
                 'visibility' => $validated['visibility'] ?? [],
                 'captions' => $validated['captions'] ?? [],
             ],

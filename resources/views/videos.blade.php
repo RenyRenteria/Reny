@@ -61,24 +61,26 @@
         ],
     ];
 
-    $featuredVideo = [
+    $pageSettings = $publicCms['page'] ?? [];
+    $defaultFeaturedVideo = [
         'id' => 'UWDLtZCoTag',
         'title' => 'Reny Renteria - Take a bite (Official Music Video)',
         'meta' => 'Featured YouTube premiere',
     ];
 
-    if (! empty($publicCms['featured_video'] ?? null)) {
-        $featuredVideo = $publicCms['featured_video'];
-    }
+    $hasCmsPayload = in_array($publicCms['_cms_source'] ?? 'static', ['cms', 'cache', 'preview'], true);
+    $featuredVideo = $publicCms['featured_video'] ?? ($hasCmsPayload ? null : $defaultFeaturedVideo);
 
-    $featuredVideo['external_url'] = $featuredVideo['external_url']
-        ?? (! empty($featuredVideo['id']) ? "https://www.youtube.com/watch?v={$featuredVideo['id']}" : null);
+    if (is_array($featuredVideo)) {
+        $featuredVideo['external_url'] = $featuredVideo['external_url']
+            ?? (! empty($featuredVideo['id']) ? "https://www.youtube.com/watch?v={$featuredVideo['id']}" : null);
+    }
 
     $cmsVideoCount = array_sum(array_map(
         fn (string $group): int => count($publicCms[$group] ?? []),
         array_keys($videoSections),
     ));
-    $usesCmsPayload = in_array($publicCms['_cms_source'] ?? 'static', ['cms', 'cache'], true) && $cmsVideoCount > 0;
+    $usesCmsPayload = $hasCmsPayload;
     $normalizeVideo = static function (array $video, string $group) use ($videoSections): array {
         $youtubeId = $video['id'] ?? null;
 
@@ -117,12 +119,13 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
-        <title>Videos | Reny Renteria</title>
+        @include('partials.public-seo', ['seo' => $pageSettings, 'fallbackTitle' => 'Videos | Reny Renteria'])
 
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body data-analytics-screen="videos">
         <div class="videos-shell" data-public-page-root>
+            @include('partials.cms-preview-banner')
             <aside class="sidebar" aria-label="Primary navigation">
                 <div>
                     <a class="brand-link" href="{{ url('/') }}" aria-label="Reny Renteria home">
@@ -156,41 +159,45 @@
 
                 <section class="video-hero" aria-label="Featured video">
                     <div class="hero-content">
-                        <p class="eyebrow">Video<br>Premiere</p>
-                        <h1>Watch<br>Now</h1>
-                        <h2>Official Music Videos</h2>
-                        <p class="hero-copy">
-                            A YouTube-first video hub for Reny Renteria with official releases,
-                            live performances, playlists, behind the scenes clips, and vlogs in one place.
-                        </p>
+                        <p class="eyebrow">{!! nl2br(e($pageSettings['eyebrow'] ?? 'Video Premiere')) !!}</p>
+                        <h1>{!! nl2br(e($pageSettings['title'] ?? 'Watch Now')) !!}</h1>
+                        <h2>{{ $pageSettings['subtitle'] ?? 'Official Music Videos' }}</h2>
+                        <p class="hero-copy">{{ $pageSettings['description'] ?? '' }}</p>
+                        @if (filled($pageSettings['cover_url'] ?? null))
+                            <img class="public-page-cover" src="{{ $pageSettings['cover_url'] }}" alt="{{ $pageSettings['cover_alt'] ?? '' }}">
+                        @endif
                         <p class="hero-link">Streaming from<br>youtube.com/renyrenteriam</p>
                     </div>
 
                     <div class="featured-video">
-                        <div class="video-frame">
-                            <iframe
-                                src="https://www.youtube.com/embed/{{ $featuredVideo['id'] }}"
-                                title="{{ $featuredVideo['title'] }}"
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                                allowfullscreen>
-                            </iframe>
-                        </div>
-                        <div class="featured-meta">
-                            <div>
-                                <strong>{{ $featuredVideo['title'] }}</strong>
-                                <span>{{ $featuredVideo['meta'] }}</span>
+                        @if ($featuredVideo && ! empty($featuredVideo['id']))
+                            <div class="video-frame">
+                                <iframe
+                                    src="https://www.youtube.com/embed/{{ $featuredVideo['id'] }}"
+                                    title="{{ $featuredVideo['title'] }}"
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                    allowfullscreen>
+                                </iframe>
                             </div>
-                            @if (! empty($featuredVideo['external_url']))
-                                <a
-                                    class="youtube-pill"
-                                    href="{{ $featuredVideo['external_url'] }}"
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    data-analytics-type="video"
-                                    data-analytics-label="{{ $featuredVideo['title'] }}"
-                                >Open YouTube</a>
-                            @endif
-                        </div>
+                            <div class="featured-meta">
+                                <div>
+                                    <strong>{{ $featuredVideo['title'] }}</strong>
+                                    <span>{{ $featuredVideo['meta'] }}</span>
+                                </div>
+                                @if (! empty($featuredVideo['external_url']))
+                                    <a
+                                        class="youtube-pill"
+                                        href="{{ $featuredVideo['external_url'] }}"
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        data-analytics-type="video"
+                                        data-analytics-label="{{ $featuredVideo['title'] }}"
+                                    >Open YouTube</a>
+                                @endif
+                            </div>
+                        @else
+                            <div class="video-frame video-frame-empty">No featured video published yet.</div>
+                        @endif
                     </div>
                 </section>
 

@@ -131,7 +131,8 @@ class CommunityPageTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('CMS Priority Community Post');
-        $response->assertDontSee('CMS priority poll question?');
+        $response->assertSee('CMS priority poll question?');
+        $response->assertSee('CMS option one');
         $response->assertDontSee('Studio note from Reny');
         $response->assertDontSee('Which drop should go first?');
     }

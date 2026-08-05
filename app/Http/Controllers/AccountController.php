@@ -57,7 +57,7 @@ class AccountController extends Controller
 
         $storefrontPayload = $this->accountData(
             'storefront',
-            fn (): array => $storefront->publicPayload(),
+            fn (): array => $storefront->publicPayload($user),
             ['slots' => []],
         );
         $registeredEvents = $this->accountData(

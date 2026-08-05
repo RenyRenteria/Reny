@@ -316,6 +316,37 @@
                 </fieldset>
             </section>
 
+            <section class="admin-panel" aria-labelledby="publication-title">
+                <div class="admin-section-head">
+                    <div>
+                        <p class="admin-kicker">Publication contract</p>
+                        <h2 id="publication-title">CTA, availability and SEO</h2>
+                    </div>
+                </div>
+
+                <div class="admin-form-grid admin-form-grid-wide">
+                    <label><span>Action</span><select name="metadata[action_type]"><option value="">Automatic from content type</option>@foreach (['buy', 'rsvp', 'link'] as $actionType)<option value="{{ $actionType }}" @selected($metaValue('action_type') === $actionType)>{{ $actionType }}</option>@endforeach</select></label>
+                    <label><span>CTA label</span><input name="metadata[cta_label]" maxlength="80" value="{{ $metaValue('cta_label') }}" placeholder="Automatic safe label"></label>
+                    <label><span>Action URL</span><input name="metadata[action_url]" value="{{ $metaValue('action_url') }}" placeholder="/music or https://..."></label>
+                    <label><span>Currency</span><input name="metadata[currency]" maxlength="3" value="{{ $metaValue('currency', 'USD') }}"></label>
+                    <label><span>Available from</span><input name="metadata[available_from]" type="datetime-local" value="{{ $metaValue('available_from') }}"></label>
+                    <label><span>Available until</span><input name="metadata[available_until]" type="datetime-local" value="{{ $metaValue('available_until') }}"></label>
+                    <label class="admin-checkbox"><input name="metadata[is_active]" type="hidden" value="0"><input name="metadata[is_active]" type="checkbox" value="1" @checked((bool) $metaValue('is_active', true))><span>Active</span></label>
+                    <label class="admin-checkbox"><input name="metadata[checkout_enabled]" type="hidden" value="0"><input name="metadata[checkout_enabled]" type="checkbox" value="1" @checked((bool) $metaValue('checkout_enabled', true))><span>Checkout enabled</span></label>
+
+                    <label><span>Meta title</span><input name="metadata[meta_title]" maxlength="70" value="{{ $metaValue('meta_title') }}"></label>
+                    <label class="admin-field-wide"><span>Meta description</span><textarea name="metadata[meta_description]" maxlength="180">{{ $metaValue('meta_description') }}</textarea></label>
+                    <label class="admin-field-wide"><span>Canonical URL</span><input name="metadata[canonical_url]" type="url" value="{{ $metaValue('canonical_url') }}"></label>
+                    <label><span>Open Graph title</span><input name="metadata[og_title]" maxlength="100" value="{{ $metaValue('og_title') }}"></label>
+                    <label><span>Open Graph image URL</span><input name="metadata[og_image]" type="url" value="{{ $metaValue('og_image') }}"></label>
+                    <label class="admin-field-wide"><span>Open Graph description</span><textarea name="metadata[og_description]" maxlength="220">{{ $metaValue('og_description') }}</textarea></label>
+                    <label><span>Twitter card</span><select name="metadata[twitter_card]"><option value="summary_large_image" @selected($metaValue('twitter_card', 'summary_large_image') === 'summary_large_image')>summary large image</option><option value="summary" @selected($metaValue('twitter_card') === 'summary')>summary</option></select></label>
+                    <label><span>Twitter title</span><input name="metadata[twitter_title]" maxlength="100" value="{{ $metaValue('twitter_title') }}"></label>
+                    <label><span>Twitter image URL</span><input name="metadata[twitter_image]" type="url" value="{{ $metaValue('twitter_image') }}"></label>
+                    <label class="admin-field-wide"><span>Twitter description</span><textarea name="metadata[twitter_description]" maxlength="220">{{ $metaValue('twitter_description') }}</textarea></label>
+                </div>
+            </section>
+
             <section class="admin-panel" aria-labelledby="assets-title">
                 <div class="admin-section-head">
                     <div>

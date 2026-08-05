@@ -36,3 +36,33 @@
     font-size: 1rem;
     line-height: 1.7;
 }
+
+.public-page-intro {
+    display: grid;
+    gap: 0.45rem;
+    margin: 1rem 0 2rem;
+    padding: 1.25rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.public-page-intro > * {
+    margin: 0;
+}
+
+.public-page-intro img {
+    width: min(100%, 42rem);
+    max-height: 18rem;
+    margin-top: 0.75rem;
+    object-fit: cover;
+}
+
+.video-frame-empty {
+    display: grid;
+    min-height: 16rem;
+    place-items: center;
+    padding: 2rem;
+    border: 1px dashed rgba(255, 255, 255, 0.3);
+    color: rgba(255, 255, 255, 0.72);
+    text-align: center;
+}

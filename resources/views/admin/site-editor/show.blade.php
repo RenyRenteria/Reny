@@ -41,11 +41,23 @@
 
 @section('content')
     <section class="admin-dashboard-section is-active site-editor-screen">
+        @if ($pageSettings && $pageSettingsForm)
+            @include('admin.site-editor.page-settings')
+        @endif
+
+        <nav class="admin-actions" aria-label="Audience previews">
+            @foreach (\App\Enums\VisibilityAudience::cases() as $audience)
+                <a class="admin-button admin-button-ghost" href="{{ route('admin.site-editor.preview', ['page' => $activePage, 'audience' => $audience->value]) }}" target="_blank" rel="noreferrer">
+                    {{ $audience === \App\Enums\VisibilityAudience::Open ? 'Guest' : str($audience->value)->headline() }} preview
+                </a>
+            @endforeach
+        </nav>
+
         @if (in_array($activePage, ['home', 'store'], true) && $storefront)
             @include('admin.site-editor.storefront', [
                 'storefront' => $storefront,
                 'mediaAssets' => $storefrontForm['mediaAssets'],
-                'albums' => $storefrontForm['albums'],
+                'storeContents' => $storefrontForm['storeContents'],
                 'publicUrl' => $publicUrl,
                 'editorPage' => $activePage,
             ])
@@ -322,7 +334,7 @@
                                 </div>
                             @else
                                 <div class="admin-empty-state">
-                                    Este bloque vive hardcodeado en la vista publica. Para editarlo hay que agregar page settings al CMS.
+                                    Este bloque se edita en Page settings y alimenta el mismo payload que la pagina publica.
                                 </div>
                             @endif
                         </article>

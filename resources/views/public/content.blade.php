@@ -3,7 +3,21 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>{{ $content->title }} | Reny Renteria</title>
+        @include('partials.public-seo', [
+            'seo' => [
+                'meta_title' => data_get($content->metadata, 'meta_title', $content->title.' | Reny Renteria'),
+                'meta_description' => data_get($content->metadata, 'meta_description', $content->summary ?? ''),
+                'canonical_url' => data_get($content->metadata, 'canonical_url', route('public.content.show', $content)),
+                'og_title' => data_get($content->metadata, 'og_title', $content->title),
+                'og_description' => data_get($content->metadata, 'og_description', $content->summary ?? ''),
+                'og_image' => data_get($content->metadata, 'og_image'),
+                'twitter_card' => data_get($content->metadata, 'twitter_card', 'summary_large_image'),
+                'twitter_title' => data_get($content->metadata, 'twitter_title', $content->title),
+                'twitter_description' => data_get($content->metadata, 'twitter_description', $content->summary ?? ''),
+                'twitter_image' => data_get($content->metadata, 'twitter_image'),
+            ],
+            'fallbackTitle' => $content->title.' | Reny Renteria',
+        ])
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body data-analytics-screen="public_content">
