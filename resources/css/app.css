@@ -47,6 +47,10 @@
     background: rgb(10 10 10 / 62%);
 }
 
+.store-content .public-page-intro {
+    color: #ffffff;
+}
+
 .public-page-intro p,
 .public-page-intro h1,
 .public-page-intro strong,

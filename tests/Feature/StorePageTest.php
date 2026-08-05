@@ -307,6 +307,16 @@ class StorePageTest extends TestCase
         $this->assertStringNotContainsString('aspect-ratio: 1;'."\n    }\n\n    .storefront-copy", $css);
     }
 
+    public function test_store_intro_uses_accessible_text_color(): void
+    {
+        $css = $this->frontendCssSource();
+
+        $this->assertMatchesRegularExpression(
+            '/\.store-content \.public-page-intro\s*\{[^}]*color:\s*#ffffff;/s',
+            $css,
+        );
+    }
+
     public function test_existing_tabs_link_to_store_route(): void
     {
         foreach (['/', '/videos', '/photos', '/community'] as $path) {
