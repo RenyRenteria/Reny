@@ -1,0 +1,677 @@
+/* Approved golden-stage reskin for the real Royals/CMS experience. */
+.royals-shell {
+    --home-gold-deep: #ac7031;
+    --home-gold-warm: #e7a551;
+    --home-gold-bright: #e7aa51;
+    --home-gold-light: #ffe499;
+    --home-ink: #17110b;
+    --home-ink-soft: #2b1f14;
+    --home-cream: #fff8e5;
+    --home-cream-muted: rgba(255, 248, 229, 0.72);
+    --home-red-deep: #45040f;
+    --home-red-mid: #8c102b;
+    --home-red-bright: #bd2342;
+    --royals-red: #c51d35;
+    --royals-red-deep: #6e0719;
+    --royals-ink: #17110b;
+    --royals-cream: #fff8e8;
+    --royals-muted: #7b6a59;
+    --royals-line: rgba(93, 55, 18, 0.2);
+    --royals-shadow: 0 1.4rem 3.5rem rgba(74, 40, 6, 0.22);
+    min-height: 100vh;
+}
+
+.royals-shell .community-content {
+    position: relative;
+    z-index: 1;
+    padding: 2rem clamp(1.25rem, 3.8vw, 3.5rem) 4rem;
+    color: var(--royals-ink);
+}
+
+.royals-shell [data-royal-pass-banner] {
+    width: min(100%, 78.125rem);
+    min-height: 5.25rem;
+    margin-bottom: 1.25rem;
+    padding: 0.85rem 1rem 0.85rem 1.35rem;
+    border-radius: 1.1rem;
+}
+
+.royals-shell .home-royal-pass-selector {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    min-height: 3rem;
+    text-align: left;
+}
+
+.royals-shell .home-royal-pass-copy {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.royals-shell .home-royal-pass-heading {
+    color: var(--home-cream);
+    font-size: clamp(1.05rem, 2vw, 1.35rem);
+    font-weight: 600;
+    letter-spacing: -0.03em;
+}
+
+.royals-shell .home-royal-pass-description {
+    color: rgba(255, 248, 232, 0.72);
+    font-size: 0.76rem;
+}
+
+.royals-shell .home-royal-pass-images {
+    display: flex;
+    align-items: center;
+    padding-left: 1rem;
+}
+
+.royals-shell .home-royal-pass-images img {
+    width: 2.25rem;
+    border: 2px solid #7d0d21;
+    object-fit: cover;
+    aspect-ratio: 1;
+}
+
+.royals-shell .home-royal-pass-images img + img {
+    margin-left: -0.72rem;
+}
+
+.royals-shell .home-unlock-button {
+    min-width: 10rem;
+    min-height: 2.8rem;
+}
+
+.royals-shell .community-experience {
+    grid-template-columns: minmax(0, 1fr) minmax(19rem, 22rem);
+    width: min(100%, 78.125rem);
+    gap: 1.25rem;
+}
+
+.royals-shell .community-feed-panel {
+    gap: 0.9rem;
+}
+
+.royals-shell .community-welcome-card {
+    min-height: 13.5rem;
+    padding: 1.8rem;
+    border-color: rgba(255, 228, 153, 0.28);
+    border-radius: 1.25rem;
+    background:
+        radial-gradient(circle at 82% 20%, rgba(197, 29, 53, 0.42), transparent 16rem),
+        radial-gradient(circle at 28% 0%, rgba(231, 165, 81, 0.2), transparent 20rem),
+        linear-gradient(112deg, #17110b 0%, #2e2117 58%, #4b2d1b 100%);
+    color: var(--royals-cream);
+    box-shadow: var(--royals-shadow), inset 0 0 0 1px rgba(255, 255, 255, 0.025);
+}
+
+.royals-shell .community-welcome-card::before {
+    position: absolute;
+    right: 4rem;
+    bottom: -7rem;
+    width: 15rem;
+    border: 1px solid rgba(255, 228, 153, 0.13);
+    border-radius: 50%;
+    content: "";
+    aspect-ratio: 1;
+}
+
+.royals-shell .community-welcome-card::after {
+    right: -1rem;
+    bottom: -5rem;
+    color: rgba(255, 228, 153, 0.055);
+    font-size: 16rem;
+    transform: rotate(-7deg);
+}
+
+.royals-shell .community-welcome-card > p {
+    display: flex;
+    align-items: center;
+    color: var(--home-gold-light);
+    font-size: 0.66rem;
+    gap: 0.55rem;
+}
+
+.royals-shell .community-welcome-card > p::before {
+    width: 1.5rem;
+    height: 1px;
+    background: currentColor;
+    content: "";
+}
+
+.royals-shell .community-welcome-card h1 {
+    max-width: 36rem;
+    margin: 0.65rem 0 0.45rem;
+    font-size: clamp(2rem, 4vw, 3.35rem);
+    letter-spacing: -0.055em;
+    line-height: 0.94;
+}
+
+.royals-shell .community-welcome-card > strong {
+    display: block;
+    color: var(--home-gold-light);
+    font-size: 0.72rem;
+    font-weight: 800;
+}
+
+.royals-shell .community-welcome-card > span {
+    max-width: 34rem;
+    margin-top: 0.3rem;
+    color: rgba(255, 248, 232, 0.68);
+    font-size: 0.82rem;
+    line-height: 1.5;
+}
+
+.royals-shell .community-welcome-points {
+    margin-top: 1.15rem;
+    gap: 0.5rem;
+}
+
+.royals-shell .community-welcome-points strong {
+    display: inline-flex;
+    min-height: 1.85rem;
+    align-items: center;
+    padding: 0 0.7rem;
+    border: 1px solid rgba(255, 228, 153, 0.16);
+    border-radius: 0.55rem;
+    background: rgba(255, 248, 232, 0.06);
+    color: rgba(255, 248, 232, 0.78);
+    font-size: 0.59rem;
+}
+
+.royals-shell .community-feed-heading {
+    margin-top: 0;
+    padding: 0.45rem 0.2rem 0.1rem;
+}
+
+.royals-shell .community-feed-heading > span {
+    min-height: 1.8rem;
+    border: 1px solid rgba(110, 7, 25, 0.13);
+    border-radius: 0.55rem;
+    background: rgba(255, 248, 232, 0.58);
+    color: var(--royals-red-deep);
+}
+
+.royals-shell .community-feed-heading b,
+.royals-shell .community-post-head strong span {
+    background: linear-gradient(135deg, var(--royals-red), var(--home-gold-deep));
+}
+
+.royals-shell .community-post-card,
+.royals-shell .community-empty-state,
+.royals-shell .poll-card {
+    border-color: rgba(93, 55, 18, 0.19);
+    border-radius: 1.15rem;
+    background: linear-gradient(135deg, rgba(255, 253, 246, 0.95), rgba(255, 243, 211, 0.89));
+    box-shadow: 0 1rem 2.5rem rgba(67, 37, 7, 0.12), inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+    backdrop-filter: blur(1rem);
+}
+
+.royals-shell .community-post-card {
+    overflow: hidden;
+    padding: 1.15rem;
+}
+
+.royals-shell .community-reny-avatar,
+.royals-shell .community-chat-avatar {
+    border-radius: 0.72rem;
+    background: linear-gradient(140deg, #f04856, var(--home-gold-warm) 52%, #17110b 53%);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16);
+}
+
+.royals-shell .community-post-head small,
+.royals-shell .community-post-action,
+.royals-shell .community-comments-disabled {
+    color: var(--royals-muted);
+}
+
+.royals-shell .community-post-card h3,
+.royals-shell .community-post-copy,
+.royals-shell .community-post-comments strong,
+.royals-shell .community-post-comments p {
+    color: var(--royals-ink);
+}
+
+.royals-shell .community-post-media,
+.royals-shell .community-post-embeds img,
+.royals-shell .community-post-embeds video,
+.royals-shell .community-post-embeds iframe {
+    border-radius: 0.95rem;
+}
+
+.royals-shell .community-post-action {
+    min-height: 2.75rem;
+    padding-inline: 0.65rem;
+    border-radius: 0.65rem;
+    font-size: 0.75rem;
+}
+
+.royals-shell .community-post-action:hover,
+.royals-shell .community-post-action:focus-visible {
+    background: rgba(172, 112, 49, 0.11);
+    color: var(--royals-ink);
+    outline: none;
+}
+
+.royals-shell .community-post-action.is-reacted {
+    background: rgba(197, 29, 53, 0.1);
+    color: var(--royals-red);
+}
+
+.royals-shell .community-inline-reply,
+.royals-shell .community-post-comments {
+    border-color: var(--royals-line);
+}
+
+.royals-shell .community-inline-reply input,
+.royals-shell .community-inline-reply > button {
+    min-height: 2.75rem;
+    border-radius: 0.72rem;
+}
+
+.royals-shell .community-inline-reply input {
+    height: 2.75rem;
+    border-color: var(--royals-line);
+    background: rgba(255, 255, 255, 0.54);
+    font-size: 0.875rem;
+}
+
+.royals-shell .community-inline-reply > button {
+    background: var(--royals-ink);
+    color: var(--home-gold-light);
+    font-size: 0.75rem;
+}
+
+.royals-shell .community-post-comments article {
+    background: rgba(255, 255, 255, 0.52);
+}
+
+.royals-shell .community-inline-gate {
+    min-height: 2.75rem;
+    align-items: center;
+    color: var(--royals-red-deep);
+}
+
+.royals-shell .community-live-chat-panel {
+    min-height: 38rem;
+}
+
+.royals-shell .community-live-chat-card {
+    border-color: rgba(255, 228, 153, 0.25);
+    background:
+        radial-gradient(circle at 80% 8%, rgba(197, 29, 53, 0.2), transparent 15rem),
+        linear-gradient(150deg, rgba(25, 17, 11, 0.97), rgba(47, 31, 19, 0.97));
+    color: var(--royals-cream);
+    box-shadow: var(--royals-shadow), inset 0 0 0 1px rgba(255, 255, 255, 0.025);
+}
+
+.royals-shell .community-chat-head h2 {
+    color: var(--royals-cream);
+}
+
+.royals-shell .community-chat-head div span {
+    border: 1px solid rgba(240, 72, 86, 0.3);
+    background: rgba(197, 29, 53, 0.18);
+    color: #ff9ba4;
+    font-size: 0.75rem;
+}
+
+.royals-shell .community-chat-head p,
+.royals-shell .community-live-message time,
+.royals-shell .community-live-message p,
+.royals-shell .community-chat-composer > p {
+    color: rgba(255, 248, 232, 0.72);
+}
+
+.royals-shell .community-chat-head p,
+.royals-shell .community-live-message header strong,
+.royals-shell .community-live-message header span,
+.royals-shell .community-live-message time,
+.royals-shell .community-live-message-actions button,
+.royals-shell .community-chat-composer > p,
+.royals-shell .community-pinned-message strong {
+    font-size: 0.75rem;
+}
+
+.royals-shell .community-live-pulse {
+    background: #72d88e;
+    box-shadow: 0 0 0 0.25rem rgba(114, 216, 142, 0.11), 0 0 1rem rgba(114, 216, 142, 0.45);
+    animation: royals-live-pulse 1.7s ease-out infinite;
+}
+
+.royals-shell .community-pinned-message {
+    border-color: rgba(255, 228, 153, 0.17);
+    background: linear-gradient(105deg, rgba(231, 165, 81, 0.13), rgba(197, 29, 53, 0.07));
+}
+
+.royals-shell .community-pinned-message strong {
+    color: var(--home-gold-light);
+}
+
+.royals-shell .community-pinned-message p {
+    color: rgba(255, 248, 232, 0.74);
+    font-size: 0.78rem;
+}
+
+.royals-shell .community-live-messages {
+    scrollbar-color: rgba(255, 228, 153, 0.3) transparent;
+}
+
+.royals-shell .community-live-message {
+    grid-template-columns: 1.9rem minmax(0, 1fr);
+}
+
+.royals-shell .community-live-message.is-host {
+    border: 1px solid rgba(255, 228, 153, 0.1);
+    background: rgba(231, 165, 81, 0.09);
+}
+
+.royals-shell .community-chat-avatar {
+    width: 1.9rem;
+    border-radius: 0.58rem;
+    font-size: 0.75rem;
+}
+
+.royals-shell .community-live-message header span {
+    background: #704314;
+    color: var(--royals-cream);
+}
+
+.royals-shell .community-live-message p {
+    font-size: 0.8125rem;
+}
+
+.royals-shell .community-live-message-actions button {
+    color: rgba(255, 248, 232, 0.72);
+}
+
+.royals-shell .community-chat-empty,
+.royals-shell .community-chat-empty strong {
+    color: rgba(255, 248, 232, 0.72);
+}
+
+.royals-shell .community-chat-empty p {
+    font-size: 0.75rem;
+}
+
+.royals-shell .community-chat-composer {
+    border-color: rgba(255, 228, 153, 0.13);
+    background: rgba(15, 10, 7, 0.46);
+}
+
+.royals-shell .community-chat-composer form {
+    grid-template-columns: minmax(0, 1fr) 2.75rem;
+}
+
+.royals-shell .community-chat-composer form input {
+    height: 2.75rem;
+    border-color: rgba(255, 228, 153, 0.15);
+    border-radius: 0.72rem;
+    background: rgba(255, 248, 232, 0.07);
+    color: var(--royals-cream);
+    font-size: 0.875rem;
+}
+
+.royals-shell .community-chat-composer form input::placeholder {
+    color: rgba(255, 248, 232, 0.7);
+}
+
+.royals-shell .community-chat-composer form button {
+    width: 2.75rem;
+    border-radius: 0.72rem;
+    background: linear-gradient(135deg, var(--home-gold-light), var(--home-gold-warm));
+    color: var(--royals-ink);
+}
+
+.royals-shell .community-chat-composer .access-gate {
+    border-color: rgba(255, 228, 153, 0.17);
+    background: rgba(255, 248, 232, 0.07);
+    color: var(--royals-cream);
+}
+
+.royals-shell .community-chat-composer .access-gate span,
+.royals-shell .community-chat-composer .access-gate-button {
+    color: var(--home-gold-light);
+}
+
+.royals-shell .community-chat-composer .access-gate-button {
+    min-height: 2.75rem;
+    border-color: rgba(255, 228, 153, 0.35);
+    background: rgba(23, 17, 11, 0.72);
+}
+
+.royals-shell .community-toast {
+    border: 1px solid rgba(255, 228, 153, 0.28);
+    border-radius: 0.8rem;
+    background: rgba(23, 17, 11, 0.94);
+    color: var(--royals-cream);
+    box-shadow: var(--royals-shadow);
+}
+
+@keyframes royals-live-pulse {
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.7;
+        transform: scale(0.78);
+    }
+}
+
+@media (max-width: 53.75rem) {
+    .royals-shell .community-content {
+        padding: 0.9rem 0.8rem calc(6.2rem + env(safe-area-inset-bottom));
+        background: transparent;
+    }
+
+    .royals-shell .stage-lights {
+        height: 25rem;
+    }
+
+    .royals-shell .stage-light {
+        width: 16rem;
+        height: 28rem;
+        opacity: 0.45;
+    }
+
+    .royals-shell .community-mobile-header {
+        display: flex;
+        min-height: 3.75rem;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 0.75rem;
+        padding: 0.3rem 0.15rem;
+    }
+
+    .royals-shell .community-mobile-header .brand-link {
+        padding: 0.42rem 0.7rem;
+        border: 1px solid rgba(255, 228, 153, 0.34);
+        border-radius: 0.9rem;
+        background: rgba(23, 17, 11, 0.92);
+        box-shadow: 0 0.7rem 1.6rem rgba(74, 41, 7, 0.2);
+    }
+
+    .royals-shell .community-mobile-header .brand-logo {
+        width: min(7.125rem, 48vw);
+    }
+
+    .royals-shell .community-live-status {
+        min-height: 2rem;
+        padding: 0 0.65rem;
+        border: 1px solid rgba(23, 17, 11, 0.13);
+        border-radius: 0.6rem;
+        background: rgba(255, 248, 232, 0.48);
+        backdrop-filter: blur(1rem);
+    }
+
+    .royals-shell [data-royal-pass-banner] {
+        width: 100%;
+        min-height: 0;
+        padding: 0.95rem;
+        border-radius: 1rem;
+    }
+
+    .royals-shell .home-royal-pass-selector {
+        grid-template-columns: 1fr;
+        text-align: left;
+    }
+
+    .royals-shell .home-royal-pass-copy {
+        display: flex;
+        align-items: flex-start;
+    }
+
+    .royals-shell .home-royal-pass-heading,
+    .royals-shell .home-royal-pass-description {
+        margin-inline: 0;
+        text-align: left;
+    }
+
+    .royals-shell .home-royal-pass-images {
+        display: grid;
+        width: 100%;
+        padding-left: 0;
+    }
+
+    .royals-shell .home-royal-pass-images img {
+        width: 100%;
+    }
+
+    .royals-shell .home-royal-pass-images img + img {
+        margin-left: 0;
+    }
+
+    .royals-shell .community-mobile-tabs {
+        min-height: 3.75rem;
+        margin: 0 -0.8rem 0.75rem;
+        padding: 0.48rem 0.8rem;
+        border-color: var(--royals-line);
+        background: rgba(255, 228, 153, 0.82);
+        backdrop-filter: blur(1rem);
+    }
+
+    .royals-shell .community-mobile-tabs button {
+        min-height: 2.75rem;
+        border: 1px solid transparent;
+        border-radius: 0.72rem;
+        color: rgba(23, 17, 11, 0.6);
+    }
+
+    .royals-shell .community-mobile-tabs button.is-active {
+        border-color: rgba(93, 55, 18, 0.13);
+        background: rgba(23, 17, 11, 0.91);
+        color: var(--home-gold-light);
+        box-shadow: 0 0.55rem 1rem rgba(74, 40, 6, 0.12);
+    }
+
+    .royals-shell .community-mobile-tabs button span {
+        background: var(--royals-red);
+        color: #ffffff;
+    }
+
+    .royals-shell .community-live-chat-panel {
+        height: calc(100dvh - 8.5rem);
+        min-height: 34rem;
+    }
+
+    .royals-shell .community-welcome-card {
+        min-height: 0;
+        padding: 1.3rem;
+        border-radius: 1rem;
+    }
+
+    .royals-shell .community-welcome-card h1 {
+        max-width: 19rem;
+        font-size: clamp(2rem, 10vw, 2.75rem);
+    }
+
+    .royals-shell .community-post-card {
+        padding: 1rem;
+        border-radius: 1rem;
+    }
+
+    .royals-shell .community-post-actions {
+        align-items: flex-start;
+        flex-direction: row;
+    }
+
+    .royals-shell .community-post-actions > .share {
+        margin-left: 0;
+    }
+
+    .royals-shell .community-inline-reply input,
+    .royals-shell .community-chat-composer form input {
+        font-size: 1rem;
+    }
+
+    .royals-shell .community-live-chat-card {
+        border-radius: 1rem;
+    }
+
+    .royals-shell .mobile-bottom-nav {
+        right: 0.7rem;
+        bottom: calc(0.65rem + env(safe-area-inset-bottom));
+        left: 0.7rem;
+        height: auto;
+        min-height: 4.15rem;
+        padding: 0.45rem;
+        border: 1px solid rgba(255, 228, 153, 0.22);
+        border-radius: 1rem;
+        background: rgba(20, 14, 9, 0.94);
+        box-shadow: 0 1rem 2.5rem rgba(48, 24, 4, 0.34);
+    }
+
+    .royals-shell .mobile-bottom-nav a {
+        min-height: 3.1rem;
+        border: 0;
+        border-radius: 0.7rem;
+        color: rgba(255, 248, 232, 0.48);
+    }
+
+    .royals-shell .mobile-bottom-nav a.is-active {
+        background: linear-gradient(135deg, rgba(197, 29, 53, 0.34), rgba(231, 165, 81, 0.14));
+        color: var(--home-gold-light);
+    }
+
+    .royals-shell .mobile-bottom-nav svg {
+        width: 1.25rem;
+        height: 1.25rem;
+    }
+
+    .royals-shell ~ .community-toast {
+        right: 0.8rem;
+        bottom: calc(5.6rem + env(safe-area-inset-bottom));
+        left: 0.8rem;
+        max-width: none;
+        text-align: center;
+    }
+}
+
+@media (max-width: 26.875rem) {
+    .royals-shell .community-welcome-card {
+        padding: 1.15rem;
+    }
+
+    .royals-shell .community-inline-reply {
+        grid-template-columns: 1fr;
+    }
+
+    .royals-shell .community-inline-reply > button {
+        width: 100%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .royals-shell,
+    .royals-shell *,
+    .royals-shell *::before,
+    .royals-shell *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}

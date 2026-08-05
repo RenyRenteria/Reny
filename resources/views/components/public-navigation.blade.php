@@ -5,7 +5,7 @@
 ])
 
 <nav class="{{ trim(($mobile ? 'mobile-bottom-nav' : 'tabs').' '.$extraClass) }}" aria-label="{{ $mobile ? 'Mobile menu' : 'Main menu' }}">
-    <a @class(['tab' => ! $mobile, 'is-active' => $active === 'royals']) href="{{ url('/community') }}"@if ($active === 'royals') aria-current="page"@endif>
+    <a @class(['tab' => ! $mobile, 'is-active' => $active === 'royals']) href="{{ route('royals') }}"@if ($active === 'royals') aria-current="page"@endif>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
             <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z"></path>
         </svg>

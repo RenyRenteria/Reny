@@ -310,13 +310,17 @@ const initializeCommunityMobileTabs = (root = document) => {
     tabs.forEach((tab, index) => {
         bindOnce(tab, 'community-mobile-tab', 'click', () => activate(tab.dataset.communityTab));
         bindOnce(tab, 'community-mobile-tab-keydown', 'keydown', (event) => {
-            if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) {
+            if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
                 return;
             }
 
             event.preventDefault();
-            const direction = event.key === 'ArrowRight' ? 1 : -1;
-            const nextTab = tabs[(index + direction + tabs.length) % tabs.length];
+            const nextIndex = event.key === 'Home'
+                ? 0
+                : event.key === 'End'
+                    ? tabs.length - 1
+                    : (index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+            const nextTab = tabs[nextIndex];
             activate(nextTab.dataset.communityTab);
             nextTab.focus();
         });

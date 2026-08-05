@@ -30,6 +30,8 @@
 
 @import './features/home.css';
 
+@import './features/royals.css';
+
 @import './features/music-detail.css';
 
 @import './features/public-content.css';

@@ -23,7 +23,7 @@ class CommunityPageTest extends TestCase
 
     public function test_community_page_mounts_approved_mockup_experience(): void
     {
-        $response = $this->get('/community');
+        $response = $this->get('/royals');
 
         $response->assertOk();
         $response->assertSee('Directo de Reny.');
@@ -33,12 +33,15 @@ class CommunityPageTest extends TestCase
         $response->assertSee('data-community-tab="feed"', false);
         $response->assertSee('data-community-tab="chat"', false);
         $response->assertSee('class="tab is-active"', false);
-        $response->assertSee('href="'.url('/community').'"', false);
-        $response->assertSee('images/reny-renteria-logo.png');
+        $response->assertSee('href="'.route('royals').'"', false);
+        $response->assertSee('images/reny-renteria-logo-white.png');
+        $response->assertSee('class="stage-lights"', false);
+        $response->assertSee('class="community-shell home-shell royals-shell"', false);
+        $response->assertSee('<link rel="canonical" href="'.route('royals').'">', false);
 
         $html = $response->getContent();
 
-        $this->assertSame(2, substr_count($html, 'images/reny-renteria-logo.png'));
+        $this->assertSame(2, substr_count($html, 'images/reny-renteria-logo-white.png'));
         $this->assertSame(1, substr_count($html, 'class="community-experience"'));
         $this->assertSame(1, substr_count($html, 'class="community-live-chat-panel"'));
         $this->assertSame(0, substr_count($html, 'class="community-post-card'));
@@ -53,14 +56,22 @@ class CommunityPageTest extends TestCase
         $this->assertStringNotContainsString('youtube', strtolower($html));
     }
 
-    public function test_existing_tabs_link_to_community_route(): void
+    public function test_existing_tabs_link_to_royals_route(): void
     {
         foreach (['/', '/videos', '/photos'] as $path) {
             $this->get($path)
                 ->assertOk()
-                ->assertSee('href="'.url('/community').'"', false)
+                ->assertSee('href="'.route('royals').'"', false)
                 ->assertDontSee('href="#community"', false);
         }
+    }
+
+    public function test_legacy_community_route_keeps_working_with_royals_as_its_canonical_url(): void
+    {
+        $this->get('/community')
+            ->assertOk()
+            ->assertSee('<link rel="canonical" href="'.route('royals').'">', false)
+            ->assertSee('href="'.route('royals').'"', false);
     }
 
     public function test_community_post_fallbacks_can_be_resolved_from_versioned_config(): void

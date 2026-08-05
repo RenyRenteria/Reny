@@ -36,7 +36,7 @@
                             <span>Country Club</span>
                             <h1>{{ $club['name'] }}</h1>
                         </div>
-                        <a class="outline-button community-back-link" href="{{ url('/community') }}">Back to Community</a>
+                        <a class="outline-button community-back-link" href="{{ route('royals') }}">Back to Royals</a>
                     </div>
 
                     <div class="country-chat-panel">

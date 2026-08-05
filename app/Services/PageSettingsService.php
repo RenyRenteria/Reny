@@ -62,7 +62,7 @@ class PageSettingsService
             'cover_alt' => str_replace("\n", ' ', $pageDefaults['title']),
             'meta_title' => $title,
             'meta_description' => $pageDefaults['description'],
-            'canonical_url' => url('/'.$page),
+            'canonical_url' => url('/'.($page === 'community' ? 'royals' : $page)),
             'og_title' => $title,
             'og_description' => $pageDefaults['description'],
             'og_image' => null,
@@ -158,6 +158,11 @@ class PageSettingsService
     private function payloadFor(string $page, ?SitePageSetting $setting): array
     {
         $payload = $this->normalize($page, $setting?->payload ?? []);
+
+        if ($page === 'community' && $payload['canonical_url'] === url('/community')) {
+            $payload['canonical_url'] = url('/royals');
+        }
+
         $assetId = $this->assetId($payload['cover_asset_id'] ?? $setting?->media_asset_id);
         $asset = $assetId && Schema::hasTable('media_assets')
             ? MediaAsset::query()->ready()->where('is_public', true)->find($assetId)

@@ -506,7 +506,7 @@ class CommunityInteractionService
                 'liked' => in_array($post['key'], $likedKeys, true),
                 'like_endpoint' => route('community.posts.like', $post['key']),
                 'reply_endpoint' => route('community.posts.replies.store', $post['key']),
-                'share_url' => url('/community').'#'.$post['key'],
+                'share_url' => route('royals').'#'.$post['key'],
             ])
             ->all();
     }

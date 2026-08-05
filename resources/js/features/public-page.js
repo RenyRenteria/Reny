@@ -85,6 +85,7 @@ const isPersistentPublicPath = (url) => {
         '/music/playlists',
         '/videos',
         '/photos',
+        '/royals',
         '/community',
         '/store',
     ]);
