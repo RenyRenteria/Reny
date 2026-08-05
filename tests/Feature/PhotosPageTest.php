@@ -2,16 +2,19 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class PhotosPageTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_photos_page_mounts_image_only_masonry_gallery(): void
     {
         $response = $this->get('/photos');
 
         $response->assertOk();
-        $response->assertSee('<title>Photos | Reny Renteria</title>', false);
+        $response->assertSee('<title>Visual archive | Reny Renteria</title>', false);
         $response->assertSee('class="photo-masonry"', false);
         $response->assertDontSee('class="tab is-active"', false);
         $response->assertSee('id="photoLightboxPrev"', false);
@@ -29,8 +32,8 @@ class PhotosPageTest extends TestCase
         $this->assertSame(12, substr_count($html, 'class="photo-tile'));
         $this->assertSame(12, substr_count($html, 'data-photo-slug='));
         $this->assertSame(12, count($photoImages[0]));
-        $this->assertStringContainsString('data-photo-slug="capri-heartbreak"', $html);
-        $this->assertStringContainsString('data-photo-share-url="'.route('photos', ['photo' => 'capri-heartbreak']).'"', $html);
+        $this->assertStringContainsString('data-photo-slug="photo-1"', $html);
+        $this->assertStringContainsString('data-photo-share-url="'.route('photos', ['photo' => 'photo-1']).'"', $html);
         $this->assertStringNotContainsString('<iframe', $html);
         $this->assertStringNotContainsString('<video', $html);
         $this->assertStringNotContainsString('youtube', strtolower($html));
@@ -41,10 +44,10 @@ class PhotosPageTest extends TestCase
 
     public function test_photo_deep_link_query_keeps_gallery_contract_available(): void
     {
-        $this->get(route('photos', ['photo' => 'capri-heartbreak']))
+        $this->get(route('photos', ['photo' => 'photo-1']))
             ->assertOk()
-            ->assertSee('data-photo-slug="capri-heartbreak"', false)
-            ->assertSee('data-photo-share-url="'.route('photos', ['photo' => 'capri-heartbreak']).'"', false)
+            ->assertSee('data-photo-slug="photo-1"', false)
+            ->assertSee('data-photo-share-url="'.route('photos', ['photo' => 'photo-1']).'"', false)
             ->assertSee('id="photoLightbox"', false);
     }
 
