@@ -14,17 +14,19 @@
 
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;500&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body data-analytics-screen="store_checkout" data-preferred-currency="{{ auth()->user()?->preferred_currency ?? 'USD' }}">
-        <div class="store-shell">
+    <body class="golden-stage-page checkout-page" data-analytics-screen="store_checkout" data-preferred-currency="{{ auth()->user()?->preferred_currency ?? 'USD' }}">
+        <div class="store-shell home-shell golden-stage-shell checkout-stage-shell">
+            @include('partials.stage-lights')
+
             <aside class="sidebar" aria-label="Primary navigation">
                 <div>
                     <a class="brand-link" href="{{ url('/') }}" aria-label="Reny Renteria home">
                         <img
                             class="brand-logo"
-                            src="{{ asset('images/reny-renteria-logo.png') }}"
+                            src="{{ asset('images/reny-renteria-logo-white.png') }}"
                             alt="Reny Renteria"
                         >
                     </a>
@@ -35,13 +37,13 @@
                 <x-member-card />
             </aside>
 
-            <main class="main-content store-content checkout-content" id="store-checkout">
-                <header class="mobile-header">
+            <main class="main-content store-content checkout-content golden-stage-main" id="store-checkout">
+                <header class="mobile-header golden-stage-mobile-header">
                     <div class="mobile-brand">
                         <a class="brand-link" href="{{ url('/') }}" aria-label="Reny Renteria home">
                             <img
                                 class="brand-logo"
-                                src="{{ asset('images/reny-renteria-logo.png') }}"
+                                src="{{ asset('images/reny-renteria-logo-white.png') }}"
                                 alt="Reny Renteria"
                             >
                         </a>

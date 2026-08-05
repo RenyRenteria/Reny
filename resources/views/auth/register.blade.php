@@ -11,11 +11,13 @@
         <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body data-analytics-screen="auth_register">
-        <main class="auth-shell">
+    <body class="golden-stage-page auth-page" data-analytics-screen="auth_register">
+        <main class="auth-shell home-shell auth-stage-shell">
+            @include('partials.stage-lights')
+
             <section class="auth-panel" aria-labelledby="register-title">
                 <a class="brand-link brand-link-centered" href="{{ route('home') }}" aria-label="Reny Renteria home">
-                    <img class="brand-logo" src="{{ asset('images/reny-renteria-logo.png') }}" alt="Reny Renteria">
+                    <img class="brand-logo" src="{{ asset('images/reny-renteria-logo-white.png') }}" alt="Reny Renteria">
                 </a>
 
                 <h1 id="register-title">Create account</h1>

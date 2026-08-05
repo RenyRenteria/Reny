@@ -104,6 +104,11 @@ class AccountDashboardTest extends TestCase
             ->get('/account')
             ->assertOk()
             ->assertSee('data-preferred-currency="USD"', false)
+            ->assertSee('class="golden-stage-page account-page"', false)
+            ->assertSee('class="store-shell home-shell golden-stage-shell account-shell account-stage-shell"', false)
+            ->assertSee(asset('images/reny-renteria-logo-white.png'), false)
+            ->assertSee('class="stage-lights"', false)
+            ->assertSee('class="mobile-bottom-nav"', false)
             ->assertSeeInOrder([
                 'Profile',
                 'Display Name',

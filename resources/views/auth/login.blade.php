@@ -11,11 +11,13 @@
         <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body data-analytics-screen="auth_login">
-        <main class="auth-shell">
+    <body class="golden-stage-page auth-page" data-analytics-screen="auth_login">
+        <main class="auth-shell home-shell auth-stage-shell">
+            @include('partials.stage-lights')
+
             <section class="auth-panel" aria-labelledby="login-title">
                 <a class="brand-link" href="{{ route('home') }}" aria-label="Reny Renteria home">
-                    <img class="brand-logo" src="{{ asset('images/reny-renteria-logo.png') }}" alt="Reny Renteria">
+                    <img class="brand-logo" src="{{ asset('images/reny-renteria-logo-white.png') }}" alt="Reny Renteria">
                 </a>
 
                 <p class="auth-kicker">Royal Pass</p>
