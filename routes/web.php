@@ -36,7 +36,7 @@ Route::get('/music/playlists', [MusicController::class, 'playlists'])->name('mus
 Route::get('/music/play/{content}', [MusicController::class, 'play'])->name('music.play');
 Route::get('/album/{album}', [MusicController::class, 'album'])->name('music.albums.show');
 Route::get('/videos', [PublicContentController::class, 'videos'])->name('videos');
-Route::get('/photos', [PublicContentController::class, 'photos']);
+Route::get('/photos', [PublicContentController::class, 'photos'])->name('photos');
 Route::get('/community', [PublicContentController::class, 'community']);
 Route::get('/community/live-chat/messages', [CommunityInteractionController::class, 'liveChatMessages'])
     ->middleware('throttle:120,1')

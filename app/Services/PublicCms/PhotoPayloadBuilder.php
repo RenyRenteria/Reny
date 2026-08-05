@@ -65,6 +65,8 @@ class PhotoPayloadBuilder
     private function photo(EditorialContent $content, int $index): array
     {
         return [
+            'key' => 'cms-photo-'.$content->id,
+            'slug' => $content->slug,
             'image' => $this->media->metadata($content, 'fallback_image', 'cover.jpg'),
             'image_url' => $this->media->mediaUrl($content, ['image_asset_id']) ?? $this->media->metadata($content, 'image_url'),
             'type' => $content->type === ContentType::Gallery ? 'Album' : 'Single post',
@@ -72,6 +74,7 @@ class PhotoPayloadBuilder
             'title' => $content->title,
             'caption' => $this->media->metadata($content, 'caption', $content->summary ?? ''),
             'size' => ['wide', 'tall', 'standard'][$index % 3],
+            'share_url' => route('photos', ['photo' => $content->slug]),
         ];
     }
 
@@ -86,6 +89,8 @@ class PhotoPayloadBuilder
 
         return [
             'id' => $photo->id,
+            'key' => 'photo-'.$photo->id,
+            'slug' => 'photo-'.$photo->id,
             'album_id' => $photo->album_id,
             'image' => data_get($photo->metadata, 'original_filename', 'cover.jpg'),
             'image_url' => $photo->displayUrl($user),
@@ -96,6 +101,7 @@ class PhotoPayloadBuilder
             'size' => (string) data_get($photo->metadata, 'size', ['wide', 'tall', 'standard'][$index % 3]),
             'visibility' => $photo->visibility->value,
             'locked' => ! $hasAccess,
+            'share_url' => route('photos', ['photo' => 'photo-'.$photo->id]),
         ];
     }
 }
