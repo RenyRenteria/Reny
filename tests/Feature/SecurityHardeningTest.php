@@ -136,22 +136,22 @@ class SecurityHardeningTest extends TestCase
         ])->assertTooManyRequests();
     }
 
-    public function test_paypal_and_local_checkout_mutations_share_a_throttle_budget(): void
+    public function test_guest_checkout_budget_cannot_be_bypassed_by_rotating_identifiers(): void
     {
         for ($attempt = 0; $attempt < 10; $attempt++) {
             $this->postJson(route('checkout.paypal.orders'), [
-                'identifier' => 'FAN@example.com',
+                'identifier' => 'first@example.com',
             ])->assertUnprocessable();
         }
 
         for ($attempt = 0; $attempt < 10; $attempt++) {
             $this->postJson(route('checkout.local'), [
-                'identifier' => 'fan@example.com',
+                'identifier' => 'second@example.com',
             ])->assertUnprocessable();
         }
 
         $this->postJson(route('checkout.paypal'), [
-            'identifier' => ' fan@EXAMPLE.COM ',
+            'identifier' => 'third@example.com',
         ])->assertTooManyRequests();
     }
 
