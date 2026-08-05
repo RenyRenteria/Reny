@@ -29,6 +29,10 @@ class StorePageTest extends TestCase
         $response = $this->get('/store');
 
         $response->assertOk();
+        $response->assertSee('class="golden-stage-page checkout-page store-stage-page"', false);
+        $response->assertSee('class="store-shell home-shell golden-stage-shell store-stage-shell"', false);
+        $response->assertSee(asset('images/reny-renteria-logo-white.png'), false);
+        $response->assertSee('class="stage-lights"', false);
         $response->assertSee('Get your');
         $response->assertSee('Royal Pass');
         $response->assertSee('Unlock Royal Pass');
@@ -89,6 +93,7 @@ class StorePageTest extends TestCase
         $this->assertStringNotContainsString('role="tab"', $html);
         $this->assertStringContainsString('class="home-royal-pass is-selected"', $html);
         $this->assertStringContainsString('data-royal-pass-banner', $html);
+        $this->assertStringNotContainsString('home-royal-pass-images', $html);
         $this->assertStringNotContainsString('data-requires-plan-selection="true"', $html);
         $this->assertStringNotContainsString('role="button"', $html);
         $this->assertStringNotContainsString('aria-selected', $html);
@@ -128,6 +133,10 @@ class StorePageTest extends TestCase
             ->assertOk()
             ->assertSee('<title>Shows | Reny Renteria</title>', false)
             ->assertSee('data-analytics-screen="shows"', false)
+            ->assertSee('class="golden-stage-page checkout-page store-stage-page"', false)
+            ->assertSee('class="store-shell home-shell golden-stage-shell store-stage-shell"', false)
+            ->assertSee(asset('images/reny-renteria-logo-white.png'), false)
+            ->assertSee('class="stage-lights"', false)
             ->assertSee('Reny Renteria en Concierto')
             ->assertSee('Festival de la Rosa Dorada')
             ->assertSee('data-free-event-rsvp="concert"', false)
@@ -137,6 +146,7 @@ class StorePageTest extends TestCase
             ->assertDontSee('Crown Collection')
             ->assertDontSee('data-buy="merch"', false)
             ->assertSee('data-royal-pass-banner', false)
+            ->assertDontSee('home-royal-pass-images', false)
             ->assertSee('class="tab is-active" href="'.route('shows').'" aria-current="page"', false);
 
         $this->assertSame(2, substr_count($response->getContent(), 'storefront-card'));
@@ -300,15 +310,15 @@ class StorePageTest extends TestCase
             ->assertNotFound();
     }
 
-    public function test_store_event_images_use_matching_ratio_rules(): void
+    public function test_store_event_images_use_golden_stage_card_ratio_rules(): void
     {
         $css = $this->frontendCssSource();
 
-        $this->assertStringContainsString('.storefront-card.is-event .storefront-image', $css);
-        $this->assertStringContainsString('aspect-ratio: 245 / 301;', $css);
-        $this->assertStringContainsString('object-fit: contain;', $css);
+        $this->assertStringContainsString('.store-stage-shell .storefront-card.is-event .storefront-image', $css);
+        $this->assertStringContainsString('aspect-ratio: 1;', $css);
+        $this->assertStringContainsString('object-fit: cover;', $css);
+        $this->assertStringContainsString('.store-stage-shell #shows .storefront-card', $css);
         $this->assertStringNotContainsString('storefront-card.is-event-secondary .storefront-image', $css);
-        $this->assertStringNotContainsString('aspect-ratio: 1;'."\n    }\n\n    .storefront-copy", $css);
     }
 
     public function test_store_intro_uses_accessible_text_color(): void

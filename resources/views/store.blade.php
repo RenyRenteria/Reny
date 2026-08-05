@@ -131,18 +131,20 @@
 
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;500&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body data-analytics-screen="{{ $isShowsPage ? 'shows' : 'store' }}" data-preferred-currency="{{ auth()->user()?->preferred_currency ?? 'USD' }}">
-        <div class="store-shell" data-public-page-root>
+    <body class="golden-stage-page checkout-page store-stage-page" data-analytics-screen="{{ $isShowsPage ? 'shows' : 'store' }}" data-preferred-currency="{{ auth()->user()?->preferred_currency ?? 'USD' }}">
+        <div class="store-shell home-shell golden-stage-shell store-stage-shell" data-public-page-root>
+            @include('partials.stage-lights')
+
             @include('partials.cms-preview-banner')
             <aside class="sidebar" aria-label="Primary navigation">
                 <div>
-                    <a class="brand-link" href="{{ url('/') }}" aria-label="Reny Renteria home">
+                    <a class="brand-link" href="{{ route('home') }}" aria-label="Reny Renteria home">
                         <img
                             class="brand-logo"
-                            src="{{ asset('images/reny-renteria-logo.png') }}"
+                            src="{{ asset('images/reny-renteria-logo-white.png') }}"
                             alt="Reny Renteria"
                         >
                     </a>
@@ -153,36 +155,37 @@
                 <x-member-card />
             </aside>
 
-            <main class="main-content store-content" id="{{ $isShowsPage ? 'shows' : 'store' }}">
-                <header class="mobile-header">
+            <main class="main-content store-content golden-stage-main store-stage-main" id="{{ $isShowsPage ? 'shows' : 'store' }}">
+                <header class="mobile-header golden-stage-mobile-header store-stage-mobile-header">
                     <div class="mobile-brand">
-                        <a class="brand-link" href="{{ url('/') }}" aria-label="Reny Renteria home">
+                        <a class="brand-link" href="{{ route('home') }}" aria-label="Reny Renteria home">
                             <img
                                 class="brand-logo"
-                                src="{{ asset('images/reny-renteria-logo.png') }}"
+                                src="{{ asset('images/reny-renteria-logo-white.png') }}"
                                 alt="Reny Renteria"
                             >
                         </a>
                     </div>
                 </header>
 
-                <x-royal-pass-banner :pass="$royalPass" />
+                <div class="store-stage-stack">
+                    <x-royal-pass-banner :pass="$royalPass" :show-images="false" />
 
-                @unless ($isShowsPage)
-                    <section class="public-page-intro" aria-labelledby="store-page-title">
-                        <p>{{ $pageSettings['eyebrow'] ?? 'Official Store' }}</p>
-                        <h1 id="store-page-title">{{ $pageSettings['title'] ?? 'Shows and releases' }}</h1>
-                        <strong>{{ $pageSettings['subtitle'] ?? 'Tickets, music and limited products' }}</strong>
-                        <span>{{ $pageSettings['description'] ?? '' }}</span>
-                        @if (filled($pageSettings['cover_url'] ?? null))
-                            <img src="{{ $pageSettings['cover_url'] }}" alt="{{ $pageSettings['cover_alt'] ?? '' }}">
-                        @endif
-                    </section>
-                @endunless
+                    @unless ($isShowsPage)
+                        <section class="public-page-intro" aria-labelledby="store-page-title">
+                            <p>{{ $pageSettings['eyebrow'] ?? 'Official Store' }}</p>
+                            <h1 id="store-page-title">{{ $pageSettings['title'] ?? 'Shows and releases' }}</h1>
+                            <strong>{{ $pageSettings['subtitle'] ?? 'Tickets, music and limited products' }}</strong>
+                            <span>{{ $pageSettings['description'] ?? '' }}</span>
+                            @if (filled($pageSettings['cover_url'] ?? null))
+                                <img src="{{ $pageSettings['cover_url'] }}" alt="{{ $pageSettings['cover_alt'] ?? '' }}">
+                            @endif
+                        </section>
+                    @endunless
 
-                <section class="storefront" aria-label="{{ $isShowsPage ? 'Shows' : 'Store products' }}">
-                    <div class="storefront-grid">
-                        @foreach ($storefrontSlots as $slot)
+                    <section class="storefront" aria-label="{{ $isShowsPage ? 'Shows' : 'Store products' }}">
+                        <div class="storefront-grid">
+                            @foreach ($storefrontSlots as $slot)
                             @php
                                 $slotKey = $slot['key'] ?? 'slot-'.$loop->index;
                                 $slotProductKey = $slot['product_key'] ?? $slotKey;
@@ -291,9 +294,10 @@
                                     @endif
                                 </div>
                             </article>
-                        @endforeach
-                    </div>
-                </section>
+                            @endforeach
+                        </div>
+                    </section>
+                </div>
 
                 <x-public-navigation :active="$activeNavigation" mobile />
             </main>
