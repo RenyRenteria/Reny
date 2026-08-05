@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="Propuesta responsive para la página Royals de Reny Renteria.">
-    <title>Reny Renteria — Royals Golden Stage Proposal</title>
+    <title>Reny Renteria — Propuesta dorada para Royals</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet">
@@ -807,13 +807,13 @@
         .reply-form input,
         .chat-composer input {
             min-width: 0;
-            height: 2.65rem;
+            height: 2.75rem;
             padding: 0 0.85rem;
             border: 1px solid var(--line);
             border-radius: 0.72rem;
             background: rgba(255, 255, 255, 0.54);
             outline: 0;
-            font-size: 0.72rem;
+            font-size: 0.875rem;
         }
 
         .reply-form input:focus,
@@ -823,7 +823,7 @@
         }
 
         .reply-form button {
-            min-height: 2.65rem;
+            min-height: 2.75rem;
             padding: 0 0.85rem;
             border: 0;
             border-radius: 0.72rem;
@@ -832,6 +832,12 @@
             cursor: pointer;
             font-size: 0.65rem;
             font-weight: 900;
+        }
+
+        .reply-form button:focus-visible,
+        .chat-composer button:focus-visible {
+            outline: 2px solid var(--gold-light);
+            outline-offset: 0.15rem;
         }
 
         .chat-panel {
@@ -879,7 +885,7 @@
             border-radius: 0.45rem;
             background: rgba(197, 29, 53, 0.18);
             color: #ff9ba4;
-            font-size: 0.48rem;
+            font-size: 0.75rem;
             font-weight: 900;
             letter-spacing: 0.07em;
             text-transform: uppercase;
@@ -887,8 +893,8 @@
 
         .chat-head p {
             margin: 0.22rem 0 0;
-            color: rgba(255, 248, 232, 0.46);
-            font-size: 0.58rem;
+            color: rgba(255, 248, 232, 0.72);
+            font-size: 0.75rem;
         }
 
         .live-pulse {
@@ -915,15 +921,15 @@
 
         .pinned-message strong {
             color: var(--gold-light);
-            font-size: 0.53rem;
+            font-size: 0.75rem;
             letter-spacing: 0.08em;
             text-transform: uppercase;
         }
 
         .pinned-message p {
             margin: 0.25rem 0 0;
-            color: rgba(255, 248, 232, 0.64);
-            font-size: 0.64rem;
+            color: rgba(255, 248, 232, 0.74);
+            font-size: 0.78rem;
             line-height: 1.4;
         }
 
@@ -954,7 +960,7 @@
         .chat-avatar {
             width: 1.9rem;
             border-radius: 0.58rem;
-            font-size: 0.52rem;
+            font-size: 0.75rem;
             aspect-ratio: 1;
         }
 
@@ -975,7 +981,7 @@
 
         .chat-message header strong {
             overflow: hidden;
-            font-size: 0.61rem;
+            font-size: 0.75rem;
             text-overflow: ellipsis;
             white-space: nowrap;
         }
@@ -983,22 +989,23 @@
         .host-pill {
             padding: 0.1rem 0.28rem;
             border-radius: 0.3rem;
-            background: var(--gold-deep);
-            font-size: 0.42rem;
+            background: #704314;
+            color: var(--cream);
+            font-size: 0.75rem;
             font-weight: 900;
             text-transform: uppercase;
         }
 
         .chat-message time {
-            color: rgba(255, 248, 232, 0.32);
-            font-size: 0.48rem;
+            color: rgba(255, 248, 232, 0.72);
+            font-size: 0.75rem;
         }
 
         .chat-message p {
             margin: 0.13rem 0 0;
             overflow-wrap: anywhere;
             color: rgba(255, 248, 232, 0.7);
-            font-size: 0.66rem;
+            font-size: 0.8125rem;
             line-height: 1.45;
         }
 
@@ -1010,7 +1017,7 @@
 
         .chat-composer form {
             display: grid;
-            grid-template-columns: minmax(0, 1fr) 2.7rem;
+            grid-template-columns: minmax(0, 1fr) 2.75rem;
             align-items: center;
             gap: 0.4rem;
         }
@@ -1022,12 +1029,12 @@
         }
 
         .chat-composer input::placeholder {
-            color: rgba(255, 248, 232, 0.4);
+            color: rgba(255, 248, 232, 0.7);
         }
 
         .chat-composer button {
             display: grid;
-            width: 2.7rem;
+            width: 2.75rem;
             place-items: center;
             border: 0;
             border-radius: 0.72rem;
@@ -1047,8 +1054,8 @@
 
         .chat-composer > p {
             margin: 0.35rem 0 0;
-            color: rgba(255, 248, 232, 0.32);
-            font-size: 0.48rem;
+            color: rgba(255, 248, 232, 0.7);
+            font-size: 0.75rem;
             text-align: center;
         }
 
@@ -1296,6 +1303,11 @@
                 display: none;
             }
 
+            .reply-form input,
+            .chat-composer input {
+                font-size: 1rem;
+            }
+
             .chat-card {
                 border-radius: 1rem;
             }
@@ -1425,15 +1437,15 @@
                     </a>
                     <a class="tab demo-link" href="#">
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V5l10-2v13"></path><circle cx="7" cy="18" r="3"></circle><circle cx="17" cy="16" r="3"></circle></svg>
-                        <span>Music</span>
+                        <span lang="en">Music</span>
                     </a>
                     <a class="tab demo-link" href="#">
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v3M18 3v3M4 9h16"></path><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="m9 14 2 2 4-4"></path></svg>
-                        <span>Shows</span>
+                        <span lang="en">Shows</span>
                     </a>
                     <a class="tab demo-link" href="#">
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10h16M5 10l1.5-5h11L19 10M6 10v9h12v-9M9 19v-5h6v5"></path></svg>
-                        <span>Store</span>
+                        <span lang="en">Store</span>
                     </a>
                 </nav>
             </div>
@@ -1441,9 +1453,9 @@
             <div class="member-card">
                 <span class="member-avatar" aria-hidden="true">RR</span>
                 <div>
-                    <strong>Welcome, Royal</strong>
-                    <span>Member account</span>
-                    <a class="demo-link" href="#">Open profile</a>
+                    <strong lang="en">Welcome, Royal</strong>
+                    <span lang="en">Member account</span>
+                    <a class="demo-link" href="#" lang="en">Open profile</a>
                 </div>
             </div>
         </aside>
@@ -1462,7 +1474,7 @@
                         <span class="pass-crown" aria-hidden="true">
                             <svg viewBox="0 0 24 24"><path d="m3 7 4 4 5-7 5 7 4-4-2 11H5L3 7Z"></path><path d="M5 18h14"></path></svg>
                         </span>
-                        <div>
+                        <div lang="en">
                             <strong>Get your Royal Pass</strong>
                             <span>to unlock access to our community.</span>
                         </div>
@@ -1473,24 +1485,24 @@
                             <img src="https://renyrenteria.com/images/photos/performance.jpg" alt="">
                             <img src="https://renyrenteria.com/images/photos/tvVisit.jpg" alt="">
                         </span>
-                        <button class="pass-button" type="button" data-toast="Royal Pass checkout would open here.">
+                        <button class="pass-button" type="button" lang="en" data-toast="La compra del Royal Pass se abriría aquí.">
                             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"></path></svg>
                             Unlock Royal Pass
                         </button>
                     </div>
                 </section>
 
-                <nav class="mobile-tabs" role="tablist" aria-label="Secciones de Royals">
-                    <button class="is-active" id="feedTab" type="button" role="tab" aria-selected="true" aria-controls="feedPanel" data-tab="feed">Posts</button>
-                    <button id="chatTab" type="button" role="tab" aria-selected="false" aria-controls="chatPanel" data-tab="chat">Chat <span>Live</span></button>
+                <nav class="mobile-tabs" role="tablist" aria-label="Secciones de Royals" aria-orientation="horizontal">
+                    <button class="is-active" id="feedTab" type="button" role="tab" aria-selected="true" aria-controls="feedPanel" tabindex="0" lang="en" data-tab="feed">Posts</button>
+                    <button id="chatTab" type="button" role="tab" aria-selected="false" aria-controls="chatPanel" tabindex="-1" lang="en" data-tab="chat">Chat <span>Live</span></button>
                 </nav>
 
                 <div class="community-experience">
-                    <section class="feed-panel" id="feedPanel" role="tabpanel" aria-labelledby="feedTab" data-panel="feed">
+                    <section class="feed-panel" id="feedPanel" role="tabpanel" aria-labelledby="feedTab" tabindex="0" data-panel="feed">
                         <div class="welcome-card">
                             <p class="eyebrow">Comunidad oficial</p>
                             <h1>Directo de Reny.<br>Cerca de la comunidad.</h1>
-                            <span>Posts oficiales, anuncios y momentos exclusivos de Reny. La conversación continúa en el Live Chat.</span>
+                            <span><span lang="en">Posts</span> oficiales, anuncios y momentos exclusivos de Reny. La conversación continúa en el <span lang="en">Live Chat</span>.</span>
                             <div class="welcome-points" role="group" aria-label="Características de la comunidad">
                                 <strong>Solo Reny publica</strong>
                                 <strong>Chat moderado</strong>
@@ -1499,11 +1511,11 @@
                         </div>
 
                         <div class="feed-heading">
-                            <h2>Posts de Reny</h2>
+                            <h2><span lang="en">Posts</span> de Reny</h2>
                             <span class="official-pill"><b class="verified" aria-hidden="true">✓</b> Cuenta oficial</span>
                         </div>
 
-                        <article class="post-card">
+                        <article class="post-card" id="post-show-preview">
                             <header class="post-head">
                                 <span class="reny-avatar" aria-hidden="true">R</span>
                                 <div>
@@ -1515,7 +1527,7 @@
                             <p class="post-copy">Un poquito de lo que estamos preparando. Gracias por estar aquí desde el principio — los Royals lo ven primero.</p>
                             <div class="post-media">
                                 <img src="https://renyrenteria.com/images/photos/performance.jpg" alt="Reny durante una presentación en vivo">
-                                <span class="media-label">Royal Preview</span>
+                                <span class="media-label" lang="en">Royal Preview</span>
                             </div>
                             <div class="post-actions">
                                 <div>
@@ -1528,7 +1540,7 @@
                                         <span>37 respuestas</span>
                                     </span>
                                 </div>
-                                <button class="post-action share" type="button" data-share>
+                                <button class="post-action share" type="button" aria-label="Compartir publicación" data-share>
                                     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"></path></svg>
                                     <span>Compartir</span>
                                 </button>
@@ -1540,7 +1552,7 @@
                             </form>
                         </article>
 
-                        <article class="post-card">
+                        <article class="post-card" id="post-royals-question">
                             <header class="post-head">
                                 <span class="reny-avatar" aria-hidden="true">R</span>
                                 <div>
@@ -1561,7 +1573,7 @@
                                         <span>68 respuestas</span>
                                     </span>
                                 </div>
-                                <button class="post-action share" type="button" data-share>
+                                <button class="post-action share" type="button" aria-label="Compartir publicación" data-share>
                                     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"></path></svg>
                                     <span>Compartir</span>
                                 </button>
@@ -1574,11 +1586,11 @@
                         </article>
                     </section>
 
-                    <aside class="chat-panel" id="chatPanel" role="tabpanel" aria-labelledby="chatTab" data-panel="chat">
+                    <aside class="chat-panel" id="chatPanel" role="tabpanel" aria-labelledby="chatTab" tabindex="0" data-panel="chat">
                         <section class="chat-card">
                             <header class="chat-head">
                                 <div>
-                                    <div class="chat-title-row"><h2>Live Chat</h2><span class="live-pill">En vivo</span></div>
+                                    <div class="chat-title-row"><h2 lang="en">Live Chat</h2><span class="live-pill">En vivo</span></div>
                                     <p>Actualización automática · chat moderado</p>
                                 </div>
                                 <span class="live-pulse" role="status" aria-label="Chat activo"></span>
@@ -1593,35 +1605,35 @@
                                 <article class="chat-message is-host">
                                     <span class="chat-avatar" aria-hidden="true">R</span>
                                     <div>
-                                        <header><strong>Reny</strong><span class="host-pill">Host</span><time>7:01 PM</time></header>
-                                        <p>¿Estamos activos Royals? Hoy les tengo un preview especial 👀</p>
+                                        <header><strong>Reny</strong><span class="host-pill" lang="en">Host</span><time lang="en">7:01 PM</time></header>
+                                        <p>¿Estamos activos Royals? Hoy les tengo un <span lang="en">preview</span> especial 👀</p>
                                     </div>
                                 </article>
                                 <article class="chat-message">
                                     <span class="chat-avatar purple" aria-hidden="true">IR</span>
                                     <div>
-                                        <header><strong>Isabella R.</strong><time>7:02 PM</time></header>
-                                        <p>El nuevo vibe se ve durísimo 🔥</p>
+                                        <header><strong>Isabella R.</strong><time lang="en">7:02 PM</time></header>
+                                        <p>El nuevo <span lang="en">vibe</span> se ve durísimo 🔥</p>
                                     </div>
                                 </article>
                                 <article class="chat-message">
                                     <span class="chat-avatar blue" aria-hidden="true">MC</span>
                                     <div>
-                                        <header><strong>María C.</strong><time>7:03 PM</time></header>
+                                        <header><strong>María C.</strong><time lang="en">7:03 PM</time></header>
                                         <p>Desde Panamá presente 👑</p>
                                     </div>
                                 </article>
                                 <article class="chat-message">
                                     <span class="chat-avatar purple" aria-hidden="true">JL</span>
                                     <div>
-                                        <header><strong>José Luis</strong><time>7:04 PM</time></header>
-                                        <p>Queremos behind the scenes del ensayo!</p>
+                                        <header><strong>José Luis</strong><time lang="en">7:04 PM</time></header>
+                                        <p>Queremos <span lang="en">behind the scenes</span> del ensayo!</p>
                                     </div>
                                 </article>
                                 <article class="chat-message is-host">
                                     <span class="chat-avatar" aria-hidden="true">R</span>
                                     <div>
-                                        <header><strong>Reny</strong><span class="host-pill">Host</span><time>7:05 PM</time></header>
+                                        <header><strong>Reny</strong><span class="host-pill" lang="en">Host</span><time lang="en">7:05 PM</time></header>
                                         <p>Eso viene. Ustedes lo van a ver primero por aquí.</p>
                                     </div>
                                 </article>
@@ -1649,13 +1661,13 @@
                 <a class="demo-link" href="#" aria-label="Videos">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m22 8-6 4 6 4V8Z"></path><rect x="2" y="6" width="14" height="12" rx="2"></rect></svg>
                 </a>
-                <a class="demo-link" href="#" aria-label="Music">
+                <a class="demo-link" href="#" aria-label="Music" lang="en">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V5l10-2v13"></path><circle cx="7" cy="18" r="3"></circle><circle cx="17" cy="16" r="3"></circle></svg>
                 </a>
-                <a class="demo-link" href="#" aria-label="Shows">
+                <a class="demo-link" href="#" aria-label="Shows" lang="en">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v3M18 3v3M4 9h16"></path><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="m9 14 2 2 4-4"></path></svg>
                 </a>
-                <a class="demo-link" href="#" aria-label="Store">
+                <a class="demo-link" href="#" aria-label="Store" lang="en">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10h16M5 10l1.5-5h11L19 10M6 10v9h12v-9M9 19v-5h6v5"></path></svg>
                 </a>
             </nav>
@@ -1679,11 +1691,35 @@
                 toastTimer = window.setTimeout(() => toast.classList.remove('is-visible'), 2200);
             };
 
+            const copyToClipboard = async (text) => {
+                if (navigator.clipboard && window.isSecureContext) {
+                    await navigator.clipboard.writeText(text);
+                    return;
+                }
+
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                textarea.setAttribute('readonly', '');
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                document.body.append(textarea);
+                textarea.select();
+
+                try {
+                    if (!document.execCommand('copy')) {
+                        throw new Error('Clipboard copy was rejected');
+                    }
+                } finally {
+                    textarea.remove();
+                }
+            };
+
             const setActivePanel = (name) => {
                 tabs.forEach((tab) => {
                     const active = tab.dataset.tab === name;
                     tab.classList.toggle('is-active', active);
                     tab.setAttribute('aria-selected', String(active));
+                    tab.tabIndex = active ? 0 : -1;
                 });
 
                 panels.forEach((panel) => {
@@ -1691,7 +1727,23 @@
                 });
             };
 
-            tabs.forEach((tab) => tab.addEventListener('click', () => setActivePanel(tab.dataset.tab)));
+            tabs.forEach((tab, index) => {
+                tab.addEventListener('click', () => setActivePanel(tab.dataset.tab));
+                tab.addEventListener('keydown', (event) => {
+                    let nextIndex;
+
+                    if (event.key === 'ArrowRight') nextIndex = (index + 1) % tabs.length;
+                    if (event.key === 'ArrowLeft') nextIndex = (index - 1 + tabs.length) % tabs.length;
+                    if (event.key === 'Home') nextIndex = 0;
+                    if (event.key === 'End') nextIndex = tabs.length - 1;
+                    if (nextIndex === undefined) return;
+
+                    event.preventDefault();
+                    const nextTab = tabs[nextIndex];
+                    setActivePanel(nextTab.dataset.tab);
+                    nextTab.focus();
+                });
+            });
             mobileQuery.addEventListener('change', () => {
                 const activeTab = document.querySelector('[data-tab].is-active');
                 setActivePanel(activeTab?.dataset.tab || 'feed');
@@ -1708,7 +1760,17 @@
             });
 
             document.querySelectorAll('[data-share]').forEach((button) => {
-                button.addEventListener('click', () => showToast('Link del post copiado'));
+                button.addEventListener('click', async () => {
+                    const post = button.closest('.post-card');
+                    const url = new URL(`#${post.id}`, window.location.href).href;
+
+                    try {
+                        await copyToClipboard(url);
+                        showToast('Enlace de la publicación copiado');
+                    } catch {
+                        showToast('No se pudo copiar el enlace');
+                    }
+                });
             });
 
             document.querySelectorAll('[data-reply-form]').forEach((form) => {
