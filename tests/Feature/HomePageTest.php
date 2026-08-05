@@ -144,6 +144,25 @@ class HomePageTest extends TestCase
         );
     }
 
+    public function test_home_css_preserves_mobile_card_parity_touch_target_and_royal_pass_treatment(): void
+    {
+        $css = $this->frontendCssSource();
+
+        $this->assertStringContainsString('--home-mobile-card-height: 8.875rem;', $css);
+        $this->assertMatchesRegularExpression(
+            '/\.home-shell \.home-show-card,\s*\.home-shell \.home-album-card\s*\{[^}]*width:\s*100%;[^}]*min-height:\s*var\(--home-mobile-card-height\);/s',
+            $css
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.home-shell \.home-play-here\s*\{[^}]*min-width:\s*7rem;[^}]*min-height:\s*2\.75rem;/s',
+            $css
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.home-shell \.home-royal-pass\s*\{[^}]*linear-gradient\(112deg,\s*var\(--home-royal-red-deep\),\s*var\(--home-royal-red\) 58%,\s*var\(--home-royal-red-bright\)\);/s',
+            $css
+        );
+    }
+
     public function test_home_preserves_guest_content_for_authenticated_users_without_singles(): void
     {
         $this->publishedContent(ContentType::Song, [
