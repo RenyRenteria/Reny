@@ -12,7 +12,9 @@ document.querySelectorAll('.auth-form').forEach((form) => {
             ? 'auth_register_started'
             : action.includes('forgot-password')
                 ? 'auth_password_recovery_started'
-                : 'auth_login_started';
+                : action.includes('reset-password')
+                    ? 'auth_password_reset_started'
+                    : 'auth_login_started';
 
         trackEvent(eventName, {
             item_type: 'auth_form',
