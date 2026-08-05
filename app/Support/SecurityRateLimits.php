@@ -8,8 +8,6 @@ use Illuminate\Support\Str;
 
 final class SecurityRateLimits
 {
-    private const CHECKOUT_GUEST_IDENTITY_HASH_SESSION_KEY = 'security.checkout.guest_identity_hash';
-
     public const PUBLIC_LOGIN = 'auth-login';
 
     public const ADMIN_LOGIN = 'admin-auth-login';
@@ -48,32 +46,7 @@ final class SecurityRateLimits
             return self::scopeKey('user:'.$request->user()->getAuthIdentifier(), $request);
         }
 
-        $submittedIdentifier = (string) ($request->input('identifier')
-            ?: $request->input('customer_email')
-            ?: $request->input('customer_phone'));
-
-        if ($submittedIdentifier !== '') {
-            $identityHash = self::identityHash('identifier:'.self::normalizeIdentifier($submittedIdentifier));
-
-            if ($request->hasSession()) {
-                // Cancel only submits its PayPal order id. Keep the opaque guest
-                // identity in the signed session so every checkout mutation uses
-                // the same budget without trusting an extra cancel field.
-                $request->session()->put(self::CHECKOUT_GUEST_IDENTITY_HASH_SESSION_KEY, $identityHash);
-            }
-
-            return self::scopeIdentityHash($identityHash, $request);
-        }
-
-        $sessionIdentityHash = $request->hasSession()
-            ? $request->session()->get(self::CHECKOUT_GUEST_IDENTITY_HASH_SESSION_KEY)
-            : null;
-
-        $identityHash = is_string($sessionIdentityHash) && preg_match('/\A[0-9a-f]{64}\z/', $sessionIdentityHash) === 1
-            ? $sessionIdentityHash
-            : self::identityHash('identifier:');
-
-        return self::scopeIdentityHash($identityHash, $request);
+        return self::scopeKey('guest', $request);
     }
 
     public static function normalizeIdentifier(string $identifier): string
@@ -100,16 +73,8 @@ final class SecurityRateLimits
 
     private static function scopeKey(string $identity, Request $request): string
     {
-        return self::scopeIdentityHash(self::identityHash($identity), $request);
-    }
+        $identityHash = hash('sha256', $identity !== '' ? $identity : 'anonymous');
 
-    private static function identityHash(string $identity): string
-    {
-        return hash('sha256', $identity !== '' ? $identity : 'anonymous');
-    }
-
-    private static function scopeIdentityHash(string $identityHash, Request $request): string
-    {
         return $identityHash.'|'.($request->ip() ?: 'anonymous');
     }
 }
