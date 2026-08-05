@@ -22,11 +22,14 @@ class HomePayloadBuilder
      */
     public function build(?User $user): array
     {
-        $storefront = $this->storefrontSettings->publicPayload();
+        $storefront = $this->storefrontSettings->publicPayload($user);
         $featuredVideo = $this->videoPayloads->featured(
             $this->contentQuery->visibleContents($user, [ContentType::Video])->first()
         );
-        $latestAlbum = $this->contentQuery->latestAlbumContent();
+        $selectedAlbumId = (int) data_get($storefront, 'slots.album.content_id', 0);
+        $latestAlbum = $selectedAlbumId > 0
+            ? $this->contentQuery->albumContentById($selectedAlbumId)
+            : $this->contentQuery->latestAlbumContent();
 
         return [
             'featured_video' => $featuredVideo,
@@ -100,8 +103,12 @@ class HomePayloadBuilder
                 : [
                     ...$storeAlbum,
                     'summary' => $storeAlbum['description'] ?? '',
+                    '_storefront_slot' => true,
                 ];
         }
+
+        $storeContentId = (int) ($storeAlbum['content_id'] ?? 0);
+        $isStorefrontSlot = $storeContentId > 0 && $storeContentId === (int) ($album['id'] ?? 0);
 
         return [
             ...$album,
@@ -109,6 +116,13 @@ class HomePayloadBuilder
             'image_url' => $album['image_url'] ?? null,
             'store_image' => $storeAlbum['image'] ?? null,
             'image_alt' => $storeAlbum['image_alt'] ?? $album['title'],
+            ...($isStorefrontSlot ? [
+                'action_type' => $storeAlbum['action_type'] ?? null,
+                'product_key' => $storeAlbum['product_key'] ?? null,
+                'cta_label' => $storeAlbum['cta_label'] ?? null,
+                'url' => $storeAlbum['url'] ?? ($album['url'] ?? null),
+            ] : []),
+            '_storefront_slot' => $isStorefrontSlot && ($storeAlbum['action_type'] ?? null) === 'buy',
         ];
     }
 }

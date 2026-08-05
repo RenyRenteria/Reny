@@ -23,7 +23,28 @@ class PhotoPayloadBuilder
             ->with('album')
             ->active()
             ->ordered()
-            ->get();
+            ->get()
+            ->sort(function (Photo $left, Photo $right): int {
+                $leftAlbum = $left->album;
+                $rightAlbum = $right->album;
+                $leftKey = [
+                    $leftAlbum ? 0 : 1,
+                    $leftAlbum?->order_index ?? PHP_INT_MAX,
+                    $leftAlbum?->id ?? PHP_INT_MAX,
+                    $leftAlbum?->cover_photo_id === $left->id ? -1 : $left->order_index,
+                    $left->id,
+                ];
+                $rightKey = [
+                    $rightAlbum ? 0 : 1,
+                    $rightAlbum?->order_index ?? PHP_INT_MAX,
+                    $rightAlbum?->id ?? PHP_INT_MAX,
+                    $rightAlbum?->cover_photo_id === $right->id ? -1 : $right->order_index,
+                    $right->id,
+                ];
+
+                return $leftKey <=> $rightKey;
+            })
+            ->values();
 
         $managedPayloads = $managedPhotos
             ->values()

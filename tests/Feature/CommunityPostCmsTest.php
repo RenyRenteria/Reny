@@ -25,7 +25,7 @@ class CommunityPostCmsTest extends TestCase
         Cache::store('array')->flush();
     }
 
-    public function test_only_configured_editor_can_mutate_community_posts(): void
+    public function test_community_post_management_is_authorized_by_admin_role_not_email(): void
     {
         $reny = $this->communityEditor();
         $otherAdmin = User::factory()->create([
@@ -43,14 +43,21 @@ class CommunityPostCmsTest extends TestCase
         $this->actingAsAdmin($otherAdmin)
             ->get(route('admin.site-editor.show', ['page' => 'community']))
             ->assertOk()
-            ->assertSee('Módulo restringido')
-            ->assertDontSee('Publicar ahora');
+            ->assertSee('Community Posts')
+            ->assertSee('Publicar ahora')
+            ->assertDontSee('Módulo restringido');
 
         $this->actingAsAdmin($otherAdmin)
-            ->post(route('admin.site-editor.community-posts.store'), $this->postPayload())
-            ->assertForbidden();
+            ->post(route('admin.site-editor.community-posts.store'), $this->postPayload([
+                'title' => 'Post by another authorized admin',
+                'action' => 'draft',
+            ]))
+            ->assertRedirect(route('admin.site-editor.show', ['page' => 'community']));
 
-        $this->assertDatabaseCount('editorial_contents', 0);
+        $this->assertDatabaseHas('editorial_contents', [
+            'title' => 'Post by another authorized admin',
+            'created_by_id' => $otherAdmin->id,
+        ]);
     }
 
     public function test_editor_can_publish_rich_post_with_cover_embeds_and_safe_html(): void

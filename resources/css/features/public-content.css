@@ -36,3 +36,49 @@
     font-size: 1rem;
     line-height: 1.7;
 }
+
+.cms-preview-banner {
+    position: fixed;
+    top: 0.75rem;
+    right: 0.75rem;
+    z-index: 1000;
+    padding: 0.55rem 0.8rem;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 999px;
+    background: rgba(20, 15, 12, 0.92);
+    color: #fff5d9;
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    box-shadow: 0 0.75rem 2rem rgba(0, 0, 0, 0.28);
+}
+
+.public-page-intro {
+    display: grid;
+    gap: 0.45rem;
+    margin: 1rem 0 2rem;
+    padding: 1.25rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.public-page-intro > * {
+    margin: 0;
+}
+
+.public-page-intro img {
+    width: min(100%, 42rem);
+    max-height: 18rem;
+    margin-top: 0.75rem;
+    object-fit: cover;
+}
+
+.video-frame-empty {
+    display: grid;
+    min-height: 16rem;
+    place-items: center;
+    padding: 2rem;
+    border: 1px dashed rgba(255, 255, 255, 0.3);
+    color: rgba(255, 255, 255, 0.72);
+    text-align: center;
+}

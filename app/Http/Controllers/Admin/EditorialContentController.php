@@ -12,6 +12,7 @@ use App\Models\EditorialContent;
 use App\Models\MediaAsset;
 use App\Models\Taxonomy;
 use App\Services\Admin\MusicContentUploadService;
+use App\Services\Commerce\CommercePublicationValidator;
 use App\Services\EditorialWorkflowService;
 use App\Services\Media\MediaLibraryService;
 use App\Services\Media\MediaUploadException;
@@ -109,26 +110,47 @@ class EditorialContentController extends Controller
     public function destroy(Request $request, EditorialContent $content): RedirectResponse
     {
         abort_unless($request->user()?->canPublishContent(), 403);
-        abort_unless(in_array($content->type, [
-            ContentType::Song,
-            ContentType::MusicalAlbum,
-            ContentType::MusicPlaylist,
-        ], true), 404);
+        abort_unless($content->status === EditorialStatus::Draft, 409, 'Published content must be archived instead of deleted.');
 
         $title = $content->title;
         $content->delete();
 
         return redirect()
-            ->route('admin.site-editor.show', ['page' => 'music'])
-            ->with('status', sprintf('"%s" eliminado de Music.', $title));
+            ->route('admin.content.index')
+            ->with('status', sprintf('Draft "%s" deleted.', $title));
     }
 
-    public function preview(EditorialContent $content): Response
+    public function archive(
+        Request $request,
+        EditorialContent $content,
+        EditorialWorkflowService $workflow,
+    ): RedirectResponse {
+        $workflow->archive($request->user(), $content);
+
+        return back()->with('status', sprintf('Content "%s" archived and removed from public pages.', $content->title));
+    }
+
+    public function preview(Request $request, EditorialContent $content): Response
     {
-        $content->load(['mediaAssets', 'taxonomies', 'releaseWindows', 'createdBy', 'updatedBy']);
+        $audience = (string) $request->query('audience', VisibilityAudience::Open->value);
+
+        if (! in_array($audience, VisibilityAudience::values(), true)) {
+            $audience = VisibilityAudience::Open->value;
+        }
+
+        $content->load([
+            'mediaAssets',
+            'taxonomies',
+            'releaseWindows',
+            'createdBy',
+            'updatedBy',
+            'auditLogs' => fn ($query) => $query->with('actor:id,name,email')->latest('created_at'),
+        ]);
 
         return response()->view('admin.content.preview', [
             'content' => $content,
+            'previewAudience' => $audience,
+            'previewAudiences' => VisibilityAudience::cases(),
             'timezone' => config('admin.publishing_timezone', 'America/Panama'),
         ])
             ->header('X-Robots-Tag', 'noindex, nofollow, noarchive')
@@ -141,7 +163,7 @@ class EditorialContentController extends Controller
         MediaLibraryService $library,
         ?EditorialContent $content = null
     ): JsonResponse|RedirectResponse {
-        $payload = $this->validatedPayload($request);
+        $payload = $this->validatedPayload($request, $content);
         $action = Arr::pull($payload, 'action');
         $mediaAssetIds = Arr::pull($payload, 'media_asset_ids', []);
         $taxonomyIds = Arr::pull($payload, 'taxonomy_ids', []);
@@ -217,7 +239,7 @@ class EditorialContentController extends Controller
         );
     }
 
-    private function validatedPayload(Request $request): array
+    private function validatedPayload(Request $request, ?EditorialContent $content = null): array
     {
         $input = $this->normalizedInput($request->all());
         $type = (string) ($input['type'] ?? ContentType::Post->value);
@@ -233,6 +255,27 @@ class EditorialContentController extends Controller
             'purchase_key' => ['nullable', 'string', 'max:120'],
             'scheduled_at' => ['nullable', 'date', 'required_if:action,schedule'],
             'metadata' => ['nullable', 'array'],
+            'metadata.currency' => ['nullable', 'string', 'size:3'],
+            'metadata.inventory' => ['nullable', 'integer', 'min:0'],
+            'metadata.is_active' => ['nullable', 'boolean'],
+            'metadata.checkout_enabled' => ['nullable', 'boolean'],
+            'metadata.availability_starts_at' => ['nullable', 'date'],
+            'metadata.availability_ends_at' => ['nullable', 'date', 'after:metadata.availability_starts_at'],
+            'metadata.available_from' => ['nullable', 'date'],
+            'metadata.available_until' => ['nullable', 'date', 'after:metadata.available_from'],
+            'metadata.action_type' => ['nullable', Rule::in(['buy', 'rsvp', 'link'])],
+            'metadata.cta_label' => ['nullable', 'string', 'max:80'],
+            'metadata.action_url' => ['nullable', 'string', 'max:2048'],
+            'metadata.meta_title' => ['nullable', 'string', 'max:160'],
+            'metadata.meta_description' => ['nullable', 'string', 'max:320'],
+            'metadata.canonical_url' => ['nullable', 'url:http,https', 'max:2048'],
+            'metadata.og_title' => ['nullable', 'string', 'max:160'],
+            'metadata.og_description' => ['nullable', 'string', 'max:320'],
+            'metadata.og_image' => ['nullable', 'url:http,https', 'max:2048'],
+            'metadata.twitter_card' => ['nullable', Rule::in(['summary', 'summary_large_image'])],
+            'metadata.twitter_title' => ['nullable', 'string', 'max:160'],
+            'metadata.twitter_description' => ['nullable', 'string', 'max:320'],
+            'metadata.twitter_image' => ['nullable', 'url:http,https', 'max:2048'],
             'release_windows' => ['nullable', 'array', 'max:4'],
             'release_windows.*.audience' => ['required_with:release_windows', Rule::in(VisibilityAudience::values())],
             'release_windows.*.starts_at' => ['nullable', 'date'],
@@ -259,6 +302,10 @@ class EditorialContentController extends Controller
         $payload['metadata'] = $this->normalizedMetadataForType($payload['metadata'] ?? [], $type);
         $payload['release_windows'] = $this->pruneEmptyValues($payload['release_windows'] ?? []);
         $payload = $this->musicContent->payloadWithReleaseWindows($payload, $type);
+
+        if (in_array($payload['action'], ['publish', 'schedule'], true)) {
+            $payload = app(CommercePublicationValidator::class)->prepareAndValidate($payload, $content);
+        }
 
         return $payload;
     }
@@ -318,7 +365,14 @@ class EditorialContentController extends Controller
                 'metadata.product_kind' => ['required', Rule::in(['digital', 'physical', 'subscription', 'drop', 'bundle'])],
                 'metadata.sku' => ['nullable', 'string', 'max:120'],
                 'metadata.price_cents' => ['nullable', 'integer', 'min:0'],
+                'metadata.currency' => ['nullable', 'string', 'size:3'],
                 'metadata.inventory' => ['nullable', 'integer', 'min:0'],
+                'metadata.checkout_enabled' => ['nullable', 'boolean'],
+                'metadata.available_from' => ['nullable', 'date'],
+                'metadata.available_until' => ['nullable', 'date', 'after:metadata.available_from'],
+                'metadata.action_type' => ['nullable', Rule::in(['buy', 'link'])],
+                'metadata.action_url' => ['nullable', 'string', 'max:500'],
+                'metadata.cta_label' => ['nullable', 'string', 'max:80'],
                 'metadata.fulfillment_note' => ['nullable', 'string', 'max:1000'],
             ],
             ContentType::Event->value => [
@@ -327,7 +381,14 @@ class EditorialContentController extends Controller
                 'metadata.location' => ['nullable', 'string', 'max:180'],
                 'metadata.inventory' => ['nullable', 'integer', 'min:0'],
                 'metadata.price_cents' => ['nullable', 'integer', 'min:0'],
+                'metadata.currency' => ['nullable', 'string', 'size:3'],
+                'metadata.checkout_enabled' => ['nullable', 'boolean'],
+                'metadata.available_from' => ['nullable', 'date'],
+                'metadata.available_until' => ['nullable', 'date', 'after:metadata.available_from'],
                 'metadata.ticketing_mode' => ['required', Rule::in(['rsvp', 'ticket'])],
+                'metadata.action_type' => ['nullable', Rule::in(['buy', 'rsvp', 'link'])],
+                'metadata.action_url' => ['nullable', 'string', 'max:500'],
+                'metadata.cta_label' => ['nullable', 'string', 'max:80'],
             ],
             ContentType::Drop->value => [
                 'metadata.drop_kind' => ['required', Rule::in(['product', 'content', 'bundle'])],
@@ -356,6 +417,24 @@ class EditorialContentController extends Controller
         $metadata = $this->pruneEmptyValues($metadata);
 
         return match ($type) {
+            ContentType::Product->value => [
+                ...$metadata,
+                'currency' => strtoupper((string) ($metadata['currency'] ?? 'USD')),
+                'checkout_enabled' => array_key_exists('checkout_enabled', $metadata)
+                    ? filter_var($metadata['checkout_enabled'], FILTER_VALIDATE_BOOL)
+                    : true,
+                'action_type' => (string) ($metadata['action_type'] ?? 'buy'),
+                'cta_label' => (string) ($metadata['cta_label'] ?? 'BUY NOW'),
+            ],
+            ContentType::Event->value => [
+                ...$metadata,
+                'currency' => strtoupper((string) ($metadata['currency'] ?? 'USD')),
+                'checkout_enabled' => array_key_exists('checkout_enabled', $metadata)
+                    ? filter_var($metadata['checkout_enabled'], FILTER_VALIDATE_BOOL)
+                    : true,
+                'action_type' => (string) ($metadata['action_type'] ?? (($metadata['ticketing_mode'] ?? 'rsvp') === 'rsvp' ? 'rsvp' : 'buy')),
+                'cta_label' => (string) ($metadata['cta_label'] ?? (($metadata['ticketing_mode'] ?? 'rsvp') === 'rsvp' ? 'RSVP' : 'BUY TICKETS')),
+            ],
             default => $metadata,
         };
     }

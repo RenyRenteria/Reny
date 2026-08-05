@@ -19,7 +19,7 @@ class AdminEditorialFormsPreviewSchedulingTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_admin_editorial_screen_stays_on_enter_screen(): void
+    public function test_admin_editorial_screen_opens_the_real_editor(): void
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
 
@@ -27,12 +27,13 @@ class AdminEditorialFormsPreviewSchedulingTest extends TestCase
 
         $this->get(route('admin.editorial.index'))
             ->assertOk()
-            ->assertSee('Enter')
-            ->assertDontSee('Contenido de tu Sitio')
-            ->assertDontSee('Crear contenido');
+            ->assertSee('Content forms')
+            ->assertSee('Choose a form')
+            ->assertSee('New content')
+            ->assertDontSee('name="email"', false);
     }
 
-    public function test_admin_content_index_stays_on_enter_screen(): void
+    public function test_admin_content_index_opens_the_real_content_queue(): void
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
 
@@ -40,9 +41,10 @@ class AdminEditorialFormsPreviewSchedulingTest extends TestCase
 
         $this->get(route('admin.content.index', ['section' => 'music']))
             ->assertOk()
-            ->assertSee('Enter')
-            ->assertDontSee('Musica')
-            ->assertDontSee('Music queue item');
+            ->assertSee('Contenido de tu Sitio')
+            ->assertSee('Crear contenido')
+            ->assertSee('Content queue')
+            ->assertDontSee('name="email"', false);
     }
 
     public function test_editor_can_prepare_one_piece_of_each_content_type(): void
@@ -84,7 +86,7 @@ class AdminEditorialFormsPreviewSchedulingTest extends TestCase
         );
     }
 
-    public function test_private_preview_requires_admin_session_and_stays_on_enter_screen(): void
+    public function test_private_preview_requires_admin_session_and_renders_audience_controls(): void
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
         $content = EditorialContent::factory()->create([
@@ -99,8 +101,12 @@ class AdminEditorialFormsPreviewSchedulingTest extends TestCase
 
         $this->get(route('admin.editorial.preview', $content))
             ->assertOk()
-            ->assertSee('Enter')
-            ->assertDontSee('Private preview draft');
+            ->assertSee('Private preview draft')
+            ->assertSee('Guest')
+            ->assertSee('Member')
+            ->assertSee('Royal')
+            ->assertSee('Purchased')
+            ->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
     }
 
     public function test_scheduling_uses_panama_timezone(): void
@@ -318,6 +324,7 @@ class AdminEditorialFormsPreviewSchedulingTest extends TestCase
                 'metadata' => [
                     'package_title' => 'Deluxe room',
                     'package_notes' => 'Exclusive extras',
+                    'price_cents' => 1299,
                 ],
             ],
             ContentType::MusicPlaylist => [

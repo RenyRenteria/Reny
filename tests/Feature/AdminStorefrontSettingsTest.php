@@ -62,6 +62,18 @@ class AdminStorefrontSettingsTest extends TestCase
     public function test_home_storefront_editor_updates_shared_public_home_payload(): void
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $album = EditorialContent::factory()->published()->create([
+            'type' => ContentType::DeluxeAlbum->value,
+            'title' => 'Home Deluxe Album',
+            'summary' => 'Home selected deluxe content',
+            'purchase_key' => 'home-deluxe',
+            'metadata' => [
+                'price_cents' => 2400,
+                'currency' => 'USD',
+                'checkout_enabled' => true,
+                'is_active' => true,
+            ],
+        ]);
 
         $this->actingAsAdmin($admin);
 
@@ -78,6 +90,7 @@ class AdminStorefrontSettingsTest extends TestCase
                     'product_key' => 'home-cms-show',
                 ],
                 'album' => [
+                    'content_id' => $album->id,
                     'title' => 'Home Deluxe Album',
                     'description' => 'Home selected deluxe content',
                     'cta_label' => 'BUY DELUXE',
@@ -98,9 +111,10 @@ class AdminStorefrontSettingsTest extends TestCase
             ->assertSee('Home CMS Show')
             ->assertSee('RESERVE')
             ->assertSee('data-free-event-rsvp="home-cms-show"', false)
-            ->assertDontSee('Home Deluxe Album')
-            ->assertDontSee('Home selected deluxe content')
-            ->assertDontSee('data-buy="home-deluxe"', false);
+            ->assertSee('Home Deluxe Album')
+            ->assertSee('Home selected deluxe content')
+            ->assertSee('data-buy="home-deluxe"', false)
+            ->assertSee(route('store.checkout', ['product' => 'home-deluxe']), false);
     }
 
     public function test_storefront_event_update_syncs_to_cms_and_public_home_and_store(): void
@@ -166,6 +180,12 @@ class AdminStorefrontSettingsTest extends TestCase
             'title' => 'CMS Deluxe Album',
             'summary' => 'CMS selected album summary',
             'purchase_key' => 'cms-deluxe',
+            'metadata' => [
+                'price_cents' => 2400,
+                'currency' => 'USD',
+                'checkout_enabled' => true,
+                'is_active' => true,
+            ],
         ]);
         $album->mediaAssets()->attach($albumAsset->id, ['role' => 'cover', 'sort_order' => 0]);
 
@@ -205,16 +225,18 @@ class AdminStorefrontSettingsTest extends TestCase
             ->assertSee('data-free-event-rsvp="cms-free"', false)
             ->assertSee('data-countdown-at="2026-11-02T20:45:00-05:00"', false)
             ->assertSee('/storage/store/cms-event.png', false)
-            ->assertDontSee('CMS Deluxe Album')
-            ->assertDontSee('CMS selected album summary')
-            ->assertDontSee('data-buy="cms-deluxe"', false)
-            ->assertDontSee('/storage/store/cms-album.png', false);
+            ->assertSee('CMS Deluxe Album')
+            ->assertSee('CMS selected album summary')
+            ->assertSee('data-buy="cms-deluxe"', false)
+            ->assertSee('/storage/store/cms-album.png', false);
 
         $this->getJson(route('public-content.payload', 'store'))
             ->assertOk()
             ->assertJsonPath('storefront.slots.event_primary.title', 'CMS Free Night')
             ->assertJsonPath('storefront.slots.event_primary.countdown_at', '2026-11-02T20:45')
-            ->assertJsonMissingPath('storefront.slots.album');
+            ->assertJsonPath('storefront.slots.album.title', 'CMS Deluxe Album')
+            ->assertJsonPath('storefront.slots.album.product_key', 'cms-deluxe')
+            ->assertJsonPath('storefront.slots.album.price_label', '$24');
     }
 
     private function mediaAsset(string $title, string $path): MediaAsset
@@ -261,10 +283,10 @@ class AdminStorefrontSettingsTest extends TestCase
                 ],
                 'event_secondary' => [
                     'title' => 'Festival de la Rosa Dorada',
-                    'description' => "Rock & Folk Pty, Ciudad de Panama\n19/ Dic - 7:30 PM",
+                    'description' => "Rock & Folk Pty, Ciudad de Panama\n16/ Dic - 7:30 PM",
                     'price_label' => '$15',
                     'cta_label' => 'GET TICKETS',
-                    'countdown_at' => '2026-12-19T19:30',
+                    'countdown_at' => '2026-12-16T19:30',
                     'action_type' => 'buy',
                     'product_key' => 'listening',
                 ],

@@ -45,7 +45,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title>Reny Renteria</title>
+        @include('partials.public-seo', ['seo' => [], 'fallbackTitle' => 'Reny Renteria'])
 
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -54,6 +54,7 @@
     </head>
     <body data-analytics-screen="music">
         <div class="music-shell" data-public-page-root>
+            @include('partials.cms-preview-banner')
             <aside class="sidebar" aria-label="Primary navigation">
                 <div>
                     <a class="brand-link" href="/" aria-label="Reny Renteria home">

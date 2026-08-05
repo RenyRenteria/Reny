@@ -275,6 +275,63 @@ class AdminPhotoLibraryTest extends TestCase
         }
     }
 
+    public function test_admin_can_manage_album_metadata_cover_order_and_safe_reassignment(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $this->actingAsAdmin($admin);
+
+        $this->post(route('admin.photos.albums.store'), [
+            'title' => 'Issue 202 Source Album',
+            'description' => 'Original album metadata.',
+            'order_index' => 4,
+        ])->assertRedirect();
+        $this->post(route('admin.photos.albums.store'), [
+            'title' => 'Issue 202 Target Album',
+            'description' => 'Target album metadata.',
+            'order_index' => 1,
+        ])->assertRedirect();
+
+        $source = PhotoAlbum::query()->where('title', 'Issue 202 Source Album')->firstOrFail();
+        $target = PhotoAlbum::query()->where('title', 'Issue 202 Target Album')->firstOrFail();
+        $photo = Photo::create([
+            'album_id' => $source->id,
+            'visibility' => PhotoVisibility::Public->value,
+            'status' => PhotoStatus::Active->value,
+            'order_index' => 0,
+            'caption' => 'Preserved album photo',
+            'metadata' => ['source' => 'issue-202-test'],
+        ]);
+
+        $this->patch(route('admin.photos.albums.update', $source), [
+            'title' => 'Issue 202 Source Album Updated',
+            'description' => 'Updated album metadata.',
+            'order_index' => 2,
+            'cover_photo_id' => $photo->id,
+        ])->assertRedirect();
+
+        $source->refresh();
+        $this->assertSame('Issue 202 Source Album Updated', $source->title);
+        $this->assertSame(2, $source->order_index);
+        $this->assertSame($photo->id, $source->cover_photo_id);
+        $this->assertSame($admin->id, $source->updated_by_id);
+
+        $this->delete(route('admin.photos.albums.destroy', $source))
+            ->assertSessionHasErrors('reassign_album_id');
+        $this->assertDatabaseHas('photo_albums', ['id' => $source->id]);
+
+        $this->delete(route('admin.photos.albums.destroy', $source), [
+            'reassign_album_id' => $target->id,
+        ])->assertRedirect();
+
+        $this->assertDatabaseMissing('photo_albums', ['id' => $source->id]);
+        $this->assertDatabaseHas('photos', [
+            'id' => $photo->id,
+            'album_id' => $target->id,
+            'caption' => 'Preserved album photo',
+        ]);
+        $this->assertSame($photo->id, $target->fresh()->cover_photo_id);
+    }
+
     private function actingAsAdmin(User $user): void
     {
         config(['admin.cms_enabled' => true]);

@@ -110,19 +110,27 @@
 
                     <img class="store-cms-thumb" src="{{ $slotImage }}" alt="">
 
-                    @if ($slot === 'album')
-                        <label>
-                            <span>Album a mostrar</span>
-                            <select name="slots[{{ $slot }}][content_id]">
-                                <option value="">Default / manual</option>
-                                @foreach ($albums as $album)
-                                    <option value="{{ $album->id }}" @selected($slotContentId === (string) $album->id)>
-                                        {{ $album->title }} · {{ str_replace('_', ' ', $album->status->value) }}
+                    <label>
+                        <span>Contenido canonico</span>
+                        <select name="slots[{{ $slot }}][content_id]">
+                            <option value="">Compatibilidad / configuracion actual</option>
+                            @foreach ($storeContents as $storeContent)
+                                @php
+                                    $storeType = $storeContent->type->value;
+                                    $allowedForSlot = str_starts_with($slot, 'event_')
+                                        ? $storeType === 'event'
+                                        : ($slot === 'album'
+                                            ? in_array($storeType, ['musical_album', 'deluxe_album'], true)
+                                            : in_array($storeType, ['product', 'drop', 'exclusive'], true));
+                                @endphp
+                                @if ($allowedForSlot)
+                                    <option value="{{ $storeContent->id }}" @selected($slotContentId === (string) $storeContent->id)>
+                                        {{ $storeContent->title }} · {{ str_replace('_', ' ', $storeType) }} · {{ $storeContent->status->value }}
                                     </option>
-                                @endforeach
-                            </select>
-                        </label>
-                    @endif
+                                @endif
+                            @endforeach
+                        </select>
+                    </label>
 
                     <label>
                         <span>Titulo</span>

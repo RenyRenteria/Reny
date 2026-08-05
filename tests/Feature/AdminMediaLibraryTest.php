@@ -134,7 +134,57 @@ class AdminMediaLibraryTest extends TestCase
         $this->assertDatabaseCount('media_assets', count($uploads));
     }
 
-    public function test_app_server_upload_rejects_short_video_and_media_screen_stays_on_enter(): void
+    public function test_replace_preserves_asset_references_and_delete_blocks_until_detached(): void
+    {
+        Storage::fake('public');
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $this->actingAsAdmin($admin);
+
+        $this->post(route('admin.media.store'), [
+            'type' => MediaAssetType::Image->value,
+            'title' => 'Original referenced cover',
+            'alt_text' => 'Original cover alt',
+            'is_public' => true,
+            'file' => UploadedFile::fake()->image('original.jpg')->size(64),
+        ], ['Accept' => 'application/json'])->assertCreated();
+
+        $asset = MediaAsset::query()->sole();
+        $assetId = $asset->id;
+        $oldPath = $asset->path;
+        $content = EditorialContent::factory()->create();
+        $content->mediaAssets()->attach($asset, [
+            'role' => 'cover',
+            'sort_order' => 0,
+        ]);
+
+        $this->post(route('admin.media.replace', $asset), [
+            'title' => 'Replacement referenced cover',
+            'alt_text' => 'Replacement cover alt',
+            'is_public' => true,
+            'file' => UploadedFile::fake()->image('replacement.jpg')->size(64),
+        ])->assertRedirect();
+
+        $asset->refresh();
+        $this->assertSame($assetId, $asset->id);
+        $this->assertSame('Replacement referenced cover', $asset->title);
+        $this->assertNotSame($oldPath, $asset->path);
+        $this->assertTrue($content->mediaAssets()->whereKey($asset)->exists());
+        Storage::disk('public')->assertMissing($oldPath);
+        Storage::disk('public')->assertExists($asset->path);
+
+        $this->delete(route('admin.media.destroy', $asset))
+            ->assertSessionHasErrors('asset');
+        $this->assertDatabaseHas('media_assets', ['id' => $assetId]);
+
+        $replacementPath = $asset->path;
+        $content->mediaAssets()->detach($asset);
+        $this->delete(route('admin.media.destroy', $asset))->assertRedirect();
+
+        $this->assertDatabaseMissing('media_assets', ['id' => $assetId]);
+        Storage::disk('public')->assertMissing($replacementPath);
+    }
+
+    public function test_app_server_upload_rejects_short_video_and_media_screen_opens_library(): void
     {
         Storage::fake('public');
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
@@ -143,7 +193,8 @@ class AdminMediaLibraryTest extends TestCase
 
         $this->get(route('admin.media.index'))
             ->assertOk()
-            ->assertSee('Enter')
+            ->assertSee('Biblioteca de Fotos y Videos')
+            ->assertSee('Recent assets')
             ->assertDontSee('<option value="short_video"', false);
 
         $this->post(route('admin.media.store'), [

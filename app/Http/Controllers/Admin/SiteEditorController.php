@@ -12,17 +12,22 @@ use App\Models\MediaAsset;
 use App\Models\Rsvp;
 use App\Models\SitePageSetting;
 use App\Models\User;
+use App\Services\CmsPreviewContext;
+use App\Services\Commerce\ProductCatalog;
 use App\Services\CommunityInteractionService;
 use App\Services\Media\MediaLibraryService;
 use App\Services\Media\MediaUploadException;
 use App\Services\MusicBannerSettingsService;
+use App\Services\PageSettingsService;
 use App\Services\PublicCmsContentService;
 use App\Services\StorefrontSettingsService;
 use App\Support\SiteEditorPageRegistry;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -50,6 +55,12 @@ class SiteEditorController extends Controller
             'publicUrl' => url($pageConfig['public_path']),
             'previewUrl' => route('admin.site-editor.preview', ['page' => $page]),
             'publicPayload' => $this->publicPayload($cms, $page),
+            'pageSettings' => in_array($page, PageSettingsService::PAGES, true)
+                ? app(PageSettingsService::class)->editorPayload($page)
+                : null,
+            'pageSettingsForm' => in_array($page, PageSettingsService::PAGES, true)
+                ? ['mediaAssets' => MediaAsset::query()->ready()->latest()->limit(100)->get()]
+                : null,
             'musicBanner' => $page === 'music'
                 ? app(MusicBannerSettingsService::class)->editorPayload()
                 : null,
@@ -154,14 +165,24 @@ class SiteEditorController extends Controller
      */
     private function storefrontFormData(): array
     {
+        $storeContents = EditorialContent::query()
+            ->whereIn('type', [
+                ContentType::Product->value,
+                ContentType::Event->value,
+                ContentType::Drop->value,
+                ContentType::Exclusive->value,
+                ContentType::MusicalAlbum->value,
+                ContentType::DeluxeAlbum->value,
+            ])
+            ->where('status', '!=', 'archived')
+            ->orderByRaw("CASE status WHEN 'published' THEN 0 WHEN 'scheduled' THEN 1 WHEN 'draft' THEN 2 ELSE 3 END")
+            ->latest()
+            ->limit(150)
+            ->get();
+
         return [
             'mediaAssets' => MediaAsset::query()->ready()->latest()->limit(100)->get(),
-            'albums' => EditorialContent::query()
-                ->whereIn('type', [ContentType::MusicalAlbum->value, ContentType::DeluxeAlbum->value])
-                ->orderByRaw("CASE status WHEN 'published' THEN 0 WHEN 'scheduled' THEN 1 WHEN 'draft' THEN 2 ELSE 3 END")
-                ->latest()
-                ->limit(100)
-                ->get(),
+            'storeContents' => $storeContents,
         ];
     }
 
@@ -289,40 +310,126 @@ class SiteEditorController extends Controller
                 : 'Borrador de '.str($returnPage)->headline()->lower()->toString().' guardado.');
     }
 
+    public function updatePageSettings(
+        Request $request,
+        PageSettingsService $settings,
+        MediaLibraryService $library,
+        string $page,
+    ): RedirectResponse {
+        abort_unless(in_array($page, PageSettingsService::PAGES, true), 404);
+
+        $validated = $request->validate([
+            'action' => ['required', Rule::in(['draft', 'publish'])],
+            'eyebrow' => ['nullable', 'string', 'max:80'],
+            'title' => ['required', 'string', 'max:120'],
+            'subtitle' => ['nullable', 'string', 'max:160'],
+            'description' => ['nullable', 'string', 'max:500'],
+            'cover_asset_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('media_assets', 'id')->where(fn ($query) => $query
+                    ->whereIn('type', [MediaAssetType::Image->value, MediaAssetType::Thumbnail->value])
+                    ->where('processing_status', 'ready')
+                    ->where('is_public', true)),
+            ],
+            'cover' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,gif', 'max:51200'],
+            'cover_alt' => ['nullable', 'string', 'max:180'],
+            'meta_title' => ['nullable', 'string', 'max:160'],
+            'meta_description' => ['nullable', 'string', 'max:320'],
+            'canonical_url' => ['nullable', 'url:http,https', 'max:2048'],
+            'og_title' => ['nullable', 'string', 'max:160'],
+            'og_description' => ['nullable', 'string', 'max:320'],
+            'og_image' => ['nullable', 'url:http,https', 'max:2048'],
+            'twitter_card' => ['nullable', Rule::in(['summary', 'summary_large_image'])],
+            'twitter_title' => ['nullable', 'string', 'max:160'],
+            'twitter_description' => ['nullable', 'string', 'max:320'],
+            'twitter_image' => ['nullable', 'url:http,https', 'max:2048'],
+        ]);
+        $status = $validated['action'] === 'publish'
+            ? SitePageSetting::STATUS_PUBLISHED
+            : SitePageSetting::STATUS_DRAFT;
+
+        if ($status === SitePageSetting::STATUS_PUBLISHED && ! $request->user()?->canPublishContent()) {
+            abort(403);
+        }
+
+        try {
+            $file = $request->file('cover');
+
+            if ($file instanceof UploadedFile) {
+                $asset = $library->storeUploads($request->user(), [
+                    'type' => MediaAssetType::Image->value,
+                    'title' => str($page)->headline()->toString().' page cover',
+                    'alt_text' => $validated['cover_alt'] ?? str($page)->headline()->toString().' cover',
+                    'is_public' => true,
+                ], [$file])->first();
+                $validated['cover_asset_id'] = $asset?->id;
+            }
+        } catch (MediaUploadException $exception) {
+            return back()->withErrors(['cover' => $exception->getMessage()])->withInput();
+        }
+
+        unset($validated['action'], $validated['cover']);
+        $settings->save($request->user(), $page, $validated, $status);
+
+        return redirect()
+            ->route('admin.site-editor.show', ['page' => $page])
+            ->with('status', $status === SitePageSetting::STATUS_PUBLISHED
+                ? str($page)->headline()->toString().' page settings published.'
+                : str($page)->headline()->toString().' page settings draft saved.');
+    }
+
     public function preview(
         Request $request,
         PublicCmsContentService $cms,
         CommunityInteractionService $community,
+        CmsPreviewContext $previewContext,
         string $page,
-    ): View {
+    ): Response {
         $pageConfig = $this->registry->page($page);
 
         abort_unless($pageConfig !== null, 404);
 
-        $request->attributes->set('site_editor_guest_preview', true);
+        $audience = VisibilityAudience::tryFrom((string) $request->query('audience')) ?? VisibilityAudience::Open;
+        $request->attributes->set('site_editor_preview_audience', $audience->value);
+        $request->attributes->set('site_editor_guest_preview', $audience === VisibilityAudience::Open);
 
-        return match ($page) {
-            'home' => view('home', [
-                'publicCms' => $this->publicPayload($cms, $page),
-                'rsvpTickets' => [],
-            ]),
-            'music' => view('welcome', [
-                'publicCms' => $this->publicPayload($cms, $page),
-            ]),
-            'videos' => view('videos', [
-                'publicCms' => $this->publicPayload($cms, $page),
-            ]),
-            'photos' => view('photos', [
-                'publicCms' => $this->publicPayload($cms, $page),
-            ]),
-            'store' => view('store', [
-                'publicCms' => $this->publicPayload($cms, $page),
-            ]),
-            'community' => view('community', [
-                'publicCms' => $communityPayload = $this->publicPayload($cms, $page),
-                'community' => $community->viewModel(null, $communityPayload),
-            ]),
-        };
+        return $previewContext->run($audience, function () use ($audience, $cms, $community, $page, $previewContext): Response {
+            $preview = match ($page) {
+                'home' => view('home', [
+                    'publicCms' => $this->publicPayload($cms, $page, $previewContext->viewer()),
+                    'rsvpTickets' => [],
+                    'previewAudience' => $audience->value,
+                ]),
+                'music' => view('welcome', [
+                    'publicCms' => $this->publicPayload($cms, $page, $previewContext->viewer()),
+                    'previewAudience' => $audience->value,
+                ]),
+                'videos' => view('videos', [
+                    'publicCms' => $this->publicPayload($cms, $page, $previewContext->viewer()),
+                    'previewAudience' => $audience->value,
+                ]),
+                'photos' => view('photos', [
+                    'publicCms' => $this->publicPayload($cms, $page, $previewContext->viewer()),
+                    'previewAudience' => $audience->value,
+                ]),
+                'store' => view('store', [
+                    'publicCms' => $this->publicPayload($cms, $page, $previewContext->viewer()),
+                    'rsvpTickets' => [],
+                    'storePage' => 'store',
+                    'previewAudience' => $audience->value,
+                ]),
+                'community' => view('community', [
+                    'publicCms' => $communityPayload = $this->publicPayload($cms, $page, $previewContext->viewer()),
+                    'community' => $community->viewModel($previewContext->viewer(), $communityPayload),
+                    'previewAudience' => $audience->value,
+                ]),
+            };
+
+            return response($preview->render())
+                ->header('X-Robots-Tag', 'noindex, nofollow, noarchive')
+                ->header('Cache-Control', 'no-store, private');
+        });
     }
 
     /**
@@ -340,8 +447,8 @@ class SiteEditorController extends Controller
                         ...$block,
                         'contents' => collect(),
                         'counts' => collect(),
-                        'status_label' => 'Falta modelo CMS',
-                        'status_tone' => 'warning',
+                        'status_label' => 'Page settings',
+                        'status_tone' => 'success',
                         'create_url' => null,
                     ];
                 }
@@ -475,13 +582,77 @@ class SiteEditorController extends Controller
             $rules["slots.{$slotKey}.countdown_at"] = ['nullable', 'date'];
             $rules["slots.{$slotKey}.action_type"] = ['nullable', Rule::in(['buy', 'rsvp', 'link'])];
             $rules["slots.{$slotKey}.product_key"] = ['nullable', 'string', 'max:100'];
-            $rules["slots.{$slotKey}.url"] = ['nullable', 'url:http,https', 'max:2048'];
-            $rules["slots.{$slotKey}.image_asset_id"] = ['nullable', 'integer', 'exists:media_assets,id'];
+            $rules["slots.{$slotKey}.url"] = ['nullable', 'string', 'max:2048'];
+            $rules["slots.{$slotKey}.image_asset_id"] = [
+                'nullable',
+                'integer',
+                Rule::exists('media_assets', 'id')->where(fn ($query) => $query
+                    ->whereIn('type', [MediaAssetType::Image->value, MediaAssetType::Thumbnail->value])
+                    ->where('processing_status', 'ready')
+                    ->where('is_public', true)),
+            ];
             $rules["slots.{$slotKey}.content_id"] = ['nullable', 'integer', 'exists:editorial_contents,id'];
             $rules["slot_images.{$slotKey}"] = ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,gif', 'max:51200'];
         }
 
-        $validated = $request->validate($rules);
+        $validator = Validator::make($request->all(), $rules);
+        $validator->after(function ($validator) use ($request): void {
+            if ($request->input('action') !== 'publish') {
+                return;
+            }
+
+            $products = app(ProductCatalog::class);
+
+            foreach (StorefrontSettingsService::slotKeys() as $slotKey) {
+                $slot = (array) $request->input("slots.{$slotKey}", []);
+                $actionType = (string) ($slot['action_type'] ?? '');
+                $productKey = trim((string) ($slot['product_key'] ?? ''));
+                $url = trim((string) ($slot['url'] ?? ''));
+
+                if (blank($slot['title'] ?? null) || blank($slot['cta_label'] ?? null)) {
+                    $validator->errors()->add("slots.{$slotKey}.title", 'Published cards require a title and CTA label.');
+                }
+
+                if ($actionType === 'buy' && empty($slot['content_id']) && ($productKey === '' || ! $products->find($productKey))) {
+                    $validator->errors()->add("slots.{$slotKey}.product_key", 'Select an active product with a valid checkout before publishing.');
+                }
+
+                if (
+                    $actionType === 'link'
+                    && $url === ''
+                    && empty($slot['content_id'])
+                ) {
+                    $validator->errors()->add("slots.{$slotKey}.url", 'Link cards require a destination URL or linked content.');
+                }
+
+                if ($url !== '' && ! $this->isSafeActionUrl($url)) {
+                    $validator->errors()->add("slots.{$slotKey}.url", 'Use a full HTTP(S) URL or an internal path beginning with /.');
+                }
+
+                if (! empty($slot['content_id'])) {
+                    $content = EditorialContent::query()->find((int) $slot['content_id']);
+                    $allowedTypes = match ($slotKey) {
+                        'album' => [ContentType::MusicalAlbum, ContentType::DeluxeAlbum],
+                        'event_primary', 'event_secondary' => [ContentType::Event],
+                        default => [ContentType::Product, ContentType::Drop, ContentType::Exclusive],
+                    };
+
+                    if (! $content || ! in_array($content->type, $allowedTypes, true)) {
+                        $validator->errors()->add("slots.{$slotKey}.content_id", 'Linked content does not match this storefront slot.');
+                    } elseif (! in_array($content->status->value, ['published', 'scheduled'], true)) {
+                        $validator->errors()->add("slots.{$slotKey}.content_id", 'Publish or schedule linked content before publishing the Store.');
+                    } elseif (
+                        ($content->type !== ContentType::Event || data_get($content->metadata, 'ticketing_mode') !== 'rsvp')
+                        && (string) data_get($content->metadata, 'action_type', $actionType) === 'buy'
+                        && $products->forContent($content) === null
+                    ) {
+                        $validator->errors()->add("slots.{$slotKey}.content_id", 'Linked content needs an active checkout key, price, currency, inventory and availability.');
+                    }
+                }
+            }
+        });
+
+        $validated = $validator->validate();
 
         return [
             'action' => $validated['action'],
@@ -523,6 +694,18 @@ class SiteEditorController extends Controller
         $page = (string) $request->input('return_page', 'store');
 
         return in_array($page, ['home', 'store'], true) ? $page : 'store';
+    }
+
+    private function isSafeActionUrl(string $url): bool
+    {
+        if (str_starts_with($url, '/')) {
+            return ! str_starts_with($url, '//');
+        }
+
+        $scheme = strtolower((string) parse_url($url, PHP_URL_SCHEME));
+
+        return in_array($scheme, ['http', 'https'], true)
+            && filter_var($url, FILTER_VALIDATE_URL) !== false;
     }
 
     private function bannerImage(Request $request, MediaLibraryService $library): ?MediaAsset

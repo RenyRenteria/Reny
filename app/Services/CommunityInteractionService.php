@@ -33,7 +33,11 @@ class CommunityInteractionService
 
         return [
             'posts' => $this->posts($user, $publicCms['posts'] ?? []),
-            'poll' => $this->poll($user, $publicCms['poll'] ?? null),
+            'poll' => $this->poll(
+                $user,
+                $publicCms['poll'] ?? null,
+                ! in_array($publicCms['_cms_source'] ?? 'static', ['cms', 'cache', 'preview'], true),
+            ),
             'clubs' => $clubs,
             'active_club' => $clubs[0] ?? null,
             'live_chat' => $this->liveChat($user),
@@ -457,9 +461,9 @@ class CommunityInteractionService
      * @param  array<string, mixed>|null  $cmsPoll
      * @return array<string, mixed>|null
      */
-    private function poll(?User $user, ?array $cmsPoll): ?array
+    private function poll(?User $user, ?array $cmsPoll, bool $allowFallback = true): ?array
     {
-        $source = $cmsPoll ?: $this->fallbackPoll();
+        $source = $cmsPoll ?: ($allowFallback ? $this->fallbackPoll() : []);
 
         if ($source === []) {
             return null;

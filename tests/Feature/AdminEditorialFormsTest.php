@@ -111,7 +111,7 @@ class AdminEditorialFormsTest extends TestCase
         $this->assertTrue(EditorialContent::visibleFor(null, $visibleAt->addSecond())->whereKey($content)->exists());
     }
 
-    public function test_private_preview_requires_admin_session_and_stays_on_enter_screen(): void
+    public function test_private_preview_requires_admin_session_and_renders_audience_controls(): void
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
         $content = EditorialContent::factory()->create([
@@ -126,8 +126,12 @@ class AdminEditorialFormsTest extends TestCase
 
         $this->get(route('admin.content.preview', $content))
             ->assertOk()
-            ->assertSee('Enter')
-            ->assertDontSee('Private preview candidate');
+            ->assertSee('Private preview candidate')
+            ->assertSee('Guest')
+            ->assertSee('Member')
+            ->assertSee('Royal')
+            ->assertSee('Purchased')
+            ->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
     }
 
     public function test_form_save_can_attach_reusable_media_and_taxonomy(): void
@@ -380,7 +384,7 @@ class AdminEditorialFormsTest extends TestCase
             'summary' => "Summary for {$type}",
             'body' => "Body for {$type}",
             'visibility' => VisibilityAudience::Open->value,
-            'purchase_key' => in_array($type, [ContentType::DeluxeAlbum->value, ContentType::Product->value], true)
+            'purchase_key' => in_array($type, [ContentType::DeluxeAlbum->value, ContentType::Product->value, ContentType::Event->value], true)
                 ? "purchase-{$type}"
                 : null,
             'metadata' => $this->metadataForType($type),

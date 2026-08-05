@@ -3,11 +3,12 @@
 namespace App\Services;
 
 use App\Enums\ContentType;
-use App\Enums\EditorialStatus;
 use App\Models\EditorialContent;
 use App\Models\MediaAsset;
 use App\Models\SitePageSetting;
 use App\Models\User;
+use App\Services\Commerce\ProductCatalog;
+use App\Services\PublicCms\ContentQuery;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -28,6 +29,12 @@ class StorefrontSettingsService
         'album',
         'merch',
     ];
+
+    public function __construct(
+        private readonly CmsPreviewContext $previewContext,
+        private readonly ContentQuery $contentQuery,
+        private readonly ProductCatalog $products,
+    ) {}
 
     /**
      * @return array<int, string>
@@ -73,10 +80,10 @@ class StorefrontSettingsService
                     'kind' => 'event',
                     'title' => 'Festival de la Rosa Dorada',
                     'eyebrow' => '',
-                    'description' => "Rock & Folk Pty, Ciudad de Panama\n19/ Dic - 7:30 PM",
-                    'price_label' => '$15',
+                    'description' => 'Rock & Folk Pty, Ciudad de Panama',
+                    'price_label' => '',
                     'cta_label' => 'GET TICKETS',
-                    'countdown_at' => '2026-12-19 19:30:00',
+                    'countdown_at' => '',
                     'action_type' => 'buy',
                     'product_key' => 'listening',
                     'url' => '',
@@ -92,10 +99,10 @@ class StorefrontSettingsService
                     'eyebrow' => 'Deluxe Album',
                     'description' => 'Includes: Tracks, BTS, Notes, Videos',
                     'price_label' => '',
-                    'cta_label' => 'GET DELUXE',
-                    'action_type' => 'buy',
+                    'cta_label' => 'LISTEN',
+                    'action_type' => 'link',
                     'product_key' => 'deluxe',
-                    'url' => '',
+                    'url' => '/music',
                     'image' => 'images/store/work-in-progress.png',
                     'image_asset_id' => null,
                     'content_id' => null,
@@ -143,10 +150,12 @@ class StorefrontSettingsService
     /**
      * @return array<string, mixed>
      */
-    public function publicPayload(): array
+    public function publicPayload(?User $user = null): array
     {
-        $payload = $this->payloadFor($this->publishedSetting());
-        unset($payload['slots']['album']);
+        $setting = $this->previewContext->active()
+            ? ($this->draftSetting() ?? $this->publishedSetting())
+            : $this->publishedSetting();
+        $payload = $this->payloadFor($setting, $user, true);
 
         return [
             ...$payload,
@@ -217,17 +226,27 @@ class StorefrontSettingsService
     /**
      * @return array<string, mixed>
      */
-    private function payloadFor(?SitePageSetting $setting): array
-    {
-        return $this->resolveLinkedContent($this->normalize($setting?->payload ?? []));
+    private function payloadFor(
+        ?SitePageSetting $setting,
+        ?User $user = null,
+        bool $hideUnavailableLinkedContent = false,
+    ): array {
+        return $this->resolveLinkedContent(
+            $this->normalize($setting?->payload ?? []),
+            $user,
+            $hideUnavailableLinkedContent,
+        );
     }
 
     /**
      * @param  array<string, mixed>  $payload
      * @return array<string, mixed>
      */
-    private function resolveLinkedContent(array $payload): array
-    {
+    private function resolveLinkedContent(
+        array $payload,
+        ?User $user,
+        bool $hideUnavailableLinkedContent,
+    ): array {
         $slots = $payload['slots'];
         $assetIds = collect($slots)
             ->pluck('image_asset_id')
@@ -238,12 +257,50 @@ class StorefrontSettingsService
 
         $assets = $assetIds->isEmpty() || ! $this->mediaAvailable()
             ? collect()
-            : MediaAsset::query()->whereKey($assetIds)->get()->keyBy('id');
+            : MediaAsset::query()
+                ->ready()
+                ->where('is_public', true)
+                ->whereKey($assetIds)
+                ->get()
+                ->keyBy('id');
 
-        $album = $this->publishedAlbum((int) ($slots['album']['content_id'] ?? 0));
+        $albumContentId = (int) ($slots['album']['content_id'] ?? 0);
+        $album = $this->publishedAlbum($albumContentId, $user);
 
         if ($album instanceof EditorialContent) {
             $slots['album'] = $this->albumSlot($slots['album'], $album);
+        } elseif ($hideUnavailableLinkedContent && $albumContentId > 0) {
+            unset($slots['album']);
+        }
+
+        $linkedContents = $this->publishedCommerceContents($slots, $user);
+
+        foreach (['event_primary', 'event_secondary', 'merch'] as $slotKey) {
+            if (! isset($slots[$slotKey])) {
+                continue;
+            }
+
+            $slot = $slots[$slotKey];
+            $content = $linkedContents->first(function (EditorialContent $content) use ($slot): bool {
+                $contentId = (int) ($slot['content_id'] ?? 0);
+
+                return ($contentId > 0 && $content->id === $contentId)
+                    || (filled($slot['product_key'] ?? null) && $content->purchase_key === $slot['product_key']);
+            });
+
+            if ($content instanceof EditorialContent) {
+                $slots[$slotKey] = $this->commerceSlot($slot, $content);
+            } elseif ($hideUnavailableLinkedContent && (int) ($slot['content_id'] ?? 0) > 0) {
+                unset($slots[$slotKey]);
+            } elseif (($slot['action_type'] ?? null) === 'buy') {
+                $product = $this->products->find((string) ($slot['product_key'] ?? ''));
+
+                if (is_array($product)) {
+                    $slots[$slotKey] = $this->configuredCommerceSlot($slot, $product);
+                } elseif ($hideUnavailableLinkedContent) {
+                    unset($slots[$slotKey]);
+                }
+            }
         }
 
         $slots = collect($slots)
@@ -265,32 +322,15 @@ class StorefrontSettingsService
         ];
     }
 
-    private function publishedAlbum(int $contentId): ?EditorialContent
+    private function publishedAlbum(int $contentId, ?User $user): ?EditorialContent
     {
-        if (! $this->editorialContentAvailable()) {
+        if ($contentId <= 0 || ! $this->editorialContentAvailable()) {
             return null;
         }
 
-        $now = now();
-
-        $query = EditorialContent::query()
-            ->whereIn('type', [ContentType::MusicalAlbum->value, ContentType::DeluxeAlbum->value])
-            ->whereIn('status', [EditorialStatus::Published->value, EditorialStatus::Scheduled->value])
-            ->where(function ($query) use ($now): void {
-                $query->whereNull('scheduled_at')->orWhere('scheduled_at', '<=', $now);
-            });
-
-        if ($this->mediaAvailable()) {
-            $query->with(['mediaAssets']);
-        }
-
-        if ($contentId > 0) {
-            return $query->whereKey($contentId)->first();
-        }
-
-        return $query
-            ->orderByRaw("CASE type WHEN 'deluxe_album' THEN 0 ELSE 1 END")
-            ->orderByRaw('COALESCE(published_at, scheduled_at, created_at) DESC')
+        return $this->contentQuery
+            ->visibleContents($user, [ContentType::MusicalAlbum, ContentType::DeluxeAlbum], null)
+            ->whereKey($contentId)
             ->first();
     }
 
@@ -307,6 +347,8 @@ class StorefrontSettingsService
                 ->first()
             : null;
 
+        $product = $this->products->forContent($album);
+
         return [
             ...$slot,
             'content_id' => $album->id,
@@ -314,9 +356,138 @@ class StorefrontSettingsService
             'eyebrow' => $album->type === ContentType::DeluxeAlbum ? 'Deluxe Album' : 'Album',
             'description' => $album->summary ?: $slot['description'],
             'product_key' => $album->purchase_key ?: $slot['product_key'],
+            'price_label' => $product
+                ? $this->moneyLabel((int) $product['amount_cents'], (string) $product['currency'])
+                : $slot['price_label'],
+            'action_type' => $product ? 'buy' : 'link',
+            'url' => $product ? '' : ($album->type === ContentType::MusicalAlbum
+                ? route('music.albums.show', $album)
+                : route('music')),
+            'cta_label' => $product ? 'GET DELUXE' : 'LISTEN',
             'image_url' => $asset?->publicUrl() ?? ($slot['image_url'] ?? null),
             'image_alt' => $asset?->alt_text ?: $slot['image_alt'],
         ];
+    }
+
+    /**
+     * @param  array<string, array<string, mixed>>  $slots
+     * @return Collection<int, EditorialContent>
+     */
+    private function publishedCommerceContents(array $slots, ?User $user): Collection
+    {
+        if (! $this->editorialContentAvailable()) {
+            return collect();
+        }
+
+        $contentIds = collect($slots)->pluck('content_id')->filter()->map(fn ($id): int => (int) $id);
+        $purchaseKeys = collect($slots)->pluck('product_key')->filter();
+
+        $query = $this->contentQuery
+            ->visibleContents($user, [
+                ContentType::Product,
+                ContentType::Drop,
+                ContentType::Exclusive,
+                ContentType::Event,
+            ], null)
+            ->where(function ($query) use ($contentIds, $purchaseKeys): void {
+                $query->whereIn('id', $contentIds)->orWhereIn('purchase_key', $purchaseKeys);
+            });
+
+        return $query->get();
+    }
+
+    /**
+     * @param  array<string, mixed>  $slot
+     * @return array<string, mixed>
+     */
+    private function commerceSlot(array $slot, EditorialContent $content): array
+    {
+        $product = $this->products->forContent($content);
+        $isRsvp = $content->type === ContentType::Event
+            && data_get($content->metadata, 'ticketing_mode') === 'rsvp';
+        $asset = $content->relationLoaded('mediaAssets') ? $content->mediaAssets->first() : null;
+        $requestedAction = (string) data_get($content->metadata, 'action_type', $isRsvp ? 'rsvp' : 'buy');
+        $actionType = match (true) {
+            $requestedAction === 'link' && filled(data_get($content->metadata, 'action_url')) => 'link',
+            $isRsvp => 'rsvp',
+            $product !== null => 'buy',
+            default => 'link',
+        };
+        $priceLabel = $isRsvp
+            ? 'FREE'
+            : ($product
+                ? $this->moneyLabel((int) $product['amount_cents'], (string) $product['currency'])
+                : (string) ($slot['price_label'] ?? ''));
+        $description = $content->summary ?: $content->body ?: ($slot['description'] ?? '');
+
+        if ($content->type === ContentType::Event) {
+            $startsAt = (string) data_get($content->metadata, 'starts_at', '');
+            $timezone = (string) data_get($content->metadata, 'timezone', 'America/Panama');
+            $description = collect([
+                $content->summary ?: $content->body,
+                data_get($content->metadata, 'location'),
+                $this->eventDateLabel($startsAt, $timezone),
+            ])->filter(fn (mixed $line): bool => filled($line))->implode("\n");
+        }
+
+        return [
+            ...$slot,
+            'content_id' => $content->id,
+            'kind' => $content->type === ContentType::Event ? 'event' : (string) data_get($content->metadata, 'product_kind', 'product'),
+            'title' => $content->title,
+            'eyebrow' => (string) data_get($content->metadata, 'eyebrow', $slot['eyebrow'] ?? ''),
+            'description' => $description,
+            'price_label' => $priceLabel,
+            'cta_label' => (string) data_get($content->metadata, 'cta_label', $isRsvp ? 'RSVP' : ($product ? 'BUY NOW' : 'VIEW DETAILS')),
+            'countdown_at' => $content->type === ContentType::Event
+                ? (string) data_get($content->metadata, 'starts_at', '')
+                : (string) ($slot['countdown_at'] ?? ''),
+            'action_type' => $actionType,
+            'product_key' => $content->purchase_key ?: ($slot['product_key'] ?? ''),
+            'url' => $actionType === 'link'
+                ? (string) data_get($content->metadata, 'action_url', route('public.content.show', $content))
+                : '',
+            'image_url' => $asset?->publicUrl() ?? ($slot['image_url'] ?? null),
+            'image_alt' => $asset?->alt_text ?: $content->title,
+        ];
+    }
+
+    private function moneyLabel(int $amountCents, string $currency): string
+    {
+        $amount = $amountCents / 100;
+        $prefix = strtoupper($currency) === 'USD' ? '$' : strtoupper($currency).' ';
+
+        return $prefix.number_format($amount, $amountCents % 100 === 0 ? 0 : 2);
+    }
+
+    /**
+     * @param  array<string, mixed>  $slot
+     * @param  array<string, mixed>  $product
+     * @return array<string, mixed>
+     */
+    private function configuredCommerceSlot(array $slot, array $product): array
+    {
+        $event = is_array($product['event'] ?? null) ? $product['event'] : null;
+
+        return [
+            ...$slot,
+            'title' => (string) $product['title'],
+            'description' => $event
+                ? trim((string) ($event['venue'] ?? ''))."\n".$this->eventDateLabel((string) ($event['starts_at'] ?? ''), (string) ($event['timezone'] ?? 'America/Panama'))
+                : $slot['description'],
+            'price_label' => $this->moneyLabel((int) $product['amount_cents'], (string) $product['currency']),
+            'countdown_at' => $event['starts_at'] ?? ($slot['countdown_at'] ?? ''),
+            'product_key' => (string) $product['key'],
+        ];
+    }
+
+    private function eventDateLabel(string $startsAt, string $timezone): string
+    {
+        try {
+            return Carbon::parse($startsAt, $timezone)->locale('es')->translatedFormat('d/ M - g:i A');
+        } catch (\Throwable) {
+            return $startsAt;
+        }
     }
 
     /**

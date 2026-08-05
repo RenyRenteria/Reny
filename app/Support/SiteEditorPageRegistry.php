@@ -30,7 +30,6 @@ class SiteEditorPageRegistry
                 'public_path' => '/music',
                 'summary' => 'Albums, singles, canciones y releases destacados.',
                 'blocks' => [
-                    $this->pageSettingsBlock('Music page header'),
                     $this->block('music-albums', 'Albums', [ContentType::MusicalAlbum, ContentType::DeluxeAlbum], ContentType::MusicalAlbum),
                     $this->block('music-singles', 'Songs / singles', [ContentType::Song, ContentType::Exclusive], ContentType::Song),
                 ],
@@ -126,7 +125,8 @@ class SiteEditorPageRegistry
             'types' => [],
             'default_type' => null,
             'persistable' => false,
-            'note' => 'Falta un modelo de page settings para editar este header/cover desde CMS.',
+            'kind' => 'page_settings',
+            'note' => 'Header, cover, copy and SEO are managed in the page settings form.',
         ];
     }
 }

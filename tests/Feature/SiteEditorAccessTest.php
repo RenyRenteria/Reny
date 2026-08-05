@@ -148,7 +148,7 @@ class SiteEditorAccessTest extends TestCase
         $this->assertSame($artwork->id, data_get($song->metadata, 'artwork_asset_id'));
     }
 
-    public function test_music_manage_delete_removes_music_content(): void
+    public function test_music_manage_archives_published_music_content(): void
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
         $song = $this->musicContent(ContentType::Song, 'Delete Me', [
@@ -160,10 +160,14 @@ class SiteEditorAccessTest extends TestCase
 
         $this->actingAsAdmin($admin);
 
-        $this->delete(route('admin.content.destroy', $song))
-            ->assertRedirect(route('admin.site-editor.show', ['page' => 'music']));
+        $this->post(route('admin.content.archive', $song))
+            ->assertRedirect();
 
-        $this->assertDatabaseMissing('editorial_contents', ['id' => $song->id]);
+        $this->assertDatabaseHas('editorial_contents', [
+            'id' => $song->id,
+            'status' => EditorialStatus::Archived->value,
+            'archived_by_id' => $admin->id,
+        ]);
     }
 
     public function test_admin_site_editor_routes_stay_on_enter_screen_when_cms_is_disabled(): void

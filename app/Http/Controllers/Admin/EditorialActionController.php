@@ -6,7 +6,9 @@ use App\Enums\ContentType;
 use App\Enums\VisibilityAudience;
 use App\Http\Controllers\Controller;
 use App\Models\EditorialContent;
+use App\Models\MediaAsset;
 use App\Services\Admin\MusicContentUploadService;
+use App\Services\Commerce\CommercePublicationValidator;
 use App\Services\EditorialWorkflowService;
 use App\Services\Media\MediaLibraryService;
 use App\Services\Media\MediaUploadException;
@@ -15,8 +17,11 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\Response;
 
 class EditorialActionController extends Controller
 {
@@ -28,6 +33,39 @@ class EditorialActionController extends Controller
         private readonly EditorialContentForms $forms,
         private readonly MusicContentUploadService $musicContent
     ) {}
+
+    public function index(Request $request): View
+    {
+        return view('admin.editorial.index', $this->editorialViewData($request));
+    }
+
+    public function edit(Request $request, EditorialContent $content): View
+    {
+        return view('admin.editorial.index', $this->editorialViewData($request, $content));
+    }
+
+    public function preview(Request $request, EditorialContent $content): Response
+    {
+        $audience = (string) $request->query('audience', VisibilityAudience::Open->value);
+
+        if (! in_array($audience, VisibilityAudience::values(), true)) {
+            $audience = VisibilityAudience::Open->value;
+        }
+
+        $content->load([
+            'mediaAssets',
+            'releaseWindows',
+            'auditLogs' => fn ($query) => $query->with('actor:id,name,email')->latest('created_at'),
+        ]);
+
+        return response()->view('admin.editorial.preview', [
+            'content' => $content,
+            'panamaTimezone' => self::SCHEDULING_TIMEZONE,
+            'previewAudience' => $audience,
+            'previewAudiences' => VisibilityAudience::cases(),
+        ])->header('X-Robots-Tag', 'noindex, nofollow, noarchive')
+            ->header('Cache-Control', 'no-store, private');
+    }
 
     public function saveDraft(
         Request $request,
@@ -92,6 +130,10 @@ class EditorialActionController extends Controller
         MediaLibraryService $library
     ): JsonResponse|RedirectResponse {
         $payload = $this->validatedPayload($request, true);
+        $existingContent = isset($payload['content_id'])
+            ? EditorialContent::query()->findOrFail($payload['content_id'])
+            : null;
+        $payload = app(CommercePublicationValidator::class)->prepareAndValidate($payload, $existingContent);
 
         try {
             $payload = $this->musicContent->payloadWithUploads($request, $library, $payload);
@@ -99,8 +141,8 @@ class EditorialActionController extends Controller
             return $this->mediaUploadFailure($request, $exception);
         }
 
-        $content = isset($payload['content_id'])
-            ? $workflow->publish($request->user(), EditorialContent::query()->findOrFail($payload['content_id']), $payload)
+        $content = $existingContent
+            ? $workflow->publish($request->user(), $existingContent, $payload)
             : $workflow->publishNew($request->user(), $payload);
 
         $message = sprintf(
@@ -123,6 +165,10 @@ class EditorialActionController extends Controller
         $payload = $this->validatedPayload($request, true, scheduledAtRequired: true);
         $scheduledAt = $payload['scheduled_at'];
         $releaseWindows = $payload['release_windows'] ?? [];
+        $existingContent = isset($payload['content_id'])
+            ? EditorialContent::query()->findOrFail($payload['content_id'])
+            : null;
+        $payload = app(CommercePublicationValidator::class)->prepareAndValidate($payload, $existingContent);
 
         try {
             $payload = $this->musicContent->payloadWithUploads($request, $library, $payload);
@@ -130,10 +176,10 @@ class EditorialActionController extends Controller
             return $this->mediaUploadFailure($request, $exception);
         }
 
-        $content = isset($payload['content_id'])
+        $content = $existingContent
             ? $workflow->schedule(
                 $request->user(),
-                EditorialContent::query()->findOrFail($payload['content_id']),
+                $existingContent,
                 $scheduledAt,
                 $releaseWindows,
                 $payload
@@ -253,6 +299,39 @@ class EditorialActionController extends Controller
             if ($this->musicContent->isMusicType($type)) {
                 $payload['metadata'] = $this->musicContent->normalizeMetadataForType($payload['metadata'], $type);
             }
+
+            $resolvedType = $type instanceof ContentType ? $type : ContentType::tryFrom((string) $type);
+
+            if (in_array($resolvedType, [ContentType::Product, ContentType::Event], true)) {
+                $metadata = $payload['metadata'];
+                $price = $metadata['price'] ?? null;
+
+                if (is_numeric($price) && ! isset($metadata['price_cents'])) {
+                    $metadata['price_cents'] = (int) round(((float) $price) * 100);
+                }
+
+                if ($resolvedType === ContentType::Product) {
+                    $metadata['product_kind'] = $metadata['product_kind'] ?? $metadata['product_type'] ?? 'digital';
+                } else {
+                    $metadata['event_kind'] = $metadata['event_kind'] ?? $metadata['event_type'] ?? 'physical';
+                    $metadata['starts_at'] = $metadata['starts_at'] ?? $metadata['event_starts_at'] ?? null;
+                    $metadata['location'] = $metadata['location'] ?? $metadata['venue'] ?? null;
+                    $metadata['ticketing_mode'] = $metadata['ticketing_mode'] ?? ((float) ($price ?? 0) > 0 ? 'ticket' : 'rsvp');
+                }
+
+                $ticketingMode = (string) ($metadata['ticketing_mode'] ?? 'ticket');
+                $metadata['currency'] = strtoupper((string) ($metadata['currency'] ?? 'USD'));
+                $metadata['checkout_enabled'] = array_key_exists('checkout_enabled', $metadata)
+                    ? filter_var($metadata['checkout_enabled'], FILTER_VALIDATE_BOOL)
+                    : true;
+                $metadata['action_type'] = (string) ($metadata['action_type'] ?? ($ticketingMode === 'rsvp' ? 'rsvp' : 'buy'));
+                $metadata['cta_label'] = (string) ($metadata['cta_label'] ?? ($ticketingMode === 'rsvp' ? 'RSVP' : ($resolvedType === ContentType::Event ? 'BUY TICKETS' : 'BUY NOW')));
+                $payload['metadata'] = $metadata;
+
+                if ($resolvedType === ContentType::Event && blank($payload['purchase_key'] ?? null)) {
+                    $payload['purchase_key'] = Str::slug((string) ($payload['slug'] ?? $payload['title'] ?? 'event'));
+                }
+            }
         }
 
         if (array_key_exists('scheduled_at', $payload) && $payload['scheduled_at'] !== null) {
@@ -319,5 +398,47 @@ class EditorialActionController extends Controller
         }
 
         return back()->withErrors(['media' => $exception->getMessage()])->withInput();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function editorialViewData(Request $request, ?EditorialContent $content = null): array
+    {
+        $selectedType = $content?->type
+            ?? ContentType::tryFrom((string) $request->query('type'))
+            ?? ContentType::Post;
+
+        $content?->load(['mediaAssets', 'releaseWindows']);
+
+        $releaseWindows = collect(VisibilityAudience::cases())
+            ->mapWithKeys(function (VisibilityAudience $audience) use ($content): array {
+                $window = $content?->releaseWindows->first(
+                    fn ($window): bool => $window->audience === $audience
+                );
+
+                return [$audience->value => [
+                    'audience' => $audience->value,
+                    'starts_at' => $window?->starts_at?->timezone(self::SCHEDULING_TIMEZONE)->format('Y-m-d\TH:i'),
+                    'ends_at' => $window?->ends_at?->timezone(self::SCHEDULING_TIMEZONE)->format('Y-m-d\TH:i'),
+                ]];
+            })
+            ->all();
+
+        return [
+            'content' => $content,
+            'contents' => EditorialContent::query()
+                ->with(['createdBy:id,name,email', 'updatedBy:id,name,email'])
+                ->latest()
+                ->limit(50)
+                ->get(),
+            'forms' => $this->forms->definitions(),
+            'mediaAssets' => MediaAsset::query()->ready()->latest()->limit(100)->get(),
+            'panamaTimezone' => self::SCHEDULING_TIMEZONE,
+            'releaseWindows' => $releaseWindows,
+            'selectedDefinition' => $this->forms->definition($selectedType),
+            'selectedMediaIds' => $content?->mediaAssets->pluck('id')->all() ?? [],
+            'selectedType' => $selectedType,
+        ];
     }
 }

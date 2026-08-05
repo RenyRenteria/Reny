@@ -1,6 +1,8 @@
 @php
     $community = $community ?? [];
     $communityPosts = $community['posts'] ?? [];
+    $communityPoll = $community['poll'] ?? null;
+    $pageSettings = $publicCms['page'] ?? [];
     $liveChat = $community['live_chat'] ?? [];
     $canUseCommunityActions = (bool) ($community['can_use_actions'] ?? false);
     $canUsePostActions = (bool) ($community['can_use_post_actions'] ?? false);
@@ -18,12 +20,13 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title>Community | Reny Renteria</title>
+        @include('partials.public-seo', ['seo' => $pageSettings, 'fallbackTitle' => 'Community | Reny Renteria'])
 
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body data-analytics-screen="community">
         <div class="community-shell" data-public-page-root>
+            @include('partials.cms-preview-banner')
             <aside class="sidebar" aria-label="Primary navigation">
                 <div>
                     <a class="brand-link" href="{{ url('/') }}" aria-label="Reny Renteria home">
@@ -88,15 +91,55 @@
                         data-community-panel="feed"
                     >
                         <div class="community-welcome-card">
-                            <p>Comunidad oficial</p>
-                            <h1>Directo de Reny.<br>Cerca de la comunidad.</h1>
-                            <span>Posts oficiales, anuncios y momentos exclusivos de Reny. La conversación continúa en el Live Chat.</span>
+                            <p>{{ $pageSettings['eyebrow'] ?? 'Comunidad oficial' }}</p>
+                            <h1>{!! nl2br(e($pageSettings['title'] ?? 'Directo de Reny. Cerca de la comunidad.')) !!}</h1>
+                            <span>{{ $pageSettings['description'] ?? '' }}</span>
+                            @if (filled($pageSettings['cover_url'] ?? null))
+                                <img class="public-page-cover" src="{{ $pageSettings['cover_url'] }}" alt="{{ $pageSettings['cover_alt'] ?? '' }}">
+                            @endif
                             <div class="community-welcome-points" aria-label="Características de la comunidad">
                                 <strong>Solo Reny publica</strong>
                                 <strong>Chat moderado</strong>
                                 <strong>Actualización en vivo</strong>
                             </div>
                         </div>
+
+                        @if ($communityPoll)
+                            <section
+                                class="poll-card"
+                                data-community-poll="{{ $communityPoll['key'] }}"
+                                data-vote-endpoint="{{ $communityPoll['vote_endpoint'] }}"
+                                data-voted="{{ empty($communityPoll['user_vote']) ? 'false' : 'true' }}"
+                                aria-labelledby="community-poll-question"
+                            >
+                                <div class="poll-card-head">
+                                    <h3 id="community-poll-question">{{ $communityPoll['question'] }}</h3>
+                                    <span data-poll-total>{{ $communityPoll['total_votes_label'] }}</span>
+                                </div>
+                                <div class="poll-options">
+                                    @foreach ($communityPoll['options'] as $option)
+                                        @if ($canUseCommunityActions && empty($communityPoll['user_vote']))
+                                            <button
+                                                class="poll-option"
+                                                type="button"
+                                                data-percent="{{ $option['percent'] }}"
+                                                data-option-key="{{ $option['key'] }}"
+                                                data-option-label="{{ $option['label'] }}"
+                                            >
+                                                <span class="poll-option-top"><span>{{ $option['label'] }}</span><strong>{{ $option['percent'] }}%</strong></span>
+                                                <span class="poll-meter"><span style="width: {{ $option['percent'] }}%"></span></span>
+                                            </button>
+                                        @else
+                                            <a class="poll-option @if (($communityPoll['user_vote'] ?? null) === $option['key']) is-voted @endif" href="{{ $canUseCommunityActions ? '#' : $communityGateHref }}" data-percent="{{ $option['percent'] }}" @if ($canUseCommunityActions) aria-disabled="true" @endif>
+                                                <span class="poll-option-top"><span>{{ $option['label'] }}</span><strong>{{ $option['percent'] }}%</strong></span>
+                                                <span class="poll-meter"><span style="width: {{ $option['percent'] }}%"></span></span>
+                                            </a>
+                                        @endif
+                                    @endforeach
+                                </div>
+                                @if (! $canUseCommunityActions)<small>{{ $communityGateCta }} to vote</small>@endif
+                            </section>
+                        @endif
 
                         <div class="community-feed-heading">
                             <h2>Posts de Reny</h2>

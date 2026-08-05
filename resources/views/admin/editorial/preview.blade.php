@@ -13,10 +13,17 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body>
+        @php
+            $audienceRanks = ['open' => 0, 'member' => 1, 'royal' => 2, 'purchased' => 3];
+            $hasPreviewAccess = ($audienceRanks[$previewAudience] ?? 0) >= ($audienceRanks[$content->visibility->value] ?? 0);
+        @endphp
         <main class="admin-preview-shell">
             <nav class="admin-preview-toolbar" aria-label="Preview actions">
                 <a class="admin-button admin-button-secondary" href="{{ route('admin.editorial.edit', $content) }}">Back to edit</a>
-                <span>Private preview / noindex</span>
+                @foreach ($previewAudiences as $audience)
+                    <a class="admin-button admin-button-secondary" href="{{ route('admin.editorial.preview', ['content' => $content, 'audience' => $audience->value]) }}">{{ $audience === \App\Enums\VisibilityAudience::Open ? 'Guest' : str($audience->value)->headline() }}</a>
+                @endforeach
+                <span>{{ $hasPreviewAccess ? 'Accessible' : 'Locked' }} / private noindex</span>
             </nav>
 
             <article class="admin-preview-article">
@@ -106,6 +113,17 @@
                         </div>
                     </section>
                 @endif
+
+                <section class="admin-preview-section" aria-labelledby="preview-audit-title">
+                    <h2 id="preview-audit-title">Audit history</h2>
+                    <div class="admin-media-list">
+                        @forelse ($content->auditLogs as $log)
+                            <article class="admin-media-row"><div><span>{{ $log->action->value }}</span><strong>{{ $log->actor?->name ?? 'System' }}</strong><small>{{ $log->created_at->timezone($panamaTimezone)->format('M j, Y g:i A') }} Panama</small></div></article>
+                        @empty
+                            <div class="admin-empty-state">No workflow history yet.</div>
+                        @endforelse
+                    </div>
+                </section>
             </article>
         </main>
     </body>

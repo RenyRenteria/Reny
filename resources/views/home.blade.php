@@ -75,6 +75,8 @@
         : asset('images/store/work-in-progress.png');
     $albumTitle = $album['title'] ?? 'Work in Progress';
     $albumMeta = $album['meta'] ?? '27 tracks';
+    $albumIsStorefrontSlot = (bool) ($album['_storefront_slot'] ?? false);
+    $albumPriceValue = (float) preg_replace('/[^0-9.]/', '', (string) ($album['price_label'] ?? ''));
 @endphp
 
 <!DOCTYPE html>
@@ -84,7 +86,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title>Reny Renteria</title>
+        @include('partials.public-seo', ['seo' => [], 'fallbackTitle' => 'Reny Renteria'])
 
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -102,6 +104,7 @@
                 <span class="stage-light-fixture stage-light-fixture--three"></span>
             </div>
 
+            @include('partials.cms-preview-banner')
             <aside class="sidebar" aria-label="Primary navigation">
                 <div>
                     <a class="brand-link" href="{{ route('home') }}" aria-label="Reny Renteria home">
@@ -228,8 +231,12 @@
                                                 data-rsvp-confirmed="{{ $rsvpTicket ? 'true' : 'false' }}"
                                                 aria-describedby="{{ $eventStatusId }}"
                                             >{{ $rsvpTicket ? 'RSVP confirmed' : ($event['cta_label'] ?? 'GET TICKETS') }}</button>
-                                        @elseif ($eventAction === 'link' && filled($event['url'] ?? null))
-                                            <a class="home-pill-button" href="{{ $event['url'] }}" target="_blank" rel="noreferrer">{{ $event['cta_label'] ?? 'GET TICKETS' }}</a>
+                                        @elseif ($eventAction === 'link')
+                                            @if (filled($event['url'] ?? null))
+                                                <a class="home-pill-button" href="{{ $event['url'] }}" target="_blank" rel="noreferrer">{{ $event['cta_label'] ?? 'GET TICKETS' }}</a>
+                                            @else
+                                                <span class="home-pill-button" aria-disabled="true">Unavailable</span>
+                                            @endif
                                         @else
                                             <button
                                                 class="home-pill-button"
@@ -239,6 +246,7 @@
                                                 data-buy-type="Event"
                                                 data-buy-summary="{{ str_replace("\n", ' - ', $event['description'] ?? '') }}"
                                                 data-buy-image="{{ $slotImage($event) }}"
+                                                @if ($eventHasExchangeablePrice) data-buy-price-value="{{ number_format($eventPriceValue, 2, '.', '') }}" @endif
                                                 data-buy-url="{{ route('store.checkout', ['product' => $eventKey]) }}"
                                             >{{ $event['cta_label'] ?? 'GET TICKETS' }}</button>
                                         @endif
@@ -267,7 +275,7 @@
                                     <h2>{{ $albumTitle }}</h2>
                                     <p>Album &bull; {{ $albumMeta }}</p>
                                 </div>
-                                @if ($album)
+                                @if ($album && ! $albumIsStorefrontSlot)
                                     <button
                                         class="home-album-cover-button"
                                         type="button"
@@ -279,7 +287,21 @@
                                     <img class="home-album-image" src="{{ $albumImage }}" alt="{{ $albumTitle }}" loading="lazy" decoding="async">
                                 @endif
                                 <div class="home-album-actions">
-                                    @if ($album)
+                                    @if ($albumIsStorefrontSlot && ($album['action_type'] ?? null) === 'buy')
+                                        <button
+                                            class="home-play-here"
+                                            type="button"
+                                            data-buy="{{ $album['product_key'] }}"
+                                            data-buy-name="{{ $albumTitle }}"
+                                            data-buy-type="Album"
+                                            data-buy-summary="{{ $album['summary'] ?? '' }}"
+                                            data-buy-image="{{ $albumImage }}"
+                                            @if ($albumPriceValue > 0) data-buy-price-value="{{ number_format($albumPriceValue, 2, '.', '') }}" @endif
+                                            data-buy-url="{{ route('store.checkout', ['product' => $album['product_key']]) }}"
+                                        >{{ $album['cta_label'] ?? 'BUY NOW' }}</button>
+                                    @elseif ($albumIsStorefrontSlot)
+                                        <a class="home-play-here" href="{{ $album['url'] ?? route('music') }}">{{ $album['cta_label'] ?? 'LISTEN' }}</a>
+                                    @elseif ($album)
                                         <button
                                             class="home-play-here"
                                             type="button"

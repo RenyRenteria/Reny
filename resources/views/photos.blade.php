@@ -98,7 +98,12 @@
         ],
     ];
 
-    if (! empty($publicCms['photos'] ?? [])) {
+    $pageSettings = $publicCms['page'] ?? [];
+    $hasCmsPayload = in_array($publicCms['_cms_source'] ?? 'static', ['cms', 'cache', 'preview'], true);
+
+    if ($hasCmsPayload) {
+        $photos = $publicCms['photos'] ?? [];
+    } elseif (! empty($publicCms['photos'] ?? [])) {
         $photos = $publicCms['photos'];
     }
 
@@ -142,13 +147,14 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
-        <title>Photos | Reny Renteria</title>
+        @include('partials.public-seo', ['seo' => $pageSettings, 'fallbackTitle' => 'Photos | Reny Renteria'])
 
         <meta name="csrf-token" content="{{ csrf_token() }}">
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body data-analytics-screen="photos">
         <div class="photos-shell" data-public-page-root>
+            @include('partials.cms-preview-banner')
             <aside class="sidebar" aria-label="Primary navigation">
                 <div>
                     <a class="brand-link" href="{{ url('/') }}" aria-label="Reny Renteria home">
@@ -177,6 +183,16 @@
                         </a>
                     </div>
                 </header>
+
+                <section class="public-page-intro" aria-labelledby="photos-page-title">
+                    <p>{{ $pageSettings['eyebrow'] ?? 'Photos' }}</p>
+                    <h1 id="photos-page-title">{{ $pageSettings['title'] ?? 'Visual archive' }}</h1>
+                    <strong>{{ $pageSettings['subtitle'] ?? 'Albums and moments' }}</strong>
+                    <span>{{ $pageSettings['description'] ?? '' }}</span>
+                    @if (filled($pageSettings['cover_url'] ?? null))
+                        <img src="{{ $pageSettings['cover_url'] }}" alt="{{ $pageSettings['cover_alt'] ?? '' }}">
+                    @endif
+                </section>
 
                 <section class="photo-masonry" aria-label="Photos gallery">
                     @foreach ($photoGroups as $group)

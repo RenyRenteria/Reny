@@ -112,7 +112,8 @@ class PublicCmsContentTest extends TestCase
         $this->get('/community')
             ->assertOk()
             ->assertSee('CMS Community Post')
-            ->assertDontSee('CMS poll question?');
+            ->assertSee('CMS poll question?')
+            ->assertSee('Studio drop');
         $this->getJson(route('public-content.payload', 'community'))
             ->assertOk()
             ->assertJsonPath('poll.question', 'CMS poll question?');

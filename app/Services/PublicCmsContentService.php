@@ -27,10 +27,12 @@ class PublicCmsContentService
 
     public function __construct(
         private readonly AccessPayloadBuilder $accessPayloads,
+        private readonly CmsPreviewContext $previewContext,
         private readonly CommunityPayloadBuilder $communityPayloads,
         private readonly ContentQuery $contentQuery,
         private readonly HomePayloadBuilder $homePayloads,
         private readonly MusicPayloadBuilder $musicPayloads,
+        private readonly PageSettingsService $pageSettings,
         private readonly PhotoPayloadBuilder $photoPayloads,
         private readonly StorePayloadBuilder $storePayloads,
         private readonly VideoPayloadBuilder $videoPayloads,
@@ -41,7 +43,9 @@ class PublicCmsContentService
      */
     public function home(?User $user): array
     {
-        $payload = $this->page('home', $user, fn (): array => $this->homePayloads->build($user));
+        $payload = $this->page('home', $user, fn (): array => [
+            ...$this->homePayloads->build($user),
+        ]);
 
         if (empty($payload['singles'])) {
             $payload['singles'] = $this->homePayloads->safeSingles($user);
@@ -55,7 +59,9 @@ class PublicCmsContentService
      */
     public function music(?User $user): array
     {
-        return $this->page('music', $user, fn (): array => $this->musicPayloads->index($user));
+        return $this->page('music', $user, fn (): array => [
+            ...$this->musicPayloads->index($user),
+        ]);
     }
 
     /**
@@ -65,7 +71,9 @@ class PublicCmsContentService
     {
         abort_unless(in_array($section, ['albums', 'singles', 'playlists'], true), 404);
 
-        return $this->page("music-{$section}", $user, fn (): array => $this->musicPayloads->collection($user, $section));
+        return $this->page("music-{$section}", $user, fn (): array => [
+            ...$this->musicPayloads->collection($user, $section),
+        ]);
     }
 
     /**
@@ -81,9 +89,12 @@ class PublicCmsContentService
      */
     public function videos(?User $user): array
     {
-        return $this->page('videos', $user, fn (): array => $this->videoPayloads->build(
-            $this->contentQuery->visibleContents($user, [ContentType::Video])->get()
-        ));
+        return $this->page('videos', $user, fn (): array => [
+            ...$this->videoPayloads->build(
+                $this->contentQuery->visibleContents($user, [ContentType::Video])->get()
+            ),
+            'page' => $this->pageSettings->publicPayload('videos'),
+        ]);
     }
 
     /**
@@ -91,7 +102,10 @@ class PublicCmsContentService
      */
     public function photos(?User $user): array
     {
-        return $this->page('photos', $user, fn (): array => $this->photoPayloads->build($user));
+        return $this->page('photos', $user, fn (): array => [
+            ...$this->photoPayloads->build($user),
+            'page' => $this->pageSettings->publicPayload('photos'),
+        ]);
     }
 
     /**
@@ -99,7 +113,10 @@ class PublicCmsContentService
      */
     public function store(?User $user): array
     {
-        return $this->page('store', $user, fn (): array => $this->storePayloads->build($user));
+        return $this->page('store', $user, fn (): array => [
+            ...$this->storePayloads->build($user),
+            'page' => $this->pageSettings->publicPayload('store'),
+        ]);
     }
 
     /**
@@ -107,7 +124,10 @@ class PublicCmsContentService
      */
     public function community(?User $user): array
     {
-        return $this->page('community', $user, fn (): array => $this->communityPayloads->build($user));
+        return $this->page('community', $user, fn (): array => [
+            ...$this->communityPayloads->build($user),
+            'page' => $this->pageSettings->publicPayload('community'),
+        ]);
     }
 
     /**
@@ -156,6 +176,23 @@ class PublicCmsContentService
      */
     private function page(string $page, ?User $user, callable $loader): array
     {
+        if ($this->previewContext->active()) {
+            try {
+                return [
+                    ...$loader(),
+                    '_cms_source' => 'preview',
+                    '_cms_fallback' => false,
+                ];
+            } catch (Throwable $exception) {
+                report($exception);
+
+                return [
+                    '_cms_source' => 'preview',
+                    '_cms_fallback' => true,
+                ];
+            }
+        }
+
         $cacheKey = $this->cacheKey($page, $user);
 
         try {

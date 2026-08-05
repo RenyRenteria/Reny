@@ -16,6 +16,8 @@
                 : (in_array($visibility, ['royal', 'member', 'purchased'], true) ? 'royal' : 'publico'),
             'editUrl' => route('admin.content.edit', $content),
             'previewUrl' => route('admin.content.preview', $content),
+            'deleteUrl' => route('admin.content.destroy', $content),
+            'archiveUrl' => route('admin.content.archive', $content),
             'timestamp' => $content->scheduled_at
                 ? 'Programado para '.$content->scheduled_at->copy()->timezone($timezone)->format('j M Y, g:i A')
                 : $content->created_at->format('j M Y, g:i A'),

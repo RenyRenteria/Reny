@@ -253,7 +253,8 @@ class HomePageTest extends TestCase
             ->assertJsonPath('singles.0.title', 'Payload Single')
             ->assertJsonPath('events.0.title', 'Reny Renteria en Concierto')
             ->assertJsonPath('storefront.slots.event_primary.title', 'Reny Renteria en Concierto')
-            ->assertJsonMissingPath('storefront.slots.album')
+            ->assertJsonPath('storefront.slots.album.title', 'Work in Progress')
+            ->assertJsonPath('storefront.slots.album.action_type', 'link')
             ->assertJsonPath('royal_pass.product_key', 'royal');
     }
 

@@ -3,9 +3,11 @@
 namespace App\Services\Commerce;
 
 use App\Enums\ContentType;
+use App\Enums\EditorialStatus;
 use App\Models\EditorialContent;
 use App\Models\MediaAsset;
 use App\Models\User;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Schema;
 use Throwable;
@@ -32,7 +34,11 @@ class ProductCatalog
         }
 
         if ($content instanceof EditorialContent) {
-            return $this->normalizeCmsProduct($content, $productKey);
+            return $this->forContent($content, $productKey);
+        }
+
+        if ($this->cmsCanonicalClaimExists($productKey)) {
+            return null;
         }
 
         $configuredProduct = $this->configuredProduct($productKey);
@@ -69,6 +75,50 @@ class ProductCatalog
             'source_id' => $product['source_id'] ?? null,
             'event' => $product['event'] ?? null,
         ], fn (mixed $value): bool => $value !== null);
+    }
+
+    /**
+     * Normalize a canonical CMS Product/Event for both storefront and checkout.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function forContent(EditorialContent $content, ?string $requestedKey = null): ?array
+    {
+        $amountCents = $this->amountCents($content);
+
+        if ($amountCents === null || $amountCents <= 0 || ! $this->isAvailable($content)) {
+            return null;
+        }
+
+        if ($content->type === ContentType::Event && data_get($content->metadata, 'ticketing_mode') === 'rsvp') {
+            return null;
+        }
+
+        $key = trim((string) ($content->purchase_key ?: $requestedKey));
+        $currency = strtoupper((string) data_get($content->metadata, 'currency', 'USD'));
+
+        if ($key === '' || preg_match('/^[A-Z]{3}$/', $currency) !== 1) {
+            return null;
+        }
+
+        return [
+            'key' => $key,
+            'title' => $content->title,
+            'amount_cents' => $amountCents,
+            'currency' => $currency,
+            'kind' => $this->kind($content),
+            'unlock_type' => $this->unlockType($content),
+            'source_type' => $this->sourceType($content),
+            'source_id' => (string) $content->id,
+            'image_url' => $this->contentImageUrl($content),
+            'image_alt' => $this->contentImageAlt($content),
+            'inventory' => is_numeric(data_get($content->metadata, 'inventory'))
+                ? (int) data_get($content->metadata, 'inventory')
+                : null,
+            'available_from' => data_get($content->metadata, 'available_from'),
+            'available_until' => data_get($content->metadata, 'available_until'),
+            'event' => $this->event($content),
+        ];
     }
 
     /**
@@ -152,6 +202,8 @@ class ProductCatalog
                 ContentType::Drop->value,
                 ContentType::Exclusive->value,
                 ContentType::Event->value,
+                ContentType::MusicalAlbum->value,
+                ContentType::DeluxeAlbum->value,
             ])
             ->where(function ($query) use ($productKey): void {
                 $query
@@ -166,38 +218,35 @@ class ProductCatalog
         return $query->first();
     }
 
+    private function cmsCanonicalClaimExists(string $productKey): bool
+    {
+        if (! $this->cmsProductsAvailable()) {
+            return false;
+        }
+
+        return EditorialContent::query()
+            ->whereIn('type', [
+                ContentType::Product->value,
+                ContentType::Drop->value,
+                ContentType::Exclusive->value,
+                ContentType::Event->value,
+                ContentType::MusicalAlbum->value,
+                ContentType::DeluxeAlbum->value,
+            ])
+            ->whereIn('status', [
+                EditorialStatus::Published->value,
+                EditorialStatus::Scheduled->value,
+                EditorialStatus::Archived->value,
+            ])
+            ->where(function ($query) use ($productKey): void {
+                $query->where('purchase_key', $productKey)->orWhere('slug', $productKey);
+            })
+            ->exists();
+    }
+
     /**
      * @return array<string, mixed>|null
      */
-    private function normalizeCmsProduct(EditorialContent $content, string $requestedKey): ?array
-    {
-        $amountCents = $this->amountCents($content);
-
-        if ($amountCents === null || $amountCents <= 0) {
-            return null;
-        }
-
-        if ($content->type === ContentType::Event && data_get($content->metadata, 'ticketing_mode') === 'rsvp') {
-            return null;
-        }
-
-        $key = $content->purchase_key ?: $requestedKey;
-
-        return [
-            'key' => $key,
-            'title' => $content->title,
-            'amount_cents' => $amountCents,
-            'currency' => strtoupper((string) data_get($content->metadata, 'currency', 'USD')),
-            'kind' => $this->kind($content),
-            'unlock_type' => $this->unlockType($content),
-            'source_type' => $this->sourceType($content),
-            'source_id' => (string) $content->id,
-            'image_url' => $this->contentImageUrl($content),
-            'image_alt' => $this->contentImageAlt($content),
-            'event' => $this->event($content),
-        ];
-    }
-
     private function amountCents(EditorialContent $content): ?int
     {
         $priceCents = data_get($content->metadata, 'price_cents');
@@ -229,6 +278,10 @@ class ProductCatalog
             return 'exclusive';
         }
 
+        if (in_array($content->type, [ContentType::MusicalAlbum, ContentType::DeluxeAlbum], true)) {
+            return 'digital';
+        }
+
         return (string) data_get($content->metadata, 'product_kind', 'digital');
     }
 
@@ -243,6 +296,7 @@ class ProductCatalog
                 'drop', 'bundle' => 'drop',
                 default => 'digital',
             },
+            ContentType::MusicalAlbum, ContentType::DeluxeAlbum => 'album',
             default => null,
         };
     }
@@ -250,7 +304,8 @@ class ProductCatalog
     private function sourceType(EditorialContent $content): string
     {
         return match ($content->type) {
-            ContentType::Product, ContentType::Drop, ContentType::Exclusive => 'editorial_content',
+            ContentType::Product, ContentType::Drop, ContentType::Exclusive,
+            ContentType::MusicalAlbum, ContentType::DeluxeAlbum => 'editorial_content',
             default => 'order',
         };
     }
@@ -302,9 +357,45 @@ class ProductCatalog
             'title' => $content->title,
             'venue' => (string) data_get($content->metadata, 'location', 'Online'),
             'address' => (string) data_get($content->metadata, 'address', data_get($content->metadata, 'location', 'Online')),
-            'starts_at' => (string) data_get($content->metadata, 'starts_at', now()->addMonth()->toDateTimeString()),
+            'starts_at' => (string) data_get($content->metadata, 'starts_at', ''),
             'timezone' => (string) data_get($content->metadata, 'timezone', 'America/Panama'),
         ];
+    }
+
+    private function isAvailable(EditorialContent $content): bool
+    {
+        if (! filter_var(data_get($content->metadata, 'checkout_enabled', true), FILTER_VALIDATE_BOOL)
+            || ! filter_var(data_get($content->metadata, 'is_active', true), FILTER_VALIDATE_BOOL)) {
+            return false;
+        }
+
+        $inventory = data_get($content->metadata, 'inventory');
+
+        if (is_numeric($inventory) && (int) $inventory <= 0) {
+            return false;
+        }
+
+        try {
+            $now = now();
+            $availableFrom = data_get($content->metadata, 'availability_starts_at')
+                ?? data_get($content->metadata, 'available_from')
+                ?? data_get($content->metadata, 'opens_at');
+            $availableUntil = data_get($content->metadata, 'availability_ends_at')
+                ?? data_get($content->metadata, 'available_until')
+                ?? data_get($content->metadata, 'closes_at');
+
+            if (filled($availableFrom) && Carbon::parse((string) $availableFrom)->gt($now)) {
+                return false;
+            }
+
+            if (filled($availableUntil) && Carbon::parse((string) $availableUntil)->lte($now)) {
+                return false;
+            }
+        } catch (Throwable) {
+            return false;
+        }
+
+        return true;
     }
 
     private function stringValue(mixed $value): ?string

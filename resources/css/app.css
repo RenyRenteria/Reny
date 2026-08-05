@@ -37,3 +37,42 @@
 @import './features/admin-cms.css';
 
 @import './features/photo-cms.css';
+.public-page-intro {
+    display: grid;
+    gap: 0.45rem;
+    margin: 0 0 1.5rem;
+    padding: clamp(1rem, 2.5vw, 2rem);
+    border: 1px solid rgb(255 255 255 / 14%);
+    border-radius: 1rem;
+    background: rgb(10 10 10 / 62%);
+}
+
+.public-page-intro p,
+.public-page-intro h1,
+.public-page-intro strong,
+.public-page-intro span {
+    margin: 0;
+}
+
+.public-page-intro img,
+.public-page-cover {
+    width: 100%;
+    max-height: 24rem;
+    margin-top: 0.75rem;
+    border-radius: 0.75rem;
+    object-fit: cover;
+}
+
+.cms-preview-banner {
+    position: fixed;
+    z-index: 1000;
+    right: 1rem;
+    bottom: 1rem;
+    padding: 0.65rem 0.9rem;
+    border-radius: 999px;
+    color: #111;
+    background: #f8d64e;
+    box-shadow: 0 0.5rem 2rem rgb(0 0 0 / 35%);
+    font-size: 0.8rem;
+    font-weight: 700;
+}

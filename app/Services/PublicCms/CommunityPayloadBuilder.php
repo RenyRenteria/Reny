@@ -79,7 +79,7 @@ class CommunityPayloadBuilder
             ->map(fn (string $option, int $index): array => [
                 'key' => 'option-'.($index + 1),
                 'label' => $option,
-                'percent' => [42, 34, 24, 18, 12, 8, 6, 4][$index] ?? 10,
+                'votes' => 0,
             ])
             ->all();
 
