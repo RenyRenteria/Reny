@@ -22,6 +22,10 @@
                 <h1 id="login-title">Sign in</h1>
                 <p class="auth-copy">Use your email or phone number to continue into your account.</p>
 
+                @if (session('status'))
+                    <div class="auth-status">{{ session('status') }}</div>
+                @endif
+
                 <form class="auth-form" method="POST" action="{{ route('login.store') }}">
                     @csrf
 
