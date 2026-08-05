@@ -238,6 +238,11 @@
                                 <button class="store-button account-save-button" type="submit" data-account-dirty-submit @if (! $errors->has('locale') && ! $errors->has('preferred_currency')) hidden @endif>Save Preferences</button>
                             </div>
                         </form>
+
+                        <form class="account-logout-form" method="POST" action="{{ route('logout') }}">
+                            @csrf
+                            <button class="account-ghost-button account-logout-button" type="submit">Log out</button>
+                        </form>
                     </section>
                 </div>
 
