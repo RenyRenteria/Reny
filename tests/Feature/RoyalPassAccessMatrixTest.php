@@ -84,4 +84,21 @@ class RoyalPassAccessMatrixTest extends TestCase
             ->assertSee('data-community-reply-form', false)
             ->assertSee('data-community-live-chat-form', false);
     }
+
+    public function test_royals_uses_the_home_royal_pass_banner_without_photos(): void
+    {
+        $this->get('/royals')
+            ->assertOk()
+            ->assertSee('class="home-royal-pass is-selected"', false)
+            ->assertSee('class="home-royal-pass-selector"', false)
+            ->assertSee('class="store-button home-unlock-button"', false)
+            ->assertDontSee('class="home-royal-pass-images"', false)
+            ->assertDontSee('images/photos/capri.jpg', false)
+            ->assertDontSee('images/photos/performance.jpg', false)
+            ->assertDontSee('images/photos/tvVisit.jpg', false);
+
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('class="home-royal-pass-images"', false);
+    }
 }

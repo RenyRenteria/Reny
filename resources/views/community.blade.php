@@ -21,19 +21,28 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        @include('partials.public-seo', ['seo' => $pageSettings, 'fallbackTitle' => 'Community | Reny Renteria'])
+        @include('partials.public-seo', ['seo' => $pageSettings, 'fallbackTitle' => 'Royals | Reny Renteria'])
 
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body data-analytics-screen="community">
-        <div class="community-shell" data-public-page-root>
+        <div class="community-shell home-shell royals-shell" data-public-page-root>
+            <div class="stage-lights" aria-hidden="true">
+                <span class="stage-light stage-light--one"></span>
+                <span class="stage-light stage-light--two"></span>
+                <span class="stage-light stage-light--three"></span>
+                <span class="stage-light-fixture stage-light-fixture--one"></span>
+                <span class="stage-light-fixture stage-light-fixture--two"></span>
+                <span class="stage-light-fixture stage-light-fixture--three"></span>
+            </div>
+
             @include('partials.cms-preview-banner')
             <aside class="sidebar" aria-label="Primary navigation">
                 <div>
                     <a class="brand-link" href="{{ url('/') }}" aria-label="Reny Renteria home">
                         <img
                             class="brand-logo"
-                            src="{{ asset('images/reny-renteria-logo.png') }}"
+                            src="{{ asset('images/reny-renteria-logo-white.png') }}"
                             alt="Reny Renteria"
                         >
                     </a>
@@ -44,21 +53,21 @@
                 <x-member-card />
             </aside>
 
-            <main class="main-content community-content" id="community">
+            <main class="main-content community-content" id="royals">
                 <header class="mobile-header community-mobile-header">
                     <a class="brand-link" href="{{ url('/') }}" aria-label="Reny Renteria home">
                         <img
                             class="brand-logo"
-                            src="{{ asset('images/reny-renteria-logo.png') }}"
+                            src="{{ asset('images/reny-renteria-logo-white.png') }}"
                             alt="Reny Renteria"
                         >
                     </a>
                     <span class="community-live-status"><span aria-hidden="true"></span> En vivo</span>
                 </header>
 
-                <x-royal-pass-banner />
+                <x-royal-pass-banner :show-images="false" />
 
-                <nav class="community-mobile-tabs" role="tablist" aria-label="Secciones de comunidad">
+                <nav class="community-mobile-tabs" role="tablist" aria-label="Secciones de Royals" aria-orientation="horizontal">
                     <button
                         class="is-active"
                         id="communityFeedTab"
@@ -66,6 +75,8 @@
                         role="tab"
                         aria-selected="true"
                         aria-controls="communityFeedPanel"
+                        tabindex="0"
+                        lang="en"
                         data-community-tab="feed"
                     >
                         Posts
@@ -76,6 +87,8 @@
                         role="tab"
                         aria-selected="false"
                         aria-controls="communityChatPanel"
+                        tabindex="-1"
+                        lang="en"
                         data-community-tab="chat"
                     >
                         Chat <span>Live</span>
@@ -89,6 +102,7 @@
                         role="tabpanel"
                         aria-labelledby="communityFeedTab"
                         aria-label="Posts oficiales de Reny"
+                        tabindex="0"
                         data-community-panel="feed"
                     >
                         <div class="community-welcome-card">
@@ -277,12 +291,13 @@
                         @endforelse
                     </section>
 
-                    <aside
+                    <section
                         class="community-live-chat-panel"
                         id="communityChatPanel"
                         role="tabpanel"
                         aria-labelledby="communityChatTab"
                         aria-label="Live Chat"
+                        tabindex="0"
                         data-community-panel="chat"
                         data-community-live-chat
                         data-messages-endpoint="{{ $liveChat['messages_endpoint'] ?? '' }}"
@@ -291,7 +306,7 @@
                         <section class="community-live-chat-card">
                             <header class="community-chat-head">
                                 <div>
-                                    <div><h2>Live Chat</h2><span>En vivo</span></div>
+                                    <div><h2 lang="en">Live Chat</h2><span>En vivo</span></div>
                                     <p data-live-chat-status>Actualización automática · chat moderado</p>
                                 </div>
                                 <span class="community-live-pulse" aria-label="Chat activo"></span>
@@ -323,7 +338,7 @@
                                             <header>
                                                 <strong>{{ $message['author'] }}</strong>
                                                 @if ($message['is_host'])
-                                                    <span>Host</span>
+                                                    <span lang="en">Host</span>
                                                 @endif
                                                 <time>{{ $message['time'] }}</time>
                                             </header>
@@ -368,7 +383,7 @@
                                 <p>Sé amable · El spam y el abuso se moderan</p>
                             </footer>
                         </section>
-                    </aside>
+                    </section>
                 </div>
 
                 <x-public-navigation active="royals" mobile />

@@ -8,7 +8,7 @@ class PublicNavigationTest extends TestCase
 {
     public function test_public_navigation_uses_the_requested_items_and_order(): void
     {
-        $paths = ['/', '/community', '/videos', '/music', '/photos', '/shows', '/store'];
+        $paths = ['/', '/royals', '/videos', '/music', '/photos', '/shows', '/store'];
         $labels = ['Royals', 'Videos', 'Music', 'Shows', 'Store'];
 
         foreach ($paths as $path) {
@@ -38,7 +38,7 @@ class PublicNavigationTest extends TestCase
     public function test_public_navigation_marks_each_primary_page_active(): void
     {
         $activePages = [
-            '/community' => '/community',
+            '/royals' => '/royals',
             '/videos' => '/videos',
             '/music' => '/music',
             '/shows' => '/shows',

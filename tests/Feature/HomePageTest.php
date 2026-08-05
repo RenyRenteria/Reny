@@ -102,7 +102,7 @@ class HomePageTest extends TestCase
             '/music' => 'mobile-bottom-nav',
             '/videos' => 'mobile-bottom-nav',
             '/photos' => 'mobile-bottom-nav',
-            '/community' => 'mobile-bottom-nav',
+            '/royals' => 'mobile-bottom-nav',
             '/shows' => 'mobile-bottom-nav',
             '/store' => 'mobile-bottom-nav',
         ];
