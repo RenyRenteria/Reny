@@ -20,6 +20,7 @@ const publicPageRoot = () => document.querySelector('[data-public-page-root]');
 
 const publicPageFragmentIds = [
     'photoLightbox',
+    'photoToast',
     'videoPlayerLayer',
     'communityNoteModal',
     'createGroupModal',

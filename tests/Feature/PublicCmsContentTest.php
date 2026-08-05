@@ -56,7 +56,7 @@ class PublicCmsContentTest extends TestCase
             ],
         ]);
 
-        $this->publishedContent(ContentType::Photo, [
+        $photo = $this->publishedContent(ContentType::Photo, [
             'title' => 'CMS Photo Drop',
             'metadata' => [
                 'caption' => 'CMS photo caption',
@@ -100,7 +100,11 @@ class PublicCmsContentTest extends TestCase
         $this->get('/')->assertOk()->assertSee('CMS Album')->assertDontSee('CMS Lead Single');
         $this->get('/music')->assertOk()->assertSee('CMS Album')->assertSee('CMS Lead Single');
         $this->get('/videos')->assertOk()->assertSee('CMS Video Premiere');
-        $this->get('/photos')->assertOk()->assertSee('CMS Photo Drop');
+        $this->get('/photos')
+            ->assertOk()
+            ->assertSee('CMS Photo Drop')
+            ->assertSee('data-photo-slug="'.$photo->slug.'"', false)
+            ->assertSee('data-photo-share-url="'.route('photos', ['photo' => $photo->slug]).'"', false);
         $this->get('/store')
             ->assertOk()
             ->assertSee('Reny Renteria en Concierto')
