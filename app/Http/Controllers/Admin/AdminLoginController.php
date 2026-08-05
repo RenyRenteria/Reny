@@ -4,11 +4,14 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Support\SecurityRateLimitKeys;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\View\View;
 
 class AdminLoginController extends Controller
@@ -34,12 +37,16 @@ class AdminLoginController extends Controller
             ->first();
 
         if (! $user || ! Hash::check($credentials['password'], $user->password)) {
+            $this->logFailedAttempt($request, $credentials['email'], 'invalid_credentials');
+
             return back()
                 ->withErrors(['email' => 'These credentials do not match an admin account.'])
                 ->onlyInput('email');
         }
 
         if (! $user->canAccessAdmin()) {
+            $this->logFailedAttempt($request, $credentials['email'], 'unauthorized_role');
+
             return back()
                 ->withErrors(['email' => 'This account does not have admin access.'])
                 ->onlyInput('email');
@@ -48,6 +55,10 @@ class AdminLoginController extends Controller
         Auth::login($user);
         $request->session()->regenerate();
         $request->session()->put('admin_authenticated_at', now()->timestamp);
+        RateLimiter::clear(SecurityRateLimitKeys::middlewareKey(
+            'admin-login',
+            SecurityRateLimitKeys::adminLogin($request),
+        ));
 
         return redirect()->intended(route('admin.dashboard'));
     }
@@ -79,5 +90,14 @@ class AdminLoginController extends Controller
         return ! CarbonImmutable::createFromTimestamp((int) $authenticatedAt)
             ->addMinutes($lifetime)
             ->isPast();
+    }
+
+    private function logFailedAttempt(Request $request, string $email, string $reason): void
+    {
+        Log::warning('Admin login failed.', [
+            'email_hash' => hash('sha256', mb_strtolower(trim($email))),
+            'ip' => $request->ip(),
+            'reason' => $reason,
+        ]);
     }
 }

@@ -78,6 +78,7 @@ Auth and account:
 - `auth_login_started`
 - `auth_register_started`
 - `auth_password_recovery_started`
+- `auth_password_reset_submitted`
 - `account_navigation_clicked`
 - `account_viewed`
 
