@@ -76,3 +76,14 @@
     font-size: 0.8rem;
     font-weight: 700;
 }
+
+@media (max-width: 48rem) {
+    .cms-preview-banner {
+        right: 1rem;
+        bottom: calc(4.1875rem + env(safe-area-inset-bottom));
+        left: 1rem;
+        max-width: calc(100vw - 2rem);
+        border-radius: 1rem;
+        text-align: center;
+    }
+}
