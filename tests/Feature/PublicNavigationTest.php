@@ -102,14 +102,16 @@ class PublicNavigationTest extends TestCase
             ->assertSee('data-access-state="royal_active"', false);
     }
 
-    public function test_mobile_account_entry_marks_account_page_active(): void
+    public function test_mobile_account_entry_marks_account_pages_active(): void
     {
         $user = User::factory()->create();
 
-        $this->actingAs($user)
-            ->get('/account')
-            ->assertOk()
-            ->assertSee('class="mobile-nav-account account-action is-active"', false)
-            ->assertSee('aria-current="page"', false);
+        foreach (['/account', '/points'] as $path) {
+            $this->actingAs($user)
+                ->get($path)
+                ->assertOk()
+                ->assertSee('class="mobile-nav-account account-action is-active"', false)
+                ->assertSee('aria-current="page"', false);
+        }
     }
 }

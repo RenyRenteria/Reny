@@ -12,7 +12,7 @@
         ? 'Guest'
         : ($viewer->hasRoyalAccess() || $viewer->isStaff() ? 'Royal' : 'Logged in');
     $mobileAccountUrl = $viewer ? route('account.show') : route('login');
-    $mobileAccountIsActive = request()->routeIs('account.*', 'login', 'register', 'password.*');
+    $mobileAccountIsActive = request()->routeIs('account.*', 'points.*', 'login', 'register', 'password.*');
 @endphp
 
 <nav class="{{ trim(($mobile ? 'mobile-bottom-nav' : 'tabs').' '.$extraClass) }}" aria-label="{{ $mobile ? 'Mobile menu' : 'Main menu' }}">

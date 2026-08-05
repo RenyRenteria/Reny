@@ -208,6 +208,10 @@ class SiteEditorAccessTest extends TestCase
             ->assertSee('data-royal-pass-banner', false)
             ->assertSee('Royal Pass')
             ->assertSee('Guest')
+            ->assertSee('aria-label="Sign in — Guest"', false)
+            ->assertSee('data-access-state="guest"', false)
+            ->assertSee('data-analytics-id="mobile_sign_in"', false)
+            ->assertDontSee('aria-label="Account — Royal"', false)
             ->assertDontSee($admin->name);
     }
 
