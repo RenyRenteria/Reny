@@ -2,10 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class PublicNavigationTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_public_navigation_uses_the_requested_items_and_order(): void
     {
         $paths = ['/', '/royals', '/videos', '/music', '/photos', '/shows', '/store'];
@@ -55,6 +59,59 @@ class PublicNavigationTest extends TestCase
                 $html,
                 "Missing active navigation state on [{$path}]"
             );
+        }
+    }
+
+    public function test_mobile_navigation_exposes_sign_in_and_guest_state(): void
+    {
+        $html = $this->get('/music')
+            ->assertOk()
+            ->getContent();
+
+        preg_match('/<nav class="mobile-bottom-nav" aria-label="Mobile menu">(.*?)<\/nav>/s', $html, $matches);
+        $navHtml = $matches[1] ?? '';
+
+        $this->assertSame(6, substr_count($navHtml, '<a'));
+        $this->assertStringContainsString('href="'.route('login').'"', $navHtml);
+        $this->assertStringContainsString('aria-label="Sign in — Guest"', $navHtml);
+        $this->assertStringContainsString('data-access-state="guest"', $navHtml);
+        $this->assertStringContainsString('data-analytics-id="mobile_sign_in"', $navHtml);
+    }
+
+    public function test_mobile_navigation_exposes_logged_in_account_state(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->get('/music')
+            ->assertOk()
+            ->assertSee('href="'.route('account.show').'"', false)
+            ->assertSee('aria-label="Account — Logged in"', false)
+            ->assertSee('data-access-state="open"', false)
+            ->assertSee('data-analytics-id="mobile_account"', false);
+    }
+
+    public function test_mobile_navigation_exposes_royal_account_state(): void
+    {
+        $user = User::factory()->royal()->create();
+
+        $this->actingAs($user)
+            ->get('/music')
+            ->assertOk()
+            ->assertSee('aria-label="Account — Royal"', false)
+            ->assertSee('data-access-state="royal_active"', false);
+    }
+
+    public function test_mobile_account_entry_marks_account_pages_active(): void
+    {
+        $user = User::factory()->create();
+
+        foreach (['/account', '/points'] as $path) {
+            $this->actingAs($user)
+                ->get($path)
+                ->assertOk()
+                ->assertSee('class="mobile-nav-account account-action is-active"', false)
+                ->assertSee('aria-current="page"', false);
         }
     }
 }

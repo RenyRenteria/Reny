@@ -121,7 +121,7 @@ class HomePageTest extends TestCase
             preg_match('/<nav class="'.preg_quote($classes, '/').'" aria-label="Mobile menu">(.*?)<\/nav>/s', $html, $matches);
             $navHtml = $matches[1] ?? '';
 
-            $this->assertSame(5, substr_count($navHtml, '<a '), "Unexpected mobile nav item count on [{$path}]");
+            $this->assertSame(6, substr_count($navHtml, '<a'), "Unexpected mobile nav item count on [{$path}]");
 
             if ($path === '/') {
                 $this->assertStringNotContainsString('is-active', $navHtml);

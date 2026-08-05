@@ -239,6 +239,8 @@
                     </section>
                 </div>
             </main>
+
+            <x-public-navigation mobile />
         </div>
 
         <section class="account-modal-layer" id="pauseSubscriptionModal" hidden inert>
