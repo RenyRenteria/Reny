@@ -342,6 +342,18 @@
     gap: 0.75rem;
 }
 
+.account-logout-form {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 1.25rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.account-logout-button {
+    border-color: rgba(0, 0, 0, 0.3);
+}
+
 .account-empty {
     display: grid;
     min-height: 6rem;
@@ -441,6 +453,7 @@
     }
 
     .account-settings-actions,
+    .account-logout-form,
     .account-save-button,
     .account-ghost-button {
         width: 100%;

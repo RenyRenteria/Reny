@@ -109,6 +109,8 @@ class AccountDashboardTest extends TestCase
             ->assertSee(asset('images/reny-renteria-logo-white.png'), false)
             ->assertSee('class="stage-lights"', false)
             ->assertSee('class="mobile-bottom-nav"', false)
+            ->assertSee('class="account-logout-form"', false)
+            ->assertSee('action="'.route('logout').'"', false)
             ->assertSeeInOrder([
                 'Profile',
                 'Display Name',
@@ -131,6 +133,7 @@ class AccountDashboardTest extends TestCase
                 'Language preference',
                 'Currency preference',
                 'Change payment method',
+                'Log out',
             ])
             ->assertDontSee('Library')
             ->assertDontSee('Manual request')
