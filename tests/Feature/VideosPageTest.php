@@ -53,6 +53,13 @@ class VideosPageTest extends TestCase
         $response->assertSee('https://www.youtube.com/watch?v=dQw4w9WgXcQ', false);
         $response->assertSee('CMS Video Card');
         $response->assertDontSee('I Swear');
+        $response->assertSee('class="videos-shell home-shell videos-stage-shell"', false);
+        $response->assertSee('images/reny-renteria-logo-white.png', false);
+        $response->assertSee('class="stage-lights" aria-hidden="true"', false);
+        $response->assertSee('class="stage-light stage-light--one"', false);
+        $response->assertSee('class="stage-light stage-light--two"', false);
+        $response->assertSee('class="stage-light stage-light--three"', false);
+        $response->assertDontSee('class="home-royal-pass-images"', false);
 
         $html = $response->getContent();
 

@@ -123,15 +123,24 @@
 
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body data-analytics-screen="videos">
-        <div class="videos-shell" data-public-page-root>
+    <body class="videos-page" data-analytics-screen="videos">
+        <div class="videos-shell home-shell videos-stage-shell" data-public-page-root>
+            <div class="stage-lights" aria-hidden="true">
+                <span class="stage-light stage-light--one"></span>
+                <span class="stage-light stage-light--two"></span>
+                <span class="stage-light stage-light--three"></span>
+                <span class="stage-light-fixture stage-light-fixture--one"></span>
+                <span class="stage-light-fixture stage-light-fixture--two"></span>
+                <span class="stage-light-fixture stage-light-fixture--three"></span>
+            </div>
+
             @include('partials.cms-preview-banner')
             <aside class="sidebar" aria-label="Primary navigation">
                 <div>
                     <a class="brand-link" href="{{ url('/') }}" aria-label="Reny Renteria home">
                         <img
                             class="brand-logo"
-                            src="{{ asset('images/reny-renteria-logo.png') }}"
+                            src="{{ asset('images/reny-renteria-logo-white.png') }}"
                             alt="Reny Renteria"
                         >
                     </a>
@@ -142,20 +151,20 @@
                 <x-member-card />
             </aside>
 
-            <main class="main-content" id="videos">
-                <header class="mobile-header">
+            <main class="main-content videos-content" id="videos">
+                <header class="mobile-header videos-mobile-header">
                     <div class="mobile-brand">
                         <a class="brand-link" href="{{ url('/') }}" aria-label="Reny Renteria home">
                             <img
                                 class="brand-logo"
-                                src="{{ asset('images/reny-renteria-logo.png') }}"
+                                src="{{ asset('images/reny-renteria-logo-white.png') }}"
                                 alt="Reny Renteria"
                             >
                         </a>
                     </div>
                 </header>
 
-                <x-royal-pass-banner />
+                <x-royal-pass-banner :show-images="false" />
 
                 <section class="video-hero" aria-label="Featured video">
                     <div class="hero-content">
@@ -196,7 +205,7 @@
                                 @endif
                             </div>
                         @else
-                            <div class="video-frame video-frame-empty">No featured video published yet.</div>
+                            <div class="video-frame video-frame-empty"><span>No featured video published yet.</span></div>
                         @endif
                     </div>
                 </section>
