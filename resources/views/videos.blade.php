@@ -68,19 +68,18 @@
         'meta' => 'Featured YouTube premiere',
     ];
 
+    $cmsVideoCount = array_sum(array_map(
+        fn (string $group): int => count($publicCms[$group] ?? []),
+        array_keys($videoSections),
+    ));
     $hasCmsPayload = in_array($publicCms['_cms_source'] ?? 'static', ['cms', 'cache', 'preview'], true);
-    $featuredVideo = $publicCms['featured_video'] ?? ($hasCmsPayload ? null : $defaultFeaturedVideo);
+    $usesCmsPayload = $hasCmsPayload && $cmsVideoCount > 0;
+    $featuredVideo = $publicCms['featured_video'] ?? ($usesCmsPayload ? null : $defaultFeaturedVideo);
 
     if (is_array($featuredVideo)) {
         $featuredVideo['external_url'] = $featuredVideo['external_url']
             ?? (! empty($featuredVideo['id']) ? "https://www.youtube.com/watch?v={$featuredVideo['id']}" : null);
     }
-
-    $cmsVideoCount = array_sum(array_map(
-        fn (string $group): int => count($publicCms[$group] ?? []),
-        array_keys($videoSections),
-    ));
-    $usesCmsPayload = $hasCmsPayload;
     $normalizeVideo = static function (array $video, string $group) use ($videoSections): array {
         $youtubeId = $video['id'] ?? null;
 

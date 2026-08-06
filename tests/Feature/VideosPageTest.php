@@ -68,16 +68,37 @@ class VideosPageTest extends TestCase
         $this->assertSame(1, substr_count($html, 'class="video-load-button"'));
     }
 
-    public function test_videos_category_filter_renders_single_listing(): void
+    public function test_videos_page_preserves_automatic_catalog_when_cms_is_empty(): void
+    {
+        $response = $this->get('/videos');
+
+        $response->assertOk();
+        $response->assertSee('Reny Renteria - Take a bite (Official Music Video)');
+        $response->assertSee('I Swear');
+        $response->assertSee('Raspao a Dolar');
+        $response->assertSee('Places');
+        $response->assertSee('Wave');
+        $response->assertSee('Visitando Mas23');
+        $response->assertSee('class="videos-shell home-shell videos-stage-shell"', false);
+
+        $html = $response->getContent();
+
+        $this->assertSame(1, substr_count($html, '<iframe'));
+        $this->assertSame(19, substr_count($html, 'class="video-load-button"'));
+        $this->assertSame(2, substr_count($html, 'class="playlist-card"'));
+        $this->assertSame(0, substr_count($html, 'class="video-empty-state"'));
+    }
+
+    public function test_videos_category_filter_renders_static_listing_when_cms_is_empty(): void
     {
         $response = $this->get(route('videos', ['category' => 'vlogs']));
 
         $response->assertOk();
         $response->assertSee('All videos');
         $response->assertSee('Vlogs');
-        $response->assertSee('0 videos');
-        $response->assertSee('No vlogs published yet.');
-        $response->assertDontSee('Visitando Mas23');
+        $response->assertSee('3 videos');
+        $response->assertSee('Visitando Mas23');
+        $response->assertDontSee('No vlogs published yet.');
         $response->assertDontSee('Performances videos');
         $response->assertDontSee('Behind the scenes');
     }
