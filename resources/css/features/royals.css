@@ -39,7 +39,9 @@
 }
 
 .royals-shell .community-welcome-card {
+    display: flex;
     min-height: 13.5rem;
+    align-items: center;
     padding: 1.8rem;
     border-color: rgba(255, 228, 153, 0.28);
     border-radius: 1.25rem;
@@ -70,59 +72,12 @@
     transform: rotate(-7deg);
 }
 
-.royals-shell .community-welcome-card > p {
-    display: flex;
-    align-items: center;
-    color: var(--home-gold-light);
-    font-size: 0.66rem;
-    gap: 0.55rem;
-}
-
-.royals-shell .community-welcome-card > p::before {
-    width: 1.5rem;
-    height: 1px;
-    background: currentColor;
-    content: "";
-}
-
 .royals-shell .community-welcome-card h1 {
     max-width: 36rem;
-    margin: 0.65rem 0 0.45rem;
+    margin: 0;
     font-size: clamp(2rem, 4vw, 3.35rem);
     letter-spacing: -0.055em;
     line-height: 0.94;
-}
-
-.royals-shell .community-welcome-card > strong {
-    display: block;
-    color: var(--home-gold-light);
-    font-size: 0.72rem;
-    font-weight: 800;
-}
-
-.royals-shell .community-welcome-card > span {
-    max-width: 34rem;
-    margin-top: 0.3rem;
-    color: rgba(255, 248, 232, 0.68);
-    font-size: 0.82rem;
-    line-height: 1.5;
-}
-
-.royals-shell .community-welcome-points {
-    margin-top: 1.15rem;
-    gap: 0.5rem;
-}
-
-.royals-shell .community-welcome-points strong {
-    display: inline-flex;
-    min-height: 1.85rem;
-    align-items: center;
-    padding: 0 0.7rem;
-    border: 1px solid rgba(255, 228, 153, 0.16);
-    border-radius: 0.55rem;
-    background: rgba(255, 248, 232, 0.06);
-    color: rgba(255, 248, 232, 0.78);
-    font-size: 0.59rem;
 }
 
 .royals-shell .community-feed-heading {
@@ -487,14 +442,7 @@
     }
 
     .royals-shell .community-welcome-card {
-        min-height: 0;
-        padding: 1.3rem;
-        border-radius: 1rem;
-    }
-
-    .royals-shell .community-welcome-card h1 {
-        max-width: 19rem;
-        font-size: clamp(2rem, 10vw, 2.75rem);
+        display: none;
     }
 
     .royals-shell .community-post-card {
@@ -560,10 +508,6 @@
 }
 
 @media (max-width: 26.875rem) {
-    .royals-shell .community-welcome-card {
-        padding: 1.15rem;
-    }
-
     .royals-shell .community-inline-reply {
         grid-template-columns: 1fr;
     }

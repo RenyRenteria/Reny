@@ -106,18 +106,7 @@
                         data-community-panel="feed"
                     >
                         <div class="community-welcome-card">
-                            <p>{{ $pageSettings['eyebrow'] ?? 'Comunidad oficial' }}</p>
-                            <h1>{!! nl2br(e($pageSettings['title'] ?? 'Directo de Reny. Cerca de la comunidad.')) !!}</h1>
-                            <strong>{{ $pageSettings['subtitle'] ?? 'Posts and live conversation' }}</strong>
-                            <span>{{ $pageSettings['description'] ?? '' }}</span>
-                            @if (filled($pageSettings['cover_url'] ?? null))
-                                <img class="public-page-cover" src="{{ $pageSettings['cover_url'] }}" alt="{{ $pageSettings['cover_alt'] ?? '' }}">
-                            @endif
-                            <div class="community-welcome-points" aria-label="Características de la comunidad">
-                                <strong>Solo Reny publica</strong>
-                                <strong>Chat moderado</strong>
-                                <strong>Actualización en vivo</strong>
-                            </div>
+                            <h1>Directo de Reny. Cerca de la comunidad.</h1>
                         </div>
 
                         @if ($communityPoll)
