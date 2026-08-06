@@ -110,13 +110,13 @@ class CommunityPayloadBuilder
     }
 
     /**
-     * @return array<int, array{type:string,url:string,label:string}>
+     * @return array<int, array{type:string,url:string,poster_url?:string,label:string}>
      */
     private function uploadedMediaItems(EditorialContent $content): array
     {
         return $content->mediaAssets
             ->filter(fn (MediaAsset $asset): bool => $asset->pivot?->role === 'attachment')
-            ->map(function (MediaAsset $asset): ?array {
+            ->map(function (MediaAsset $asset) use ($content): ?array {
                 $url = $asset->publicUrl();
                 $type = match ($asset->type) {
                     MediaAssetType::Image, MediaAssetType::Thumbnail => 'image',
@@ -130,16 +130,50 @@ class CommunityPayloadBuilder
                 }
 
                 $url = str_starts_with($url, '/') ? url($url) : $url;
+                $posterUrl = null;
+
+                if ($type === 'video') {
+                    $pivotMetadata = $this->pivotMetadata($asset->pivot?->metadata);
+                    $thumbnail = $content->mediaAssets->firstWhere(
+                        'id',
+                        (int) ($pivotMetadata['thumbnail_asset_id'] ?? 0),
+                    );
+                    $posterUrl = $thumbnail?->type === MediaAssetType::Thumbnail
+                        ? $thumbnail->publicUrl()
+                        : null;
+                    $posterUrl = $posterUrl && str_starts_with($posterUrl, '/')
+                        ? url($posterUrl)
+                        : $posterUrl;
+                }
 
                 return [
                     'type' => $type,
                     'url' => $url,
+                    ...($posterUrl ? ['poster_url' => $posterUrl] : []),
                     'label' => $asset->original_filename,
                 ];
             })
             ->filter()
             ->values()
             ->all();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function pivotMetadata(mixed $metadata): array
+    {
+        if (is_array($metadata)) {
+            return $metadata;
+        }
+
+        if (! is_string($metadata) || $metadata === '') {
+            return [];
+        }
+
+        $decoded = json_decode($metadata, true);
+
+        return is_array($decoded) ? $decoded : [];
     }
 
     /**

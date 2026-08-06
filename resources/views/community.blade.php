@@ -188,7 +188,7 @@
                                                     data-mobile-video-preview
                                                     @if (! empty($media['poster_url'])) poster="{{ $media['poster_url'] }}" @endif
                                                 >
-                                                    <source src="{{ $media['preview_url'] ?? $media['url'] }}">
+                                                    <source src="{{ $media['url'] }}">
                                                 </video>
                                             @elseif ($media['type'] === 'audio')
                                                 <audio controls preload="metadata">

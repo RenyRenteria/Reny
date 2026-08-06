@@ -479,7 +479,7 @@ class CommunityInteractionService
                 $mediaItems = collect(CommunityPostContent::normalizeMediaUrls(
                     is_array($post['media_items'] ?? null) ? $post['media_items'] : []
                 ))
-                    ->map(fn (array $media): array => $media['type'] === 'video' && $imageUrl
+                    ->map(fn (array $media): array => $media['type'] === 'video' && $imageUrl && empty($media['poster_url'])
                         ? [...$media, 'poster_url' => $imageUrl]
                         : $media)
                     ->all();

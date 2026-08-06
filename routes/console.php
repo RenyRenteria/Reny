@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use App\Services\Media\BackfillCommunityVideoThumbnails;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Validator;
@@ -9,6 +10,19 @@ use Illuminate\Support\Str;
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
+
+Artisan::command('community:generate-video-thumbnails', function (BackfillCommunityVideoThumbnails $backfill): int {
+    $result = $backfill->handle();
+
+    $this->info("Miniaturas generadas: {$result['generated']}");
+    $this->line("Videos ya listos: {$result['skipped']}");
+
+    foreach ($result['errors'] as $error) {
+        $this->error($error);
+    }
+
+    return $result['failed'] > 0 ? 1 : 0;
+})->purpose('Generate and link real thumbnails for existing Royal post videos');
 
 Artisan::command('admin:provision
     {email : Email address for the admin account}
