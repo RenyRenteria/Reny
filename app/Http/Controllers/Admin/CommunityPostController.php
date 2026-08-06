@@ -26,6 +26,8 @@ use Illuminate\Validation\ValidationException;
 
 class CommunityPostController extends Controller
 {
+    private const MAX_IMAGE_ATTACHMENT_BYTES = 512 * 1024 * 1024;
+
     public function store(
         Request $request,
         EditorialWorkflowService $workflow,
@@ -98,7 +100,6 @@ class CommunityPostController extends Controller
                 'file',
                 'extensions:avif,gif,jpeg,jpg,mov,mp4,png,webm,webp',
                 'mimes:avif,gif,jpeg,jpg,mov,mp4,png,webm,webp',
-                'max:524288',
             ],
             'remove_attachment_ids' => ['nullable', 'array'],
             'remove_attachment_ids.*' => ['integer'],
@@ -108,7 +109,6 @@ class CommunityPostController extends Controller
             'attachments.max' => 'Puedes adjuntar hasta 12 fotos o videos por post.',
             'attachments.*.extensions' => 'Los adjuntos deben ser fotos (AVIF, GIF, JPG, PNG, WEBP) o videos (MOV, MP4, WEBM).',
             'attachments.*.mimes' => 'Los adjuntos deben ser fotos (AVIF, GIF, JPG, PNG, WEBP) o videos (MOV, MP4, WEBM).',
-            'attachments.*.max' => 'Cada adjunto puede pesar hasta 512 MB.',
         ]);
 
         $body = CommunityPostContent::sanitize((string) $validated['body']);
@@ -128,6 +128,8 @@ class CommunityPostController extends Controller
         $attachmentFiles = collect(Arr::wrap($request->file('attachments')))
             ->filter(fn (mixed $file): bool => $file instanceof UploadedFile)
             ->values();
+
+        $this->validateAttachmentSizes($attachmentFiles);
 
         if ($existingAttachments->count() + $attachmentFiles->count() > 12) {
             throw ValidationException::withMessages([
@@ -275,14 +277,9 @@ class CommunityPostController extends Controller
         $assets = collect();
 
         try {
-            foreach ($files->groupBy(function (UploadedFile $file): string {
-                $extension = strtolower($file->getClientOriginalExtension());
-
-                return str_starts_with((string) $file->getMimeType(), 'video/')
-                    || in_array($extension, ['mov', 'mp4', 'webm'], true)
-                ? MediaAssetType::Video->value
-                : MediaAssetType::Image->value;
-            }) as $type => $typedFiles) {
+            foreach ($files->groupBy(
+                fn (UploadedFile $file): string => $this->attachmentType($file)->value
+            ) as $type => $typedFiles) {
                 $assets = $assets->concat($library->storeUploads($request->user(), [
                     'type' => $type,
                     'title' => trim((string) $request->input('title')).' attachment',
@@ -300,6 +297,39 @@ class CommunityPostController extends Controller
         }
 
         return $assets->values();
+    }
+
+    /**
+     * @param  Collection<int, UploadedFile>  $files
+     */
+    private function validateAttachmentSizes(Collection $files): void
+    {
+        $videoMaxBytes = (int) config('media.types.'.MediaAssetType::Video->value.'.max_bytes');
+
+        foreach ($files as $index => $file) {
+            $isVideo = $this->attachmentType($file) === MediaAssetType::Video;
+            $maxBytes = $isVideo ? $videoMaxBytes : self::MAX_IMAGE_ATTACHMENT_BYTES;
+
+            if (($file->getSize() ?: 0) <= $maxBytes) {
+                continue;
+            }
+
+            throw ValidationException::withMessages([
+                "attachments.{$index}" => $isVideo
+                    ? 'Cada video puede pesar hasta 1 GB.'
+                    : 'Cada foto puede pesar hasta 512 MB.',
+            ]);
+        }
+    }
+
+    private function attachmentType(UploadedFile $file): MediaAssetType
+    {
+        $extension = strtolower($file->getClientOriginalExtension());
+
+        return str_starts_with((string) $file->getMimeType(), 'video/')
+            || in_array($extension, ['mov', 'mp4', 'webm'], true)
+            ? MediaAssetType::Video
+            : MediaAssetType::Image;
     }
 
     private function assertPost(EditorialContent $post): void

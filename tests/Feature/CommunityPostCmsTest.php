@@ -162,6 +162,82 @@ class CommunityPostCmsTest extends TestCase
             ->assertDontSee($removedVideoUrl, false);
     }
 
+    public function test_community_video_accepts_exactly_one_gigabyte_and_remains_playable(): void
+    {
+        Storage::fake('public');
+        $reny = $this->communityEditor();
+        $oneGigabyteInKilobytes = 1024 * 1024;
+
+        $this->actingAsAdmin($reny)
+            ->post(route('admin.site-editor.community-posts.store'), $this->postPayload([
+                'title' => 'Concierto completo',
+                'attachments' => [
+                    UploadedFile::fake()->create('concert.mp4', $oneGigabyteInKilobytes, 'video/mp4'),
+                ],
+            ]))
+            ->assertRedirect(route('admin.site-editor.show', ['page' => 'community']))
+            ->assertSessionDoesntHaveErrors();
+
+        $post = EditorialContent::query()->sole()->load('mediaAssets');
+        $video = $post->mediaAssets->sole();
+
+        $this->assertSame(MediaAssetType::Video, $video->type);
+        $this->assertSame(1024 * 1024 * 1024, $video->size_bytes);
+        Storage::disk('public')->assertExists($video->path);
+
+        $this->get('/royals')
+            ->assertOk()
+            ->assertSee($video->publicUrl(), false)
+            ->assertSee('<video controls preload="metadata">', false);
+    }
+
+    public function test_community_video_over_one_gigabyte_is_rejected_clearly(): void
+    {
+        Storage::fake('public');
+        $reny = $this->communityEditor();
+
+        $this->actingAsAdmin($reny)
+            ->from(route('admin.site-editor.show', ['page' => 'community']))
+            ->post(route('admin.site-editor.community-posts.store'), $this->postPayload([
+                'attachments' => [
+                    UploadedFile::fake()->create('too-large.mp4', (1024 * 1024) + 1, 'video/mp4'),
+                ],
+            ]))
+            ->assertRedirect(route('admin.site-editor.show', ['page' => 'community']))
+            ->assertSessionHasErrors([
+                'attachments.0' => 'Cada video puede pesar hasta 1 GB.',
+            ]);
+
+        $this->assertDatabaseCount('editorial_contents', 0);
+        $this->assertDatabaseCount('media_assets', 0);
+    }
+
+    public function test_community_video_limit_is_visible_in_cms_and_server_config(): void
+    {
+        $reny = $this->communityEditor();
+
+        $this->assertSame(
+            1024 * 1024 * 1024,
+            config('media.types.'.MediaAssetType::Video->value.'.max_bytes'),
+        );
+
+        $this->actingAsAdmin($reny)
+            ->get(route('admin.site-editor.show', ['page' => 'community']))
+            ->assertOk()
+            ->assertSee('data-max-video-bytes="1073741824"', false)
+            ->assertSee('Videos: 1 GB maximum each.');
+
+        $phpLimits = parse_ini_file(public_path('.user.ini'));
+
+        $this->assertIsArray($phpLimits);
+        $this->assertSame('2G', $phpLimits['upload_max_filesize'] ?? null);
+        $this->assertSame('13G', $phpLimits['post_max_size'] ?? null);
+        $this->assertStringContainsString(
+            'client_max_body_size 13G;',
+            (string) file_get_contents(base_path('ops/forge/nginx-community-upload-limits.conf')),
+        );
+    }
+
     public function test_legacy_royal_posts_are_backfilled_as_manageable_cms_posts(): void
     {
         $reny = $this->communityEditor();

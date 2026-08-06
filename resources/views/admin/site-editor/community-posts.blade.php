@@ -111,8 +111,15 @@
                                     <label><span>Replace cover</span><input name="cover_image" type="file" accept="image/avif,image/jpeg,image/png,image/webp"></label>
                                     <label>
                                         <span>Add photos or videos</span>
-                                        <input name="attachments[]" type="file" accept="image/avif,image/gif,image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm" multiple>
-                                        <small>Up to 12 files total. Stored on this server.</small>
+                                        <input
+                                            name="attachments[]"
+                                            type="file"
+                                            accept="image/avif,image/gif,image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm"
+                                            data-community-attachments
+                                            data-max-video-bytes="{{ config('media.types.'.\App\Enums\MediaAssetType::Video->value.'.max_bytes') }}"
+                                            multiple
+                                        >
+                                        <small>Up to 12 files total. Videos: 1 GB maximum each. Stored on this server.</small>
                                     </label>
                                     <label><span>Schedule for</span><input name="scheduled_at" type="datetime-local" value="{{ $scheduledAt }}"></label>
                                 </div>
@@ -271,8 +278,15 @@
                         </label>
                         <label>
                             <span>Photos or videos (optional)</span>
-                            <input name="attachments[]" type="file" accept="image/avif,image/gif,image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm" multiple>
-                            <small>Up to 12 files. Stored on this server.</small>
+                            <input
+                                name="attachments[]"
+                                type="file"
+                                accept="image/avif,image/gif,image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm"
+                                data-community-attachments
+                                data-max-video-bytes="{{ config('media.types.'.\App\Enums\MediaAssetType::Video->value.'.max_bytes') }}"
+                                multiple
+                            >
+                            <small>Up to 12 files. Videos: 1 GB maximum each. Stored on this server.</small>
                         </label>
                         <label>
                             <span>Schedule for</span>
