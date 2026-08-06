@@ -57,12 +57,15 @@ npm install
 npm run build
 
 php artisan migrate --force
+php artisan community:generate-video-thumbnails
 php artisan storage:link
 php artisan optimize:clear
 php artisan optimize
 ```
 
 `php artisan storage:link` is required anywhere public app-server media URLs are served, including QA smoke environments. Without the `public/storage` symlink, public media records can be created successfully while their URLs return `403` or `404`.
+
+Royal post videos use FFmpeg to save a real JPEG thumbnail for iPhone and other mobile browsers. Install it once on the Forge server (`sudo apt-get update && sudo apt-get install -y ffmpeg`). The deploy command above backfills videos uploaded before thumbnail support was added; new uploads generate their thumbnail automatically.
 
 Community videos are limited to 1 GB each by the browser and Laravel. The versioned `public/.user.ini` gives PHP-FPM enough headroom to return Laravel's clear validation error and supports all 12 allowed attachments in one request. Add the directives from `ops/forge/nginx-community-upload-limits.conf` to the site's Forge Nginx configuration, then reload Nginx and PHP-FPM. Without the Nginx change, Forge's default request limit will reject large videos before Laravel receives them.
 

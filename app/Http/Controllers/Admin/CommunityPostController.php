@@ -13,6 +13,7 @@ use App\Models\MediaAsset;
 use App\Services\EditorialWorkflowService;
 use App\Services\Media\MediaLibraryService;
 use App\Services\Media\MediaUploadException;
+use App\Services\Media\VideoThumbnailService;
 use App\Support\CommunityPostContent;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
@@ -32,8 +33,9 @@ class CommunityPostController extends Controller
         Request $request,
         EditorialWorkflowService $workflow,
         MediaLibraryService $library,
+        VideoThumbnailService $thumbnails,
     ): RedirectResponse {
-        return $this->persist($request, $workflow, $library);
+        return $this->persist($request, $workflow, $library, $thumbnails);
     }
 
     public function update(
@@ -41,10 +43,11 @@ class CommunityPostController extends Controller
         EditorialContent $post,
         EditorialWorkflowService $workflow,
         MediaLibraryService $library,
+        VideoThumbnailService $thumbnails,
     ): RedirectResponse {
         $this->assertPost($post);
 
-        return $this->persist($request, $workflow, $library, $post);
+        return $this->persist($request, $workflow, $library, $thumbnails, $post);
     }
 
     public function destroy(EditorialContent $post): RedirectResponse
@@ -83,6 +86,7 @@ class CommunityPostController extends Controller
         Request $request,
         EditorialWorkflowService $workflow,
         MediaLibraryService $library,
+        VideoThumbnailService $thumbnails,
         ?EditorialContent $post = null,
     ): RedirectResponse {
         $validated = $request->validate([
@@ -138,11 +142,29 @@ class CommunityPostController extends Controller
         }
 
         $newAttachments = collect();
+        $newThumbnails = collect();
+        $thumbnailByVideoId = $this->existingVideoThumbnails($post, $existingAttachments);
 
         try {
             $newAttachments = $this->storeAttachments($request, $library, $attachmentFiles);
+            $videosWithoutThumbnail = $existingAttachments
+                ->concat($newAttachments)
+                ->filter(fn (MediaAsset $asset): bool => $asset->type === MediaAssetType::Video)
+                ->reject(fn (MediaAsset $asset): bool => $thumbnailByVideoId->has($asset->id));
+
+            foreach ($videosWithoutThumbnail as $video) {
+                $thumbnail = $thumbnails->createFor(
+                    $request->user(),
+                    $video,
+                    trim((string) $request->input('title')),
+                );
+                $newThumbnails->push($thumbnail);
+                $thumbnailByVideoId->put($video->id, $thumbnail);
+            }
+
             $cover = $this->coverAsset($request, $library, $post);
         } catch (MediaUploadException $exception) {
+            $newThumbnails->each(fn (MediaAsset $asset) => $library->delete($asset));
             $newAttachments->each(fn (MediaAsset $asset) => $library->delete($asset));
 
             return back()->withErrors([
@@ -183,10 +205,25 @@ class CommunityPostController extends Controller
                     'sort_order' => 0,
                 ]] : []),
                 ...$attachments
-                    ->map(fn (MediaAsset $asset, int $index): array => [
-                        'id' => $asset->id,
-                        'role' => 'attachment',
-                        'sort_order' => $index + 1,
+                    ->map(function (MediaAsset $asset, int $index) use ($thumbnailByVideoId): array {
+                        $thumbnail = $thumbnailByVideoId->get($asset->id);
+
+                        return [
+                            'id' => $asset->id,
+                            'role' => 'attachment',
+                            'sort_order' => $index + 1,
+                            ...($thumbnail instanceof MediaAsset ? [
+                                'metadata' => ['thumbnail_asset_id' => $thumbnail->id],
+                            ] : []),
+                        ];
+                    })
+                    ->all(),
+                ...$thumbnailByVideoId
+                    ->map(fn (MediaAsset $thumbnail, int $videoId): array => [
+                        'id' => $thumbnail->id,
+                        'role' => 'video_thumbnail',
+                        'sort_order' => 100 + $videoId,
+                        'metadata' => ['video_asset_id' => $videoId],
                     ])
                     ->all(),
             ],
@@ -263,6 +300,62 @@ class CommunityPostController extends Controller
             ->filter(fn (MediaAsset $asset): bool => $asset->pivot?->role === 'attachment')
             ->reject(fn (MediaAsset $asset): bool => $removeAttachmentIds->contains($asset->id))
             ->values();
+    }
+
+    /**
+     * @param  Collection<int, MediaAsset>  $attachments
+     * @return Collection<int, MediaAsset>
+     */
+    private function existingVideoThumbnails(
+        ?EditorialContent $post,
+        Collection $attachments,
+    ): Collection {
+        if (! $post) {
+            return collect();
+        }
+
+        $thumbnailAssets = $post->mediaAssets
+            ->filter(fn (MediaAsset $asset): bool => $asset->type === MediaAssetType::Thumbnail)
+            ->keyBy('id');
+        $thumbnailsByVideoId = collect();
+
+        foreach ($attachments->where('type', MediaAssetType::Video) as $video) {
+            $metadata = $this->pivotMetadata($video->pivot?->metadata);
+            $thumbnail = $thumbnailAssets->get((int) ($metadata['thumbnail_asset_id'] ?? 0));
+
+            if (! $thumbnail instanceof MediaAsset) {
+                $thumbnail = $thumbnailAssets->first(function (MediaAsset $asset) use ($video): bool {
+                    $metadata = $this->pivotMetadata($asset->pivot?->metadata);
+
+                    return $asset->pivot?->role === 'video_thumbnail'
+                        && (int) ($metadata['video_asset_id'] ?? 0) === $video->id;
+                });
+            }
+
+            if ($thumbnail instanceof MediaAsset) {
+                $thumbnailsByVideoId->put($video->id, $thumbnail);
+            }
+        }
+
+        return $thumbnailsByVideoId;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function pivotMetadata(mixed $metadata): array
+    {
+        if (is_array($metadata)) {
+            return $metadata;
+        }
+
+        if (! is_string($metadata) || $metadata === '') {
+            return [];
+        }
+
+        $decoded = json_decode($metadata, true);
+
+        return is_array($decoded) ? $decoded : [];
     }
 
     /**

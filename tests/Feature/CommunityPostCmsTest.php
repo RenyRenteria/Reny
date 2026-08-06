@@ -8,6 +8,7 @@ use App\Enums\MediaAssetType;
 use App\Models\CommunityPostReply;
 use App\Models\EditorialContent;
 use App\Models\User;
+use App\Services\Media\VideoThumbnailGenerator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
@@ -24,6 +25,22 @@ class CommunityPostCmsTest extends TestCase
 
         config()->set('public_cms.cache_store', 'array');
         Cache::store('array')->flush();
+
+        $this->mock(VideoThumbnailGenerator::class, function ($mock): void {
+            $mock->shouldReceive('generate')->andReturnUsing(function (): string {
+                $path = tempnam(sys_get_temp_dir(), 'reny-test-video-thumbnail-');
+
+                if (! is_string($path)) {
+                    throw new \RuntimeException('Could not create a temporary thumbnail fixture.');
+                }
+
+                file_put_contents($path, base64_decode(
+                    '/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////2wBDAf//////////////////////////////////////////////////////////////////////////////////////wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAf/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIQAxAAAAF//8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABBQJ//8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAgBAwEBPwF//8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAgBAgEBPwF//8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQAGPwJ//8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPyF//9oADAMBAAIAAwAAABAf/8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAgBAwEBPxB//8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAgBAgEBPxB//8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxB//9k='
+                ));
+
+                return $path;
+            });
+        });
     }
 
     public function test_community_post_management_is_authorized_by_admin_role_not_email(): void
@@ -129,11 +146,19 @@ class CommunityPostCmsTest extends TestCase
         Storage::disk('public')->assertExists($image->path);
         Storage::disk('public')->assertExists($video->path);
 
+        $thumbnail = $post->mediaAssets->firstWhere('type', MediaAssetType::Thumbnail);
+
+        $this->assertNotNull($thumbnail);
+        $this->assertSame('video_thumbnail', $thumbnail->pivot->role);
+        Storage::disk('public')->assertExists($thumbnail->path);
+
         $this->get('/royals')
             ->assertOk()
             ->assertSee($image->publicUrl(), false)
             ->assertSee($video->publicUrl(), false)
-            ->assertSee('<video controls preload="metadata">', false);
+            ->assertSee('poster="'.url($thumbnail->publicUrl()).'"', false)
+            ->assertSee('data-mobile-video-preview', false)
+            ->assertSee('playsinline', false);
 
         $removedVideoUrl = $video->publicUrl();
 
@@ -179,16 +204,97 @@ class CommunityPostCmsTest extends TestCase
             ->assertSessionDoesntHaveErrors();
 
         $post = EditorialContent::query()->sole()->load('mediaAssets');
-        $video = $post->mediaAssets->sole();
+        $video = $post->mediaAssets->firstWhere('type', MediaAssetType::Video);
+        $thumbnail = $post->mediaAssets->firstWhere('type', MediaAssetType::Thumbnail);
 
+        $this->assertNotNull($video);
+        $this->assertNotNull($thumbnail);
         $this->assertSame(MediaAssetType::Video, $video->type);
         $this->assertSame(1024 * 1024 * 1024, $video->size_bytes);
         Storage::disk('public')->assertExists($video->path);
+        Storage::disk('public')->assertExists($thumbnail->path);
 
         $this->get('/royals')
             ->assertOk()
             ->assertSee($video->publicUrl(), false)
-            ->assertSee('<video controls preload="metadata">', false);
+            ->assertSee('poster="'.url($thumbnail->publicUrl()).'"', false)
+            ->assertSee('data-mobile-video-preview', false)
+            ->assertSee('playsinline', false);
+    }
+
+    public function test_community_video_uses_its_generated_thumbnail_even_when_the_post_has_a_cover(): void
+    {
+        Storage::fake('public');
+        $reny = $this->communityEditor();
+
+        $this->actingAsAdmin($reny)
+            ->post(route('admin.site-editor.community-posts.store'), $this->postPayload([
+                'title' => 'Video con portada',
+                'cover_image' => UploadedFile::fake()->image('video-cover.jpg', 1080, 1920),
+                'attachments' => [
+                    UploadedFile::fake()->create('vertical-video.mp4', 256, 'video/mp4'),
+                ],
+            ]))
+            ->assertRedirect(route('admin.site-editor.show', ['page' => 'community']));
+
+        $post = EditorialContent::query()->sole()->load('mediaAssets');
+        $cover = $post->mediaAssets->first(
+            fn ($asset): bool => $asset->pivot?->role === 'cover'
+        );
+        $video = $post->mediaAssets->firstWhere('type', MediaAssetType::Video);
+        $thumbnail = $post->mediaAssets->firstWhere('type', MediaAssetType::Thumbnail);
+
+        $this->assertNotNull($cover);
+        $this->assertNotNull($video);
+        $this->assertNotNull($thumbnail);
+
+        $this->get('/royals')
+            ->assertOk()
+            ->assertSee('poster="'.url($thumbnail->publicUrl()).'"', false)
+            ->assertDontSee('poster="'.url($cover->publicUrl()).'"', false)
+            ->assertSee($video->publicUrl(), false);
+    }
+
+    public function test_thumbnail_backfill_repairs_a_legacy_community_video_without_a_poster(): void
+    {
+        Storage::fake('public');
+        $reny = $this->communityEditor();
+
+        $this->actingAsAdmin($reny)
+            ->post(route('admin.site-editor.community-posts.store'), $this->postPayload([
+                'title' => 'Video publicado antes de previews',
+                'attachments' => [
+                    UploadedFile::fake()->create('legacy-video.mp4', 256, 'video/mp4'),
+                ],
+            ]))
+            ->assertRedirect();
+
+        $post = EditorialContent::query()->sole()->load('mediaAssets');
+        $video = $post->mediaAssets->firstWhere('type', MediaAssetType::Video);
+        $oldThumbnail = $post->mediaAssets->firstWhere('type', MediaAssetType::Thumbnail);
+
+        $this->assertNotNull($video);
+        $this->assertNotNull($oldThumbnail);
+
+        $post->mediaAssets()->updateExistingPivot($video->id, ['metadata' => null]);
+        $post->mediaAssets()->detach($oldThumbnail->id);
+
+        $this->artisan('community:generate-video-thumbnails')
+            ->expectsOutput('Miniaturas generadas: 1')
+            ->expectsOutput('Videos ya listos: 0')
+            ->assertSuccessful();
+
+        $post->refresh()->load('mediaAssets');
+        $newThumbnail = $post->mediaAssets->firstWhere('type', MediaAssetType::Thumbnail);
+
+        $this->assertNotNull($newThumbnail);
+        $this->assertNotSame($oldThumbnail->id, $newThumbnail->id);
+        $this->assertSame('video_thumbnail', $newThumbnail->pivot->role);
+
+        $this->get('/royals')
+            ->assertOk()
+            ->assertSee('poster="'.url($newThumbnail->publicUrl()).'"', false)
+            ->assertDontSee('#t=0.001', false);
     }
 
     public function test_community_video_over_one_gigabyte_is_rejected_clearly(): void

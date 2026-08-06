@@ -9,6 +9,11 @@ return [
     'batch_limit_bytes' => 10 * 1024 * 1024 * 1024,
     'short_video_duration_seconds' => 20 * 60,
 
+    'video_thumbnails' => [
+        'ffmpeg_binary' => env('VIDEO_THUMBNAIL_FFMPEG_BINARY', 'ffmpeg'),
+        'timeout_seconds' => env('VIDEO_THUMBNAIL_TIMEOUT_SECONDS', 30),
+    ],
+
     'types' => [
         MediaAssetType::Image->value => [
             'max_bytes' => 50 * 1024 * 1024,

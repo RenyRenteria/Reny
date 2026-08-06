@@ -69,24 +69,35 @@ class CommunityPostContent
 
     /**
      * @param  array<int, mixed>  $values
-     * @return array<int, array{type:string,url:string,embed_url?:string,label:string}>
+     * @return array<int, array{type:string,url:string,embed_url?:string,poster_url?:string,label:string}>
      */
     public static function normalizeMediaUrls(array $values): array
     {
         return collect($values)
             ->flatMap(function (mixed $value): array {
                 if (is_array($value) && is_string($value['url'] ?? null)) {
-                    return [$value['url']];
+                    return [$value];
                 }
 
                 return is_string($value) ? (preg_split('/\R/', $value) ?: []) : [];
             })
-            ->map(fn (string $value): string => trim($value))
+            ->map(function (mixed $value): ?array {
+                $url = trim((string) (is_array($value) ? ($value['url'] ?? '') : $value));
+                $media = self::mediaItem($url);
+
+                if (! $media || $media['type'] !== 'video' || ! is_array($value)) {
+                    return $media;
+                }
+
+                $posterUrl = is_string($value['poster_url'] ?? null)
+                    ? self::safeUrl($value['poster_url'])
+                    : null;
+
+                return $posterUrl ? [...$media, 'poster_url' => $posterUrl] : $media;
+            })
             ->filter()
-            ->unique()
+            ->unique('url')
             ->take(12)
-            ->map(fn (string $url): ?array => self::mediaItem($url))
-            ->filter()
             ->values()
             ->all();
     }
@@ -182,13 +193,15 @@ class CommunityPostContent
 
         $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
 
+        $type = match (true) {
+            in_array($extension, ['avif', 'gif', 'jpeg', 'jpg', 'png', 'webp'], true) => 'image',
+            in_array($extension, ['m4v', 'mov', 'mp4', 'ogg', 'webm'], true) => 'video',
+            in_array($extension, ['aac', 'm4a', 'mp3', 'oga', 'wav'], true) => 'audio',
+            default => 'link',
+        };
+
         return [
-            'type' => match (true) {
-                in_array($extension, ['avif', 'gif', 'jpeg', 'jpg', 'png', 'webp'], true) => 'image',
-                in_array($extension, ['m4v', 'mov', 'mp4', 'ogg', 'webm'], true) => 'video',
-                in_array($extension, ['aac', 'm4a', 'mp3', 'oga', 'wav'], true) => 'audio',
-                default => 'link',
-            },
+            'type' => $type,
             'url' => $url,
             'label' => (string) $label,
         ];

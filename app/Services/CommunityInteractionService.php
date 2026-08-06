@@ -472,9 +472,17 @@ class CommunityInteractionService
                 $title = $this->stringValue($post['title'] ?? null) ?? 'Community post '.($index + 1);
                 $body = $this->stringValue($post['body'] ?? null) ?? '';
                 $key = $this->stringValue($post['key'] ?? null) ?? $this->normalizeKey($title);
+                $imageUrl = $this->stringValue($post['image_url'] ?? null);
                 $bodyHtml = $this->stringValue($post['body_html'] ?? null)
                     ?? $this->stringValue($post['full_body'] ?? null)
                     ?? $body;
+                $mediaItems = collect(CommunityPostContent::normalizeMediaUrls(
+                    is_array($post['media_items'] ?? null) ? $post['media_items'] : []
+                ))
+                    ->map(fn (array $media): array => $media['type'] === 'video' && $imageUrl && empty($media['poster_url'])
+                        ? [...$media, 'poster_url' => $imageUrl]
+                        : $media)
+                    ->all();
 
                 return [
                     'key' => $key,
@@ -482,11 +490,9 @@ class CommunityInteractionService
                     'time' => $this->stringValue($post['time'] ?? null) ?? 'Published',
                     'avatar_url' => $hostAvatarUrl,
                     'body_html' => CommunityPostContent::sanitize($bodyHtml),
-                    'image_url' => $this->stringValue($post['image_url'] ?? null),
+                    'image_url' => $imageUrl,
                     'image_alt' => $this->stringValue($post['image_alt'] ?? null) ?? $title,
-                    'media_items' => CommunityPostContent::normalizeMediaUrls(
-                        is_array($post['media_items'] ?? null) ? $post['media_items'] : []
-                    ),
+                    'media_items' => $mediaItems,
                     'comments_enabled' => (bool) ($post['comments_enabled'] ?? true),
                     'base_likes' => is_numeric($post['base_likes'] ?? null) ? (int) $post['base_likes'] : 0,
                     'base_replies' => is_numeric($post['base_replies'] ?? null) ? (int) $post['base_replies'] : 0,
