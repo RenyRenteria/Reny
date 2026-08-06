@@ -134,6 +134,17 @@ class AnalyticsInstrumentationTest extends TestCase
         $this->assertStringNotContainsString("iframe.addEventListener('load'", $script);
     }
 
+    public function test_checkout_reuses_the_analytics_session_and_persistence_surfaces_http_failures(): void
+    {
+        $analytics = file_get_contents(resource_path('js/features/analytics.js'));
+        $checkout = file_get_contents(resource_path('js/features/checkout.js'));
+
+        $this->assertStringContainsString('analyticsApi.sessionId = analyticsSessionId', $analytics);
+        $this->assertStringContainsString('if (!response.ok)', $analytics);
+        $this->assertStringContainsString('[analytics] persistence failed', $analytics);
+        $this->assertStringContainsString('analytics_session_id: window.renyAnalytics?.sessionId?.()', $checkout);
+    }
+
     public function test_music_resume_does_not_create_an_extra_reproduction(): void
     {
         $script = file_get_contents(resource_path('js/features/music-player.js'));

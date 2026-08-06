@@ -246,7 +246,7 @@
                     @if ($funnel['coverage_unavailable'])
                         <p class="stats-module-state is-unavailable">No disponible: todavía no existen eventos de interacción persistidos.</p>
                     @elseif ($funnel['coverage_partial'])
-                        <p class="stats-module-state is-partial">Cobertura parcial. Datos disponibles desde {{ $funnel['available_from'] }}.</p>
+                        <p class="stats-module-state is-partial">{{ $funnel['coverage_message'] ?? 'Cobertura parcial. Datos disponibles desde '.$funnel['available_from'].'.' }}</p>
                     @else
                         <p class="stats-coverage">Datos disponibles desde {{ $funnel['available_from'] ?? $range->startDate() }}.</p>
                     @endif
@@ -258,6 +258,8 @@
                                 <small>{{ number_format($step['current']['events']) }} eventos · anterior {{ number_format($step['previous']['sessions']) }} sesiones</small>
                                 @if ($step['conversion'] !== null)
                                     <b>{{ number_format($step['conversion'], 1) }}% desde el paso anterior</b>
+                                @elseif ($step['conversion_reason'] === 'incomparable_sessions')
+                                    <b>N/A · compras sin sesión analítica trazable</b>
                                 @elseif ($step['key'] !== 'visits')
                                     <b>N/A · denominador cero</b>
                                 @endif

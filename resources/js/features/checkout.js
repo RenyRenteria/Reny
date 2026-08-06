@@ -303,6 +303,7 @@ const initializeStoreInteractions = (root = document) => {
             customer_country: contact.customer_country,
             product_keys: [...bag],
             currency: settlementCurrency.toUpperCase(),
+            analytics_session_id: window.renyAnalytics?.sessionId?.(),
         };
     };
 

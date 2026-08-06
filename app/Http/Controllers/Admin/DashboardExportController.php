@@ -109,9 +109,12 @@ class DashboardExportController extends Controller
             $step['previous']['sessions'],
             $step['previous']['events'],
             $step['conversion'],
+            $step['conversion_reason'],
+            $step['key'] === 'purchase' ? $data['purchase_linkage']['current']['unlinked_transactions'] : null,
             $data['available_from'],
+            $data['coverage_message'],
         ])->all();
-        $rows[] = ['failed_payments', $data['failed']['sessions'], $data['failed']['events'], null, null, null, $data['available_from']];
+        $rows[] = ['failed_payments', $data['failed']['sessions'], $data['failed']['events'], null, null, null, null, null, $data['available_from'], $data['coverage_message']];
 
         return [[
             'step',
@@ -120,7 +123,10 @@ class DashboardExportController extends Controller
             'previous_sessions',
             'previous_events',
             'conversion_percent',
+            'conversion_reason',
+            'unlinked_purchase_transactions',
             'available_from',
+            'coverage_message',
         ], $rows];
     }
 

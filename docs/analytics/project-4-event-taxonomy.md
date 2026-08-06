@@ -37,6 +37,8 @@ Checkout payment events should also include:
 
 - `method`: `paypal`, `card`, `apple_pay`, or `local`.
 - `checkout_state`: `unavailable`, `validation_failed`, `payment_started`, `payment_success`, or `payment_failed`.
+- `currency`: an uppercase three-letter ISO code when the payment starts.
+- `paypal_order_id`: accepted only for payment-success transport validation and discarded before analytics storage.
 
 ## Baseline Events
 
@@ -138,6 +140,8 @@ The server sets `occurred_at`; `timestamp` from the client is diagnostic metadat
 - RSVP: `rsvps` and non-purchase RSVP tickets.
 - Tickets sold and check-ins: `tickets` joined to captured orders.
 - Visits, checkout starts, payment-failure diagnostics, and content consumption: allowlisted `access_events`.
+
+Funnel purchase conversion compares only canonical transactions whose order metadata contains the same opaque `analytics_session_id` as a persisted checkout-start event in the selected period. The checkout API copies that browser-session identifier into the order snapshot. Transactions without that traceable link remain visible as canonical transaction events, but are excluded from comparable purchase sessions; the conversion is `N/A` and coverage is marked partial instead of mixing unrelated populations.
 
 Different currencies are never added together. A later refund subtracts revenue in the refund period without deleting the original completed-order conversion.
 

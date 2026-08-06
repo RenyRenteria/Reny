@@ -310,6 +310,55 @@ class AdminStatsTest extends TestCase
         $this->assertDatabaseCount('access_events', 0);
     }
 
+    public function test_paypal_browser_analytics_payloads_are_accepted_and_provider_id_is_not_stored(): void
+    {
+        $baseEvent = [
+            'schema_version' => 1,
+            'session_id' => 'paypal-browser-session',
+            'payload' => [
+                'screen' => 'store_checkout',
+                'path' => '/store/checkout/royal',
+                'item_type' => 'checkout',
+                'item_id' => 'paypal',
+                'method' => 'paypal',
+            ],
+            'timestamp' => now()->toIso8601String(),
+        ];
+
+        $this->postJson(route('analytics.events.store'), [
+            ...$baseEvent,
+            'name' => 'store_checkout_started',
+            'event_id' => 'paypal-payment-started',
+            'payload' => [
+                ...$baseEvent['payload'],
+                'checkout_state' => 'payment_started',
+                'result' => 'payment_started',
+                'item_count' => 1,
+                'currency' => 'USD',
+            ],
+        ])->assertCreated();
+
+        $this->postJson(route('analytics.events.store'), [
+            ...$baseEvent,
+            'name' => 'store_payment_succeeded',
+            'event_id' => 'paypal-payment-succeeded',
+            'payload' => [
+                ...$baseEvent['payload'],
+                'item_type' => 'payment_method',
+                'checkout_state' => 'payment_success',
+                'result' => 'payment_success',
+                'paypal_order_id' => 'PAYPAL-ORDER-123',
+            ],
+        ])->assertCreated();
+
+        $started = AccessEvent::query()->where('event_name', 'store_checkout_started')->sole();
+        $succeeded = AccessEvent::query()->where('event_name', 'store_payment_succeeded')->sole();
+
+        $this->assertSame('USD', $started->metadata['currency']);
+        $this->assertArrayNotHasKey('paypal_order_id', $started->metadata);
+        $this->assertArrayNotHasKey('paypal_order_id', $succeeded->metadata);
+    }
+
     public function test_analytics_endpoint_throttles_repeated_posts_by_ip(): void
     {
         $payload = [

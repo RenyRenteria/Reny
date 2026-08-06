@@ -47,6 +47,7 @@ class AnalyticsEventController extends Controller
         'checkout_state',
         'item_count',
         'access_state',
+        'currency',
     ];
 
     private const INPUT_METADATA_KEYS = [
@@ -56,6 +57,7 @@ class AnalyticsEventController extends Controller
         'referrer',
         'photo_id',
         'album_id',
+        'paypal_order_id',
     ];
 
     public function store(Request $request): JsonResponse
@@ -69,7 +71,7 @@ class AnalyticsEventController extends Controller
             'schema_version' => ['nullable', 'integer', 'min:1', 'max:1'],
             'session_id' => ['nullable', 'string', 'max:64', 'regex:/^[A-Za-z0-9._:-]+$/'],
             'event_id' => ['nullable', 'string', 'max:64', 'regex:/^[A-Za-z0-9._:-]+$/'],
-            'payload' => ['nullable', 'array:'.implode(',', self::INPUT_METADATA_KEYS), 'max:19'],
+            'payload' => ['nullable', 'array:'.implode(',', self::INPUT_METADATA_KEYS), 'max:21'],
             'payload.screen' => ['nullable', 'string', 'max:80', 'regex:/^[A-Za-z0-9._:-]+$/'],
             'payload.path' => ['nullable', 'string', 'max:200'],
             'payload.result' => ['nullable', 'string', 'max:40', 'regex:/^[A-Za-z0-9._:-]+$/'],
@@ -87,6 +89,8 @@ class AnalyticsEventController extends Controller
             'payload.checkout_state' => ['nullable', 'string', 'max:40', 'regex:/^[A-Za-z0-9._:-]+$/'],
             'payload.item_count' => ['nullable', 'integer', 'min:0', 'max:1000'],
             'payload.access_state' => ['nullable', 'string', 'max:40', 'regex:/^[A-Za-z0-9._:-]+$/'],
+            'payload.currency' => ['nullable', 'string', 'size:3', 'regex:/^[A-Z]{3}$/'],
+            'payload.paypal_order_id' => ['nullable', 'string', 'max:255', 'regex:/^[A-Za-z0-9._:-]+$/'],
             'timestamp' => ['nullable', 'date'],
         ]);
 

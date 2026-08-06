@@ -46,7 +46,7 @@ class DashboardReportingTest extends TestCase
             'status' => 'completed',
             'completed_at' => $this->utc('2026-08-02 09:05:00'),
             'created_at' => $this->utc('2026-08-02 09:00:00'),
-            'metadata' => ['checkout' => ['session_token_hash' => 'canonical-session-a']],
+            'metadata' => ['checkout' => ['analytics_session_id' => 'session-a']],
         ]);
 
         $funnel = $this->service('2026-08-01', '2026-08-06')->funnel();
@@ -59,8 +59,73 @@ class DashboardReportingTest extends TestCase
         $this->assertSame(100.0, $funnel['steps'][1]['conversion']);
         $this->assertSame(100.0, $funnel['steps'][2]['conversion']);
         $this->assertSame(['sessions' => 1, 'events' => 1], $funnel['failed']);
+        $this->assertTrue($funnel['purchase_linkage']['current']['complete']);
+        $this->assertSame(0, $funnel['purchase_linkage']['current']['unlinked_transactions']);
         $this->assertSame('2026-08-02', $funnel['available_from']);
         $this->assertTrue($funnel['coverage_partial']);
+    }
+
+    public function test_funnel_marks_unlinked_canonical_purchases_incomparable_in_ui_and_csv(): void
+    {
+        $this->event('page_view', 'session-linked', 'page', 'store', '2026-08-01 09:00:00');
+        $this->event('store_checkout_started', 'session-linked', 'checkout', 'bag', '2026-08-01 09:01:00');
+
+        foreach ([
+            ['capture' => 'CAPTURE-LINKED', 'session' => 'session-linked'],
+            ['capture' => 'CAPTURE-NO-SESSION', 'session' => null],
+            ['capture' => 'CAPTURE-OTHER-SESSION', 'session' => 'session-without-checkout'],
+        ] as $index => $fixture) {
+            Order::forceCreate([
+                'provider' => 'paypal',
+                'provider_order_id' => 'ORDER-FUNNEL-'.($index + 1),
+                'provider_capture_id' => $fixture['capture'],
+                'product_key' => 'product-'.($index + 1),
+                'amount_cents' => 2500,
+                'currency' => 'USD',
+                'status' => 'completed',
+                'completed_at' => $this->utc('2026-08-01 09:05:00')->addMinutes($index),
+                'created_at' => $this->utc('2026-08-01 09:04:00')->addMinutes($index),
+                'metadata' => $fixture['session']
+                    ? ['checkout' => ['analytics_session_id' => $fixture['session']]]
+                    : [],
+            ]);
+        }
+
+        $funnel = $this->service('2026-08-01', '2026-08-06')->funnel();
+        $purchase = collect($funnel['steps'])->firstWhere('key', 'purchase');
+
+        $this->assertSame(1, $purchase['current']['sessions']);
+        $this->assertSame(3, $purchase['current']['events']);
+        $this->assertNull($purchase['conversion']);
+        $this->assertSame('incomparable_sessions', $purchase['conversion_reason']);
+        $this->assertFalse($funnel['purchase_linkage']['current']['complete']);
+        $this->assertSame(1, $funnel['purchase_linkage']['current']['linked_transactions']);
+        $this->assertSame(2, $funnel['purchase_linkage']['current']['unlinked_transactions']);
+        $this->assertTrue($funnel['coverage_partial']);
+        $this->assertStringContainsString('2 transacciones del rango actual', $funnel['coverage_message']);
+
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $this->actingAs($admin)->withSession(['admin_authenticated_at' => now()->timestamp]);
+
+        $response = $this->get(route('admin.reports.export', [
+            'report' => 'funnel',
+            'preset' => 'custom',
+            'start' => '2026-08-01',
+            'end' => '2026-08-06',
+        ]));
+
+        $response->assertOk();
+        $lines = preg_split('/\r\n|\n|\r/', trim($response->streamedContent()));
+        $headers = str_getcsv(ltrim($lines[0], "\xEF\xBB\xBF"));
+        $purchaseRow = collect(array_slice($lines, 1))
+            ->map(fn (string $line): array => array_combine($headers, str_getcsv($line)))
+            ->firstWhere('step', 'purchase');
+
+        $this->assertSame('1', $purchaseRow['sessions']);
+        $this->assertSame('3', $purchaseRow['events']);
+        $this->assertSame('', $purchaseRow['conversion_percent']);
+        $this->assertSame('incomparable_sessions', $purchaseRow['conversion_reason']);
+        $this->assertSame('2', $purchaseRow['unlinked_purchase_transactions']);
     }
 
     public function test_content_and_product_rankings_keep_metric_types_sessions_and_currencies_separate(): void

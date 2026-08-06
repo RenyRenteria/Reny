@@ -123,11 +123,16 @@ const persistAnalyticsEvent = (event) => {
         },
         body: JSON.stringify({ ...event, payload }),
         keepalive: true,
+    }).then((response) => {
+        if (!response.ok) {
+            console.warn(`[analytics] persistence failed (${response.status})`, event.name);
+        }
     }).catch(() => {});
 };
 
 const analyticsApi = window.renyAnalytics || {};
 analyticsApi.events = Array.isArray(analyticsApi.events) ? analyticsApi.events : [];
+analyticsApi.sessionId = analyticsSessionId;
 
 const trackEvent = (name, payload = {}) => {
     const event = {

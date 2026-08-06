@@ -187,10 +187,10 @@ final class DashboardReportService
             $this->range->previousStartUtc(),
             $this->range->previousEndExclusiveUtc(),
         );
-        $currentPurchases = $this->purchaseSessions(
+        $currentPurchases = $this->purchaseTransactions(
             $this->capturedOrders($this->range->startUtc(), $this->range->endExclusiveUtc()),
         );
-        $previousPurchases = $this->purchaseSessions(
+        $previousPurchases = $this->purchaseTransactions(
             $this->capturedOrders($this->range->previousStartUtc(), $this->range->previousEndExclusiveUtc()),
         );
 
@@ -203,6 +203,14 @@ final class DashboardReportService
         $availableDate = $availableFrom
             ? CarbonImmutable::parse($availableFrom, 'UTC')->setTimezone($this->range->timezone)->toDateString()
             : null;
+        $linkagePartial = $current['purchase_linkage']['unlinked_transactions'] > 0
+            || $previous['purchase_linkage']['unlinked_transactions'] > 0;
+        $dateCoveragePartial = $availableDate !== null
+            && $this->range->startDate() < $availableDate
+            && $this->range->endDate() >= $availableDate;
+        $purchaseConversion = $current['purchase_linkage']['complete']
+            ? $this->rate($current['purchase']['sessions'], $current['checkout']['sessions'])
+            : null;
 
         return [
             'steps' => [
@@ -212,6 +220,7 @@ final class DashboardReportService
                     'current' => $current['visits'],
                     'previous' => $previous['visits'],
                     'conversion' => null,
+                    'conversion_reason' => null,
                 ],
                 [
                     'key' => 'checkout',
@@ -219,21 +228,34 @@ final class DashboardReportService
                     'current' => $current['checkout'],
                     'previous' => $previous['checkout'],
                     'conversion' => $this->rate($current['checkout']['sessions'], $current['visits']['sessions']),
+                    'conversion_reason' => $current['visits']['sessions'] === 0 ? 'zero_denominator' : null,
                 ],
                 [
                     'key' => 'purchase',
                     'label' => 'Compra completada',
                     'current' => $current['purchase'],
                     'previous' => $previous['purchase'],
-                    'conversion' => $this->rate($current['purchase']['sessions'], $current['checkout']['sessions']),
+                    'conversion' => $purchaseConversion,
+                    'conversion_reason' => ! $current['purchase_linkage']['complete']
+                        ? 'incomparable_sessions'
+                        : ($current['checkout']['sessions'] === 0 ? 'zero_denominator' : null),
                 ],
             ],
             'failed' => $current['failed'],
+            'purchase_linkage' => [
+                'current' => $current['purchase_linkage'],
+                'previous' => $previous['purchase_linkage'],
+            ],
             'available_from' => $availableDate,
-            'coverage_partial' => $availableDate !== null
-                && $this->range->startDate() < $availableDate
-                && $this->range->endDate() >= $availableDate,
+            'coverage_partial' => $dateCoveragePartial || $linkagePartial,
             'coverage_unavailable' => $availableDate === null || $this->range->endDate() < $availableDate,
+            'coverage_message' => $linkagePartial
+                ? sprintf(
+                    'Cobertura parcial: %d transacciones del rango actual y %d del período anterior no tienen una sesión analítica trazable. La conversión de compra se muestra como N/A cuando el rango actual no es comparable.',
+                    $current['purchase_linkage']['unlinked_transactions'],
+                    $previous['purchase_linkage']['unlinked_transactions'],
+                )
+                : null,
         ];
     }
 
@@ -595,19 +617,32 @@ final class DashboardReportService
 
     /**
      * @param  Collection<int, Order>  $orders
-     * @return Collection<int, string>
+     * @return Collection<int, array{key: string, session_id: string|null}>
      */
-    private function purchaseSessions(Collection $orders): Collection
+    private function purchaseTransactions(Collection $orders): Collection
     {
-        return $orders->map(fn (Order $order): string => (string) (
-            data_get($order->metadata, 'checkout.session_token_hash') ?: $this->transactionKey($order)
-        ))->unique()->values();
+        return $orders
+            ->groupBy($this->transactionKey(...))
+            ->map(function (Collection $transactionOrders, string $transactionKey): array {
+                $sessionIds = $transactionOrders
+                    ->map(fn (Order $order): mixed => data_get($order->metadata, 'checkout.analytics_session_id'))
+                    ->filter(fn (mixed $sessionId): bool => is_string($sessionId)
+                        && preg_match('/^[A-Za-z0-9._:-]{1,64}$/', $sessionId) === 1)
+                    ->unique()
+                    ->values();
+
+                return [
+                    'key' => $transactionKey,
+                    'session_id' => $sessionIds->count() === 1 ? $sessionIds->first() : null,
+                ];
+            })
+            ->values();
     }
 
     /**
      * @param  Collection<int, AccessEvent>  $events
-     * @param  Collection<int, string>  $purchases
-     * @return array<string, array{sessions: int, events: int}>
+     * @param  Collection<int, array{key: string, session_id: string|null}>  $purchases
+     * @return array<string, mixed>
      */
     private function funnelPeriod(Collection $events, Collection $purchases): array
     {
@@ -617,11 +652,25 @@ final class DashboardReportService
         ));
         $checkout = $events->where('event_name', 'store_checkout_started');
         $failed = $events->where('event_name', 'store_payment_failed');
+        $checkoutSessions = $checkout->map($this->eventSessionKey(...))->unique()->values();
+        $linkedPurchases = $purchases
+            ->filter(fn (array $purchase): bool => $purchase['session_id'] !== null
+                && $checkoutSessions->containsStrict($purchase['session_id']))
+            ->values();
+        $unlinkedTransactions = $purchases->count() - $linkedPurchases->count();
 
         return [
             'visits' => $this->eventCounts($visits),
             'checkout' => $this->eventCounts($checkout),
-            'purchase' => ['sessions' => $purchases->count(), 'events' => $purchases->count()],
+            'purchase' => [
+                'sessions' => $linkedPurchases->pluck('session_id')->unique()->count(),
+                'events' => $purchases->count(),
+            ],
+            'purchase_linkage' => [
+                'complete' => $unlinkedTransactions === 0,
+                'linked_transactions' => $linkedPurchases->count(),
+                'unlinked_transactions' => $unlinkedTransactions,
+            ],
             'failed' => $this->eventCounts($failed),
         ];
     }
