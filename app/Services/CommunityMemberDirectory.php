@@ -32,14 +32,20 @@ class CommunityMemberDirectory
 
     public function query(string $search = '', string $plan = self::PLAN_ALL): Builder
     {
+        $matchingCountryCodes = $this->matchingCountryCodes($search);
+
         $query = User::query()
             ->where('role', User::ROLE_FAN)
-            ->when($search !== '', function (Builder $query) use ($search): void {
-                $query->where(function (Builder $query) use ($search): void {
+            ->when($search !== '', function (Builder $query) use ($matchingCountryCodes, $search): void {
+                $query->where(function (Builder $query) use ($matchingCountryCodes, $search): void {
                     $query
                         ->where('username', 'like', "%{$search}%")
                         ->orWhere('name', 'like', "%{$search}%")
                         ->orWhere('country_code', 'like', "%{$search}%");
+
+                    if ($matchingCountryCodes !== []) {
+                        $query->orWhereIn('country_code', $matchingCountryCodes);
+                    }
                 });
             });
 
@@ -83,6 +89,21 @@ class CommunityMemberDirectory
     private function royalStatuses(): array
     {
         return [AccessState::RoyalActive->value, AccessState::RoyalGrace->value];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function matchingCountryCodes(string $search): array
+    {
+        if ($search === '') {
+            return [];
+        }
+
+        return array_keys(array_filter(
+            self::COUNTRIES,
+            fn (string $country): bool => mb_stripos($country, $search) !== false,
+        ));
     }
 
     private const COUNTRIES = [

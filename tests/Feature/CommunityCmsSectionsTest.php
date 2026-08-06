@@ -88,6 +88,16 @@ class CommunityCmsSectionsTest extends TestCase
             ->assertDontSee('@'.$free->username)
             ->assertDontSee('@formerroyal');
 
+        $this->get(route('admin.site-editor.show', [
+            'page' => 'community',
+            'community_section' => 'members',
+            'member_search' => 'Panama',
+        ]))
+            ->assertOk()
+            ->assertSee('@'.$free->username)
+            ->assertDontSee('@'.$royal->username)
+            ->assertDontSee('@formerroyal');
+
         $csv = $this->get(route('admin.site-editor.community-members.export', [
             'member_plan' => 'royal',
             'member_search' => 'royal',
