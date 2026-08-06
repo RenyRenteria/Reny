@@ -41,17 +41,19 @@
 
 @section('content')
     <section class="admin-dashboard-section is-active site-editor-screen">
-        @if ($pageSettings && $pageSettingsForm)
+        @if ($pageSettings && $pageSettingsForm && $activePage !== 'community')
             @include('admin.site-editor.page-settings')
         @endif
 
-        <nav class="admin-actions" aria-label="Audience previews">
-            @foreach (\App\Enums\VisibilityAudience::cases() as $audience)
-                <a class="admin-button admin-button-ghost" href="{{ route('admin.site-editor.preview', ['page' => $activePage, 'audience' => $audience->value]) }}" target="_blank" rel="noreferrer">
-                    {{ $audience === \App\Enums\VisibilityAudience::Open ? 'Guest' : str($audience->value)->headline() }} preview
-                </a>
-            @endforeach
-        </nav>
+        @if ($activePage !== 'community')
+            <nav class="admin-actions" aria-label="Audience previews">
+                @foreach (\App\Enums\VisibilityAudience::cases() as $audience)
+                    <a class="admin-button admin-button-ghost" href="{{ route('admin.site-editor.preview', ['page' => $activePage, 'audience' => $audience->value]) }}" target="_blank" rel="noreferrer">
+                        {{ $audience === \App\Enums\VisibilityAudience::Open ? 'Guest' : str($audience->value)->headline() }} preview
+                    </a>
+                @endforeach
+            </nav>
+        @endif
 
         @if (in_array($activePage, ['home', 'store'], true) && $storefront)
             @include('admin.site-editor.storefront', [
@@ -201,10 +203,12 @@
                     activate(root.dataset.musicInitialTab || 'banner');
                 })();
             </script>
-        @elseif ($activePage === 'community' && $communityPostForm)
+        @elseif ($activePage === 'community')
             @include('admin.site-editor.community-posts', [
                 'communityPostForm' => $communityPostForm,
+                'communityMembers' => $communityMembers,
                 'communityRsvps' => $communityRsvps,
+                'communitySection' => $communitySection,
                 'pages' => $pages,
                 'activePage' => $activePage,
                 'publicUrl' => $publicUrl,

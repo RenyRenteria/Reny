@@ -1494,6 +1494,8 @@ body.admin-cms-body[data-theme="royal"] {
 }
 
 .community-posts-cms,
+.community-cms,
+.community-cms-section,
 .community-manage-section,
 .community-post-admin-list,
 .community-comment-admin-list,
@@ -1504,27 +1506,278 @@ body.admin-cms-body[data-theme="royal"] {
 }
 
 .community-cms-tabs {
-    display: flex;
-    flex-wrap: wrap;
-    padding: 0.375rem;
-    border: 1px solid var(--border-default);
-    border-radius: var(--radius-md);
-    background: var(--bg-surface);
-    gap: 0.375rem;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
 }
 
 .community-cms-tabs a {
-    padding: 0.625rem 0.875rem;
-    border-radius: 0.375rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 3rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid transparent;
+    border-radius: 0.625rem;
+    background: #f3e3d4;
+    color: #121417;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.community-cms-tabs a:hover,
+.community-cms-tabs a:focus-visible {
+    border-color: color-mix(in srgb, var(--community-accent) 48%, transparent);
+    box-shadow: 0 0.5rem 1.25rem rgba(17, 24, 39, 0.08);
+    transform: translateY(-1px);
+}
+
+.community-cms-tabs a.is-active {
+    border-color: var(--community-accent);
+    background: var(--community-accent);
+    color: #fff;
+    box-shadow: 0 0.5rem 1.25rem color-mix(in srgb, var(--community-accent) 24%, transparent);
+}
+
+.community-live-preview {
+    gap: 1rem;
+}
+
+.community-live-preview .site-editor-browser-frame,
+.community-live-preview .site-editor-browser-frame iframe {
+    min-height: 46rem;
+    height: min(72vh, 60rem);
+}
+
+.community-secondary-panel {
+    padding: 0;
+    overflow: hidden;
+}
+
+.community-secondary-panel > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 3.5rem;
+    padding: 1rem 1.25rem;
+    color: var(--text-primary);
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 850;
+    list-style: none;
+}
+
+.community-secondary-panel > summary::-webkit-details-marker {
+    display: none;
+}
+
+.community-secondary-panel[open] > summary {
+    border-bottom: 1px solid var(--border-default);
+    background: var(--community-soft);
+}
+
+.community-secondary-panel > :not(summary) {
+    margin: 1.25rem;
+}
+
+.community-secondary-panel > .page-settings-editor {
+    border: 0;
+    box-shadow: none;
+}
+
+.community-post-modal {
+    inset: 0;
+    width: min(62rem, calc(100vw - 2rem));
+    max-width: none;
+    max-height: calc(100dvh - 2rem);
+    margin: auto;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    border-radius: 1rem;
+    background: transparent;
+    box-shadow: var(--shadow-modal);
+}
+
+.community-post-modal::backdrop {
+    background: rgba(17, 24, 39, 0.66);
+    backdrop-filter: blur(3px);
+}
+
+.community-post-modal-card {
+    max-height: calc(100dvh - 2rem);
+    padding: 1.5rem;
+    overflow-y: auto;
+    background: var(--bg-surface);
+}
+
+.community-post-modal-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-default);
+    gap: 1rem;
+}
+
+.community-post-modal-head h2 {
+    margin: 0.2rem 0 0;
+    color: var(--text-primary);
+    font-size: 1.375rem;
+}
+
+.community-post-modal-close {
+    display: inline-grid;
+    width: 2.75rem;
+    height: 2.75rem;
+    place-items: center;
+    border: 1px solid var(--border-default);
+    border-radius: 50%;
+    background: var(--bg-subtle);
+    color: var(--text-primary);
+    cursor: pointer;
+    font-size: 1.5rem;
+    line-height: 1;
+}
+
+.community-post-modal .community-post-form {
+    margin-top: 1.25rem;
+}
+
+.community-directory-panel {
+    gap: 1rem;
+}
+
+.community-directory-filters {
+    display: grid;
+    grid-template-columns: minmax(14rem, 1fr) minmax(10rem, 14rem) auto auto;
+    align-items: end;
+    gap: 0.75rem;
+}
+
+.community-directory-filters label {
+    display: grid;
+    gap: 0.375rem;
+}
+
+.community-directory-filters label > span {
+    color: var(--text-secondary);
+    font-size: 0.6875rem;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.community-directory-filters input,
+.community-directory-filters select {
+    width: 100%;
+    min-height: 2.75rem;
+    padding: 0.625rem 0.75rem;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm);
+    background: #fff;
+    color: var(--text-primary);
+    font: inherit;
+}
+
+.community-member-table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+}
+
+.community-member-table {
+    width: 100%;
+    min-width: 47rem;
+    border-collapse: collapse;
+}
+
+.community-member-table th,
+.community-member-table td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border-default);
+    color: var(--text-secondary);
+    font-size: 0.8125rem;
+    text-align: left;
+    vertical-align: middle;
+}
+
+.community-member-table tr:last-child td {
+    border-bottom: 0;
+}
+
+.community-member-table th {
+    background: var(--bg-subtle);
+    color: var(--text-disabled);
+    font-size: 0.6875rem;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.community-member-table td strong {
+    color: var(--text-primary);
+}
+
+.community-member-avatar {
+    display: inline-grid;
+    width: 2.5rem;
+    height: 2.5rem;
+    place-items: center;
+    overflow: hidden;
+    border-radius: 50%;
+    background: var(--community-soft);
+    color: var(--community-accent);
+    font-size: 0.75rem;
+    font-weight: 900;
+}
+
+.community-member-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.community-plan-pill {
+    display: inline-flex;
+    min-height: 1.75rem;
+    align-items: center;
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+    background: var(--bg-subtle);
+    color: var(--text-secondary);
+    font-size: 0.6875rem;
+    font-weight: 850;
+}
+
+.community-plan-pill.is-royal {
+    background: var(--royal-soft);
+    color: var(--royal-accent);
+}
+
+.community-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+}
+
+.community-pagination a,
+.community-pagination span {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm);
     color: var(--text-secondary);
     font-size: 0.75rem;
     font-weight: 800;
 }
 
-.community-cms-tabs a:hover,
-.community-cms-tabs a:focus-visible {
-    background: var(--community-soft);
-    color: var(--community-accent);
+.community-pagination span {
+    opacity: 0.55;
+}
+
+.community-pagination strong {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
 }
 
 .community-post-form-grid {
@@ -2681,6 +2934,10 @@ body.admin-cms-body[data-theme="royal"] {
         grid-template-columns: 1fr;
     }
 
+    .community-directory-filters {
+        grid-template-columns: 1fr;
+    }
+
     .admin-page-heading,
     .admin-hero-row,
     .admin-alert-card,
@@ -2703,6 +2960,7 @@ body.admin-cms-body[data-theme="royal"] {
     }
 
     .community-post-submit-row .admin-button,
+    .community-directory-filters .admin-button,
     .community-comment-admin-list .admin-actions,
     .community-comment-admin-list .admin-actions form,
     .community-comment-admin-list .admin-actions button {
@@ -2713,6 +2971,8 @@ body.admin-cms-body[data-theme="royal"] {
         grid-template-columns: 1fr;
     }
 
+    .community-live-preview .site-editor-browser-frame,
+    .community-live-preview .site-editor-browser-frame iframe,
     .site-editor-browser-frame,
     .site-editor-browser-frame iframe {
         min-height: 34rem;
@@ -2734,6 +2994,35 @@ body.admin-cms-body[data-theme="royal"] {
 }
 
 @media (max-width: 560px) {
+    .community-cms-tabs {
+        gap: 0.5rem;
+    }
+
+    .community-cms-tabs a {
+        min-height: 2.75rem;
+        padding-inline: 0.5rem;
+        font-size: 0.8125rem;
+    }
+
+    .community-post-modal {
+        width: calc(100vw - 1rem);
+        max-height: calc(100dvh - 1rem);
+    }
+
+    .community-post-modal-card {
+        max-height: calc(100dvh - 1rem);
+        padding: 1rem;
+    }
+
+    .community-pagination {
+        justify-content: space-between;
+        gap: 0.5rem;
+    }
+
+    .community-pagination strong {
+        font-size: 0.6875rem;
+    }
+
     .stats-summary-grid {
         grid-template-columns: 1fr;
     }

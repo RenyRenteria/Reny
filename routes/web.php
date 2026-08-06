@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\Admin\AdminLoginController;
+use App\Http\Controllers\Admin\CommunityMemberController as AdminCommunityMemberController;
 use App\Http\Controllers\Admin\CommunityPostController as AdminCommunityPostController;
 use App\Http\Controllers\Admin\CommunityRsvpController as AdminCommunityRsvpController;
 use App\Http\Controllers\Admin\DashboardController;
@@ -114,6 +115,7 @@ Route::prefix(config('admin.path', 'admin'))->name('admin.')->group(function () 
         Route::get('/site-editor', [SiteEditorController::class, 'index'])->middleware('admin.cms')->name('site-editor.index');
         Route::get('/site-editor/{page}/preview', [SiteEditorController::class, 'preview'])->middleware('admin.cms')->name('site-editor.preview');
         Route::post('/site-editor/{page}/settings', [SiteEditorController::class, 'updatePageSettings'])->middleware('admin.cms')->name('site-editor.page-settings.update');
+        Route::get('/site-editor/community/members.csv', AdminCommunityMemberController::class)->middleware('admin.cms')->name('site-editor.community-members.export');
         Route::get('/site-editor/community/rsvps.csv', AdminCommunityRsvpController::class)->middleware('admin.cms')->name('site-editor.community-rsvps.export');
         Route::middleware(['admin.cms', 'admin.community-posts'])->group(function () {
             Route::post('/site-editor/community/posts', [AdminCommunityPostController::class, 'store'])->name('site-editor.community-posts.store');

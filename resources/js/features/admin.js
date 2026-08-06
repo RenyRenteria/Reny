@@ -156,6 +156,55 @@ const initializeCommunityRichEditors = () => {
     });
 };
 
+const initializeCommunityCms = () => {
+    const modal = document.querySelector('[data-community-post-modal]');
+
+    if (modal) {
+        const openModal = () => {
+            if (typeof modal.showModal === 'function') {
+                modal.showModal();
+            } else {
+                modal.setAttribute('open', '');
+            }
+
+            modal.querySelector('input[name="title"]')?.focus();
+        };
+        const closeModal = () => {
+            if (typeof modal.close === 'function') {
+                modal.close();
+            } else {
+                modal.removeAttribute('open');
+            }
+        };
+
+        document.querySelectorAll('[data-community-post-modal-open]').forEach((button) => {
+            button.addEventListener('click', openModal);
+        });
+        modal.querySelectorAll('[data-community-post-modal-close]').forEach((button) => {
+            button.addEventListener('click', closeModal);
+        });
+        modal.addEventListener('click', (event) => {
+            if (event.target === modal) {
+                closeModal();
+            }
+        });
+
+        if (modal.dataset.openOnLoad === 'true') {
+            openModal();
+        }
+    }
+
+    document.querySelectorAll('[data-community-preview-refresh]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const preview = document.querySelector('[data-community-live-preview]');
+
+            if (preview?.contentWindow) {
+                preview.contentWindow.location.reload();
+            }
+        });
+    });
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     if (!document.body.classList.contains('admin-cms-body')) {
         return;
@@ -231,6 +280,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     syncAdminPreview();
     initializeCommunityRichEditors();
+    initializeCommunityCms();
 
     document.querySelectorAll('[data-admin-action-select]').forEach((select) => {
         const syncSchedule = () => {

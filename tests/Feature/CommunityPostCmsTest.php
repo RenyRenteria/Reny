@@ -36,15 +36,15 @@ class CommunityPostCmsTest extends TestCase
         $this->actingAsAdmin($reny)
             ->get(route('admin.site-editor.show', ['page' => 'community']))
             ->assertOk()
-            ->assertSee('Community Posts')
-            ->assertSee('Publicar ahora')
+            ->assertSee('Royal Posts')
+            ->assertSee('Publish now')
             ->assertSee('Contenido enriquecido');
 
         $this->actingAsAdmin($otherAdmin)
             ->get(route('admin.site-editor.show', ['page' => 'community']))
             ->assertOk()
-            ->assertSee('Community Posts')
-            ->assertSee('Publicar ahora')
+            ->assertSee('Royal Posts')
+            ->assertSee('Publish now')
             ->assertDontSee('Módulo restringido');
 
         $this->actingAsAdmin($otherAdmin)

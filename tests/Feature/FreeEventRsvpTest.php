@@ -120,19 +120,20 @@ class FreeEventRsvpTest extends TestCase
             'rsvp_event' => 'concert',
         ]))
             ->assertOk()
-            ->assertSee('Registros de eventos gratis')
+            ->assertSee('RSVP List')
             ->assertSee('Reny Renteria en Concierto (1)')
             ->assertSee('Ana Fan')
             ->assertSee('ana@example.com')
-            ->assertSee('Panama')
+            ->assertSee('<td><strong>1</strong></td>', false)
+            ->assertDontSee('Panama')
             ->assertDontSee('Paid Fan');
 
         $response = $this->get(route('admin.site-editor.community-rsvps.export', ['event' => 'concert']))
             ->assertOk();
         $csv = $response->streamedContent();
 
-        $this->assertStringContainsString('nombre,correo,país', $csv);
-        $this->assertStringContainsString('"Ana Fan",ana@example.com,Panama', $csv);
+        $this->assertStringContainsString('name,email,tickets', $csv);
+        $this->assertStringContainsString('"Ana Fan",ana@example.com,1', $csv);
         $this->assertStringNotContainsString('Paid Fan', $csv);
         $this->assertStringNotContainsString('event_name', $csv);
     }
