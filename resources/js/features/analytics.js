@@ -9,6 +9,41 @@ const compactAnalyticsPayload = (payload) => Object.fromEntries(
     Object.entries(payload).filter(([, value]) => value !== undefined && value !== null && value !== ''),
 );
 
+const createAnalyticsId = () => {
+    if (typeof window.crypto?.randomUUID === 'function') {
+        return window.crypto.randomUUID();
+    }
+
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (character) => {
+        const random = Math.floor(Math.random() * 16);
+        const value = character === 'x' ? random : ((random & 0x3) | 0x8);
+
+        return value.toString(16);
+    });
+};
+
+let volatileAnalyticsSessionId = null;
+
+const analyticsSessionId = () => {
+    try {
+        const key = 'reny_analytics_session_id';
+        const stored = window.sessionStorage?.getItem(key);
+
+        if (stored) {
+            return stored;
+        }
+
+        const created = createAnalyticsId();
+        window.sessionStorage?.setItem(key, created);
+
+        return created;
+    } catch {
+        volatileAnalyticsSessionId ||= createAnalyticsId();
+
+        return volatileAnalyticsSessionId;
+    }
+};
+
 const currentAnalyticsScreen = () => document.body?.dataset.analyticsScreen
     || document.querySelector('main[id]')?.id
     || normalizeAnalyticsKey(window.location.pathname || 'home');
@@ -53,7 +88,76 @@ const dispatchAnalyticsEvent = (event) => {
     }
 };
 
-const persistedAnalyticsEvents = new Set(['page_view', 'permission_denied', 'paywall_triggered_from_photo']);
+const persistedAnalyticsEvents = new Set([
+    'page_view',
+    'permission_denied',
+    'paywall_triggered_from_photo',
+    'store_product_opened',
+    'store_checkout_started',
+    'store_payment_succeeded',
+    'store_payment_failed',
+    'music_play_started',
+    'video_play_started',
+    'free_event_rsvp_succeeded',
+    'store_rsvp_succeeded',
+]);
+
+const persistedPayloadKeys = new Set([
+    'screen',
+    'path',
+    'result',
+    'title',
+    'section',
+    'item_type',
+    'item_id',
+    'item_label',
+    'photo_id',
+    'album_id',
+    'source',
+    'method',
+    'checkout_state',
+    'reason',
+    'currency',
+    'item_count',
+    'rsvp_status',
+    'ticket_status',
+]);
+
+const persistedPayloadStringLimits = {
+    screen: 80,
+    path: 200,
+    result: 40,
+    title: 180,
+    section: 80,
+    item_type: 80,
+    item_id: 120,
+    item_label: 180,
+    photo_id: 120,
+    album_id: 120,
+    source: 80,
+    method: 20,
+    checkout_state: 40,
+    reason: 120,
+    currency: 3,
+    rsvp_status: 40,
+    ticket_status: 40,
+};
+
+const persistenceSafePayload = (payload) => Object.fromEntries(
+    Object.entries(payload)
+        .filter(([key]) => persistedPayloadKeys.has(key))
+        .map(([key, value]) => {
+            if (key === 'reason') {
+                return [key, normalizeAnalyticsKey(value).slice(0, 120)];
+            }
+
+            if (typeof value === 'string') {
+                return [key, value.slice(0, persistedPayloadStringLimits[key] || 180)];
+            }
+
+            return [key, value];
+        }),
+);
 
 const analyticsEndpoint = () => document.querySelector('meta[name="reny-analytics-endpoint"]')?.content
     || '/analytics/events';
@@ -69,7 +173,10 @@ const persistAnalyticsEvent = (event) => {
             'Accept': 'application/json',
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify(event),
+        body: JSON.stringify({
+            ...event,
+            payload: persistenceSafePayload(event.payload),
+        }),
         keepalive: true,
     }).catch(() => {});
 };
@@ -80,6 +187,9 @@ analyticsApi.events = Array.isArray(analyticsApi.events) ? analyticsApi.events :
 const trackEvent = (name, payload = {}) => {
     const event = {
         name,
+        schema_version: 1,
+        event_id: createAnalyticsId(),
+        session_id: analyticsSessionId(),
         payload: compactAnalyticsPayload({
             screen: currentAnalyticsScreen(),
             path: window.location.pathname,
@@ -201,6 +311,7 @@ export {
     elementAnalyticsLabel,
     elementAnalyticsPayload,
     normalizeAnalyticsKey,
+    persistenceSafePayload,
     sectionAnalyticsKey,
     trackElementEvent,
     trackEvent,

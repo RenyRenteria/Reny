@@ -1,115 +1,83 @@
-# Project 4 Analytics Event Taxonomy
+# Analytics event taxonomy
 
-Date: 2026-06-16
+Updated: 2026-08-06
 
-This taxonomy defines the baseline instrumentation for Project 4 before final provider selection. The browser adapter is provider-neutral:
+The browser adapter remains provider-neutral. It records events in `window.renyAnalytics.events` and dispatches to an already configured `dataLayer`, `gtag`, Plausible, PostHog, or Mixpanel integration. A privacy-reduced subset of business-reporting events is also sent to `/analytics/events`.
 
-- Always records events in `window.renyAnalytics.events`.
-- Emits debug logs when the URL includes `?analytics_debug=1` or `window.renyAnalyticsDebug = true`.
-- Dispatches automatically to `dataLayer`, `gtag`, Plausible, PostHog, or Mixpanel when one is already present.
-- Does nothing network-facing when no provider is configured.
+## Event envelope
 
-## Required Payload Fields
+Persisted browser events use schema version 1:
 
-Every event should include:
+```json
+{
+  "name": "store_checkout_started",
+  "schema_version": 1,
+  "event_id": "anonymous UUID",
+  "session_id": "anonymous session UUID",
+  "timestamp": "2026-08-06T12:30:00.000Z",
+  "payload": {
+    "screen": "store",
+    "path": "/store",
+    "item_type": "product",
+    "item_id": "opaque-product-key",
+    "result": "opened"
+  }
+}
+```
 
-- `screen`: stable page or surface key.
-- `path`: browser path.
-- `result`: `viewed`, `clicked`, `started`, `opened`, `blocked`, `failed`, `succeeded`, or another explicit outcome.
+- `event_id` is generated once per browser event and HMAC-hashed by the server as the idempotency key.
+- `session_id` lives in `sessionStorage` and is HMAC-hashed by the server before persistence.
+- `created_at` is the authoritative server timestamp. `client_occurred_at` is diagnostic only.
+- Duplicate `event_id` submissions return success without creating another record.
+- Client referrers, payment/order references, raw provider payloads, email, phone, names, IP addresses, and authentication secrets are not persisted.
+- The endpoint stores no authenticated user ID for browser analytics events.
 
-Interaction events should also include:
+## Persisted events
 
-- `item_type`: content or control type.
-- `item_id`: stable content/control key.
-- `item_label`: user-visible label when available.
+```
+Event                         Resource                Reporting use
+────────────────────────────  ──────────────────────  ─────────────────────────
+page_view                     page                   Store visit
+store_product_opened          product                Product visit
+store_checkout_started        checkout               Funnel step
+store_payment_succeeded       payment                Funnel step
+store_payment_failed          payment                Failure diagnostic
+music_play_started            music                  Content ranking
+video_play_started            video                  Content ranking
+free_event_rsvp_succeeded     show                    RSVP instrumentation
+store_rsvp_succeeded          show                    RSVP instrumentation
+show_check_in_succeeded       show                    Server-side check-in audit
+permission_denied             access_gate             Access diagnostics
+paywall_triggered_from_photo  photo                   Access diagnostics
+```
 
-Error or blocked events should include:
+Payment success/failure allows only a non-sensitive normalized reason code plus method, currency, count, and result. Financial totals never use these analytics events.
 
-- `reason`: failure or blocking reason when available.
-- `section`: gated section when relevant.
+## Canonical report sources
 
-Checkout payment events should also include:
+- Net sales, completed orders, refunds, currencies, and products: `orders`.
+- Active memberships and new users: `users`.
+- Ticket sales and check-ins: `tickets` joined to canonical orders.
+- Free-event RSVP: `rsvps`.
+- Funnel and content interactions: anonymized `access_events` sessions.
 
-- `method`: `paypal`, `card`, `apple_pay`, or `local`.
-- `checkout_state`: `unavailable`, `validation_failed`, `payment_started`, `payment_success`, or `payment_failed`.
+`orders.completed_at` is recorded for new captured payments. Historical completed orders that predate that field retain `NULL`; reports fall back to their recorded creation time and explicitly label this as partial historical coverage. No synthetic capture timestamp is backfilled.
 
-## Baseline Events
+## Allowed persisted payload fields
 
-Core:
+- Common: `screen`, `path`, `result`, `title`.
+- Resource: `item_type`, `item_id`, `item_label`, `section`, `source`.
+- Commerce: `method`, `checkout_state`, `reason`, `currency`, `item_count`.
+- RSVP: `rsvp_status`, `ticket_status`.
+- Existing photo access events: `photo_id`, `album_id`.
 
-- `page_view`
-- `permission_denied`
-- `paywall_cta_clicked`
+Unknown events, unknown payload fields, nested payload values, unsupported schema versions, invalid UUIDs, and bodies above 2 KB are rejected.
 
-Music:
+## Browser QA
 
-- `music_view_all_clicked`
-- `music_play_clicked`
-- `music_play_ready`
-- `music_play_started`
-- `music_play_failed`
-- `music_access_blocked`
-- `music_permission_cta_clicked`
-- `music_deluxe_clicked`
-
-Videos:
-
-- `video_view_all_clicked`
-- `video_play_clicked`
-- `video_play_started`
-- `video_external_opened`
-- `video_play_failed`
-
-Community:
-
-- `community_note_opened`
-- `community_action_clicked`
-- `community_like_clicked`
-- `community_reply_submitted`
-- `community_share_clicked`
-- `community_poll_voted`
-- `community_club_opened`
-- `community_club_joined`
-- `community_club_created`
-- `community_create_club_started`
-
-Auth and account:
-
-- `auth_login_started`
-- `auth_register_started`
-- `auth_password_recovery_started`
-- `account_navigation_clicked`
-- `account_viewed`
-
-Store and checkout:
-
-- `store_product_opened`
-- `store_product_added`
-- `store_filter_selected`
-- `store_currency_selected`
-- `store_checkout_started`
-- `store_payment_method_selected`
-- `store_payment_succeeded`
-- `store_payment_failed`
-- `store_rsvp_started`
-- `store_rsvp_succeeded`
-- `store_rsvp_failed`
-
-Photos:
-
-- `photo_opened`
-- `photo_navigated`
-- `photo_saved`
-- `photo_shared`
-- `photo_deep_link_opened`
-- `photo_image_failed`
-
-## QA Verification
-
-Manual browser verification:
-
-1. Open any public page with `?analytics_debug=1`.
-2. Click visible actions.
-3. Confirm `[analytics]` console entries appear.
-4. Confirm `window.renyAnalytics.events` contains the events with `screen`, `path`, `item_type`, `item_id`, and `result` where applicable.
-5. Confirm the site still works when no analytics provider is configured.
+1. Open a public page with `?analytics_debug=1`.
+2. Exercise Store, checkout, music, video, and RSVP actions.
+3. Confirm `[analytics]` console entries include `schema_version`, `event_id`, `session_id`, `screen`, `path`, and explicit results.
+4. Confirm persisted rows contain only HMAC session/idempotency keys and allowlisted metadata.
+5. Retry an identical event and confirm the row count does not increase.
+6. Confirm the public experience still works when no third-party analytics provider is configured.

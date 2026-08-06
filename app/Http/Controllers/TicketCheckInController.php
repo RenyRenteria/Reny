@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AccessEvent;
 use App\Services\TicketCodeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -19,6 +20,23 @@ class TicketCheckInController extends Controller
         $ticket = $tickets->checkIn($validated['code']);
 
         abort_unless($ticket, 404, 'Ticket not valid for check-in.');
+
+        AccessEvent::firstOrCreate([
+            'idempotency_key' => hash_hmac(
+                'sha256',
+                'show-check-in:'.$ticket->id.':'.$ticket->checked_in_at?->toIso8601String(),
+                (string) config('app.key'),
+            ),
+        ], [
+            'event_name' => 'show_check_in_succeeded',
+            'schema_version' => 1,
+            'resource_type' => 'show',
+            'resource_key' => (string) $ticket->event_id,
+            'metadata' => [
+                'result' => 'succeeded',
+                'ticket_id' => (string) $ticket->id,
+            ],
+        ]);
 
         return response()->json([
             'status' => 'checked_in',

@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'amount_cents',
     'currency',
     'status',
+    'completed_at',
     'grants_royal_month',
     'royal_granted_until',
     'refunded_at',
@@ -25,6 +26,7 @@ class Order extends Model
     protected function casts(): array
     {
         return [
+            'completed_at' => 'datetime',
             'grants_royal_month' => 'boolean',
             'royal_granted_until' => 'datetime',
             'refunded_at' => 'datetime',

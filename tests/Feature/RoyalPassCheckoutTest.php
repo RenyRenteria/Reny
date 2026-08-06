@@ -64,6 +64,9 @@ class RoyalPassCheckoutTest extends TestCase
             'status' => 'completed',
             'grants_royal_month' => true,
         ]);
+        $this->assertNotNull(Order::query()
+            ->where('provider_order_id', 'PAYPAL-ORDER-100-1-merch')
+            ->value('completed_at'));
 
         $this->assertDatabaseHas('billing_profiles', [
             'user_id' => $user->id,

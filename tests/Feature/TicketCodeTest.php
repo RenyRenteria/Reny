@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\AccessEvent;
 use App\Models\FanEvent;
 use App\Models\User;
 use App\Services\TicketCodeService;
@@ -48,6 +49,15 @@ class TicketCodeTest extends TestCase
 
         $this->assertSame('checked_in', $issued['ticket']->fresh()->status);
         $this->assertNotNull($issued['ticket']->fresh()->checked_in_at);
+        $this->assertDatabaseHas('access_events', [
+            'event_name' => 'show_check_in_succeeded',
+            'resource_type' => 'show',
+            'resource_key' => (string) $event->id,
+            'user_id' => null,
+        ]);
+
+        $this->actingAs($staff)->postJson(route('tickets.check-in'), ['code' => $issued['code']])->assertOk();
+        $this->assertSame(1, AccessEvent::query()->where('event_name', 'show_check_in_succeeded')->count());
     }
 
     public function test_signed_ticket_code_can_be_regenerated_after_reload(): void

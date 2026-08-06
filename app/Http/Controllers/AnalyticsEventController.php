@@ -13,6 +13,20 @@ class AnalyticsEventController extends Controller
 {
     private const MAX_BODY_BYTES = 2048;
 
+    private const PERSISTED_EVENTS = [
+        'page_view',
+        'permission_denied',
+        'paywall_triggered_from_photo',
+        'store_product_opened',
+        'store_checkout_started',
+        'store_payment_succeeded',
+        'store_payment_failed',
+        'music_play_started',
+        'video_play_started',
+        'free_event_rsvp_succeeded',
+        'store_rsvp_succeeded',
+    ];
+
     public function store(Request $request): JsonResponse
     {
         if (strlen($request->getContent()) > self::MAX_BODY_BYTES) {
@@ -20,8 +34,11 @@ class AnalyticsEventController extends Controller
         }
 
         $data = $request->validate([
-            'name' => ['required', 'string', Rule::in(['page_view', 'permission_denied', 'paywall_triggered_from_photo'])],
-            'payload' => ['nullable', 'array:screen,path,result,title,referrer,section,item_type,item_id,photo_id,album_id,source', 'max:10'],
+            'name' => ['required', 'string', Rule::in(self::PERSISTED_EVENTS)],
+            'schema_version' => ['nullable', 'integer', Rule::in([1])],
+            'event_id' => ['nullable', 'uuid'],
+            'session_id' => ['nullable', 'uuid'],
+            'payload' => ['nullable', 'array:screen,path,result,title,referrer,section,item_type,item_id,item_label,photo_id,album_id,source,method,checkout_state,reason,currency,item_count,rsvp_status,ticket_status', 'max:20'],
             'payload.screen' => ['nullable', 'string', 'max:80'],
             'payload.path' => ['nullable', 'string', 'max:200'],
             'payload.result' => ['nullable', 'string', 'max:40'],
@@ -30,9 +47,17 @@ class AnalyticsEventController extends Controller
             'payload.section' => ['nullable', 'string', 'max:80'],
             'payload.item_type' => ['nullable', 'string', 'max:80'],
             'payload.item_id' => ['nullable', 'string', 'max:120'],
+            'payload.item_label' => ['nullable', 'string', 'max:180'],
             'payload.photo_id' => ['nullable', 'string', 'max:120'],
             'payload.album_id' => ['nullable', 'string', 'max:120'],
             'payload.source' => ['nullable', 'string', 'max:80'],
+            'payload.method' => ['nullable', 'string', Rule::in(['paypal', 'card', 'apple_pay', 'local'])],
+            'payload.checkout_state' => ['nullable', 'string', 'max:40'],
+            'payload.reason' => ['nullable', 'string', 'max:120'],
+            'payload.currency' => ['nullable', 'string', 'size:3'],
+            'payload.item_count' => ['nullable', 'integer', 'min:0', 'max:100'],
+            'payload.rsvp_status' => ['nullable', 'string', 'max:40'],
+            'payload.ticket_status' => ['nullable', 'string', 'max:40'],
             'timestamp' => ['nullable', 'date'],
         ]);
 
@@ -40,18 +65,41 @@ class AnalyticsEventController extends Controller
         $payload = $data['payload'] ?? [];
         $resource = $this->resourceFor($name, $payload);
 
-        AccessEvent::create([
-            'user_id' => $request->user()?->id,
+        $sessionKey = isset($data['session_id'])
+            ? hash_hmac('sha256', $data['session_id'], (string) config('app.key'))
+            : null;
+        $idempotencyKey = isset($data['event_id'])
+            ? hash_hmac('sha256', $data['event_id'], (string) config('app.key'))
+            : null;
+        $attributes = [
+            'user_id' => null,
             'event_name' => $name,
+            'schema_version' => (int) ($data['schema_version'] ?? 1),
             'resource_type' => $resource['type'],
             'resource_key' => $resource['key'],
+            'session_key' => $sessionKey,
+            'client_occurred_at' => $data['timestamp'] ?? null,
             'metadata' => [
-                ...$payload,
+                ...Arr::except($payload, ['referrer']),
                 'client_timestamp' => $data['timestamp'] ?? null,
             ],
-        ]);
+        ];
 
-        return response()->json(['ok' => true], 201);
+        if ($idempotencyKey === null) {
+            AccessEvent::create($attributes);
+
+            return response()->json(['ok' => true, 'created' => true], 201);
+        }
+
+        $event = AccessEvent::firstOrCreate(
+            ['idempotency_key' => $idempotencyKey],
+            $attributes,
+        );
+
+        return response()->json([
+            'ok' => true,
+            'created' => $event->wasRecentlyCreated,
+        ], $event->wasRecentlyCreated ? 201 : 200);
     }
 
     /**
@@ -83,6 +131,34 @@ class AnalyticsEventController extends Controller
             return [
                 'type' => 'photo',
                 'key' => (string) ($itemId ?: Arr::get($payload, 'photo_id') ?: 'unknown'),
+            ];
+        }
+
+        if ($name === 'store_product_opened') {
+            return [
+                'type' => 'product',
+                'key' => (string) ($itemId ?: 'unknown'),
+            ];
+        }
+
+        if (in_array($name, ['store_checkout_started', 'store_payment_succeeded', 'store_payment_failed'], true)) {
+            return [
+                'type' => $name === 'store_checkout_started' ? 'checkout' : 'payment',
+                'key' => (string) ($itemId ?: Arr::get($payload, 'method', 'unknown')),
+            ];
+        }
+
+        if (in_array($name, ['music_play_started', 'video_play_started'], true)) {
+            return [
+                'type' => $name === 'music_play_started' ? 'music' : 'video',
+                'key' => (string) ($itemId ?: 'unknown'),
+            ];
+        }
+
+        if (in_array($name, ['free_event_rsvp_succeeded', 'store_rsvp_succeeded'], true)) {
+            return [
+                'type' => 'show',
+                'key' => (string) ($itemId ?: 'unknown'),
             ];
         }
 

@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\EditorialActionController;
 use App\Http\Controllers\Admin\EditorialContentController;
 use App\Http\Controllers\Admin\MediaLibraryController;
 use App\Http\Controllers\Admin\PhotoLibraryController;
+use App\Http\Controllers\Admin\ReportExportController;
 use App\Http\Controllers\Admin\SiteEditorController;
 use App\Http\Controllers\AnalyticsEventController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
@@ -110,6 +111,9 @@ Route::prefix(config('admin.path', 'admin'))->name('admin.')->group(function () 
 
     Route::middleware(['admin.access', 'admin.session'])->group(function () {
         Route::get('/', DashboardController::class)->name('dashboard');
+        Route::get('/reports/export/{report}.csv', ReportExportController::class)
+            ->whereIn('report', ['summary', 'sales', 'funnel', 'products', 'content', 'shows'])
+            ->name('reports.export');
         Route::post('/logout', [AdminLoginController::class, 'destroy'])->name('logout');
 
         Route::get('/site-editor', [SiteEditorController::class, 'index'])->middleware('admin.cms')->name('site-editor.index');

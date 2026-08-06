@@ -62,10 +62,11 @@ class AdminAuthRbacTest extends TestCase
 
         $this->get(route('admin.dashboard'))
             ->assertOk()
-            ->assertSee('Homepage Views')
-            ->assertSee('Paywall Views')
-            ->assertSee('Royal Members')
-            ->assertSee('Monthly Sales')
+            ->assertSee('BUSINESS DASHBOARD')
+            ->assertSee('Net sales')
+            ->assertSee('Completed orders')
+            ->assertSee('Active Royals')
+            ->assertSee('New users')
             ->assertDontSee('Dashboard editorial');
     }
 
