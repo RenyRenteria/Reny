@@ -28,10 +28,9 @@ class CommunityPageTest extends TestCase
         $response = $this->get('/royals');
 
         $response->assertOk();
-        $response->assertSee('Directo de Reny.');
+        $response->assertSee('Directo de Reny. Cerca de la comunidad.');
         $response->assertSee('Posts de Reny');
         $response->assertSee('Live Chat');
-        $response->assertSee('Solo Reny publica');
         $response->assertSee('data-community-tab="feed"', false);
         $response->assertSee('data-community-tab="chat"', false);
         $response->assertSee('class="tab is-active"', false);
@@ -43,6 +42,10 @@ class CommunityPageTest extends TestCase
 
         $html = $response->getContent();
 
+        $this->assertMatchesRegularExpression(
+            '/<div class="community-welcome-card">\s*<h1>Directo de Reny\. Cerca de la comunidad\.<\/h1>\s*<\/div>/',
+            $html,
+        );
         $this->assertSame(2, substr_count($html, 'images/reny-renteria-logo-white.png'));
         $this->assertSame(1, substr_count($html, 'class="community-experience"'));
         $this->assertSame(1, substr_count($html, 'class="community-live-chat-panel"'));
