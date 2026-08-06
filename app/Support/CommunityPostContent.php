@@ -185,7 +185,7 @@ class CommunityPostContent
         return [
             'type' => match (true) {
                 in_array($extension, ['avif', 'gif', 'jpeg', 'jpg', 'png', 'webp'], true) => 'image',
-                in_array($extension, ['m4v', 'mp4', 'ogg', 'webm'], true) => 'video',
+                in_array($extension, ['m4v', 'mov', 'mp4', 'ogg', 'webm'], true) => 'video',
                 in_array($extension, ['aac', 'm4a', 'mp3', 'oga', 'wav'], true) => 'audio',
                 default => 'link',
             },

@@ -72,7 +72,7 @@ class SiteEditorPageRegistry
                 'label' => 'Community',
                 'theme' => 'community',
                 'public_path' => '/royals',
-                'summary' => 'Posts, polls y contenido para fans.',
+                'summary' => 'Posts y contenido para fans.',
                 'blocks' => [
                     $this->pageSettingsBlock('Community page header'),
                     $this->block('community-feed', 'Official feed posts', [ContentType::Post], ContentType::Post),

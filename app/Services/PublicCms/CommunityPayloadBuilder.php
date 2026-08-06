@@ -3,7 +3,9 @@
 namespace App\Services\PublicCms;
 
 use App\Enums\ContentType;
+use App\Enums\MediaAssetType;
 use App\Models\EditorialContent;
+use App\Models\MediaAsset;
 use App\Models\User;
 use App\Support\CommunityPostContent;
 use Carbon\CarbonImmutable;
@@ -60,6 +62,13 @@ class CommunityPayloadBuilder
         $displayDate = $publishedOn !== ''
             ? CarbonImmutable::parse($publishedOn, config('admin.publishing_timezone', 'America/Panama'))
             : ($content->published_at ?? $content->scheduled_at ?? $content->created_at);
+        $mediaItems = collect(CommunityPostContent::normalizeMediaUrls(
+            Arr::wrap($this->media->metadata($content, 'media_items', []))
+        ))
+            ->concat($this->uploadedMediaItems($content))
+            ->unique('url')
+            ->values()
+            ->all();
 
         return [
             'key' => 'cms-post-'.$content->id,
@@ -67,13 +76,70 @@ class CommunityPayloadBuilder
             'time' => $displayDate?->format('M j, Y') ?? 'Publicado',
             'sort_date' => $displayDate?->getTimestamp() ?? 0,
             'body_html' => CommunityPostContent::sanitize($content->body ?: $content->summary ?: ''),
-            'image_url' => $this->media->mediaUrl($content, ['image_asset_id']),
+            'image_url' => $this->coverUrl($content) ?? $this->externalImageUrl($content),
             'image_alt' => $content->title,
-            'media_items' => CommunityPostContent::normalizeMediaUrls(
-                Arr::wrap($this->media->metadata($content, 'media_items', []))
-            ),
+            'media_items' => $mediaItems,
             'comments_enabled' => (bool) $this->media->metadata($content, 'comments_enabled', true),
         ];
+    }
+
+    private function coverUrl(EditorialContent $content): ?string
+    {
+        $assetId = (int) $this->media->metadata($content, 'image_asset_id', 0);
+
+        if ($assetId > 0) {
+            return $this->media->mediaUrl($content, ['image_asset_id']);
+        }
+
+        return $content->mediaAssets
+            ->first(fn (MediaAsset $asset): bool => $asset->pivot?->role === 'cover')
+            ?->publicUrl();
+    }
+
+    private function externalImageUrl(EditorialContent $content): ?string
+    {
+        $url = trim((string) $this->media->metadata($content, 'image_url', ''));
+
+        if (filter_var($url, FILTER_VALIDATE_URL) === false) {
+            return null;
+        }
+
+        return in_array(strtolower((string) parse_url($url, PHP_URL_SCHEME)), ['http', 'https'], true)
+            ? $url
+            : null;
+    }
+
+    /**
+     * @return array<int, array{type:string,url:string,label:string}>
+     */
+    private function uploadedMediaItems(EditorialContent $content): array
+    {
+        return $content->mediaAssets
+            ->filter(fn (MediaAsset $asset): bool => $asset->pivot?->role === 'attachment')
+            ->map(function (MediaAsset $asset): ?array {
+                $url = $asset->publicUrl();
+                $type = match ($asset->type) {
+                    MediaAssetType::Image, MediaAssetType::Thumbnail => 'image',
+                    MediaAssetType::Video => 'video',
+                    MediaAssetType::Audio => 'audio',
+                    default => null,
+                };
+
+                if (! $url || ! $type) {
+                    return null;
+                }
+
+                $url = str_starts_with($url, '/') ? url($url) : $url;
+
+                return [
+                    'type' => $type,
+                    'url' => $url,
+                    'label' => $asset->original_filename,
+                ];
+            })
+            ->filter()
+            ->values()
+            ->all();
     }
 
     /**
