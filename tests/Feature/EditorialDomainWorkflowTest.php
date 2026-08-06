@@ -125,6 +125,35 @@ class EditorialDomainWorkflowTest extends TestCase
         $this->assertTrue(EditorialContent::visibleFor($expiredRoyal)->whereKey($content)->exists());
     }
 
+    public function test_purchased_release_window_uses_content_or_product_unlocks(): void
+    {
+        $user = User::factory()->expiredRoyal()->create();
+        $content = EditorialContent::factory()->published()->create([
+            'visibility' => VisibilityAudience::Open->value,
+            'purchase_key' => 'release-window-purchase',
+        ]);
+
+        $content->releaseWindows()->create([
+            'audience' => VisibilityAudience::Purchased->value,
+            'starts_at' => now()->subMinute(),
+        ]);
+
+        $this->assertFalse(EditorialContent::visibleFor($user)->whereKey($content)->exists());
+
+        UserUnlock::create([
+            'user_id' => $user->id,
+            'unlock_type' => 'content',
+            'product_key' => 'release-window-purchase',
+            'title' => $content->title,
+            'source_type' => 'order',
+            'source_id' => 'order-123',
+            'status' => 'available',
+            'unlocked_at' => now(),
+        ]);
+
+        $this->assertTrue(EditorialContent::visibleFor($user)->whereKey($content)->exists());
+    }
+
     public function test_taxonomy_can_be_reused_by_editorial_content(): void
     {
         $content = EditorialContent::factory()->create();

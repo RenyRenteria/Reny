@@ -17,7 +17,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Query\Builder as QueryBuilder;
 
 #[Fillable([
     'type',
@@ -122,6 +121,7 @@ class EditorialContent extends Model
     public function scopeVisibleFor(Builder $query, ?User $user = null, ?CarbonInterface $at = null): Builder
     {
         $at = self::utcDateTime($at ?? now());
+        $purchaseAccess = self::purchaseAccessFor($user);
 
         return $query
             ->whereIn('status', [EditorialStatus::Published->value, EditorialStatus::Scheduled->value])
@@ -141,20 +141,34 @@ class EditorialContent extends Model
                             ->where('scheduled_at', '<=', $at);
                     });
             })
-            ->where(function (Builder $query) use ($user, $at): void {
+            ->where(function (Builder $query) use ($purchaseAccess, $user, $at): void {
                 $query
-                    ->where(function (Builder $query) use ($user): void {
+                    ->where(function (Builder $query) use ($purchaseAccess, $user): void {
                         $query
                             ->whereDoesntHave('releaseWindows')
-                            ->where(function (Builder $query) use ($user): void {
-                                self::applyAudienceConstraint($query, 'visibility', $user);
+                            ->where(function (Builder $query) use ($purchaseAccess, $user): void {
+                                self::applyAudienceConstraint(
+                                    $query,
+                                    'visibility',
+                                    $user,
+                                    $purchaseAccess,
+                                    'editorial_contents.id',
+                                    'editorial_contents.purchase_key',
+                                );
                             });
                     })
-                    ->orWhereHas('releaseWindows', function (Builder $query) use ($user, $at): void {
+                    ->orWhereHas('releaseWindows', function (Builder $query) use ($purchaseAccess, $user, $at): void {
                         $query
                             ->activeAt($at)
-                            ->where(function (Builder $query) use ($user): void {
-                                self::applyAudienceConstraint($query, 'audience', $user);
+                            ->where(function (Builder $query) use ($purchaseAccess, $user): void {
+                                self::applyAudienceConstraint(
+                                    $query,
+                                    'audience',
+                                    $user,
+                                    $purchaseAccess,
+                                    'content_release_windows.editorial_content_id',
+                                    'editorial_contents.purchase_key',
+                                );
                             });
                     });
             });
@@ -245,34 +259,86 @@ class EditorialContent extends Model
         return array_values(array_unique($audiences));
     }
 
-    private static function applyAudienceConstraint(Builder $query, string $column, ?User $user): void
-    {
+    /**
+     * @param  array{content_ids: array<int, int>, product_keys: array<int, string>}  $purchaseAccess
+     */
+    private static function applyAudienceConstraint(
+        Builder $query,
+        string $column,
+        ?User $user,
+        array $purchaseAccess,
+        string $contentIdColumn,
+        string $purchaseKeyColumn,
+    ): void {
         $query->whereIn($column, self::audiencesFor($user));
 
         if ($user === null) {
             return;
         }
 
-        $query->orWhere(function (Builder $query) use ($column, $user): void {
+        $query->orWhere(function (Builder $query) use (
+            $column,
+            $contentIdColumn,
+            $purchaseAccess,
+            $purchaseKeyColumn,
+        ): void {
             $query
                 ->where($column, VisibilityAudience::Purchased->value)
-                ->whereExists(function (QueryBuilder $query) use ($user): void {
-                    $query
-                        ->selectRaw('1')
-                        ->from('user_unlocks')
-                        ->where('user_unlocks.user_id', $user->getKey())
-                        ->where('user_unlocks.status', 'available')
-                        ->where(function (QueryBuilder $query): void {
-                            $query
-                                ->where(function (QueryBuilder $query): void {
-                                    $query
-                                        ->where('user_unlocks.source_type', 'editorial_content')
-                                        ->whereColumn('user_unlocks.source_id', 'editorial_contents.id');
-                                })
-                                ->orWhereColumn('user_unlocks.product_key', 'editorial_contents.purchase_key');
-                        });
+                ->where(function (Builder $query) use (
+                    $contentIdColumn,
+                    $purchaseAccess,
+                    $purchaseKeyColumn,
+                ): void {
+                    $hasPurchaseAccess = false;
+
+                    if ($purchaseAccess['content_ids'] !== []) {
+                        $query->whereIn($contentIdColumn, $purchaseAccess['content_ids']);
+                        $hasPurchaseAccess = true;
+                    }
+
+                    if ($purchaseAccess['product_keys'] !== []) {
+                        $method = $hasPurchaseAccess ? 'orWhereIn' : 'whereIn';
+                        $query->{$method}($purchaseKeyColumn, $purchaseAccess['product_keys']);
+                        $hasPurchaseAccess = true;
+                    }
+
+                    if (! $hasPurchaseAccess) {
+                        $query->whereRaw('1 = 0');
+                    }
                 });
         });
+    }
+
+    /**
+     * @return array{content_ids: array<int, int>, product_keys: array<int, string>}
+     */
+    private static function purchaseAccessFor(?User $user): array
+    {
+        if ($user === null) {
+            return ['content_ids' => [], 'product_keys' => []];
+        }
+
+        $unlocks = $user->unlocks()
+            ->available()
+            ->get(['source_type', 'source_id', 'product_key']);
+
+        return [
+            'content_ids' => $unlocks
+                ->where('source_type', 'editorial_content')
+                ->pluck('source_id')
+                ->filter(fn (mixed $id): bool => is_numeric($id) && (int) $id > 0)
+                ->map(fn (mixed $id): int => (int) $id)
+                ->unique()
+                ->values()
+                ->all(),
+            'product_keys' => $unlocks
+                ->pluck('product_key')
+                ->filter(fn (mixed $key): bool => is_string($key) && trim($key) !== '')
+                ->map(fn (string $key): string => trim($key))
+                ->unique()
+                ->values()
+                ->all(),
+        ];
     }
 
     private static function utcDateTime(CarbonInterface $value): CarbonInterface

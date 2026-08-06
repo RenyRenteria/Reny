@@ -192,6 +192,19 @@ class CommunityPostCmsTest extends TestCase
             ->assertOk()
             ->assertSee('Studio note from Reny')
             ->assertSee('Capri photo drop');
+
+        $this->getJson(route('public-content.payload', 'community'))
+            ->assertOk()
+            ->assertJsonPath('_cms_source', 'cms')
+            ->assertJsonPath('_cms_fallback', false)
+            ->assertJsonCount(2, 'posts')
+            ->assertJsonFragment(['title' => 'Studio note from Reny'])
+            ->assertJsonFragment(['title' => 'Capri photo drop']);
+
+        $this->get('/royals')
+            ->assertOk()
+            ->assertSee('Studio note from Reny')
+            ->assertSee('Capri photo drop');
     }
 
     public function test_post_attachments_reject_unsafe_file_extensions(): void
