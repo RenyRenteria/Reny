@@ -128,6 +128,48 @@ class DashboardReportingTest extends TestCase
         $this->assertSame('2', $purchaseRow['unlinked_purchase_transactions']);
     }
 
+    public function test_empty_bag_open_is_excluded_from_funnel_ui_and_csv(): void
+    {
+        $this->event('page_view', 'session-opened', 'page', 'store', '2026-08-02 09:00:00');
+        $this->event('store_checkout_started', 'session-opened', 'checkout', 'bag', '2026-08-02 09:01:00', result: 'opened');
+        $this->event('store_checkout_started', 'session-empty', 'checkout', 'bag', '2026-08-02 09:02:00', result: 'empty');
+
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $this->actingAs($admin)->withSession(['admin_authenticated_at' => now()->timestamp]);
+        $range = [
+            'preset' => 'custom',
+            'start' => '2026-08-01',
+            'end' => '2026-08-06',
+        ];
+
+        $dashboard = $this->get(route('admin.dashboard', $range));
+        $dashboard->assertOk();
+        $reports = $dashboard->viewData('reports');
+        $checkout = collect($reports['funnel']['data']['steps'])->firstWhere('key', 'checkout');
+
+        $this->assertSame(1, $checkout['current']['sessions']);
+        $this->assertSame(1, $checkout['current']['events']);
+        $dashboard->assertSeeInOrder([
+            'Checkout iniciado',
+            '<strong>1</strong>',
+            '<small>1 eventos · anterior 0 sesiones</small>',
+        ], false);
+
+        $csvResponse = $this->get(route('admin.reports.export', [
+            'report' => 'funnel',
+            ...$range,
+        ]));
+        $csvResponse->assertOk();
+        $lines = preg_split('/\r\n|\n|\r/', trim($csvResponse->streamedContent()));
+        $headers = str_getcsv(ltrim($lines[0], "\xEF\xBB\xBF"));
+        $checkoutRow = collect(array_slice($lines, 1))
+            ->map(fn (string $line): array => array_combine($headers, str_getcsv($line)))
+            ->firstWhere('step', 'checkout');
+
+        $this->assertSame((string) $checkout['current']['sessions'], $checkoutRow['sessions']);
+        $this->assertSame((string) $checkout['current']['events'], $checkoutRow['events']);
+    }
+
     public function test_content_and_product_rankings_keep_metric_types_sessions_and_currencies_separate(): void
     {
         $this->event('music_play_started', 'music-session', 'song', 'track-1', '2026-08-03 10:00:00', 'Luna');
@@ -439,6 +481,7 @@ class DashboardReportingTest extends TestCase
         string $resourceKey,
         string $localDateTime,
         ?string $label = null,
+        string $result = 'succeeded',
     ): AccessEvent {
         return AccessEvent::create([
             'event_name' => $name,
@@ -448,12 +491,12 @@ class DashboardReportingTest extends TestCase
             'idempotency_key' => $name.'-'.$session.'-'.str()->uuid(),
             'resource_type' => $resourceType,
             'resource_key' => $resourceKey,
-            'result' => 'succeeded',
+            'result' => $result,
             'metadata' => array_filter([
                 'item_type' => $resourceType,
                 'item_id' => $resourceKey,
                 'item_label' => $label,
-                'result' => 'succeeded',
+                'result' => $result,
             ]),
         ]);
     }

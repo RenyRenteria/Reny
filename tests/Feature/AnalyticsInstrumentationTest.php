@@ -150,6 +150,17 @@ class AnalyticsInstrumentationTest extends TestCase
         $this->assertStringContainsString('analytics_session_id: window.renyAnalytics?.sessionId?.()', $checkout);
     }
 
+    public function test_opening_an_empty_bag_does_not_start_checkout_analytics(): void
+    {
+        $checkout = file_get_contents(resource_path('js/features/checkout.js'));
+
+        $this->assertStringNotContainsString("result: bag.length ? 'opened' : 'empty'", $checkout);
+        $this->assertMatchesRegularExpression(
+            "/if \\(bag\\.length\\) \\{.*trackEvent\\('store_checkout_started'.*result: 'opened'.*\\}/s",
+            $checkout,
+        );
+    }
+
     public function test_music_resume_does_not_create_an_extra_reproduction(): void
     {
         $script = file_get_contents(resource_path('js/features/music-player.js'));

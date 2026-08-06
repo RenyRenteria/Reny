@@ -1314,12 +1314,12 @@ const initializeStoreInteractions = (root = document) => {
         if (bag.length) {
             paymentAnalytics.beginCheckout();
             void initializeVisiblePayPalCheckout();
+            trackEvent('store_checkout_started', {
+                item_type: 'checkout',
+                item_count: bag.length,
+                result: 'opened',
+            });
         }
-        trackEvent('store_checkout_started', {
-            item_type: 'checkout',
-            item_count: bag.length,
-            result: bag.length ? 'opened' : 'empty',
-        });
     });
 
     paymentButtons.forEach((button) => {

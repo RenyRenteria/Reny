@@ -650,7 +650,10 @@ final class DashboardReportService
             ($event->event_name === 'page_view' && $event->resource_key === 'store')
             || $event->event_name === 'store_product_opened'
         ));
-        $checkout = $events->where('event_name', 'store_checkout_started');
+        $checkout = $events->filter(fn (AccessEvent $event): bool => (
+            $event->event_name === 'store_checkout_started'
+            && $event->result !== 'empty'
+        ));
         $failed = $events->where('event_name', 'store_payment_failed');
         $checkoutSessions = $checkout->map($this->eventSessionKey(...))->unique()->values();
         $linkedPurchases = $purchases
