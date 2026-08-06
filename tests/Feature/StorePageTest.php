@@ -24,7 +24,7 @@ class StorePageTest extends TestCase
         Cache::store('array')->flush();
     }
 
-    public function test_store_page_renders_all_four_configured_slots_for_guest(): void
+    public function test_store_page_hides_removed_concert_and_renders_remaining_slots_for_guest(): void
     {
         $response = $this->get('/store');
 
@@ -36,24 +36,24 @@ class StorePageTest extends TestCase
         $response->assertSee('Get your');
         $response->assertSee('Royal Pass');
         $response->assertSee('Unlock Royal Pass');
-        $response->assertSee('Reny Renteria en Concierto');
+        $response->assertDontSee('Reny Renteria en Concierto');
         $response->assertSee('Festival de la Rosa Dorada');
         $response->assertSee('Work in Progress');
         $response->assertSee('Crown Collection');
-        $response->assertSee('FREE');
+        $response->assertDontSee('FREE');
         $response->assertSee('$15');
         $response->assertSee('GET TICKETS');
         $response->assertSee('LISTEN');
         $response->assertSee('GET MERCH');
         $response->assertSee('class="storefront-countdown"', false);
-        $response->assertSee('data-countdown-at="2026-09-21T19:30:00-05:00"', false);
+        $response->assertDontSee('data-countdown-at="2026-09-21T19:30:00-05:00"', false);
         $response->assertSee('data-countdown-at="2026-12-16T19:30:00-05:00"', false);
-        $response->assertSee('images/store/reny-concert.png');
+        $response->assertDontSee('images/store/reny-concert.png');
         $response->assertSee('images/store/rosa-dorada.png');
         $response->assertSee('images/store/crown-collection.png');
         $response->assertSee('images/store/royal-pass.png');
         $response->assertSee('Selected currency is a reference. PayPal checkout is charged in USD.');
-        $response->assertSee('data-free-event-rsvp="concert"', false);
+        $response->assertDontSee('data-free-event-rsvp="concert"', false);
         $response->assertSee('data-buy="listening"', false);
         $response->assertSee('data-royal-pass-option="royal"', false);
         $response->assertSee('data-royal-pass-selected="true"', false);
@@ -82,10 +82,9 @@ class StorePageTest extends TestCase
 
         $html = $response->getContent();
 
-        $this->assertSame(4, substr_count($html, 'storefront-card'));
-        $this->assertSame(2, substr_count($html, 'storefront-countdown'));
-        $this->assertLessThan(strpos($html, 'Reny Renteria en Concierto'), strpos($html, 'Royal Pass'));
-        $this->assertLessThan(strpos($html, 'Festival de la Rosa Dorada'), strpos($html, 'Reny Renteria en Concierto'));
+        $this->assertSame(3, substr_count($html, 'storefront-card'));
+        $this->assertSame(1, substr_count($html, 'storefront-countdown'));
+        $this->assertLessThan(strpos($html, 'Festival de la Rosa Dorada'), strpos($html, 'Royal Pass'));
         $this->assertStringNotContainsString('is-event-secondary', $html);
         $this->assertStringNotContainsString('Official store', $html);
         $this->assertStringNotContainsString('Reny Shop', $html);
@@ -112,7 +111,7 @@ class StorePageTest extends TestCase
             ->assertOk()
             ->assertSee('data-royal-pass-banner', false)
             ->assertSee('Unlock Royal Pass')
-            ->assertSee('Reny Renteria en Concierto');
+            ->assertDontSee('Reny Renteria en Concierto');
     }
 
     public function test_store_page_hides_royal_pass_banner_for_active_royal_accounts(): void
@@ -122,10 +121,10 @@ class StorePageTest extends TestCase
             ->assertOk()
             ->assertDontSee('data-royal-pass-banner', false)
             ->assertDontSee('Unlock Royal Pass')
-            ->assertSee('Reny Renteria en Concierto');
+            ->assertDontSee('Reny Renteria en Concierto');
     }
 
-    public function test_shows_page_duplicates_only_the_two_store_concerts_and_purchase_flows(): void
+    public function test_shows_page_hides_removed_concert_and_keeps_remaining_purchase_flow(): void
     {
         $response = $this->get(route('shows'));
 
@@ -137,9 +136,9 @@ class StorePageTest extends TestCase
             ->assertSee('class="store-shell home-shell golden-stage-shell store-stage-shell"', false)
             ->assertSee(asset('images/reny-renteria-logo-white.png'), false)
             ->assertSee('class="stage-lights"', false)
-            ->assertSee('Reny Renteria en Concierto')
+            ->assertDontSee('Reny Renteria en Concierto')
             ->assertSee('Festival de la Rosa Dorada')
-            ->assertSee('data-free-event-rsvp="concert"', false)
+            ->assertDontSee('data-free-event-rsvp="concert"', false)
             ->assertSee('data-buy="listening"', false)
             ->assertSee('data-buy-url="'.route('store.checkout', ['product' => 'listening']).'"', false)
             ->assertSee('id="paypalButtons"', false)
@@ -149,7 +148,7 @@ class StorePageTest extends TestCase
             ->assertDontSee('home-royal-pass-images', false)
             ->assertSee('class="tab is-active" href="'.route('shows').'" aria-current="page"', false);
 
-        $this->assertSame(2, substr_count($response->getContent(), 'storefront-card'));
+        $this->assertSame(1, substr_count($response->getContent(), 'storefront-card'));
     }
 
     public function test_store_page_normalizes_legacy_royal_pass_cta_label(): void

@@ -107,7 +107,7 @@ class PublicCmsContentTest extends TestCase
             ->assertSee('data-photo-share-url="'.route('photos', ['photo' => $photo->slug]).'"', false);
         $this->get('/store')
             ->assertOk()
-            ->assertSee('Reny Renteria en Concierto')
+            ->assertDontSee('Reny Renteria en Concierto')
             ->assertSee('Crown Collection');
         $this->getJson(route('public-content.payload', 'store'))
             ->assertOk()
@@ -222,7 +222,8 @@ class PublicCmsContentTest extends TestCase
 
         $response = $this->get('/store')
             ->assertOk()
-            ->assertSee('data-free-event-rsvp="concert"', false);
+            ->assertSee('data-free-event-rsvp="concierto"', false)
+            ->assertDontSee('data-free-event-rsvp="concert"', false);
 
         $this->assertStringNotContainsString('data-buy="concierto"', $response->getContent());
 
