@@ -6,7 +6,7 @@ Verdict: **NO-SHIP pending final browser UAT**. The data-integrity regressions f
 
 ## Passing evidence
 
-- PHP: 344 tests, 3,706 assertions, 0 failures.
+- PHP: 345 tests, 3,723 assertions, 0 failures.
 - JavaScript: 20 tests, 0 failures.
 - Production Vite build: pass.
 - Pint and `git diff --check`: pass.
@@ -25,7 +25,7 @@ Verdict: **NO-SHIP pending final browser UAT**. The data-integrity regressions f
   - repeated callbacks reuse a logical analytics event ID within one checkout;
   - video plays are counted only after YouTube reports the `PLAYING` state;
   - custom ranges above 90 days keep current/comparison buckets aligned with no null date point;
-  - sales CSV dates are ISO-8601 and every exported row exactly matches the dashboard chart values;
+  - all six CSV reports map exactly to dashboard values, and sales dates are ISO-8601;
   - submitting a range exposes DOM-backed skeletons and `aria-busy` states.
 
 ## Browser blocker

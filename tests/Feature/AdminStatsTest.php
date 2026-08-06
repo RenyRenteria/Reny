@@ -327,6 +327,96 @@ class AdminStatsTest extends TestCase
         }
     }
 
+    public function test_every_csv_report_maps_exactly_to_the_dashboard_values(): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-08-06 07:30:00', 'America/Panama'));
+        $user = User::factory()->create(['created_at' => CarbonImmutable::parse('2026-08-03 09:00:00', 'America/Panama')]);
+        $order = $this->order('PARITY-ORDER', 2_500, 'USD', '2026-08-04 12:00:00');
+        $order->forceFill(['user_id' => $user->id])->save();
+        $show = FanEvent::forceCreate([
+            'title' => 'Parity Show',
+            'venue' => 'Parity Arena',
+            'timezone' => 'America/Panama',
+            'starts_at' => CarbonImmutable::parse('2026-08-06 20:00:00', 'America/Panama'),
+            'status' => 'scheduled',
+            'metadata' => ['store_event_key' => 'parity-show'],
+        ]);
+        $this->ticket($user, $show, $order, '2026-08-04 12:00:00', '2026-08-06 19:55:00');
+        Rsvp::forceCreate([
+            'event_key' => 'parity-show',
+            'event_name' => 'Parity Show',
+            'name' => 'Private Parity Fan',
+            'email' => 'private-parity@example.test',
+            'country' => 'Panama',
+            'created_at' => CarbonImmutable::parse('2026-08-03 12:00:00', 'America/Panama'),
+        ]);
+        $this->analytics('page_view', 'page', 'store', 'parity-session', '2026-08-02 10:00:00');
+        $this->analytics('store_checkout_started', 'checkout', 'parity-order', 'parity-session', '2026-08-02 10:01:00');
+        $this->analytics('store_payment_succeeded', 'payment', 'paypal', 'parity-session', '2026-08-02 10:02:00');
+        $this->analytics('store_payment_failed', 'payment', 'paypal', 'failed-session', '2026-08-02 10:03:00');
+        $this->analytics('music_play_started', 'music', 'parity-track', 'parity-session', '2026-08-03 10:00:00', 'Parity Track');
+
+        $period = ReportPeriod::fromRequest(Request::create('/', 'GET', [
+            'period' => 'custom',
+            'from' => '2026-08-01',
+            'to' => '2026-08-06',
+        ]));
+        $reports = app(ReportDashboardService::class);
+        $dashboard = $reports->dashboard($period);
+
+        $summary = collect($reports->export('summary', $period)['rows'])->keyBy(0);
+        $salesKpi = collect($dashboard['kpis']['sales'])->firstWhere('currency', 'USD');
+        $this->assertSame(number_format($salesKpi['current_cents'] / 100, 2, '.', ''), $summary['net_sales'][2]);
+        $this->assertSame($dashboard['kpis']['orders']['current'], $summary['completed_orders'][2]);
+        $this->assertSame($dashboard['kpis']['users']['current'], $summary['new_users'][2]);
+        $this->assertSame($dashboard['kpis']['royals']['current'], $summary['active_royals'][2]);
+
+        $funnelRows = collect($reports->export('funnel', $period)['rows'])->keyBy(0);
+        foreach ($dashboard['funnel']['stages'] as $stage) {
+            $row = $funnelRows[str($stage['label'])->snake()->toString()];
+            $this->assertSame($stage['sessions'], $row[1]);
+            $this->assertSame($stage['events'], $row[2]);
+            $this->assertSame($stage['conversion']['value'] ?? null, $row[3]);
+        }
+        $this->assertSame($dashboard['funnel']['failures']['events'], $funnelRows['failed_payments'][2]);
+
+        $product = $dashboard['products'][0];
+        $this->assertSame([
+            $product['key'],
+            $product['title'],
+            $product['kind'],
+            $product['currency'],
+            number_format($product['net_cents'] / 100, 2, '.', ''),
+            $product['units'],
+            $product['orders'],
+            $product['refunds'],
+        ], $reports->export('products', $period)['rows'][0]);
+
+        $content = $dashboard['content'][0];
+        $this->assertSame([
+            $content['type'],
+            $content['item_id'],
+            $content['title'],
+            $content['metric'],
+            $content['events'],
+            $content['sessions'],
+        ], $reports->export('content', $period)['rows'][0]);
+
+        $showRow = $dashboard['shows'][0];
+        $this->assertSame([
+            $showRow['key'],
+            $showRow['title'],
+            $showRow['starts_at'],
+            $showRow['timezone'],
+            $showRow['rsvps'],
+            $showRow['tickets'],
+            $showRow['check_ins'],
+            $showRow['rsvp_to_ticket']['value'] ?? null,
+            $showRow['ticket_to_check_in']['value'] ?? null,
+            $showRow['check_in_available'] ? 'yes' : 'no',
+        ], $reports->export('shows', $period)['rows'][0]);
+    }
+
     public function test_report_routes_require_admin_authentication_and_validate_custom_dates(): void
     {
         $this->get(route('admin.dashboard'))->assertRedirect(route('admin.login'));
