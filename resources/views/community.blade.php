@@ -165,7 +165,12 @@
                         @forelse ($communityPosts as $post)
                             <article class="community-post-card" id="{{ $post['key'] }}" data-title="{{ $post['title'] }}">
                                 <header class="community-post-head">
-                                    <div class="community-reny-avatar" aria-hidden="true">R</div>
+                                    <div class="community-reny-avatar" aria-hidden="true">
+                                        <span>R</span>
+                                        @if ($post['avatar_url'] ?? null)
+                                            <img src="{{ $post['avatar_url'] }}" alt="" data-community-post-avatar>
+                                        @endif
+                                    </div>
                                     <div>
                                         <strong>Reny <span aria-label="Cuenta verificada">✓</span></strong>
                                         <small>@renyoficial · {{ $post['time'] }}</small>
