@@ -327,10 +327,11 @@ class AdminStatsTest extends TestCase
 
         $this->postJson(route('analytics.events.store'), [
             ...$baseEvent,
-            'name' => 'store_checkout_started',
+            'name' => 'store_payment_started',
             'event_id' => 'paypal-payment-started',
             'payload' => [
                 ...$baseEvent['payload'],
+                'item_type' => 'payment_attempt',
                 'checkout_state' => 'payment_started',
                 'result' => 'payment_started',
                 'item_count' => 1,
@@ -351,12 +352,51 @@ class AdminStatsTest extends TestCase
             ],
         ])->assertCreated();
 
-        $started = AccessEvent::query()->where('event_name', 'store_checkout_started')->sole();
+        $started = AccessEvent::query()->where('event_name', 'store_payment_started')->sole();
         $succeeded = AccessEvent::query()->where('event_name', 'store_payment_succeeded')->sole();
 
         $this->assertSame('USD', $started->metadata['currency']);
         $this->assertArrayNotHasKey('paypal_order_id', $started->metadata);
         $this->assertArrayNotHasKey('paypal_order_id', $succeeded->metadata);
+    }
+
+    public function test_non_provider_failures_keep_distinct_analytics_events(): void
+    {
+        $events = [
+            'store_checkout_validation_failed' => 'validation_failed',
+            'store_payment_canceled' => 'canceled',
+            'store_payment_unavailable' => 'unavailable',
+        ];
+
+        foreach ($events as $eventName => $checkoutState) {
+            $this->postJson(route('analytics.events.store'), [
+                'name' => $eventName,
+                'schema_version' => 1,
+                'session_id' => 'checkout-taxonomy-session',
+                'event_id' => 'checkout-'.$checkoutState,
+                'payload' => [
+                    'screen' => 'store_checkout',
+                    'path' => '/store/checkout/royal',
+                    'item_type' => 'payment_method',
+                    'item_id' => 'paypal',
+                    'method' => 'paypal',
+                    'checkout_state' => $checkoutState,
+                    'result' => $checkoutState,
+                    'reason' => $checkoutState,
+                ],
+                'timestamp' => now()->toIso8601String(),
+            ])->assertCreated();
+        }
+
+        $this->assertDatabaseCount('access_events', 3);
+        $this->assertDatabaseMissing('access_events', ['event_name' => 'store_payment_failed']);
+
+        foreach ($events as $eventName => $checkoutState) {
+            $this->assertDatabaseHas('access_events', [
+                'event_name' => $eventName,
+                'result' => $checkoutState,
+            ]);
+        }
     }
 
     public function test_analytics_endpoint_throttles_repeated_posts_by_ip(): void

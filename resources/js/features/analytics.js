@@ -39,6 +39,8 @@ const analyticsRandomId = () => {
     return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
 };
 
+const createAnalyticsId = analyticsRandomId;
+
 const analyticsSessionId = () => {
     const key = 'reny_analytics_session';
 
@@ -86,8 +88,12 @@ const persistedAnalyticsEvents = new Set([
     'paywall_triggered_from_photo',
     'store_product_opened',
     'store_checkout_started',
+    'store_checkout_validation_failed',
+    'store_payment_started',
     'store_payment_succeeded',
     'store_payment_failed',
+    'store_payment_canceled',
+    'store_payment_unavailable',
     'music_play_started',
     'video_play_started',
     'photo_opened',
@@ -134,12 +140,12 @@ const analyticsApi = window.renyAnalytics || {};
 analyticsApi.events = Array.isArray(analyticsApi.events) ? analyticsApi.events : [];
 analyticsApi.sessionId = analyticsSessionId;
 
-const trackEvent = (name, payload = {}) => {
+const trackEvent = (name, payload = {}, { eventId = null } = {}) => {
     const event = {
         name,
         schema_version: 1,
         session_id: analyticsSessionId(),
-        event_id: analyticsRandomId(),
+        event_id: eventId || createAnalyticsId(),
         payload: compactAnalyticsPayload({
             screen: currentAnalyticsScreen(),
             path: window.location.pathname,
@@ -257,6 +263,7 @@ export {
     analyticsText,
     bindOnce,
     compactAnalyticsPayload,
+    createAnalyticsId,
     currentAnalyticsScreen,
     elementAnalyticsLabel,
     elementAnalyticsPayload,

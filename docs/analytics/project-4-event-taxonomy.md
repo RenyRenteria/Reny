@@ -36,7 +36,7 @@ Error or blocked events should include:
 Checkout payment events should also include:
 
 - `method`: `paypal`, `card`, `apple_pay`, or `local`.
-- `checkout_state`: `unavailable`, `validation_failed`, `payment_started`, `payment_success`, or `payment_failed`.
+- `checkout_state`: `unavailable`, `validation_failed`, `payment_started`, `payment_success`, `payment_failed`, or `canceled`.
 - `currency`: an uppercase three-letter ISO code when the payment starts.
 - `paypal_order_id`: accepted only for payment-success transport validation and discarded before analytics storage.
 
@@ -95,9 +95,13 @@ Store and checkout:
 - `store_filter_selected`
 - `store_currency_selected`
 - `store_checkout_started`
+- `store_checkout_validation_failed`
 - `store_payment_method_selected`
+- `store_payment_started`
 - `store_payment_succeeded`
 - `store_payment_failed`
+- `store_payment_canceled`
+- `store_payment_unavailable`
 - `store_rsvp_started`
 - `store_rsvp_succeeded`
 - `store_rsvp_failed`
@@ -118,8 +122,10 @@ The first-party reporting allowlist is:
 - `page_view` for Store/page visits
 - `store_product_opened`
 - `store_checkout_started`
+- `store_payment_started`
 - `store_payment_succeeded`
 - `store_payment_failed` with a normalized non-sensitive reason code
+- `store_checkout_validation_failed`, `store_payment_canceled`, and `store_payment_unavailable` remain separate from provider failures
 - `music_play_started`
 - `video_play_started`
 - `photo_opened`
