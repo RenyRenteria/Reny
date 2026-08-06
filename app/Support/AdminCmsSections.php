@@ -46,7 +46,7 @@ class AdminCmsSections
             ],
             'community' => [
                 'label' => 'Community',
-                'caption' => 'Posts, polls and member updates',
+                'caption' => 'Posts, members and RSVP updates',
                 'accent' => '#1f8a70',
                 'types' => [
                     ContentType::Post->value,

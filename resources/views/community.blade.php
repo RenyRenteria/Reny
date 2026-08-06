@@ -108,7 +108,7 @@
                         <div class="community-welcome-card">
                             <p>{{ $pageSettings['eyebrow'] ?? 'Comunidad oficial' }}</p>
                             <h1>{!! nl2br(e($pageSettings['title'] ?? 'Directo de Reny. Cerca de la comunidad.')) !!}</h1>
-                            <strong>{{ $pageSettings['subtitle'] ?? 'Posts, polls and live conversation' }}</strong>
+                            <strong>{{ $pageSettings['subtitle'] ?? 'Posts and live conversation' }}</strong>
                             <span>{{ $pageSettings['description'] ?? '' }}</span>
                             @if (filled($pageSettings['cover_url'] ?? null))
                                 <img class="public-page-cover" src="{{ $pageSettings['cover_url'] }}" alt="{{ $pageSettings['cover_alt'] ?? '' }}">

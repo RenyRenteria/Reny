@@ -15,6 +15,11 @@ return [
             'extensions' => ['jpg', 'jpeg', 'png', 'webp', 'gif'],
             'mime_types' => ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
         ],
+        MediaAssetType::Video->value => [
+            'max_bytes' => 512 * 1024 * 1024,
+            'extensions' => ['mp4', 'mov', 'webm'],
+            'mime_types' => ['video/mp4', 'video/quicktime', 'video/webm'],
+        ],
         MediaAssetType::Audio->value => [
             'max_bytes' => 1024 * 1024 * 1024,
             'extensions' => ['mp3', 'wav', 'm4a', 'aac', 'flac'],

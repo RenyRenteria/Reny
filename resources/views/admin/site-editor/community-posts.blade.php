@@ -70,7 +70,11 @@
                     @forelse ($posts as $post)
                         @php
                             $coverId = (int) data_get($post->metadata ?? [], 'image_asset_id');
-                            $cover = $post->mediaAssets->firstWhere('id', $coverId) ?? $post->mediaAssets->first();
+                            $cover = $post->mediaAssets->firstWhere('id', $coverId)
+                                ?? $post->mediaAssets->first(fn ($asset) => $asset->pivot?->role === 'cover');
+                            $attachments = $post->mediaAssets
+                                ->filter(fn ($asset) => $asset->pivot?->role === 'attachment')
+                                ->values();
                             $mediaUrls = collect(data_get($post->metadata ?? [], 'media_items', []))->pluck('url')->filter()->implode("\n");
                             $publishedOn = data_get($post->metadata ?? [], 'published_on')
                                 ?: ($post->published_at ?? $post->scheduled_at ?? $post->created_at)?->timezone($timezone)->toDateString();
@@ -105,6 +109,11 @@
                                     <label><span>Title</span><input name="title" type="text" maxlength="160" value="{{ $post->title }}" required></label>
                                     <label><span>Post date</span><input name="published_on" type="date" value="{{ $publishedOn }}" required></label>
                                     <label><span>Replace cover</span><input name="cover_image" type="file" accept="image/avif,image/jpeg,image/png,image/webp"></label>
+                                    <label>
+                                        <span>Add photos or videos</span>
+                                        <input name="attachments[]" type="file" accept="image/avif,image/gif,image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm" multiple>
+                                        <small>Up to 12 files total. Stored on this server.</small>
+                                    </label>
                                     <label><span>Schedule for</span><input name="scheduled_at" type="datetime-local" value="{{ $scheduledAt }}"></label>
                                 </div>
 
@@ -116,6 +125,28 @@
                                             <input name="remove_cover" type="checkbox" value="1">
                                             <span>Remove cover</span>
                                         </label>
+                                    </div>
+                                @endif
+
+                                @if ($attachments->isNotEmpty())
+                                    <div class="community-current-attachments" aria-label="Current post attachments">
+                                        @foreach ($attachments as $attachment)
+                                            @php($attachmentUrl = $attachment->publicUrl())
+                                            <label class="community-current-attachment">
+                                                @if ($attachmentUrl && $attachment->type === \App\Enums\MediaAssetType::Image)
+                                                    <img src="{{ $attachmentUrl }}" alt="{{ $attachment->alt_text ?: $post->title }}">
+                                                @elseif ($attachmentUrl && $attachment->type === \App\Enums\MediaAssetType::Video)
+                                                    <video controls preload="metadata">
+                                                        <source src="{{ $attachmentUrl }}" type="{{ $attachment->mime_type }}">
+                                                    </video>
+                                                @endif
+                                                <span title="{{ $attachment->original_filename }}">{{ $attachment->original_filename }}</span>
+                                                <span class="admin-checkbox">
+                                                    <input name="remove_attachment_ids[]" type="checkbox" value="{{ $attachment->id }}">
+                                                    <span>Remove</span>
+                                                </span>
+                                            </label>
+                                        @endforeach
                                     </div>
                                 @endif
 
@@ -237,6 +268,11 @@
                         <label>
                             <span>Cover image (optional)</span>
                             <input name="cover_image" type="file" accept="image/avif,image/jpeg,image/png,image/webp">
+                        </label>
+                        <label>
+                            <span>Photos or videos (optional)</span>
+                            <input name="attachments[]" type="file" accept="image/avif,image/gif,image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm" multiple>
+                            <small>Up to 12 files. Stored on this server.</small>
                         </label>
                         <label>
                             <span>Schedule for</span>

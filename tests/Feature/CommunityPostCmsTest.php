@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\ContentType;
 use App\Enums\EditorialStatus;
+use App\Enums\MediaAssetType;
 use App\Models\CommunityPostReply;
 use App\Models\EditorialContent;
 use App\Models\User;
@@ -100,6 +101,114 @@ class CommunityPostCmsTest extends TestCase
             ->assertSee('<audio controls', false)
             ->assertDontSee('<script', false)
             ->assertDontSee('View Reny note');
+    }
+
+    public function test_editor_can_add_and_remove_server_hosted_photo_and_video_attachments(): void
+    {
+        Storage::fake('public');
+        $reny = $this->communityEditor();
+
+        $this->actingAsAdmin($reny)
+            ->post(route('admin.site-editor.community-posts.store'), $this->postPayload([
+                'title' => 'Post con galería local',
+                'attachments' => [
+                    UploadedFile::fake()->image('backstage.jpg', 1200, 800),
+                    UploadedFile::fake()->create('rehearsal.mp4', 256, 'video/mp4'),
+                ],
+            ]))
+            ->assertRedirect(route('admin.site-editor.show', ['page' => 'community']));
+
+        $post = EditorialContent::query()->sole()->load('mediaAssets');
+        $image = $post->mediaAssets->firstWhere('type', MediaAssetType::Image);
+        $video = $post->mediaAssets->firstWhere('type', MediaAssetType::Video);
+
+        $this->assertNotNull($image);
+        $this->assertNotNull($video);
+        $this->assertSame('attachment', $image->pivot->role);
+        $this->assertSame('attachment', $video->pivot->role);
+        Storage::disk('public')->assertExists($image->path);
+        Storage::disk('public')->assertExists($video->path);
+
+        $this->get('/royals')
+            ->assertOk()
+            ->assertSee($image->publicUrl(), false)
+            ->assertSee($video->publicUrl(), false)
+            ->assertSee('<video controls preload="metadata">', false);
+
+        $removedVideoUrl = $video->publicUrl();
+
+        $this->actingAsAdmin($reny)
+            ->patch(route('admin.site-editor.community-posts.update', $post), $this->postPayload([
+                'title' => 'Post con galería actualizada',
+                'remove_attachment_ids' => [$video->id],
+                'attachments' => [UploadedFile::fake()->image('encore.png', 900, 900)],
+            ]))
+            ->assertRedirect(route('admin.site-editor.show', ['page' => 'community']));
+
+        $post->refresh()->load('mediaAssets');
+
+        $this->assertCount(2, $post->mediaAssets);
+        $this->assertFalse($post->mediaAssets->contains($video));
+        $this->assertTrue($post->mediaAssets->contains($image));
+        $this->assertSame(
+            [MediaAssetType::Image, MediaAssetType::Image],
+            $post->mediaAssets->pluck('type')->all(),
+        );
+
+        $this->get('/royals')
+            ->assertOk()
+            ->assertSee('Post con galería actualizada')
+            ->assertSee($image->publicUrl(), false)
+            ->assertDontSee($removedVideoUrl, false);
+    }
+
+    public function test_legacy_royal_posts_are_backfilled_as_manageable_cms_posts(): void
+    {
+        $reny = $this->communityEditor();
+        $migration = require database_path('migrations/2026_08_05_200000_backfill_legacy_community_posts.php');
+
+        $migration->up();
+
+        $this->assertDatabaseHas('editorial_contents', [
+            'type' => ContentType::Post->value,
+            'slug' => 'studio-note-from-reny',
+            'status' => EditorialStatus::Published->value,
+        ]);
+        $this->assertDatabaseHas('editorial_contents', [
+            'type' => ContentType::Post->value,
+            'slug' => 'capri-photo-drop',
+            'status' => EditorialStatus::Published->value,
+        ]);
+
+        $this->get('/royals')
+            ->assertOk()
+            ->assertSee('Studio note from Reny')
+            ->assertSee('Capri photo drop')
+            ->assertSee('https://images.unsplash.com/photo-1598488035139-bdbb2231ce04', false)
+            ->assertDontSee('Which drop should go first?');
+
+        $this->actingAsAdmin($reny)
+            ->get(route('admin.site-editor.show', ['page' => 'community']))
+            ->assertOk()
+            ->assertSee('Studio note from Reny')
+            ->assertSee('Capri photo drop');
+    }
+
+    public function test_post_attachments_reject_unsafe_file_extensions(): void
+    {
+        Storage::fake('public');
+        $reny = $this->communityEditor();
+
+        $this->actingAsAdmin($reny)
+            ->post(route('admin.site-editor.community-posts.store'), $this->postPayload([
+                'attachments' => [
+                    UploadedFile::fake()->create('not-a-video.php', 16, 'video/mp4'),
+                ],
+            ]))
+            ->assertSessionHasErrors('attachments.0');
+
+        $this->assertDatabaseCount('editorial_contents', 0);
+        $this->assertDatabaseCount('media_assets', 0);
     }
 
     public function test_editor_can_save_draft_schedule_and_order_published_posts_by_date(): void

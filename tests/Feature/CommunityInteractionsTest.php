@@ -98,6 +98,14 @@ class CommunityInteractionsTest extends TestCase
 
     public function test_poll_vote_persists_and_blocks_duplicate_vote(): void
     {
+        config()->set('reny_catalog.community.poll', [
+            'key' => 'which-drop-should-go-first',
+            'question' => 'Which drop should go first?',
+            'options' => [
+                ['key' => 'studio-photos', 'label' => 'Studio photos', 'votes' => 524],
+                ['key' => 'travel-archive', 'label' => 'Travel archive', 'votes' => 300],
+            ],
+        ]);
         $user = User::factory()->royal()->create();
 
         $this->actingAs($user)

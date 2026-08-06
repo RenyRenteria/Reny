@@ -5,6 +5,7 @@ namespace App\Enums;
 enum MediaAssetType: string
 {
     case Image = 'image';
+    case Video = 'video';
     case Audio = 'audio';
     case ShortVideo = 'short_video';
     case Document = 'document';

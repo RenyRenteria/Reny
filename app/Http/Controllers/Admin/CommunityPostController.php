@@ -17,7 +17,9 @@ use App\Support\CommunityPostContent;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -91,9 +93,22 @@ class CommunityPostController extends Controller
             'media_urls' => ['nullable', 'string', 'max:12000'],
             'cover_image' => ['nullable', 'image', 'mimes:avif,jpeg,jpg,png,webp', 'max:12288'],
             'remove_cover' => ['nullable', 'boolean'],
+            'attachments' => ['nullable', 'array', 'max:12'],
+            'attachments.*' => [
+                'file',
+                'extensions:avif,gif,jpeg,jpg,mov,mp4,png,webm,webp',
+                'mimes:avif,gif,jpeg,jpg,mov,mp4,png,webm,webp',
+                'max:524288',
+            ],
+            'remove_attachment_ids' => ['nullable', 'array'],
+            'remove_attachment_ids.*' => ['integer'],
         ], [
             'scheduled_at.required_if' => 'Selecciona la fecha y hora para programar el post.',
             'scheduled_at.after' => 'La fecha programada debe estar en el futuro.',
+            'attachments.max' => 'Puedes adjuntar hasta 12 fotos o videos por post.',
+            'attachments.*.extensions' => 'Los adjuntos deben ser fotos (AVIF, GIF, JPG, PNG, WEBP) o videos (MOV, MP4, WEBM).',
+            'attachments.*.mimes' => 'Los adjuntos deben ser fotos (AVIF, GIF, JPG, PNG, WEBP) o videos (MOV, MP4, WEBM).',
+            'attachments.*.max' => 'Cada adjunto puede pesar hasta 512 MB.',
         ]);
 
         $body = CommunityPostContent::sanitize((string) $validated['body']);
@@ -105,12 +120,35 @@ class CommunityPostController extends Controller
         }
 
         $post?->loadMissing('mediaAssets');
+        $removeAttachmentIds = collect($validated['remove_attachment_ids'] ?? [])
+            ->map(fn (mixed $id): int => (int) $id)
+            ->filter()
+            ->unique();
+        $existingAttachments = $this->existingAttachments($post, $removeAttachmentIds);
+        $attachmentFiles = collect(Arr::wrap($request->file('attachments')))
+            ->filter(fn (mixed $file): bool => $file instanceof UploadedFile)
+            ->values();
+
+        if ($existingAttachments->count() + $attachmentFiles->count() > 12) {
+            throw ValidationException::withMessages([
+                'attachments' => 'Puedes mantener hasta 12 fotos o videos adjuntos por post.',
+            ]);
+        }
+
+        $newAttachments = collect();
 
         try {
+            $newAttachments = $this->storeAttachments($request, $library, $attachmentFiles);
             $cover = $this->coverAsset($request, $library, $post);
         } catch (MediaUploadException $exception) {
-            return back()->withErrors(['cover_image' => $exception->getMessage()])->withInput();
+            $newAttachments->each(fn (MediaAsset $asset) => $library->delete($asset));
+
+            return back()->withErrors([
+                ($request->hasFile('attachments') ? 'attachments' : 'cover_image') => $exception->getMessage(),
+            ])->withInput();
         }
+
+        $attachments = $existingAttachments->concat($newAttachments)->values();
 
         $existingMetadata = $post?->metadata ?? [];
         $metadata = [
@@ -136,11 +174,20 @@ class CommunityPostController extends Controller
             'visibility' => VisibilityAudience::Open->value,
             'scheduled_at' => $validated['scheduled_at'] ?? null,
             'metadata' => $metadata,
-            'media_assets' => $cover ? [[
-                'id' => $cover->id,
-                'role' => 'cover',
-                'sort_order' => 0,
-            ]] : [],
+            'media_assets' => [
+                ...($cover ? [[
+                    'id' => $cover->id,
+                    'role' => 'cover',
+                    'sort_order' => 0,
+                ]] : []),
+                ...$attachments
+                    ->map(fn (MediaAsset $asset, int $index): array => [
+                        'id' => $asset->id,
+                        'role' => 'attachment',
+                        'sort_order' => $index + 1,
+                    ])
+                    ->all(),
+            ],
         ];
 
         $action = (string) $validated['action'];
@@ -193,7 +240,66 @@ class CommunityPostController extends Controller
         $coverId = (int) Arr::get($post->metadata ?? [], 'image_asset_id');
 
         return $post->mediaAssets->firstWhere('id', $coverId)
-            ?? $post->mediaAssets->first();
+            ?? $post->mediaAssets->first(
+                fn (MediaAsset $asset): bool => $asset->pivot?->role === 'cover'
+            );
+    }
+
+    /**
+     * @param  Collection<int, int>  $removeAttachmentIds
+     * @return Collection<int, MediaAsset>
+     */
+    private function existingAttachments(
+        ?EditorialContent $post,
+        Collection $removeAttachmentIds,
+    ): Collection {
+        if (! $post) {
+            return collect();
+        }
+
+        return $post->mediaAssets
+            ->filter(fn (MediaAsset $asset): bool => $asset->pivot?->role === 'attachment')
+            ->reject(fn (MediaAsset $asset): bool => $removeAttachmentIds->contains($asset->id))
+            ->values();
+    }
+
+    /**
+     * @param  Collection<int, UploadedFile>  $files
+     * @return Collection<int, MediaAsset>
+     */
+    private function storeAttachments(
+        Request $request,
+        MediaLibraryService $library,
+        Collection $files,
+    ): Collection {
+        $assets = collect();
+
+        try {
+            foreach ($files->groupBy(function (UploadedFile $file): string {
+                $extension = strtolower($file->getClientOriginalExtension());
+
+                return str_starts_with((string) $file->getMimeType(), 'video/')
+                    || in_array($extension, ['mov', 'mp4', 'webm'], true)
+                ? MediaAssetType::Video->value
+                : MediaAssetType::Image->value;
+            }) as $type => $typedFiles) {
+                $assets = $assets->concat($library->storeUploads($request->user(), [
+                    'type' => $type,
+                    'title' => trim((string) $request->input('title')).' attachment',
+                    'is_public' => true,
+                    'alt_text' => $type === MediaAssetType::Image->value
+                        ? trim((string) $request->input('title'))
+                        : null,
+                    'metadata' => ['source' => 'community_post_attachment'],
+                ], $typedFiles->all()));
+            }
+        } catch (MediaUploadException $exception) {
+            $assets->each(fn (MediaAsset $asset) => $library->delete($asset));
+
+            throw $exception;
+        }
+
+        return $assets->values();
     }
 
     private function assertPost(EditorialContent $post): void

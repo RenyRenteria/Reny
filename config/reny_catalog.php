@@ -67,15 +67,7 @@ return [
             'pinned_message' => 'Bienvenidos al chat oficial de Reny. Sé amable, evita spam y reporta cualquier situación al equipo.',
         ],
         'posts' => [],
-        'poll' => [
-            'key' => 'which-drop-should-go-first',
-            'question' => 'Which drop should go first?',
-            'options' => [
-                ['key' => 'studio-photos', 'label' => 'Studio photos', 'votes' => 524],
-                ['key' => 'performance-stills', 'label' => 'Performance stills', 'votes' => 424],
-                ['key' => 'travel-archive', 'label' => 'Travel archive', 'votes' => 300],
-            ],
-        ],
+        'poll' => [],
         'clubs' => [
             [
                 'key' => 'dominican-republic',

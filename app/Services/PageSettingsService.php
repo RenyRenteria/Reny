@@ -39,7 +39,7 @@ class PageSettingsService
             'community' => [
                 'eyebrow' => 'Comunidad oficial',
                 'title' => 'Directo de Reny. Cerca de la comunidad.',
-                'subtitle' => 'Posts, polls and live conversation',
+                'subtitle' => 'Posts and live conversation',
                 'description' => 'Posts oficiales, anuncios y momentos exclusivos de Reny. La conversación continúa en el Live Chat.',
             ],
             'store' => [
