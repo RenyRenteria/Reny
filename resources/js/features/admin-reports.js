@@ -29,9 +29,14 @@ const initializeReportFilters = (root = document) => {
 
             form.classList.add('is-loading');
             form.setAttribute('aria-busy', 'true');
-            document.querySelectorAll('[data-report-module]').forEach((module) => {
+            root.querySelectorAll('[data-report-module]').forEach((module) => {
                 module.classList.add('is-loading');
                 module.setAttribute('aria-busy', 'true');
+                const skeleton = module.querySelector('[data-report-skeleton]');
+
+                if (skeleton) {
+                    skeleton.hidden = false;
+                }
             });
 
             if (status) {

@@ -94,8 +94,12 @@ const persistedAnalyticsEvents = new Set([
     'paywall_triggered_from_photo',
     'store_product_opened',
     'store_checkout_started',
+    'store_checkout_validation_failed',
+    'store_payment_started',
     'store_payment_succeeded',
     'store_payment_failed',
+    'store_payment_canceled',
+    'store_payment_unavailable',
     'music_play_started',
     'video_play_started',
     'free_event_rsvp_succeeded',
@@ -184,11 +188,11 @@ const persistAnalyticsEvent = (event) => {
 const analyticsApi = window.renyAnalytics || {};
 analyticsApi.events = Array.isArray(analyticsApi.events) ? analyticsApi.events : [];
 
-const trackEvent = (name, payload = {}) => {
+const trackEvent = (name, payload = {}, { eventId = null } = {}) => {
     const event = {
         name,
         schema_version: 1,
-        event_id: createAnalyticsId(),
+        event_id: eventId || createAnalyticsId(),
         session_id: analyticsSessionId(),
         payload: compactAnalyticsPayload({
             screen: currentAnalyticsScreen(),
@@ -308,6 +312,7 @@ export {
     bindOnce,
     compactAnalyticsPayload,
     currentAnalyticsScreen,
+    createAnalyticsId,
     elementAnalyticsLabel,
     elementAnalyticsPayload,
     normalizeAnalyticsKey,

@@ -108,6 +108,7 @@
                             @endforeach
                         </div>
                     @endif
+                    @include('admin.partials.report-skeleton')
                 </article>
 
                 <article class="stats-summary-card" data-report-module="completed-orders">
@@ -117,6 +118,7 @@
                     </div>
                     <strong @class(['is-error' => $reportErrors['commerce']])>{{ $reportErrors['commerce'] ? 'N/A' : number_format($kpis['orders']['current']) }}</strong>
                     <span>{{ $reportErrors['commerce'] ? 'Could not load' : $formatVariation($kpis['orders']['variation']) .' vs previous' }}</span>
+                    @include('admin.partials.report-skeleton')
                 </article>
 
                 <article class="stats-summary-card" data-report-module="active-royals">
@@ -126,6 +128,7 @@
                     </div>
                     <strong @class(['is-error' => $reportErrors['audience']])>{{ $reportErrors['audience'] ? 'N/A' : number_format($kpis['royals']['current']) }}</strong>
                     <span>Current snapshot · comparison N/A</span>
+                    @include('admin.partials.report-skeleton')
                 </article>
 
                 <article class="stats-summary-card" data-report-module="new-users">
@@ -135,6 +138,7 @@
                     </div>
                     <strong @class(['is-error' => $reportErrors['audience']])>{{ $reportErrors['audience'] ? 'N/A' : number_format($kpis['users']['current']) }}</strong>
                     <span>{{ $reportErrors['audience'] ? 'Could not load' : $formatVariation($kpis['users']['variation']) .' vs previous' }}</span>
+                    @include('admin.partials.report-skeleton')
                 </article>
             </section>
 
@@ -181,17 +185,25 @@
                                                         type="button"
                                                         @class(['stats-comparison-bar', 'is-current', 'is-negative' => $point['current_cents'] < 0, 'is-zero' => $point['current_cents'] === 0])
                                                         style="--bar-height: {{ $point['current_height'] }}%;"
-                                                        aria-label="{{ $point['current_range'] }} active period net sales: {{ $point['current'] }}"
+                                                        aria-label="{{ $point['current_range'] }} active net sales {{ $point['current'] }}; comparison {{ $point['previous_range'] }} net sales {{ $point['previous'] }}"
                                                     >
-                                                        <span>{{ $point['current'] }}</span>
+                                                        <span class="stats-chart-tooltip">
+                                                            <strong>{{ $point['current_range'] }}</strong>
+                                                            <span>Active: {{ $point['current'] }}</span>
+                                                            <span>Comparison: {{ $point['previous_range'] }} · {{ $point['previous'] }}</span>
+                                                        </span>
                                                     </button>
                                                     <button
                                                         type="button"
                                                         @class(['stats-comparison-bar', 'is-previous', 'is-negative' => $point['previous_cents'] < 0, 'is-zero' => $point['previous_cents'] === 0])
                                                         style="--bar-height: {{ $point['previous_height'] }}%;"
-                                                        aria-label="{{ $point['previous_range'] }} previous period net sales: {{ $point['previous'] }}"
+                                                        aria-label="{{ $point['previous_range'] }} comparison net sales {{ $point['previous'] }}; active {{ $point['current_range'] }} net sales {{ $point['current'] }}"
                                                     >
-                                                        <span>{{ $point['previous'] }}</span>
+                                                        <span class="stats-chart-tooltip">
+                                                            <strong>{{ $point['previous_range'] }}</strong>
+                                                            <span>Comparison: {{ $point['previous'] }}</span>
+                                                            <span>Active: {{ $point['current_range'] }} · {{ $point['current'] }}</span>
+                                                        </span>
                                                     </button>
                                                 </div>
                                                 <small>{{ $point['label'] }}</small>
@@ -203,6 +215,7 @@
                         </article>
                     @endforeach
                 @endif
+                @include('admin.partials.report-skeleton')
             </section>
 
             <div class="stats-dashboard-grid">
@@ -244,6 +257,7 @@
                             <small>{{ number_format($funnel['failures']['events']) }} events</small>
                         </div>
                     @endif
+                    @include('admin.partials.report-skeleton')
                 </section>
 
                 <section class="stats-panel" aria-labelledby="products-title" data-report-module="products">
@@ -279,6 +293,7 @@
                             </table>
                         </div>
                     @endif
+                    @include('admin.partials.report-skeleton')
                 </section>
             </div>
 
@@ -306,6 +321,7 @@
                             @endforeach
                         </ol>
                     @endif
+                    @include('admin.partials.report-skeleton')
                 </section>
 
                 <section class="stats-panel" aria-labelledby="shows-title" data-report-module="shows">
@@ -341,6 +357,7 @@
                             </table>
                         </div>
                     @endif
+                    @include('admin.partials.report-skeleton')
                 </section>
             </div>
 

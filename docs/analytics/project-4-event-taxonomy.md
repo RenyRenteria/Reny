@@ -25,7 +25,7 @@ Persisted browser events use schema version 1:
 }
 ```
 
-- `event_id` is generated once per browser event and HMAC-hashed by the server as the idempotency key.
+- `event_id` is generated once per logical browser event and HMAC-hashed by the server as the idempotency key. Repeated callbacks for the same checkout state reuse it until a new checkout begins.
 - `session_id` lives in `sessionStorage` and is HMAC-hashed by the server before persistence.
 - `created_at` is the authoritative server timestamp. `client_occurred_at` is diagnostic only.
 - Duplicate `event_id` submissions return success without creating another record.
@@ -40,8 +40,12 @@ Event                         Resource                Reporting use
 page_view                     page                   Store visit
 store_product_opened          product                Product visit
 store_checkout_started        checkout               Funnel step
+store_checkout_validation_failed checkout             Checkout diagnostic
+store_payment_started         payment                Payment attempt diagnostic
 store_payment_succeeded       payment                Funnel step
 store_payment_failed          payment                Failure diagnostic
+store_payment_canceled        payment                Cancellation diagnostic
+store_payment_unavailable     payment                Availability diagnostic
 music_play_started            music                  Content ranking
 video_play_started            video                  Content ranking
 free_event_rsvp_succeeded     show                    RSVP instrumentation
@@ -51,7 +55,7 @@ permission_denied             access_gate             Access diagnostics
 paywall_triggered_from_photo  photo                   Access diagnostics
 ```
 
-Payment success/failure allows only a non-sensitive normalized reason code plus method, currency, count, and result. Financial totals never use these analytics events.
+Only `store_payment_failed` represents a provider or capture failure. Cancellations, unavailable methods, and validation failures have separate events and never enter the failed-payment KPI. Payment events allow only a non-sensitive normalized reason code plus method, currency, count, and result. Financial totals never use these analytics events.
 
 ## Canonical report sources
 

@@ -99,8 +99,31 @@ class AdminStatsTest extends TestCase
             ->assertSee('value="2026-08-01"', false)
             ->assertSee('value="2026-08-06"', false)
             ->assertSee('America/Panama')
+            ->assertSee('data-report-skeleton', false)
+            ->assertSee('stats-chart-tooltip', false)
+            ->assertSee('Comparison:')
             ->assertSee('data-admin-nav="stats"', false)
             ->assertDontSee('data-admin-nav="dashboard"', false);
+    }
+
+    public function test_long_custom_ranges_keep_current_and_previous_sales_buckets_aligned(): void
+    {
+        $period = ReportPeriod::fromRequest(Request::create('/', 'GET', [
+            'period' => 'custom',
+            'from' => '2025-03-01',
+            'to' => '2025-05-30',
+        ]));
+        $chart = collect(app(ReportDashboardService::class)->dashboard($period)['sales_charts'])
+            ->firstWhere('currency', 'USD');
+
+        $this->assertSame('monthly', $chart['granularity']);
+        $this->assertCount(3, $chart['points']);
+        $this->assertSame($period->start->toIso8601String(), $chart['points'][0]['current_start']);
+        $this->assertSame($period->end->toIso8601String(), $chart['points'][2]['current_end']);
+        $this->assertSame($period->previousStart->toIso8601String(), $chart['points'][0]['previous_start']);
+        $this->assertSame($period->previousEnd->toIso8601String(), $chart['points'][2]['previous_end']);
+        $this->assertNotContains(null, collect($chart['points'])->pluck('current_start')->all());
+        $this->assertNotContains(null, collect($chart['points'])->pluck('previous_start')->all());
     }
 
     public function test_dashboard_funnel_deduplicates_sessions_and_content_ranking_keeps_metric_types_separate(): void
@@ -116,6 +139,9 @@ class AdminStatsTest extends TestCase
         $this->analytics('store_payment_succeeded', 'payment', 'paypal', 'session-a', '2026-08-02 10:05:00');
         $this->analytics('store_payment_succeeded', 'payment', 'paypal', 'session-a', '2026-08-02 10:05:01');
         $this->analytics('store_payment_failed', 'payment', 'paypal', 'session-b', '2026-08-02 11:00:00');
+        $this->analytics('store_payment_canceled', 'payment', 'paypal', 'session-c', '2026-08-02 11:01:00');
+        $this->analytics('store_payment_unavailable', 'payment', 'card', 'session-d', '2026-08-02 11:02:00');
+        $this->analytics('store_checkout_validation_failed', 'checkout', 'album-one', 'session-e', '2026-08-02 11:03:00');
         $this->analytics('music_play_started', 'music', 'track-one', 'session-a', '2026-08-03 10:00:00', 'Track One');
         $this->analytics('music_play_started', 'music', 'track-one', 'session-a', '2026-08-03 10:01:00', 'Track One');
         $this->analytics('video_play_started', 'video', 'video-one', 'session-b', '2026-08-03 11:00:00', 'Video One');
@@ -134,6 +160,7 @@ class AdminStatsTest extends TestCase
         $this->assertSame(1, $dashboard['funnel']['stages'][2]['sessions']);
         $this->assertSame(100.0, $dashboard['funnel']['stages'][2]['conversion']['value']);
         $this->assertSame(1, $dashboard['funnel']['failures']['sessions']);
+        $this->assertSame(1, $dashboard['funnel']['failures']['events']);
         $this->assertSame('partial', $dashboard['funnel']['coverage']['status']);
         $this->assertSame('Track One', $dashboard['content'][0]['title']);
         $this->assertSame('music', $dashboard['content'][0]['type']);
@@ -162,6 +189,14 @@ class AdminStatsTest extends TestCase
             'status' => 'scheduled',
             'metadata' => ['store_event_key' => 'panama-live'],
         ]);
+        $futureShow = FanEvent::forceCreate([
+            'title' => 'Future Canonical Show',
+            'venue' => 'Future Arena',
+            'timezone' => 'America/Panama',
+            'starts_at' => CarbonImmutable::parse('2026-09-10 20:00:00', 'America/Panama'),
+            'status' => 'scheduled',
+            'metadata' => ['store_event_key' => 'future-canonical'],
+        ]);
         $order = $this->order('SHOW-ORDER', 2_500, 'USD', '2026-08-02 12:00:00');
         $order->forceFill(['user_id' => $user->id])->save();
 
@@ -174,6 +209,14 @@ class AdminStatsTest extends TestCase
             'email' => 'private@example.test',
             'country' => 'Panama',
             'created_at' => CarbonImmutable::parse('2026-08-03 12:00:00', 'America/Panama'),
+        ]);
+        Rsvp::forceCreate([
+            'event_key' => 'future-canonical',
+            'event_name' => 'Stale RSVP Label',
+            'name' => 'Canonical Match',
+            'email' => 'canonical@example.test',
+            'country' => 'Panama',
+            'created_at' => CarbonImmutable::parse('2026-08-03 12:30:00', 'America/Panama'),
         ]);
         Rsvp::forceCreate([
             'event_key' => 'free-unlinked',
@@ -197,6 +240,12 @@ class AdminStatsTest extends TestCase
         $this->assertSame(1, $shows['panama-live']['check_ins']);
         $this->assertSame(33.3, $shows['panama-live']['rsvp_to_ticket']['value']);
         $this->assertSame(100.0, $shows['panama-live']['ticket_to_check_in']['value']);
+        $this->assertSame($futureShow->title, $shows['future-canonical']['title']);
+        $this->assertSame($futureShow->starts_at->toIso8601String(), $shows['future-canonical']['starts_at']);
+        $this->assertSame(1, $shows['future-canonical']['rsvps']);
+        $this->assertSame(0, $shows['future-canonical']['tickets']);
+        $this->assertSame(0, $shows['future-canonical']['check_ins']);
+        $this->assertTrue($shows['future-canonical']['check_in_available']);
         $this->assertNull($shows['free-unlinked']['tickets']);
         $this->assertNull($shows['free-unlinked']['check_ins']);
         $this->assertFalse($shows['free-unlinked']['check_in_available']);
@@ -237,6 +286,44 @@ class AdminStatsTest extends TestCase
             $this->assertStringStartsWith($header, $csv);
             $this->assertStringNotContainsString('admin-private@example.test', $csv);
             $this->assertStringNotContainsString('provider_order_id', $csv);
+        }
+    }
+
+    public function test_sales_csv_rows_have_iso_dates_and_exactly_match_dashboard_chart_values(): void
+    {
+        $this->order('CSV-CURRENT', 1_250, 'USD', '2026-08-04 12:00:00');
+        $this->order('CSV-PREVIOUS', 400, 'USD', '2026-07-28 12:00:00');
+        $period = ReportPeriod::fromRequest(Request::create('/', 'GET', [
+            'period' => 'custom',
+            'from' => '2026-08-01',
+            'to' => '2026-08-06',
+        ]));
+        $reports = app(ReportDashboardService::class);
+        $dashboard = $reports->dashboard($period);
+        $export = $reports->export('sales', $period);
+        $expectedRows = collect($dashboard['sales_charts'])
+            ->flatMap(fn (array $chart): array => collect($chart['points'])
+                ->map(fn (array $point): array => [
+                    $chart['currency'],
+                    $chart['granularity'],
+                    $point['current_start'],
+                    $point['current_end'],
+                    number_format($point['current_cents'] / 100, 2, '.', ''),
+                    $point['previous_start'],
+                    $point['previous_end'],
+                    number_format($point['previous_cents'] / 100, 2, '.', ''),
+                ])->all())
+            ->values()
+            ->all();
+
+        $this->assertSame($expectedRows, $export['rows']);
+        $this->assertSame('current_period_start', $export['headers'][2]);
+        $this->assertSame('previous_period_start', $export['headers'][5]);
+
+        foreach ($export['rows'] as $row) {
+            foreach ([2, 3, 5, 6] as $dateColumn) {
+                $this->assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/', $row[$dateColumn]);
+            }
         }
     }
 
@@ -379,6 +466,45 @@ class AdminStatsTest extends TestCase
         $this->assertNotSame($sessionId, $event->session_key);
         $this->assertArrayNotHasKey('session_id', $event->metadata);
         $this->assertArrayNotHasKey('event_id', $event->metadata);
+    }
+
+    public function test_checkout_diagnostic_events_are_separate_and_idempotent(): void
+    {
+        $sessionId = '018f6f50-3c90-7e25-bf42-abcdef123456';
+        $events = [
+            'store_payment_started',
+            'store_payment_failed',
+            'store_payment_canceled',
+            'store_payment_unavailable',
+            'store_checkout_validation_failed',
+        ];
+
+        foreach ($events as $index => $name) {
+            $payload = [
+                'name' => $name,
+                'schema_version' => 1,
+                'event_id' => sprintf('018f6f50-3c90-7e25-bf42-%012d', $index + 1),
+                'session_id' => $sessionId,
+                'payload' => [
+                    'screen' => 'store_checkout',
+                    'path' => '/store/checkout/album',
+                    'item_id' => 'paypal',
+                    'method' => 'paypal',
+                    'checkout_state' => str($name)->after('store_')->toString(),
+                    'result' => 'diagnostic',
+                ],
+            ];
+
+            $this->postJson(route('analytics.events.store'), $payload)->assertCreated();
+            $this->postJson(route('analytics.events.store'), $payload)
+                ->assertOk()
+                ->assertJsonPath('created', false);
+        }
+
+        $this->assertDatabaseCount('access_events', count($events));
+        $this->assertSame(1, AccessEvent::query()->where('event_name', 'store_payment_failed')->count());
+        $this->assertSame(1, AccessEvent::query()->where('event_name', 'store_payment_canceled')->count());
+        $this->assertSame(1, AccessEvent::query()->where('event_name', 'store_payment_unavailable')->count());
     }
 
     public function test_analytics_endpoint_rejects_untracked_events_unexpected_fields_and_oversized_payloads(): void

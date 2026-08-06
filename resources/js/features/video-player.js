@@ -4,6 +4,7 @@ import {
     normalizeAnalyticsKey,
     trackElementEvent,
 } from './analytics.js';
+import { createYouTubePlaybackObserver } from './youtube-playback.js';
 
 const videoPlayerElements = () => ({
     layer: document.getElementById('videoPlayerLayer'),
@@ -17,6 +18,46 @@ const videoPlayerElements = () => ({
 });
 let focusedBeforeVideoPlayer = null;
 let activeVideoButton = null;
+let activeYouTubePlayer = null;
+let youtubePlayerApiPromise = null;
+
+const loadYouTubePlayerApi = () => {
+    if (window.YT?.Player) {
+        return Promise.resolve(window.YT);
+    }
+
+    if (youtubePlayerApiPromise) {
+        return youtubePlayerApiPromise;
+    }
+
+    youtubePlayerApiPromise = new Promise((resolve, reject) => {
+        const previousReady = window.onYouTubeIframeAPIReady;
+        window.onYouTubeIframeAPIReady = () => {
+            if (typeof previousReady === 'function') {
+                previousReady();
+            }
+
+            if (window.YT?.Player) {
+                resolve(window.YT);
+            } else {
+                reject(new Error('youtube_api_unavailable'));
+            }
+        };
+
+        let script = document.querySelector('script[src="https://www.youtube.com/iframe_api"]');
+
+        if (!script) {
+            script = document.createElement('script');
+            script.src = 'https://www.youtube.com/iframe_api';
+            script.async = true;
+            document.head.append(script);
+        }
+
+        script.addEventListener('error', () => reject(new Error('youtube_api_load_failed')), { once: true });
+    });
+
+    return youtubePlayerApiPromise;
+};
 
 const getVideoFocusable = () => [...(videoPlayerElements().layer?.querySelectorAll('button, [href], iframe, [tabindex]:not([tabindex="-1"])') || [])]
     .filter((node) => !node.disabled && node.offsetParent !== null);
@@ -48,6 +89,8 @@ const closeVideoPlayer = () => {
 
     layer.hidden = true;
     layer.setAttribute('inert', '');
+    activeYouTubePlayer?.destroy?.();
+    activeYouTubePlayer = null;
     frame?.replaceChildren();
     frame?.setAttribute('hidden', '');
     document.body.classList.remove('has-modal-open');
@@ -147,31 +190,59 @@ const openVideoPlayer = (button) => {
         return;
     }
 
-    const iframe = document.createElement('iframe');
-    iframe.src = `https://www.youtube.com/embed/${encodeURIComponent(youtubeId)}?autoplay=1&rel=0`;
-    iframe.title = title;
-    iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
-    iframe.allowFullscreen = true;
+    activeYouTubePlayer?.destroy?.();
+    activeYouTubePlayer = null;
+    const playerMount = document.createElement('div');
+    frame.append(playerMount);
+    frame.hidden = false;
 
-    iframe.addEventListener('load', () => {
+    const confirmPlayback = createYouTubePlaybackObserver(() => {
         state.textContent = 'Playing';
         message.textContent = 'Streaming from YouTube.';
         trackElementEvent(button, 'video_play_started', {
             item_type: button.dataset.analyticsType || 'video',
             result: 'started',
         });
-    }, { once: true });
+    });
 
-    iframe.addEventListener('error', () => {
-        renderVideoPlayerError(
+    loadYouTubePlayerApi()
+        .then((youtube) => {
+            if (activeVideoButton !== button || layer.hidden) {
+                return;
+            }
+
+            activeYouTubePlayer = new youtube.Player(playerMount, {
+                videoId: youtubeId,
+                width: '100%',
+                height: '100%',
+                playerVars: {
+                    autoplay: 1,
+                    playsinline: 1,
+                    rel: 0,
+                    origin: window.location.origin,
+                },
+                events: {
+                    onReady: (event) => {
+                        const iframe = event.target.getIframe?.();
+                        iframe?.setAttribute('title', title);
+                        state.textContent = 'Ready';
+                        message.textContent = 'Press play to start streaming from YouTube.';
+                        event.target.playVideo?.();
+                    },
+                    onStateChange: (event) => confirmPlayback(event.data),
+                    onError: () => renderVideoPlayerError(
+                        button,
+                        'youtube_playback_error',
+                        'The YouTube player could not start. Open the video on YouTube or try again in a moment.',
+                    ),
+                },
+            });
+        })
+        .catch(() => renderVideoPlayerError(
             button,
-            'iframe_error',
+            'youtube_api_error',
             'The YouTube player could not load. Open the video on YouTube or try again in a moment.',
-        );
-    }, { once: true });
-
-    frame.append(iframe);
-    frame.hidden = false;
+        ));
 };
 
 const initializeVideoInteractions = (root = document) => {

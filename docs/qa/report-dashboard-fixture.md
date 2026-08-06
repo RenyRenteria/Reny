@@ -35,9 +35,12 @@ Store/product visit       3                   2
 Checkout started          2                   1
 Purchase completed        2                   1
 Payment failed            1                   1
+Payment canceled          1                   1
+Method unavailable        1                   1
+Validation failed         1                   1
 ```
 
-Expected conversion: visit → checkout `50%`; checkout → purchase `100%`. Repeated events within one anonymous session do not inflate the primary session metric.
+Expected conversion: visit → checkout `50%`; checkout → purchase `100%`. Repeated events within one anonymous session do not inflate the primary session metric. Canceled, unavailable, and validation events remain diagnostics and do not increase the failed-payment row.
 
 ## Show records
 
@@ -49,6 +52,8 @@ For `Panama Live` in the active range:
 - RSVP → ticket = `33.3%`; ticket → check-in = `100%`.
 
 A free RSVP event with no canonical show/ticket connection must show tickets and check-ins as `N/A` / `Not available`, not zero.
+
+An RSVP created in the active range for a canonical show outside the range must retain the canonical title, date, ticket count, and check-in availability. It must not fall back to an unlinked row.
 
 ## CSV privacy checks
 

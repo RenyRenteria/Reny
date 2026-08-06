@@ -3444,8 +3444,49 @@ body.admin-cms-body[data-theme="royal"] {
 }
 
 [data-report-module].is-loading {
-    opacity: 0.48;
+    position: relative;
+    min-height: 7rem;
     pointer-events: none;
+}
+
+[data-report-module].is-loading > :not(.stats-loading-skeleton) {
+    visibility: hidden;
+}
+
+.stats-loading-skeleton {
+    position: absolute;
+    inset: 1rem;
+    display: grid;
+    align-content: center;
+    gap: 0.7rem;
+}
+
+.stats-loading-skeleton span {
+    width: 100%;
+    height: 0.9rem;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #d8c3af 25%, #f4e7da 50%, #d8c3af 75%);
+    background-size: 200% 100%;
+    animation: stats-skeleton-pulse 1.25s ease-in-out infinite;
+}
+
+.stats-loading-skeleton span:first-child {
+    width: 42%;
+    height: 1.25rem;
+}
+
+.stats-loading-skeleton span:last-child {
+    width: 68%;
+}
+
+@keyframes stats-skeleton-pulse {
+    from {
+        background-position: 200% 0;
+    }
+
+    to {
+        background-position: -200% 0;
+    }
 }
 
 .stats-sales-panel {
@@ -3598,14 +3639,14 @@ body.admin-cms-body[data-theme="royal"] {
     background: #d75a4d;
 }
 
-.stats-comparison-bar > span {
+.stats-comparison-bar > .stats-chart-tooltip {
     position: absolute;
     z-index: 4;
     bottom: calc(100% + 0.4rem);
     left: 50%;
     display: none;
-    width: max-content;
-    max-width: 10rem;
+    width: 13rem;
+    max-width: min(13rem, 70vw);
     padding: 0.35rem 0.45rem;
     border-radius: 0.25rem;
     background: #17120f;
@@ -3615,14 +3656,31 @@ body.admin-cms-body[data-theme="royal"] {
     transform: translateX(-50%);
 }
 
-.stats-comparison-bar:hover > span,
-.stats-comparison-bar:focus-visible > span {
+.stats-chart-tooltip strong,
+.stats-chart-tooltip span {
     display: block;
+    text-align: left;
+}
+
+.stats-chart-tooltip strong {
+    margin-bottom: 0.2rem;
+}
+
+.stats-comparison-bar:hover > .stats-chart-tooltip,
+.stats-comparison-bar:focus-visible > .stats-chart-tooltip {
+    display: grid;
+    gap: 0.15rem;
 }
 
 .stats-comparison-bar:focus-visible {
     outline: 3px solid #17120f;
     outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .stats-loading-skeleton span {
+        animation: none;
+    }
 }
 
 .stats-chart-point small {

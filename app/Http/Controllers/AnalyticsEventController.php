@@ -19,8 +19,12 @@ class AnalyticsEventController extends Controller
         'paywall_triggered_from_photo',
         'store_product_opened',
         'store_checkout_started',
+        'store_checkout_validation_failed',
+        'store_payment_started',
         'store_payment_succeeded',
         'store_payment_failed',
+        'store_payment_canceled',
+        'store_payment_unavailable',
         'music_play_started',
         'video_play_started',
         'free_event_rsvp_succeeded',
@@ -141,9 +145,17 @@ class AnalyticsEventController extends Controller
             ];
         }
 
-        if (in_array($name, ['store_checkout_started', 'store_payment_succeeded', 'store_payment_failed'], true)) {
+        if (in_array($name, [
+            'store_checkout_started',
+            'store_checkout_validation_failed',
+            'store_payment_started',
+            'store_payment_succeeded',
+            'store_payment_failed',
+            'store_payment_canceled',
+            'store_payment_unavailable',
+        ], true)) {
             return [
-                'type' => $name === 'store_checkout_started' ? 'checkout' : 'payment',
+                'type' => str_starts_with($name, 'store_checkout_') ? 'checkout' : 'payment',
                 'key' => (string) ($itemId ?: Arr::get($payload, 'method', 'unknown')),
             ];
         }

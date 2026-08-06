@@ -282,22 +282,30 @@ class ReportDashboardService
     /** @return array<int, array<string, mixed>> */
     private function shows(ReportPeriod $period): array
     {
+        $freeRsvps = Rsvp::query()
+            ->whereBetween('created_at', [$period->start, $period->end])
+            ->get(['event_key', 'event_name', 'created_at'])
+            ->toBase()
+            ->groupBy('event_key');
+        $freeRsvpKeys = $freeRsvps->keys()
+            ->filter(fn (mixed $eventKey): bool => filled($eventKey))
+            ->values()
+            ->all();
         $events = FanEvent::query()
             ->with(['tickets.order'])
-            ->where(function ($query) use ($period): void {
+            ->where(function ($query) use ($freeRsvpKeys, $period): void {
                 $query->whereBetween('starts_at', [$period->start, $period->end])
                     ->orWhereHas('tickets', function ($tickets) use ($period): void {
                         $tickets->whereBetween('created_at', [$period->start, $period->end])
                             ->orWhereBetween('purchased_at', [$period->start, $period->end])
                             ->orWhereBetween('checked_in_at', [$period->start, $period->end]);
                     });
+
+                if ($freeRsvpKeys !== []) {
+                    $query->orWhereIn('metadata->store_event_key', $freeRsvpKeys);
+                }
             })
             ->get();
-        $freeRsvps = Rsvp::query()
-            ->whereBetween('created_at', [$period->start, $period->end])
-            ->get(['event_key', 'event_name', 'created_at'])
-            ->toBase()
-            ->groupBy('event_key');
         $matchedRsvpKeys = collect();
 
         $rows = $events->map(function (FanEvent $event) use ($freeRsvps, $matchedRsvpKeys, $period): array {
@@ -427,10 +435,10 @@ class ReportDashboardService
         Collection $previousRefunded,
     ): array {
         $currentBuckets = $this->buckets($period->start, $period->end, $period->isDaily());
-        $previousBuckets = $this->buckets($period->previousStart, $period->previousEnd, $period->isDaily());
-        $currentTotals = $this->bucketTotals($currentCompleted, $currentRefunded, $period->isDaily());
-        $previousTotals = $this->bucketTotals($previousCompleted, $previousRefunded, $period->isDaily());
-        $pointCount = max(count($currentBuckets), count($previousBuckets));
+        $previousBuckets = $this->alignedPreviousBuckets($period, $currentBuckets);
+        $currentTotals = $this->bucketTotals($currentCompleted, $currentRefunded, $currentBuckets);
+        $previousTotals = $this->bucketTotals($previousCompleted, $previousRefunded, $previousBuckets);
+        $pointCount = count($currentBuckets);
 
         return $currencies->map(function (string $currency) use (
             $currentBuckets,
@@ -450,9 +458,13 @@ class ReportDashboardService
                 $previous = (int) ($previousTotals[$currency][$previousBucket['key'] ?? ''] ?? 0);
                 $max = max($max, abs($current), abs($previous));
                 $points[] = [
-                    'label' => $currentBucket['label'] ?? '—',
-                    'current_range' => $currentBucket['range'] ?? null,
-                    'previous_range' => $previousBucket['range'] ?? null,
+                    'label' => $currentBucket['label'],
+                    'current_start' => $currentBucket['start']->toIso8601String(),
+                    'current_end' => $currentBucket['end']->toIso8601String(),
+                    'previous_start' => $previousBucket['start']->toIso8601String(),
+                    'previous_end' => $previousBucket['end']->toIso8601String(),
+                    'current_range' => $currentBucket['range'],
+                    'previous_range' => $previousBucket['range'],
                     'current_cents' => $current,
                     'previous_cents' => $previous,
                     'current' => $this->money($current, $currency),
@@ -502,28 +514,80 @@ class ReportDashboardService
     }
 
     /**
+     * Keep comparison points aligned to the active period's bucket boundaries. Calendar
+     * months have different lengths, so building both ranges independently can create an
+     * extra comparison point with no active date.
+     *
+     * @param  array<int, array{start: CarbonImmutable, end: CarbonImmutable, key: string, label: string, range: string}>  $currentBuckets
+     * @return array<int, array{start: CarbonImmutable, end: CarbonImmutable, key: string, label: string, range: string}>
+     */
+    private function alignedPreviousBuckets(ReportPeriod $period, array $currentBuckets): array
+    {
+        return collect($currentBuckets)
+            ->map(function (array $bucket) use ($period): array {
+                $startOffset = (int) $period->start->diffInMicroseconds($bucket['start']);
+                $endOffset = (int) $period->start->diffInMicroseconds($bucket['end']);
+                $bucketStart = $period->previousStart->addMicroseconds($startOffset);
+                $bucketEnd = $period->previousStart->addMicroseconds($endOffset);
+
+                return [
+                    'start' => $bucketStart,
+                    'end' => $bucketEnd,
+                    'key' => $bucket['key'],
+                    'label' => $bucketStart->format('M j'),
+                    'range' => $bucketStart->format('M j, Y').' – '.$bucketEnd->format('M j, Y'),
+                ];
+            })
+            ->all();
+    }
+
+    /**
      * @param  Collection<int, Order>  $completed
      * @param  Collection<int, Order>  $refunded
+     * @param  array<int, array{start: CarbonImmutable, end: CarbonImmutable, key: string, label: string, range: string}>  $buckets
      * @return array<string, array<string, int>>
      */
-    private function bucketTotals(Collection $completed, Collection $refunded, bool $daily): array
+    private function bucketTotals(Collection $completed, Collection $refunded, array $buckets): array
     {
         $totals = [];
-        $dateKey = fn (mixed $date): string => CarbonImmutable::instance($date)->format($daily ? 'Y-m-d' : 'Y-m');
 
         foreach ($completed as $order) {
             $currency = strtoupper($order->currency);
-            $key = $dateKey($this->completionAt($order));
+            $key = $this->bucketKey($this->completionAt($order), $buckets);
+
+            if ($key === null) {
+                continue;
+            }
+
             $totals[$currency][$key] = ($totals[$currency][$key] ?? 0) + (int) $order->amount_cents;
         }
 
         foreach ($refunded as $order) {
             $currency = strtoupper($order->currency);
-            $key = $dateKey($order->refunded_at);
+            $key = $this->bucketKey(CarbonImmutable::instance($order->refunded_at), $buckets);
+
+            if ($key === null) {
+                continue;
+            }
+
             $totals[$currency][$key] = ($totals[$currency][$key] ?? 0) - (int) $order->amount_cents;
         }
 
         return $totals;
+    }
+
+    /**
+     * @param  array<int, array{start: CarbonImmutable, end: CarbonImmutable, key: string, label: string, range: string}>  $buckets
+     */
+    private function bucketKey(CarbonImmutable $date, array $buckets): ?string
+    {
+        foreach ($buckets as $bucket) {
+            if ($date->betweenIncluded($bucket['start'], $bucket['end'])) {
+                return $bucket['key'];
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -758,14 +822,18 @@ class ReportDashboardService
         foreach ($dashboard['sales_charts'] as $chart) {
             foreach ($chart['points'] as $point) {
                 $rows[] = [
-                    $chart['currency'], $chart['granularity'], $point['current_range'], $this->decimalMoney($point['current_cents']),
-                    $point['previous_range'], $this->decimalMoney($point['previous_cents']),
+                    $chart['currency'], $chart['granularity'], $point['current_start'], $point['current_end'],
+                    $this->decimalMoney($point['current_cents']), $point['previous_start'], $point['previous_end'],
+                    $this->decimalMoney($point['previous_cents']),
                 ];
             }
         }
 
         return [
-            'headers' => ['currency', 'granularity', 'current_period', 'current_net_sales_amount', 'previous_period', 'previous_net_sales_amount'],
+            'headers' => [
+                'currency', 'granularity', 'current_period_start', 'current_period_end', 'current_net_sales_amount',
+                'previous_period_start', 'previous_period_end', 'previous_net_sales_amount',
+            ],
             'rows' => $rows,
         ];
     }
