@@ -1,3 +1,5 @@
+import { initializeCommunityMediaValidation } from './admin-community-media.js';
+
 const adminSectionThemes = {
     dashboard: 'neutral',
     contenido: 'music',
@@ -281,6 +283,7 @@ document.addEventListener('DOMContentLoaded', () => {
     syncAdminPreview();
     initializeCommunityRichEditors();
     initializeCommunityCms();
+    initializeCommunityMediaValidation();
 
     document.querySelectorAll('[data-admin-action-select]').forEach((select) => {
         const syncSchedule = () => {
