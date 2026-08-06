@@ -15,6 +15,7 @@ use App\Services\Media\MediaLibraryService;
 use App\Services\Media\MediaUploadException;
 use App\Support\CommunityPostContent;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -32,7 +33,7 @@ class CommunityPostController extends Controller
         Request $request,
         EditorialWorkflowService $workflow,
         MediaLibraryService $library,
-    ): RedirectResponse {
+    ): JsonResponse|RedirectResponse {
         return $this->persist($request, $workflow, $library);
     }
 
@@ -41,7 +42,7 @@ class CommunityPostController extends Controller
         EditorialContent $post,
         EditorialWorkflowService $workflow,
         MediaLibraryService $library,
-    ): RedirectResponse {
+    ): JsonResponse|RedirectResponse {
         $this->assertPost($post);
 
         return $this->persist($request, $workflow, $library, $post);
@@ -84,7 +85,8 @@ class CommunityPostController extends Controller
         EditorialWorkflowService $workflow,
         MediaLibraryService $library,
         ?EditorialContent $post = null,
-    ): RedirectResponse {
+    ): JsonResponse|RedirectResponse {
+        $isNewPost = $post === null;
         $validated = $request->validate([
             'action' => ['required', Rule::in(['draft', 'publish', 'schedule'])],
             'title' => ['required', 'string', 'max:160'],
@@ -106,7 +108,9 @@ class CommunityPostController extends Controller
         ], [
             'scheduled_at.required_if' => 'Selecciona la fecha y hora para programar el post.',
             'scheduled_at.after' => 'La fecha programada debe estar en el futuro.',
+            'cover_image.uploaded' => 'The cover image could not be uploaded. Check the server upload limit and try again.',
             'attachments.max' => 'Puedes adjuntar hasta 12 fotos o videos por post.',
+            'attachments.*.uploaded' => 'The file could not be uploaded. Check the server upload limit and try again.',
             'attachments.*.extensions' => 'Los adjuntos deben ser fotos (AVIF, GIF, JPG, PNG, WEBP) o videos (MOV, MP4, WEBM).',
             'attachments.*.mimes' => 'Los adjuntos deben ser fotos (AVIF, GIF, JPG, PNG, WEBP) o videos (MOV, MP4, WEBM).',
         ]);
@@ -144,6 +148,15 @@ class CommunityPostController extends Controller
             $cover = $this->coverAsset($request, $library, $post);
         } catch (MediaUploadException $exception) {
             $newAttachments->each(fn (MediaAsset $asset) => $library->delete($asset));
+
+            if ($request->expectsJson()) {
+                $field = $request->hasFile('attachments') ? 'attachments' : 'cover_image';
+
+                return response()->json([
+                    'message' => $exception->getMessage(),
+                    'errors' => [$field => [$exception->getMessage()]],
+                ], 503);
+            }
 
             return back()->withErrors([
                 ($request->hasFile('attachments') ? 'attachments' : 'cover_image') => $exception->getMessage(),
@@ -216,6 +229,17 @@ class CommunityPostController extends Controller
             'schedule' => sprintf('Post "%s" programado.', $saved->title),
             default => sprintf('Borrador "%s" guardado.', $saved->title),
         };
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => $message,
+                'redirect_url' => route('admin.site-editor.show', ['page' => 'community']),
+                'post' => [
+                    'id' => $saved->id,
+                    'status' => $saved->status->value,
+                ],
+            ], $isNewPost ? 201 : 200);
+        }
 
         return $this->backToCommunity($message);
     }

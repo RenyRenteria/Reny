@@ -101,6 +101,7 @@
                                 action="{{ route('admin.site-editor.community-posts.update', $post) }}"
                                 enctype="multipart/form-data"
                                 data-community-post-form
+                                data-community-upload-progress-form
                             >
                                 @csrf
                                 @method('PATCH')
@@ -173,6 +174,14 @@
                                     <input name="comments_enabled" type="checkbox" value="1" @checked($commentsEnabled)>
                                     <span>Allow comments with login</span>
                                 </label>
+
+                                @include('admin.site-editor.partials.upload-progress', [
+                                    'label' => 'Post file upload progress',
+                                    'stateLabel' => 'Ready',
+                                    'message' => 'Files will upload when you save the post.',
+                                    'cancelLabel' => 'Cancel upload',
+                                    'retryLabel' => 'Try again',
+                                ])
 
                                 <div class="community-post-submit-row">
                                     <button class="admin-button admin-button-soft" name="action" value="draft" type="submit">Save draft</button>
@@ -259,6 +268,7 @@
                     action="{{ route('admin.site-editor.community-posts.store') }}"
                     enctype="multipart/form-data"
                     data-community-post-form
+                    data-community-upload-progress-form
                 >
                     @csrf
                     <input name="post_form" type="hidden" value="new">
@@ -309,6 +319,14 @@
                         <input name="comments_enabled" type="checkbox" value="1" @checked(old('comments_enabled', '1') === '1')>
                         <span>Allow comments with login</span>
                     </label>
+
+                    @include('admin.site-editor.partials.upload-progress', [
+                        'label' => 'Post file upload progress',
+                        'stateLabel' => 'Ready',
+                        'message' => 'Files will upload when you save the post.',
+                        'cancelLabel' => 'Cancel upload',
+                        'retryLabel' => 'Try again',
+                    ])
 
                     <div class="community-post-submit-row">
                         <button class="admin-button admin-button-soft" name="action" value="draft" type="submit">Save draft</button>

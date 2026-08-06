@@ -162,6 +162,36 @@ class CommunityPostCmsTest extends TestCase
             ->assertDontSee($removedVideoUrl, false);
     }
 
+    public function test_progress_upload_request_returns_json_after_files_are_persisted(): void
+    {
+        Storage::fake('public');
+        $reny = $this->communityEditor();
+
+        $response = $this->actingAsAdmin($reny)
+            ->withHeaders([
+                'Accept' => 'application/json',
+                'X-Requested-With' => 'XMLHttpRequest',
+            ])
+            ->post(route('admin.site-editor.community-posts.store'), $this->postPayload([
+                'title' => 'Post con upload visible',
+                'attachments' => [
+                    UploadedFile::fake()->image('progress-photo.jpg', 1200, 800),
+                    UploadedFile::fake()->create('progress-video.mp4', 512, 'video/mp4'),
+                ],
+            ]));
+
+        $response
+            ->assertCreated()
+            ->assertJsonPath('message', 'Post "Post con upload visible" publicado.')
+            ->assertJsonPath('redirect_url', route('admin.site-editor.show', ['page' => 'community']))
+            ->assertJsonPath('post.status', EditorialStatus::Published->value);
+
+        $post = EditorialContent::query()->sole()->load('mediaAssets');
+
+        $this->assertCount(2, $post->mediaAssets);
+        $post->mediaAssets->each(fn ($asset) => Storage::disk('public')->assertExists($asset->path));
+    }
+
     public function test_community_video_accepts_exactly_one_gigabyte_and_remains_playable(): void
     {
         Storage::fake('public');
@@ -225,7 +255,12 @@ class CommunityPostCmsTest extends TestCase
             ->get(route('admin.site-editor.show', ['page' => 'community']))
             ->assertOk()
             ->assertSee('data-max-video-bytes="1073741824"', false)
-            ->assertSee('Videos: 1 GB maximum each.');
+            ->assertSee('Videos: 1 GB maximum each.')
+            ->assertSee('data-community-upload-progress-form', false)
+            ->assertSee('data-upload-progress', false)
+            ->assertSee('data-upload-file-list', false)
+            ->assertSee('data-upload-cancel', false)
+            ->assertSee('data-upload-retry', false);
 
         $phpLimits = parse_ini_file(public_path('.user.ini'));
 
