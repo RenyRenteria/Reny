@@ -9,12 +9,13 @@ use App\Http\Controllers\Controller;
 use App\Models\CommunityPostReply;
 use App\Models\EditorialContent;
 use App\Models\MediaAsset;
-use App\Models\Rsvp;
 use App\Models\SitePageSetting;
 use App\Models\User;
 use App\Services\CmsPreviewContext;
 use App\Services\Commerce\ProductCatalog;
 use App\Services\CommunityInteractionService;
+use App\Services\CommunityMemberDirectory;
+use App\Services\CommunityRsvpDirectory;
 use App\Services\Media\MediaLibraryService;
 use App\Services\Media\MediaUploadException;
 use App\Services\MusicBannerSettingsService;
@@ -40,13 +41,19 @@ class SiteEditorController extends Controller
         return redirect()->route('admin.site-editor.show', ['page' => 'home']);
     }
 
-    public function show(Request $request, PublicCmsContentService $cms, string $page): View
-    {
+    public function show(
+        Request $request,
+        PublicCmsContentService $cms,
+        CommunityMemberDirectory $members,
+        CommunityRsvpDirectory $rsvps,
+        string $page,
+    ): View {
         $pageConfig = $this->registry->page($page);
 
         abort_unless($pageConfig !== null, 404);
 
         $usesStorefrontEditor = in_array($page, ['home', 'store'], true);
+        $communitySection = $page === 'community' ? $this->communitySection($request) : null;
 
         return view('admin.site-editor.show', [
             'activePage' => $page,
@@ -73,10 +80,14 @@ class SiteEditorController extends Controller
             'storefrontForm' => $usesStorefrontEditor
                 ? $this->storefrontFormData()
                 : null,
-            'communityRsvps' => $page === 'community'
-                ? $this->communityRsvpData($request)
+            'communitySection' => $communitySection,
+            'communityMembers' => $page === 'community' && $communitySection === 'members'
+                ? $this->communityMemberData($request, $members)
                 : null,
-            'communityPostForm' => $page === 'community'
+            'communityRsvps' => $page === 'community' && $communitySection === 'rsvp'
+                ? $this->communityRsvpData($request, $rsvps)
+                : null,
+            'communityPostForm' => $page === 'community' && $communitySection === 'post'
                 ? $this->communityPostFormData($request)
                 : null,
             'blocks' => $this->blocksFor($pageConfig['blocks']),
@@ -187,38 +198,55 @@ class SiteEditorController extends Controller
     }
 
     /**
-     * @return array{events: Collection<int, object>, selected_event_key: string, registrations: Collection<int, Rsvp>, export_url: string|null}
+     * @return array<string, mixed>
      */
-    private function communityRsvpData(Request $request): array
+    private function communityRsvpData(Request $request, CommunityRsvpDirectory $directory): array
     {
-        $events = Rsvp::query()
-            ->select(['event_key', 'event_name'])
-            ->selectRaw('COUNT(*) as total')
-            ->selectRaw('MAX(created_at) as latest_at')
-            ->groupBy('event_key', 'event_name')
-            ->orderByDesc('latest_at')
-            ->get();
-        $selectedEventKey = trim((string) $request->query('rsvp_event'));
-
-        if ($selectedEventKey === '' || ! $events->contains('event_key', $selectedEventKey)) {
-            $selectedEventKey = (string) ($events->first()->event_key ?? '');
-        }
-
-        $registrations = $selectedEventKey === ''
-            ? collect()
-            : Rsvp::query()
-                ->where('event_key', $selectedEventKey)
-                ->latest('created_at')
-                ->get();
+        $data = $directory->data((string) $request->query('rsvp_event'));
 
         return [
-            'events' => $events,
-            'selected_event_key' => $selectedEventKey,
-            'registrations' => $registrations,
-            'export_url' => $selectedEventKey === ''
+            ...$data,
+            'export_url' => $data['selected_event_key'] === ''
                 ? null
-                : route('admin.site-editor.community-rsvps.export', ['event' => $selectedEventKey]),
+                : route('admin.site-editor.community-rsvps.export', ['event' => $data['selected_event_key']]),
         ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function communityMemberData(Request $request, CommunityMemberDirectory $directory): array
+    {
+        $filters = $directory->filters($request);
+        $members = $directory->query($filters['search'], $filters['plan'])
+            ->latest('created_at')
+            ->paginate(50, ['*'], 'members_page')
+            ->withQueryString();
+
+        return [
+            ...$filters,
+            'members' => $members,
+            'directory' => $directory,
+            'export_url' => route('admin.site-editor.community-members.export', array_filter([
+                'member_search' => $filters['search'],
+                'member_plan' => $filters['plan'] === CommunityMemberDirectory::PLAN_ALL ? null : $filters['plan'],
+            ])),
+        ];
+    }
+
+    private function communitySection(Request $request): string
+    {
+        $section = trim((string) $request->query('community_section'));
+
+        if ($section === '' && $request->has('rsvp_event')) {
+            return 'rsvp';
+        }
+
+        if ($section === '' && ($request->has('member_search') || $request->has('member_plan'))) {
+            return 'members';
+        }
+
+        return in_array($section, ['post', 'members', 'rsvp'], true) ? $section : 'post';
     }
 
     /**
