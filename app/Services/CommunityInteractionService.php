@@ -464,10 +464,11 @@ class CommunityInteractionService
      */
     private function posts(?User $user, array $cmsPosts): array
     {
+        $hostAvatarUrl = $this->communityHostAvatarUrl();
         $sourcePosts = collect($cmsPosts ?: $this->fallbackPosts())
             ->filter(fn (mixed $post): bool => is_array($post))
             ->values()
-            ->map(function (array $post, int $index): array {
+            ->map(function (array $post, int $index) use ($hostAvatarUrl): array {
                 $title = $this->stringValue($post['title'] ?? null) ?? 'Community post '.($index + 1);
                 $body = $this->stringValue($post['body'] ?? null) ?? '';
                 $key = $this->stringValue($post['key'] ?? null) ?? $this->normalizeKey($title);
@@ -479,6 +480,7 @@ class CommunityInteractionService
                     'key' => $key,
                     'title' => $title,
                     'time' => $this->stringValue($post['time'] ?? null) ?? 'Published',
+                    'avatar_url' => $hostAvatarUrl,
                     'body_html' => CommunityPostContent::sanitize($bodyHtml),
                     'image_url' => $this->stringValue($post['image_url'] ?? null),
                     'image_alt' => $this->stringValue($post['image_alt'] ?? null) ?? $title,
@@ -509,6 +511,21 @@ class CommunityInteractionService
                 'share_url' => route('royals').'#'.$post['key'],
             ])
             ->all();
+    }
+
+    private function communityHostAvatarUrl(): ?string
+    {
+        $hostEmail = $this->stringValue(config('admin.community_editor_email'));
+
+        if ($hostEmail === null || ! Schema::hasTable('users')) {
+            return null;
+        }
+
+        $avatarPath = User::query()
+            ->where('email', $hostEmail)
+            ->value('avatar_path');
+
+        return filled($avatarPath) ? asset((string) $avatarPath) : null;
     }
 
     /**

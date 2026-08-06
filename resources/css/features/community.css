@@ -839,9 +839,26 @@ body.has-modal-open {
 }
 
 .community-reny-avatar {
+    position: relative;
+    overflow: hidden;
     width: 2.75rem;
     font-size: 0.875rem;
     aspect-ratio: 1;
+}
+
+.community-reny-avatar span {
+    display: grid;
+    width: 100%;
+    height: 100%;
+    place-items: center;
+}
+
+.community-reny-avatar img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
 .community-post-head strong {

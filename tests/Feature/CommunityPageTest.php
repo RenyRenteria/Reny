@@ -4,7 +4,9 @@ namespace Tests\Feature;
 
 use App\Enums\ContentType;
 use App\Models\CommunityCountryClub;
+use App\Models\CommunityCountryClubMessage;
 use App\Models\EditorialContent;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
@@ -168,6 +170,42 @@ class CommunityPageTest extends TestCase
         $this->get('/community')
             ->assertOk()
             ->assertDontSee('Panama DB Club');
+    }
+
+    public function test_reny_posts_use_the_official_live_chat_host_profile_photo(): void
+    {
+        $host = User::factory()->create([
+            'name' => 'Reny Renteria',
+            'email' => config('admin.community_editor_email'),
+            'role' => User::ROLE_ARTIST_ADMIN,
+            'avatar_path' => 'storage/avatars/reny-renteria.jpg',
+        ]);
+        $liveChat = CommunityCountryClub::create([
+            'key' => 'official-live-chat',
+            'name' => 'Live Chat',
+            'flag_label' => 'LIVE',
+            'activity' => 'Official community live chat',
+            'status' => 'active',
+        ]);
+        CommunityCountryClubMessage::create([
+            'community_country_club_id' => $liveChat->id,
+            'user_id' => $host->id,
+            'body' => 'Mensaje del host.',
+            'status' => 'visible',
+        ]);
+        EditorialContent::factory()->published()->create([
+            'type' => ContentType::Post->value,
+            'title' => 'Post oficial de Reny',
+            'body' => 'Actualización para Royals.',
+        ]);
+
+        $response = $this->get('/royals')->assertOk();
+        $avatarSource = 'src="'.asset('storage/avatars/reny-renteria.jpg').'"';
+
+        $response
+            ->assertSee($avatarSource, false)
+            ->assertSee('data-community-post-avatar', false);
+        $this->assertSame(2, substr_count($response->getContent(), $avatarSource));
     }
 
     public function test_empty_or_invalid_community_config_does_not_render_fallback_cards(): void
