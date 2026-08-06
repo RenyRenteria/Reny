@@ -1,9 +1,11 @@
 import {
+    createAnalyticsId,
     elementAnalyticsLabel,
     normalizeAnalyticsKey,
     trackElementEvent,
     trackEvent,
 } from './analytics.js';
+import { createPaymentAnalyticsTracker } from './checkout-analytics.js';
 
 const initializeStoreInteractions = (root = document) => {
     const scope = root === document ? document : root;
@@ -213,22 +215,15 @@ const initializeStoreInteractions = (root = document) => {
         userMessage: message,
     });
 
-    const trackPaymentState = (method, checkoutState, details = {}) => {
-        const eventName = checkoutState === 'payment_success'
-            ? 'store_payment_succeeded'
-            : checkoutState === 'payment_started'
-                ? 'store_checkout_started'
-                : 'store_payment_failed';
-
-        trackEvent(eventName, {
-            item_type: checkoutState === 'payment_started' ? 'checkout' : 'payment_method',
-            item_id: method,
-            method,
-            checkout_state: checkoutState,
-            result: checkoutState,
-            ...details,
-        });
-    };
+    const paymentAnalytics = createPaymentAnalyticsTracker({
+        track: trackEvent,
+        createId: createAnalyticsId,
+    });
+    const trackPaymentState = (method, checkoutState, details = {}) => paymentAnalytics.track(
+        method,
+        checkoutState,
+        details,
+    );
 
     const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
@@ -303,6 +298,7 @@ const initializeStoreInteractions = (root = document) => {
             customer_country: contact.customer_country,
             product_keys: [...bag],
             currency: settlementCurrency.toUpperCase(),
+            analytics_session_id: window.renyAnalytics?.sessionId?.(),
         };
     };
 
@@ -477,9 +473,6 @@ const initializeStoreInteractions = (root = document) => {
 
         try {
             if (!clientId) {
-                trackPaymentState('paypal', 'unavailable', {
-                    reason: 'paypal_not_configured',
-                });
                 throw checkoutError('PayPal is not configured.', 'unavailable', 'paypal_not_configured');
             }
 
@@ -527,7 +520,7 @@ const initializeStoreInteractions = (root = document) => {
                     await cancelPendingPayPalOrder().catch((error) => console.warn(error));
                     setPaymentStatus('PayPal checkout canceled. No purchase was recorded.');
                     showStoreToast('PayPal checkout canceled.');
-                    trackPaymentState('paypal', 'payment_failed', {
+                    trackPaymentState('paypal', 'canceled', {
                         reason: 'canceled',
                     });
                 },
@@ -877,6 +870,7 @@ const initializeStoreInteractions = (root = document) => {
         }
 
         const product = products[key];
+        paymentAnalytics.beginCheckout();
         selectPaymentMethod('paypal', { track: false });
         openStoreLayer('bagLayer');
         trackEvent('store_checkout_started', {
@@ -886,7 +880,7 @@ const initializeStoreInteractions = (root = document) => {
             item_count: bag.length,
             source,
             result: 'opened',
-        });
+        }, { eventId: createAnalyticsId() });
         void initializeVisiblePayPalCheckout();
 
         return true;
@@ -1318,13 +1312,14 @@ const initializeStoreInteractions = (root = document) => {
         renderBag();
         openStoreLayer('bagLayer');
         if (bag.length) {
+            paymentAnalytics.beginCheckout();
             void initializeVisiblePayPalCheckout();
+            trackEvent('store_checkout_started', {
+                item_type: 'checkout',
+                item_count: bag.length,
+                result: 'opened',
+            });
         }
-        trackEvent('store_checkout_started', {
-            item_type: 'checkout',
-            item_count: bag.length,
-            result: bag.length ? 'opened' : 'empty',
-        });
     });
 
     paymentButtons.forEach((button) => {

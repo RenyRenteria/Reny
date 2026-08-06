@@ -97,6 +97,7 @@ class RoyalPassCheckoutTest extends TestCase
             'customer_country' => 'Panama',
             'product_keys' => ['deluxe', 'singles'],
             'currency' => 'USD',
+            'analytics_session_id' => 'paypal-browser-session',
         ])
             ->assertOk()
             ->assertJsonPath('status', 'created')
@@ -123,6 +124,14 @@ class RoyalPassCheckoutTest extends TestCase
             'amount_cents' => 800,
             'status' => 'pending',
         ]);
+
+        $orders = Order::query()->where('provider_order_id', 'like', 'PAYPAL-CREATED-100-%')->get();
+
+        $this->assertCount(2, $orders);
+        $orders->each(fn (Order $order) => $this->assertSame(
+            'paypal-browser-session',
+            data_get($order->metadata, 'checkout.analytics_session_id'),
+        ));
     }
 
     public function test_checkout_requires_customer_details_before_paypal_order_creation(): void

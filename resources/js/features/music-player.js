@@ -43,6 +43,7 @@ let playedInCurrentShuffleBag = new Set();
 let isShuffleActive = false;
 let repeatMode = 'off';
 let musicPlaybackRequestId = 0;
+let lastTrackedMusicPlaybackRequestId = -1;
 let handledMusicFailureRequestId = 0;
 let musicAutoAdvanceAttempts = 0;
 let previousMusicClickTimer = null;
@@ -941,6 +942,12 @@ musicPlayerAudio?.addEventListener('play', () => {
     if (!activeMusicButton) {
         return;
     }
+
+    if (lastTrackedMusicPlaybackRequestId === musicPlaybackRequestId) {
+        return;
+    }
+
+    lastTrackedMusicPlaybackRequestId = musicPlaybackRequestId;
 
     trackElementEvent(activeMusicButton, 'music_play_started', {
         item_type: activeMusicButton.dataset.analyticsType,

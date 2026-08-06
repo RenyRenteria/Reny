@@ -84,12 +84,19 @@ class AnalyticsInstrumentationTest extends TestCase
             'access_state',
             'store_product_added',
             'store_checkout_started',
+            'store_checkout_validation_failed',
             'store_payment_method_selected',
+            'store_payment_started',
             'store_payment_succeeded',
             'store_payment_failed',
+            'store_payment_canceled',
+            'store_payment_unavailable',
             'store_rsvp_started',
             'store_rsvp_succeeded',
             'store_rsvp_failed',
+            'rsvp_confirmed',
+            'ticket_purchased',
+            'ticket_checked_in',
             'free_event_rsvp_started',
             'free_event_rsvp_succeeded',
             'free_event_rsvp_failed',
@@ -111,6 +118,7 @@ class AnalyticsInstrumentationTest extends TestCase
             'payment_started',
             'payment_success',
             'payment_failed',
+            'canceled',
             'paypal_not_configured',
             'paypal_sdk_unavailable',
             'missing_name',
@@ -120,6 +128,45 @@ class AnalyticsInstrumentationTest extends TestCase
         ] as $checkoutState) {
             $this->assertStringContainsString($checkoutState, $script);
         }
+    }
+
+    public function test_video_reproduction_is_recorded_only_from_youtube_playing_state(): void
+    {
+        $script = file_get_contents(resource_path('js/features/video-player.js'));
+
+        $this->assertStringContainsString('youtube.PlayerState.PLAYING', $script);
+        $this->assertStringContainsString('onStateChange', $script);
+        $this->assertStringNotContainsString("iframe.addEventListener('load'", $script);
+    }
+
+    public function test_checkout_reuses_the_analytics_session_and_persistence_surfaces_http_failures(): void
+    {
+        $analytics = file_get_contents(resource_path('js/features/analytics.js'));
+        $checkout = file_get_contents(resource_path('js/features/checkout.js'));
+
+        $this->assertStringContainsString('analyticsApi.sessionId = analyticsSessionId', $analytics);
+        $this->assertStringContainsString('if (!response.ok)', $analytics);
+        $this->assertStringContainsString('[analytics] persistence failed', $analytics);
+        $this->assertStringContainsString('analytics_session_id: window.renyAnalytics?.sessionId?.()', $checkout);
+    }
+
+    public function test_opening_an_empty_bag_does_not_start_checkout_analytics(): void
+    {
+        $checkout = file_get_contents(resource_path('js/features/checkout.js'));
+
+        $this->assertStringNotContainsString("result: bag.length ? 'opened' : 'empty'", $checkout);
+        $this->assertMatchesRegularExpression(
+            "/if \\(bag\\.length\\) \\{.*trackEvent\\('store_checkout_started'.*result: 'opened'.*\\}/s",
+            $checkout,
+        );
+    }
+
+    public function test_music_resume_does_not_create_an_extra_reproduction(): void
+    {
+        $script = file_get_contents(resource_path('js/features/music-player.js'));
+
+        $this->assertStringContainsString('lastTrackedMusicPlaybackRequestId === musicPlaybackRequestId', $script);
+        $this->assertStringContainsString('lastTrackedMusicPlaybackRequestId = musicPlaybackRequestId', $script);
     }
 
     public function test_project4_event_taxonomy_is_documented(): void
@@ -135,6 +182,10 @@ class AnalyticsInstrumentationTest extends TestCase
         $this->assertStringContainsString('item_type', $taxonomy);
         $this->assertStringContainsString('item_id', $taxonomy);
         $this->assertStringContainsString('result', $taxonomy);
+        $this->assertStringContainsString('schema_version', $taxonomy);
+        $this->assertStringContainsString('session_id', $taxonomy);
+        $this->assertStringContainsString('event_id', $taxonomy);
+        $this->assertStringContainsString('Privacy Contract', $taxonomy);
     }
 
     public function test_account_and_denied_pages_expose_access_state_metadata(): void

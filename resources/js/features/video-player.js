@@ -17,6 +17,47 @@ const videoPlayerElements = () => ({
 });
 let focusedBeforeVideoPlayer = null;
 let activeVideoButton = null;
+let activeYouTubePlayer = null;
+let youtubePlayerApiPromise = null;
+let videoPlayerSequence = 0;
+
+const loadYouTubePlayerApi = () => {
+    if (window.YT?.Player) {
+        return Promise.resolve(window.YT);
+    }
+
+    if (youtubePlayerApiPromise) {
+        return youtubePlayerApiPromise;
+    }
+
+    youtubePlayerApiPromise = new Promise((resolve, reject) => {
+        const previousReady = window.onYouTubeIframeAPIReady;
+        const timeout = window.setTimeout(() => reject(new Error('youtube_api_timeout')), 10000);
+
+        window.onYouTubeIframeAPIReady = () => {
+            previousReady?.();
+            window.clearTimeout(timeout);
+            resolve(window.YT);
+        };
+
+        let script = document.getElementById('reny-youtube-player-api');
+
+        if (!script) {
+            script = document.createElement('script');
+            script.id = 'reny-youtube-player-api';
+            script.src = 'https://www.youtube.com/iframe_api';
+            script.async = true;
+            document.head.append(script);
+        }
+
+        script.addEventListener('error', () => {
+            window.clearTimeout(timeout);
+            reject(new Error('youtube_api_unavailable'));
+        }, { once: true });
+    });
+
+    return youtubePlayerApiPromise;
+};
 
 const getVideoFocusable = () => [...(videoPlayerElements().layer?.querySelectorAll('button, [href], iframe, [tabindex]:not([tabindex="-1"])') || [])]
     .filter((node) => !node.disabled && node.offsetParent !== null);
@@ -48,6 +89,8 @@ const closeVideoPlayer = () => {
 
     layer.hidden = true;
     layer.setAttribute('inert', '');
+    activeYouTubePlayer?.destroy?.();
+    activeYouTubePlayer = null;
     frame?.replaceChildren();
     frame?.setAttribute('hidden', '');
     document.body.classList.remove('has-modal-open');
@@ -97,6 +140,7 @@ const renderVideoPlayerError = (button, reason, message) => {
     messageNode.textContent = message;
     frame?.replaceChildren();
     frame?.setAttribute('hidden', '');
+    activeYouTubePlayer = null;
     error.textContent = message;
     error.hidden = false;
 
@@ -147,31 +191,63 @@ const openVideoPlayer = (button) => {
         return;
     }
 
-    const iframe = document.createElement('iframe');
-    iframe.src = `https://www.youtube.com/embed/${encodeURIComponent(youtubeId)}?autoplay=1&rel=0`;
-    iframe.title = title;
-    iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
-    iframe.allowFullscreen = true;
+    activeYouTubePlayer?.destroy?.();
+    activeYouTubePlayer = null;
+    const mount = document.createElement('div');
+    mount.id = `reny-youtube-player-${++videoPlayerSequence}`;
+    frame.replaceChildren(mount);
+    frame.hidden = false;
 
-    iframe.addEventListener('load', () => {
-        state.textContent = 'Playing';
-        message.textContent = 'Streaming from YouTube.';
-        trackElementEvent(button, 'video_play_started', {
-            item_type: button.dataset.analyticsType || 'video',
-            result: 'started',
+    loadYouTubePlayerApi().then((youtube) => {
+        if (activeVideoButton !== button || layer.hidden) {
+            return;
+        }
+
+        let startedTracked = false;
+        activeYouTubePlayer = new youtube.Player(mount, {
+            videoId: youtubeId,
+            host: 'https://www.youtube.com',
+            playerVars: {
+                autoplay: 1,
+                origin: window.location.origin,
+                rel: 0,
+            },
+            events: {
+                onReady: (event) => {
+                    const playerFrame = event.target.getIframe();
+                    playerFrame.title = title;
+                    playerFrame.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+                    state.textContent = 'Ready';
+                    message.textContent = 'Press play to start the video.';
+                },
+                onStateChange: (event) => {
+                    if (event.data !== youtube.PlayerState.PLAYING || startedTracked) {
+                        return;
+                    }
+
+                    startedTracked = true;
+                    state.textContent = 'Playing';
+                    message.textContent = 'Streaming from YouTube.';
+                    trackElementEvent(button, 'video_play_started', {
+                        item_type: button.dataset.analyticsType || 'video',
+                        result: 'started',
+                    });
+                },
+                onError: () => renderVideoPlayerError(
+                    button,
+                    'youtube_player_error',
+                    'The YouTube player could not load. Open the video on YouTube or try again in a moment.',
+                ),
+            },
         });
-    }, { once: true });
-
-    iframe.addEventListener('error', () => {
+    }).catch(() => {
+        youtubePlayerApiPromise = null;
         renderVideoPlayerError(
             button,
-            'iframe_error',
+            'youtube_api_unavailable',
             'The YouTube player could not load. Open the video on YouTube or try again in a moment.',
         );
-    }, { once: true });
-
-    frame.append(iframe);
-    frame.hidden = false;
+    });
 };
 
 const initializeVideoInteractions = (root = document) => {

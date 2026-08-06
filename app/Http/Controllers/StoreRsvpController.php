@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\ContentType;
+use App\Models\AccessEvent;
 use App\Models\EditorialContent;
 use App\Models\FanEvent;
 use App\Models\Ticket;
@@ -64,6 +65,23 @@ class StoreRsvpController extends Controller
         $event = $result['event'];
         /** @var Ticket $ticket */
         $ticket = $result['ticket'];
+
+        AccessEvent::query()->firstOrCreate([
+            'idempotency_key' => 'store-rsvp:'.$ticket->id,
+        ], [
+            'event_name' => 'rsvp_confirmed',
+            'schema_version' => 1,
+            'occurred_at' => $ticket->created_at,
+            'session_id' => substr(hash('sha256', 'rsvp-session:'.$request->session()->getId()), 0, 64),
+            'resource_type' => 'show',
+            'resource_key' => $eventKey,
+            'result' => 'succeeded',
+            'metadata' => [
+                'item_type' => 'show',
+                'item_id' => $eventKey,
+                'result' => 'succeeded',
+            ],
+        ]);
 
         return response()->json([
             'status' => 'confirmed',

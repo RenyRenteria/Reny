@@ -68,6 +68,7 @@ class CheckoutController extends Controller
                     $order->forceFill([
                         'provider_capture_id' => $capture['capture_id'],
                         'status' => 'completed',
+                        'completed_at' => now(),
                     ])->save();
 
                     $royalPass->log($user, 'purchase', 'order', $order->provider_order_id, [
@@ -252,7 +253,7 @@ class CheckoutController extends Controller
     }
 
     /**
-     * @return array{identifier: string, product_keys: array<int, string>, currency?: string, paypal_order_id?: string, local_reference?: string, customer_name?: string, customer_email?: string, customer_phone?: string, customer_country?: string}
+     * @return array{identifier: string, product_keys: array<int, string>, currency?: string, analytics_session_id?: string, paypal_order_id?: string, local_reference?: string, customer_name?: string, customer_email?: string, customer_phone?: string, customer_country?: string}
      */
     private function validateCheckout(
         Request $request,
@@ -274,6 +275,7 @@ class CheckoutController extends Controller
             'product_keys' => ['required', 'array', 'min:1'],
             'product_keys.*' => ['required', 'string', 'max:120', 'regex:/^[A-Za-z0-9._-]+$/'],
             'currency' => ['nullable', 'string', 'size:3'],
+            'analytics_session_id' => ['nullable', 'string', 'max:64', 'regex:/^[A-Za-z0-9._:-]+$/'],
             'customer_name' => [$requireCustomerDetails ? 'required' : 'sometimes', 'string', 'max:120'],
             'customer_email' => [$requireCustomerDetails ? 'required' : 'sometimes', 'email', 'max:255'],
             'customer_phone' => [$requireCustomerDetails ? 'required' : 'sometimes', 'string', 'max:32', 'regex:/^\+[1-9][0-9]{6,14}$/'],
@@ -308,6 +310,10 @@ class CheckoutController extends Controller
             $metadata['checkout'] = [
                 'session_token_hash' => $checkoutTokenHash,
             ];
+        }
+
+        if (isset($validated['analytics_session_id'])) {
+            $metadata['checkout']['analytics_session_id'] = $validated['analytics_session_id'];
         }
 
         $customer = array_filter([

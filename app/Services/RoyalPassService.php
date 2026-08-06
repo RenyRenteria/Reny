@@ -76,11 +76,12 @@ class RoyalPassService
         return $user;
     }
 
-    public function revokeGrant(Order $order): void
+    public function revokeGrant(Order $order, ?int $refundAmountCents = null): void
     {
         $order->forceFill([
             'status' => 'refunded',
-            'refunded_at' => now(),
+            'refunded_at' => $order->refunded_at ?? now(),
+            'refund_amount_cents' => $refundAmountCents ?? $order->amount_cents,
         ])->save();
 
         if (! $order->grants_royal_month || ! $order->user) {

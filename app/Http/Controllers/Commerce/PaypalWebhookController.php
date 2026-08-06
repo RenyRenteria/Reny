@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Commerce;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Models\OrderRefund;
 use App\Services\PayPalService;
 use App\Services\RoyalPassService;
 use App\Services\UserHubPurchaseSync;
@@ -27,14 +28,38 @@ class PaypalWebhookController extends Controller
 
         abort_if($orders->isEmpty(), 404);
 
-        $orders->each(function (Order $order) use ($purchaseSync, $royalPass) {
-            $royalPass->revokeGrant($order);
+        $refundAmounts = $this->allocateRefund($orders, $this->refundAmountCents($request));
+        $providerRefundId = $this->providerRefundId($request);
+        $processed = 0;
+
+        $orders->each(function (Order $order) use (&$processed, $providerRefundId, $purchaseSync, $refundAmounts, $royalPass) {
+            $amount = (int) ($refundAmounts[$order->id] ?? 0);
+
+            if ($amount <= 0) {
+                return;
+            }
+
+            $refund = OrderRefund::query()->firstOrCreate([
+                'order_id' => $order->id,
+                'provider_refund_id' => $providerRefundId,
+            ], [
+                'amount_cents' => $amount,
+                'currency' => $order->currency,
+                'refunded_at' => now(),
+            ]);
+
+            if (! $refund->wasRecentlyCreated) {
+                return;
+            }
+
+            $processed++;
+            $royalPass->revokeGrant($order, (int) $order->refunds()->sum('amount_cents'));
             $purchaseSync->recordRefund($order->fresh('user'));
         });
 
         return response()->json([
             'status' => 'refunded',
-            'refunded_orders' => $orders->count(),
+            'refunded_orders' => $processed,
             'royal_status' => $orders->first()->user?->fresh()->accessState()->value,
         ]);
     }
@@ -60,6 +85,7 @@ class PaypalWebhookController extends Controller
 
         if ($captureId !== null) {
             $byCapture = Order::query()
+                ->withSum('refunds', 'amount_cents')
                 ->where('provider', 'paypal')
                 ->where('provider_capture_id', $captureId)
                 ->get();
@@ -74,6 +100,7 @@ class PaypalWebhookController extends Controller
         }
 
         return Order::query()
+            ->withSum('refunds', 'amount_cents')
             ->where('provider', 'paypal')
             ->where(function ($query) use ($providerOrderId) {
                 $query
@@ -102,6 +129,57 @@ class PaypalWebhookController extends Controller
             ?: $this->captureIdFromLinks(Arr::get($request->all(), 'resource.links', []));
 
         return filled($value) ? (string) $value : null;
+    }
+
+    private function providerRefundId(Request $request): string
+    {
+        $value = $request->input('provider_refund_id') ?: Arr::get($request->all(), 'resource.id');
+
+        if (filled($value)) {
+            return (string) $value;
+        }
+
+        return 'legacy-'.hash('sha256', (string) json_encode($request->all(), JSON_UNESCAPED_SLASHES));
+    }
+
+    private function refundAmountCents(Request $request): ?int
+    {
+        $value = Arr::get($request->all(), 'resource.amount.value');
+
+        if (! is_numeric($value)) {
+            return null;
+        }
+
+        return max(0, (int) round(((float) $value) * 100));
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private function allocateRefund(Collection $orders, ?int $refundAmountCents): array
+    {
+        $remainingByOrder = $orders->mapWithKeys(fn (Order $order): array => [
+            $order->id => max(0, (int) $order->amount_cents - (int) ($order->refunds_sum_amount_cents ?? 0)),
+        ]);
+        $total = (int) $remainingByOrder->sum();
+
+        if ($total === 0) {
+            return $remainingByOrder->all();
+        }
+
+        $refundTotal = min($refundAmountCents ?? $total, $total);
+        $remaining = $refundTotal;
+        $lastId = $orders->last()?->id;
+
+        return $orders->mapWithKeys(function (Order $order) use (&$remaining, $lastId, $refundTotal, $remainingByOrder, $total): array {
+            $capacity = (int) $remainingByOrder->get($order->id, 0);
+            $amount = $order->id === $lastId
+                ? min($remaining, $capacity)
+                : min($remaining, $capacity, (int) round(($capacity / $total) * $refundTotal));
+            $remaining -= $amount;
+
+            return [$order->id => $amount];
+        })->all();
     }
 
     /**

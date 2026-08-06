@@ -7,4 +7,5 @@ import './features/music-player.js';
 import './features/public-page.js';
 import './features/auth-analytics.js';
 import './features/admin.js';
+import './features/admin-reports.js';
 import './features/photo-cms.js';

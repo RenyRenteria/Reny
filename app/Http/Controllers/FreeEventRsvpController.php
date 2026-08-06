@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\ContentType;
+use App\Models\AccessEvent;
 use App\Models\EditorialContent;
 use App\Models\Rsvp;
 use App\Services\StorefrontSettingsService;
@@ -57,6 +58,23 @@ class FreeEventRsvpController extends Controller
             'metadata' => [
                 'source' => 'free_event_lead_capture',
                 'price_label' => $event['price_label'],
+            ],
+        ]);
+
+        AccessEvent::query()->firstOrCreate([
+            'idempotency_key' => 'free-rsvp:'.$rsvp->id,
+        ], [
+            'event_name' => 'rsvp_confirmed',
+            'schema_version' => 1,
+            'occurred_at' => $rsvp->created_at,
+            'session_id' => substr(hash('sha256', 'rsvp-session:'.$request->session()->getId()), 0, 64),
+            'resource_type' => 'show',
+            'resource_key' => $rsvp->event_key,
+            'result' => 'succeeded',
+            'metadata' => [
+                'item_type' => 'show',
+                'item_id' => $rsvp->event_key,
+                'result' => 'succeeded',
             ],
         ]);
 

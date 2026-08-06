@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\AccessEvent;
 use App\Models\FanEvent;
 use App\Models\Order;
 use App\Models\Ticket;
@@ -45,6 +46,26 @@ class TicketCodeService
         $ticket->forceFill([
             'ticket_code_preview' => substr($displayCode, -8),
         ])->save();
+
+        if ($order) {
+            AccessEvent::query()->firstOrCreate([
+                'idempotency_key' => 'ticket-purchased:'.$ticket->id,
+            ], [
+                'event_name' => 'ticket_purchased',
+                'schema_version' => 1,
+                'occurred_at' => $ticket->purchased_at,
+                'session_id' => (string) (data_get($order->metadata, 'checkout.session_token_hash')
+                    ?: substr(hash('sha256', 'order-session:'.$order->provider_order_id), 0, 64)),
+                'resource_type' => 'show',
+                'resource_key' => (string) $event->id,
+                'result' => 'succeeded',
+                'metadata' => [
+                    'item_type' => 'show',
+                    'item_id' => (string) $event->id,
+                    'result' => 'succeeded',
+                ],
+            ]);
+        }
 
         return [
             'ticket' => $ticket->fresh(),
