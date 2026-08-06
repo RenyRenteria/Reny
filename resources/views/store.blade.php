@@ -66,6 +66,8 @@
         ->concat($cmsProductSlots)
         ->reject(fn (array $slot, int $index): bool => $index >= $baseStorefrontSlots->count()
             && $representedProductKeys->contains($slot['product_key'] ?? null))
+        ->reject(fn (array $slot): bool => ($slot['product_key'] ?? null) === 'concert'
+            || str((string) ($slot['title'] ?? ''))->squish()->lower()->toString() === 'reny renteria en concierto')
         ->unique(fn (array $slot): string => (string) ($slot['product_key'] ?? $slot['key'] ?? ''))
         ->values();
     $rsvpTickets = $rsvpTickets ?? [];
