@@ -129,6 +129,49 @@ class PaypalRefundWebhookTest extends TestCase
         $this->assertSame('refunded', $order->fresh()->status);
     }
 
+    public function test_refund_ledger_is_idempotent_and_caps_multiple_partial_refunds(): void
+    {
+        $user = $this->royalUser();
+        $order = $this->paypalOrder($user, 'PAYPAL-PARTIAL-1-merch', 'CAPTURE-PARTIAL');
+        $payload = fn (string $refundId, string $amount): array => [
+            'resource' => [
+                'id' => $refundId,
+                'amount' => ['value' => $amount, 'currency_code' => 'USD'],
+                'supplementary_data' => [
+                    'related_ids' => ['capture_id' => 'CAPTURE-PARTIAL'],
+                ],
+            ],
+        ];
+
+        $this->postRefund($payload('REFUND-PARTIAL-1', '12.00'))
+            ->assertOk()
+            ->assertJsonPath('refunded_orders', 1);
+        $firstRefundedAt = $order->fresh()->refunded_at;
+
+        $this->postRefund($payload('REFUND-PARTIAL-1', '12.00'))
+            ->assertOk()
+            ->assertJsonPath('refunded_orders', 0);
+        $this->postRefund($payload('REFUND-PARTIAL-2', '12.00'))
+            ->assertOk()
+            ->assertJsonPath('refunded_orders', 1);
+        $this->postRefund($payload('REFUND-PARTIAL-3', '50.00'))
+            ->assertOk()
+            ->assertJsonPath('refunded_orders', 1);
+        $this->postRefund($payload('REFUND-PARTIAL-4', '10.00'))
+            ->assertOk()
+            ->assertJsonPath('refunded_orders', 0);
+
+        $this->assertDatabaseCount('order_refunds', 3);
+        $this->assertSame(4800, (int) $order->refunds()->sum('amount_cents'));
+        $this->assertSame(4800, $order->fresh()->refund_amount_cents);
+        $this->assertTrue($firstRefundedAt->equalTo($order->fresh()->refunded_at));
+        $this->assertDatabaseHas('order_refunds', [
+            'order_id' => $order->id,
+            'provider_refund_id' => 'REFUND-PARTIAL-3',
+            'amount_cents' => 2400,
+        ]);
+    }
+
     public function test_refund_without_reference_returns_422(): void
     {
         $this->postRefund(['resource' => []])->assertStatus(422);

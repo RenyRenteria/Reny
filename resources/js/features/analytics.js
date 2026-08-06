@@ -31,6 +31,33 @@ const analyticsDebugEnabled = () => {
     }
 };
 
+const analyticsRandomId = () => {
+    if (typeof window.crypto?.randomUUID === 'function') {
+        return window.crypto.randomUUID();
+    }
+
+    return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+};
+
+const analyticsSessionId = () => {
+    const key = 'reny_analytics_session';
+
+    try {
+        const existing = window.sessionStorage?.getItem(key);
+
+        if (existing) {
+            return existing;
+        }
+
+        const created = analyticsRandomId();
+        window.sessionStorage?.setItem(key, created);
+
+        return created;
+    } catch {
+        return analyticsRandomId();
+    }
+};
+
 const dispatchAnalyticsEvent = (event) => {
     if (Array.isArray(window.dataLayer)) {
         window.dataLayer.push({ event: event.name, ...event.payload });
@@ -53,7 +80,24 @@ const dispatchAnalyticsEvent = (event) => {
     }
 };
 
-const persistedAnalyticsEvents = new Set(['page_view', 'permission_denied', 'paywall_triggered_from_photo']);
+const persistedAnalyticsEvents = new Set([
+    'page_view',
+    'permission_denied',
+    'paywall_triggered_from_photo',
+    'store_product_opened',
+    'store_checkout_started',
+    'store_payment_succeeded',
+    'store_payment_failed',
+    'music_play_started',
+    'video_play_started',
+    'photo_opened',
+    'community_note_opened',
+    'free_event_rsvp_succeeded',
+    'store_rsvp_succeeded',
+    'rsvp_confirmed',
+    'ticket_purchased',
+    'ticket_checked_in',
+]);
 
 const analyticsEndpoint = () => document.querySelector('meta[name="reny-analytics-endpoint"]')?.content
     || '/analytics/events';
@@ -63,13 +107,21 @@ const persistAnalyticsEvent = (event) => {
         return;
     }
 
+    const payload = { ...event.payload };
+
+    delete payload.referrer;
+
+    if (payload.reason) {
+        payload.reason = normalizeAnalyticsKey(payload.reason).slice(0, 80);
+    }
+
     fetch(analyticsEndpoint(), {
         method: 'POST',
         headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify(event),
+        body: JSON.stringify({ ...event, payload }),
         keepalive: true,
     }).catch(() => {});
 };
@@ -80,6 +132,9 @@ analyticsApi.events = Array.isArray(analyticsApi.events) ? analyticsApi.events :
 const trackEvent = (name, payload = {}) => {
     const event = {
         name,
+        schema_version: 1,
+        session_id: analyticsSessionId(),
+        event_id: analyticsRandomId(),
         payload: compactAnalyticsPayload({
             screen: currentAnalyticsScreen(),
             path: window.location.pathname,

@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\CommunityMemberController as AdminCommunityMember
 use App\Http\Controllers\Admin\CommunityPostController as AdminCommunityPostController;
 use App\Http\Controllers\Admin\CommunityRsvpController as AdminCommunityRsvpController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\DashboardExportController;
 use App\Http\Controllers\Admin\EditorialActionController;
 use App\Http\Controllers\Admin\EditorialContentController;
 use App\Http\Controllers\Admin\MediaLibraryController;
@@ -110,6 +111,7 @@ Route::prefix(config('admin.path', 'admin'))->name('admin.')->group(function () 
 
     Route::middleware(['admin.access', 'admin.session'])->group(function () {
         Route::get('/', DashboardController::class)->name('dashboard');
+        Route::get('/reports/export', DashboardExportController::class)->name('reports.export');
         Route::post('/logout', [AdminLoginController::class, 'destroy'])->name('logout');
 
         Route::get('/site-editor', [SiteEditorController::class, 'index'])->middleware('admin.cms')->name('site-editor.index');

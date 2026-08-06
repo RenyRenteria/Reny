@@ -68,6 +68,7 @@ class CheckoutController extends Controller
                     $order->forceFill([
                         'provider_capture_id' => $capture['capture_id'],
                         'status' => 'completed',
+                        'completed_at' => now(),
                     ])->save();
 
                     $royalPass->log($user, 'purchase', 'order', $order->provider_order_id, [
