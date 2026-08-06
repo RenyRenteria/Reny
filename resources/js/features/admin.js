@@ -1,4 +1,5 @@
 import { initializeCommunityMediaValidation } from './admin-community-media.js';
+import { initializeCommunityUploadProgress } from './admin-community-upload.js';
 
 const adminSectionThemes = {
     dashboard: 'neutral',
@@ -284,6 +285,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeCommunityRichEditors();
     initializeCommunityCms();
     initializeCommunityMediaValidation();
+    initializeCommunityUploadProgress();
 
     document.querySelectorAll('[data-admin-action-select]').forEach((select) => {
         const syncSchedule = () => {

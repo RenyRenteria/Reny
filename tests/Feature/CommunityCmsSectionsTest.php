@@ -37,6 +37,8 @@ class CommunityCmsSectionsTest extends TestCase
             ->assertSee('Schedule')
             ->assertSee('Publish now')
             ->assertSee('Delete post');
+
+        $this->assertSame(2, substr_count($response->getContent(), 'data-community-upload-progress-form'));
     }
 
     public function test_members_can_be_searched_filtered_and_exported_without_staff_accounts(): void
