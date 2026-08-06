@@ -69,7 +69,7 @@ class CommunityPostContent
 
     /**
      * @param  array<int, mixed>  $values
-     * @return array<int, array{type:string,url:string,embed_url?:string,label:string}>
+     * @return array<int, array{type:string,url:string,embed_url?:string,preview_url?:string,label:string}>
      */
     public static function normalizeMediaUrls(array $values): array
     {
@@ -139,7 +139,7 @@ class CommunityPostContent
     }
 
     /**
-     * @return array{type:string,url:string,embed_url?:string,label:string}|null
+     * @return array{type:string,url:string,embed_url?:string,preview_url?:string,label:string}|null
      */
     private static function mediaItem(string $url): ?array
     {
@@ -182,16 +182,24 @@ class CommunityPostContent
 
         $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
 
+        $type = match (true) {
+            in_array($extension, ['avif', 'gif', 'jpeg', 'jpg', 'png', 'webp'], true) => 'image',
+            in_array($extension, ['m4v', 'mov', 'mp4', 'ogg', 'webm'], true) => 'video',
+            in_array($extension, ['aac', 'm4a', 'mp3', 'oga', 'wav'], true) => 'audio',
+            default => 'link',
+        };
+
         return [
-            'type' => match (true) {
-                in_array($extension, ['avif', 'gif', 'jpeg', 'jpg', 'png', 'webp'], true) => 'image',
-                in_array($extension, ['m4v', 'mov', 'mp4', 'ogg', 'webm'], true) => 'video',
-                in_array($extension, ['aac', 'm4a', 'mp3', 'oga', 'wav'], true) => 'audio',
-                default => 'link',
-            },
+            'type' => $type,
             'url' => $url,
+            ...($type === 'video' ? ['preview_url' => self::videoPreviewUrl($url)] : []),
             'label' => (string) $label,
         ];
+    }
+
+    private static function videoPreviewUrl(string $url): string
+    {
+        return preg_replace('/#.*$/', '', $url).'#t=0.001';
     }
 
     private static function safeUrl(string $url): ?string

@@ -181,8 +181,14 @@
                                             @if ($media['type'] === 'image')
                                                 <img src="{{ $media['url'] }}" alt="Contenido visual de {{ $post['title'] }}" loading="lazy">
                                             @elseif ($media['type'] === 'video')
-                                                <video controls preload="metadata">
-                                                    <source src="{{ $media['url'] }}">
+                                                <video
+                                                    controls
+                                                    preload="metadata"
+                                                    playsinline
+                                                    data-mobile-video-preview
+                                                    @if (! empty($media['poster_url'])) poster="{{ $media['poster_url'] }}" @endif
+                                                >
+                                                    <source src="{{ $media['preview_url'] ?? $media['url'] }}">
                                                 </video>
                                             @elseif ($media['type'] === 'audio')
                                                 <audio controls preload="metadata">

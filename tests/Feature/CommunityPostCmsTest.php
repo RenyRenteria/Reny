@@ -132,8 +132,9 @@ class CommunityPostCmsTest extends TestCase
         $this->get('/royals')
             ->assertOk()
             ->assertSee($image->publicUrl(), false)
-            ->assertSee($video->publicUrl(), false)
-            ->assertSee('<video controls preload="metadata">', false);
+            ->assertSee($video->publicUrl().'#t=0.001', false)
+            ->assertSee('data-mobile-video-preview', false)
+            ->assertSee('playsinline', false);
 
         $removedVideoUrl = $video->publicUrl();
 
@@ -187,8 +188,39 @@ class CommunityPostCmsTest extends TestCase
 
         $this->get('/royals')
             ->assertOk()
-            ->assertSee($video->publicUrl(), false)
-            ->assertSee('<video controls preload="metadata">', false);
+            ->assertSee($video->publicUrl().'#t=0.001', false)
+            ->assertSee('data-mobile-video-preview', false)
+            ->assertSee('playsinline', false);
+    }
+
+    public function test_community_video_uses_the_post_cover_as_its_poster(): void
+    {
+        Storage::fake('public');
+        $reny = $this->communityEditor();
+
+        $this->actingAsAdmin($reny)
+            ->post(route('admin.site-editor.community-posts.store'), $this->postPayload([
+                'title' => 'Video con portada',
+                'cover_image' => UploadedFile::fake()->image('video-cover.jpg', 1080, 1920),
+                'attachments' => [
+                    UploadedFile::fake()->create('vertical-video.mp4', 256, 'video/mp4'),
+                ],
+            ]))
+            ->assertRedirect(route('admin.site-editor.show', ['page' => 'community']));
+
+        $post = EditorialContent::query()->sole()->load('mediaAssets');
+        $cover = $post->mediaAssets->first(
+            fn ($asset): bool => $asset->pivot?->role === 'cover'
+        );
+        $video = $post->mediaAssets->firstWhere('type', MediaAssetType::Video);
+
+        $this->assertNotNull($cover);
+        $this->assertNotNull($video);
+
+        $this->get('/royals')
+            ->assertOk()
+            ->assertSee('poster="'.$cover->publicUrl().'"', false)
+            ->assertSee($video->publicUrl().'#t=0.001', false);
     }
 
     public function test_community_video_over_one_gigabyte_is_rejected_clearly(): void
