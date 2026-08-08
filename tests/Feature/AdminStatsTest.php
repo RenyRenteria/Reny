@@ -15,6 +15,81 @@ class AdminStatsTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_original_monthly_kpis_render_before_the_current_reports_dashboard(): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-07-07 12:00:00', 'America/Panama'));
+
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        User::factory()->royal()->create();
+        User::factory()->royalGrace()->create();
+        User::factory()->expiredRoyal()->create();
+
+        AccessEvent::forceCreate([
+            'event_name' => 'page_view',
+            'resource_type' => 'page',
+            'resource_key' => 'home',
+            'created_at' => $this->utc('2026-07-02 10:00:00'),
+            'updated_at' => $this->utc('2026-07-02 10:00:00'),
+        ]);
+        AccessEvent::forceCreate([
+            'event_name' => 'permission_denied',
+            'resource_type' => 'access_gate',
+            'resource_key' => 'royal',
+            'created_at' => $this->utc('2026-07-03 10:00:00'),
+            'updated_at' => $this->utc('2026-07-03 10:00:00'),
+        ]);
+        AccessEvent::forceCreate([
+            'event_name' => 'page_view',
+            'resource_type' => 'page',
+            'resource_key' => 'home',
+            'created_at' => $this->utc('2026-06-30 23:59:59'),
+            'updated_at' => $this->utc('2026-06-30 23:59:59'),
+        ]);
+
+        Order::forceCreate([
+            'provider' => 'paypal',
+            'provider_order_id' => 'MONTHLY-KPI-USD',
+            'product_key' => 'royal-pass',
+            'amount_cents' => 12500,
+            'currency' => 'USD',
+            'status' => 'completed',
+            'created_at' => $this->utc('2026-07-04 10:00:00'),
+            'updated_at' => $this->utc('2026-07-04 10:00:00'),
+        ]);
+        Order::forceCreate([
+            'provider' => 'paypal',
+            'provider_order_id' => 'MONTHLY-KPI-EUR',
+            'product_key' => 'royal-pass',
+            'amount_cents' => 90000,
+            'currency' => 'EUR',
+            'status' => 'completed',
+            'created_at' => $this->utc('2026-07-04 10:00:00'),
+            'updated_at' => $this->utc('2026-07-04 10:00:00'),
+        ]);
+
+        $this->actingAsAdmin($admin);
+
+        $response = $this->get(route('admin.dashboard', ['preset' => '7d']))
+            ->assertOk()
+            ->assertViewHas('monthlyStats', fn (array $stats): bool => $stats['homepageViews']['value'] === 1
+                && $stats['paywallViews']['value'] === 1
+                && $stats['royalMembers']['value'] === 2
+                && $stats['monthlySales']['value'] === 12500)
+            ->assertSee('Homepage Views')
+            ->assertSee('Paywall Views')
+            ->assertSee('Royal Members')
+            ->assertSee('Monthly Sales')
+            ->assertSee('$125')
+            ->assertSee('Ventas netas')
+            ->assertSee('Productos')
+            ->assertSee('Contenido')
+            ->assertSee('Shows');
+
+        $html = $response->getContent();
+        $this->assertLessThan(strpos($html, 'data-report-filter'), strpos($html, 'data-monthly-kpi="homepageViews"'));
+        $this->assertLessThan(strpos($html, 'Ventas netas'), strpos($html, 'Homepage Views'));
+    }
+
     public function test_admin_reports_apply_custom_range_previous_period_refunds_and_multi_currency(): void
     {
         $this->travelTo(CarbonImmutable::parse('2026-07-07 12:00:00', 'America/Panama'));

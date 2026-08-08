@@ -3128,6 +3128,35 @@ body.admin-cms-body[data-theme="royal"] {
     overflow-wrap: anywhere;
 }
 
+.stats-monthly-summary {
+    margin-top: 1.25rem;
+}
+
+.stats-monthly-summary-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.stats-monthly-summary-head h2,
+.stats-monthly-summary-head p {
+    margin: 0;
+}
+
+.stats-monthly-summary-head h2 {
+    color: #111111;
+    font-size: clamp(1.4rem, 3vw, 2rem);
+    font-weight: 900;
+    line-height: 1.05;
+}
+
+.stats-monthly-summary-head > p {
+    color: #6b6259;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
 .stats-filter {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto auto;
@@ -3565,7 +3594,8 @@ body.admin-cms-body[data-theme="royal"] {
 @media (max-width: 560px) {
     .admin-stats-main { width: min(calc(100vw - 1rem), 74rem); padding-top: 0.75rem; }
     .stats-page-head,
-    .stats-panel-head { align-items: stretch; flex-direction: column; }
+    .stats-panel-head,
+    .stats-monthly-summary-head { align-items: stretch; flex-direction: column; }
     .stats-timezone { align-self: flex-start; }
     .stats-custom-dates { display: grid; grid-template-columns: 1fr 1fr; }
     .stats-custom-dates input { width: 100%; }
