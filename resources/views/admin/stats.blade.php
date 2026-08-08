@@ -18,6 +18,28 @@
         'product_sort' => $productSort,
     ]);
     $retryUrl = route('admin.dashboard', [...$range->query(), 'product_sort' => $productSort]);
+    $monthlySummaryCards = [
+        [
+            'key' => 'homepageViews',
+            'label' => 'Homepage Views',
+            'value' => number_format($monthlyStats['homepageViews']['value']),
+        ],
+        [
+            'key' => 'paywallViews',
+            'label' => 'Paywall Views',
+            'value' => number_format($monthlyStats['paywallViews']['value']),
+        ],
+        [
+            'key' => 'royalMembers',
+            'label' => 'Royal Members',
+            'value' => number_format($monthlyStats['royalMembers']['value']),
+        ],
+        [
+            'key' => 'monthlySales',
+            'label' => 'Monthly Sales',
+            'value' => '$'.number_format($monthlyStats['monthlySales']['value'] / 100, 0),
+        ],
+    ];
 @endphp
 
 <!DOCTYPE html>
@@ -46,6 +68,31 @@
                 </div>
                 <span class="stats-timezone" title="Todos los límites de fecha se calculan en esta zona horaria">{{ $range->timezone }}</span>
             </header>
+
+            <section class="stats-monthly-summary" aria-labelledby="monthly-summary-title">
+                <div class="stats-monthly-summary-head">
+                    <div>
+                        <p class="stats-eyebrow">Mes actual</p>
+                        <h2 id="monthly-summary-title">Resumen mensual</h2>
+                    </div>
+                    <p>KPIs originales</p>
+                </div>
+
+                <div class="stats-summary-grid" aria-label="KPIs originales del mes actual">
+                    @foreach ($monthlySummaryCards as $card)
+                        @php
+                            $metric = $monthlyStats[$card['key']];
+                        @endphp
+                        <article class="stats-summary-card" data-monthly-kpi="{{ $card['key'] }}">
+                            <div class="stats-card-label">
+                                <p>{{ $card['label'] }}</p>
+                            </div>
+                            <strong @class(['is-error' => $metric['has_error']])>{{ $card['value'] }}</strong>
+                            <span>{{ $metric['has_error'] ? 'No se pudo consultar' : 'Mes actual' }}</span>
+                        </article>
+                    @endforeach
+                </div>
+            </section>
 
             <form class="stats-filter" method="GET" action="{{ route('admin.dashboard') }}" data-report-filter>
                 <fieldset class="stats-presets">
