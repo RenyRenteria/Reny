@@ -227,13 +227,13 @@ class StorePageTest extends TestCase
             ->assertDontSee('Buy here');
     }
 
-    public function test_checkout_screen_renders_product_details_and_modal_hooks(): void
+    public function test_checkout_screen_renders_product_details_and_inline_paypal_flow(): void
     {
         $response = $this->get(route('store.checkout', ['product' => 'listening']));
 
         $response
             ->assertOk()
-            ->assertSee('class="golden-stage-page checkout-page"', false)
+            ->assertSee('class="golden-stage-page checkout-page checkout-dedicated-page"', false)
             ->assertSee('class="store-shell home-shell golden-stage-shell checkout-stage-shell"', false)
             ->assertSee(asset('images/reny-renteria-logo-white.png'), false)
             ->assertSee('class="stage-lights"', false)
@@ -242,15 +242,15 @@ class StorePageTest extends TestCase
             ->assertSee('Dec 16, 2026 - 7:30 PM')
             ->assertSee('$15')
             ->assertSee('images/store/rosa-dorada.png')
-            ->assertSee('data-buy="listening"', false)
-            ->assertSee('data-buy-image="'.asset('images/store/rosa-dorada.png').'"', false)
-            ->assertSee('data-buy-price-value="15.00"', false)
-            ->assertSee('data-buy-url="'.route('store.checkout', ['product' => 'listening']).'"', false)
-            ->assertSee('data-auto-open-checkout="true"', false)
+            ->assertSee('data-dedicated-checkout', false)
+            ->assertSee('data-checkout-product="listening"', false)
+            ->assertSee('data-product-image="'.asset('images/store/rosa-dorada.png').'"', false)
+            ->assertSee('data-product-price-value="15.00"', false)
             ->assertSee('data-copy-url="'.route('store.checkout', ['product' => 'listening']).'"', false)
-            ->assertSee('id="bagLayer"', false)
+            ->assertDontSee('data-auto-open-checkout', false)
+            ->assertDontSee('id="bagLayer"', false)
             ->assertSee('id="paypalButtons"', false)
-            ->assertSee('PayPal Checkout')
+            ->assertSee('Pay with')
             ->assertSee('id="nameField"', false)
             ->assertSee('id="emailField"', false)
             ->assertSee('id="phoneField"', false)
@@ -259,8 +259,10 @@ class StorePageTest extends TestCase
             ->assertSee('Select country')
             ->assertSee('data-payment-method="paypal"', false)
             ->assertSee('data-create-order-endpoint="'.route('checkout.paypal.orders').'"', false)
-            ->assertDontSee('Load PayPal checkout')
-            ->assertSee('GET TICKETS');
+            ->assertSee('id="purchaseConfirmationPanel"', false)
+            ->assertSee('data-checkout-payment-panel', false)
+            ->assertSee('id="nameFieldError"', false)
+            ->assertDontSee('Load PayPal checkout');
     }
 
     public function test_deluxe_checkout_is_available_when_the_catalog_product_is_valid(): void
@@ -278,10 +280,9 @@ class StorePageTest extends TestCase
         $this->get(route('store.checkout', ['product' => 'royal']))
             ->assertOk()
             ->assertSee('Royal Pass')
-            ->assertSee('Unlock Royal Pass')
             ->assertSee('src="'.$royalPassImage.'"', false)
             ->assertSee('alt="Royal Pass membership card"', false)
-            ->assertSee('data-buy-image="'.$royalPassImage.'"', false)
+            ->assertSee('data-product-image="'.$royalPassImage.'"', false)
             ->assertDontSee('free trial', false)
             ->assertDontSee('trial period', false);
     }
@@ -323,7 +324,7 @@ class StorePageTest extends TestCase
             ->assertOk()
             ->assertSee('src="'.$assetUrl.'"', false)
             ->assertSee('alt="CMS checkout poster"', false)
-            ->assertSee('data-buy-image="'.$assetUrl.'"', false);
+            ->assertSee('data-product-image="'.$assetUrl.'"', false);
 
         $this->get('/store')
             ->assertOk()
@@ -337,6 +338,10 @@ class StorePageTest extends TestCase
         $this->assertStringContainsString('startCheckoutFromBuyButton(button);', $js);
         $this->assertStringContainsString("startCheckoutFromBuyButton(button, { source: 'shareable_checkout' });", $js);
         $this->assertStringContainsString("openCheckoutModal(autoOpenButton.dataset.buy, { source: 'dedicated_checkout_url' })", $js);
+        $this->assertStringContainsString('const initializeDedicatedCheckout = () => {', $js);
+        $this->assertStringContainsString("source: 'dedicated_checkout_url'", $js);
+        $this->assertStringContainsString('if (!initializeDedicatedCheckout()) {', $js);
+        $this->assertStringContainsString('purchaseConfirmationPanel.hidden = false;', $js);
         $this->assertStringContainsString('initializeVisiblePayPalCheckout();', $js);
         $this->assertStringContainsString("image.className = 'store-bag-image';", $js);
         $this->assertStringContainsString('customer_name', $js);

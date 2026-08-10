@@ -1425,7 +1425,7 @@ class RoyalPassCheckoutTest extends TestCase
             ->assertOk()
             ->assertSee('$3.99/mo')
             ->assertSee('data-price-value="3.99"', false)
-            ->assertSee('data-buy-price-value="3.99"', false);
+            ->assertSee('data-product-price-value="3.99"', false);
     }
 
     public function test_store_exposes_cms_digital_and_art_drop_purchase_keys(): void

@@ -309,7 +309,7 @@ class CmsCompletionIssue202Test extends TestCase
             ->assertOk()
             ->assertSee('Issue 202 Product')
             ->assertSee('$19.99')
-            ->assertSee('data-buy-price-value="19.99"', false);
+            ->assertSee('data-product-price-value="19.99"', false);
         $this->get(route('public.content.show', $product))
             ->assertOk()
             ->assertSee('<title>Issue 202 Product SEO</title>', false)
@@ -373,7 +373,7 @@ class CmsCompletionIssue202Test extends TestCase
             ->assertSee('Issue 202 Canonical Event')
             ->assertSee('$25.50')
             ->assertSee('Dec 20, 2026 - 7:30 PM')
-            ->assertSee('data-buy-price-value="25.50"', false);
+            ->assertSee('data-product-price-value="25.50"', false);
 
         $this->post(route('admin.content.archive', $event))->assertRedirect();
         $this->get(route('store.checkout', ['product' => 'issue-202-event']))->assertNotFound();
