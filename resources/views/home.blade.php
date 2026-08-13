@@ -62,13 +62,13 @@
         return in_array($numeric, ['0', '0.0', '0.00'], true);
     };
     $eventTimezone = config('admin.publishing_timezone', config('app.timezone', 'UTC'));
-    $eventCountdownTarget = function (?string $value) use ($eventTimezone): ?\Carbon\CarbonImmutable {
+    $eventCountdownTarget = function (?string $value, ?string $timezone = null) use ($eventTimezone): ?\Carbon\CarbonImmutable {
         if (! filled($value)) {
             return null;
         }
 
         try {
-            return \Carbon\CarbonImmutable::parse($value, $eventTimezone);
+            return \Carbon\CarbonImmutable::parse($value, filled($timezone) ? $timezone : $eventTimezone);
         } catch (\Throwable) {
             return null;
         }
@@ -216,7 +216,10 @@
                                     $eventHasExchangeablePrice = filled($eventVisiblePrice) && ! $isFreeLeadEvent && $eventPriceValue > 0;
                                     $eventStatusId = 'home-rsvp-status-' . \Illuminate\Support\Str::slug($eventKey);
                                     $rsvpTicket = $rsvpTickets[$eventKey] ?? null;
-                                    $countdownTarget = $eventCountdownTarget($event['countdown_at'] ?? $event['starts_at'] ?? null);
+                                    $countdownTarget = $eventCountdownTarget(
+                                        $event['countdown_at'] ?? $event['starts_at'] ?? null,
+                                        $event['timezone'] ?? null,
+                                    );
                                     $countdownParts = $countdownTarget ? $eventCountdownParts($countdownTarget) : null;
                                 @endphp
                                 <article class="home-show-card">

@@ -31,6 +31,7 @@
                     : ''),
             'cta_label' => $event['action'] ?? ($isRsvp ? 'RSVP' : 'BUY TICKETS'),
             'countdown_at' => $event['starts_at'] ?? null,
+            'timezone' => $event['timezone'] ?? null,
             'action_type' => $event['mode'] ?? 'buy',
             'product_key' => $event['key'] ?? '',
             'url' => $event['action_url'] ?? '',
@@ -83,13 +84,13 @@
         return in_array($numeric, ['0', '0.0', '0.00'], true);
     };
     $storeTimezone = config('admin.publishing_timezone', config('app.timezone', 'UTC'));
-    $slotCountdownTarget = function (?string $value) use ($storeTimezone) {
+    $slotCountdownTarget = function (?string $value, ?string $timezone = null) use ($storeTimezone) {
         if (! filled($value)) {
             return null;
         }
 
         try {
-            return \Carbon\CarbonImmutable::parse($value, $storeTimezone);
+            return \Carbon\CarbonImmutable::parse($value, filled($timezone) ? $timezone : $storeTimezone);
         } catch (\Throwable) {
             return null;
         }
@@ -199,7 +200,7 @@
                                 $slotStatusId = 'rsvp-status-' . \Illuminate\Support\Str::slug($slotProductKey);
                                 $rsvpTicket = $rsvpTickets[$slotProductKey] ?? null;
                                 $countdownTarget = ($slot['kind'] ?? '') === 'event'
-                                    ? $slotCountdownTarget($slot['countdown_at'] ?? null)
+                                    ? $slotCountdownTarget($slot['countdown_at'] ?? null, $slot['timezone'] ?? null)
                                     : null;
                                 $countdownLabel = $slotCountdownLabel($countdownTarget);
                             @endphp
