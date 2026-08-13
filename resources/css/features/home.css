@@ -142,18 +142,26 @@
 .home-show-card {
     display: grid;
     grid-template-columns: 11rem minmax(0, 1fr);
-    align-items: center;
-    gap: 2rem;
+    grid-template-areas:
+        "image copy"
+        "image countdown"
+        "image actions";
+    align-items: start;
+    column-gap: 2rem;
+    row-gap: 0.75rem;
 }
 
 .home-show-image {
     display: block;
+    grid-area: image;
     width: 100%;
     aspect-ratio: 245 / 301;
+    align-self: center;
     object-fit: contain;
 }
 
 .home-show-copy {
+    grid-area: copy;
     min-width: 0;
 }
 
@@ -172,6 +180,21 @@
     font-size: 0.9375rem;
     font-weight: 300;
     line-height: 1.22;
+}
+
+.home-event-countdown {
+    grid-area: countdown;
+}
+
+.home-show-actions {
+    display: flex;
+    grid-area: actions;
+    align-items: center;
+}
+
+.home-show-actions .home-pill-button {
+    min-height: 2.75rem;
+    margin-top: 0;
 }
 
 .home-pill-button,
@@ -381,21 +404,21 @@
     }
 
     .home-show-list {
-        gap: 0;
+        gap: 0.75rem;
     }
 
     .home-show-card {
-        grid-template-columns: 7.25rem minmax(0, 1fr);
-        align-items: center;
-        min-height: 8.75rem;
+        grid-template-columns: 5.75rem minmax(0, 1fr);
+        grid-template-areas:
+            "image copy"
+            "countdown countdown"
+            "actions actions";
+        align-items: start;
+        min-height: 0;
         padding: 0.75rem;
         border-radius: 0.375rem;
         background: #ffffff;
         gap: 0.75rem;
-    }
-
-    .home-show-card:not(:first-child) {
-        display: none;
     }
 
     .home-show-image {
@@ -405,12 +428,16 @@
     }
 
     .home-show-copy::before {
-        content: "Next show:";
+        content: "Upcoming show:";
         display: block;
         color: #000000;
         font-size: 0.6875rem;
         font-weight: 300;
         line-height: 1.05;
+    }
+
+    .home-show-card:first-child .home-show-copy::before {
+        content: "Next show:";
     }
 
     .home-show-copy h2 {
@@ -421,25 +448,20 @@
     }
 
     .home-show-copy p {
-        overflow: hidden;
         font-size: 0.6875rem;
-        line-height: 1.05;
-        text-overflow: ellipsis;
-        white-space: nowrap;
+        line-height: 1.25;
+        white-space: normal;
     }
 
-    .home-show-copy p:nth-of-type(n+3) {
-        display: none;
-    }
-
-    .home-pill-button {
-        min-width: 5rem;
-        min-height: 1.5rem;
-        margin-top: 0.25rem;
-        padding: 0 0.75rem;
+    .home-show-actions .home-pill-button {
+        width: 100%;
+        min-width: 0;
+        min-height: 2.75rem;
+        margin-top: 0;
+        padding: 0 1rem;
         background: #000000;
         color: #ffffff;
-        font-size: 0.625rem;
+        font-size: 0.75rem;
         font-weight: 700;
         text-transform: none;
     }
@@ -1038,6 +1060,90 @@
     color: var(--home-cream-muted);
 }
 
+.home-shell .home-event-countdown {
+    position: relative;
+    overflow: hidden;
+    width: min(100%, 32rem);
+    padding: 0.7rem 0.8rem 0.8rem;
+    border: 1px solid rgba(255, 228, 153, 0.52);
+    border-radius: 0.9rem;
+    background:
+        radial-gradient(circle at 50% -120%, rgba(255, 228, 153, 0.24), transparent 66%),
+        linear-gradient(145deg, rgba(23, 17, 11, 0.98), rgba(43, 31, 20, 0.94));
+    box-shadow: inset 0 0 1.25rem rgba(255, 228, 153, 0.06), 0 0.75rem 1.6rem rgba(8, 5, 3, 0.22);
+    color: var(--home-cream);
+}
+
+.home-shell .home-event-countdown::before {
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    height: 0.18rem;
+    background: linear-gradient(90deg, var(--home-gold-deep), var(--home-gold-light), var(--home-gold-warm));
+    content: "";
+}
+
+.home-shell .home-event-countdown-kicker {
+    display: block;
+    margin-bottom: 0.45rem;
+    color: var(--home-gold-light);
+    font-size: 0.65rem;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    line-height: 1;
+    text-transform: uppercase;
+}
+
+.home-shell .home-event-countdown-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.home-shell .home-event-countdown-part {
+    position: relative;
+    display: grid;
+    min-width: 0;
+    justify-items: center;
+    padding-inline: 0.35rem;
+}
+
+.home-shell .home-event-countdown-part:not(:last-child)::after {
+    position: absolute;
+    top: 0.35rem;
+    right: -0.08em;
+    color: rgba(255, 228, 153, 0.54);
+    content: ":";
+    font-size: 1.4rem;
+    font-weight: 800;
+}
+
+.home-shell .home-event-countdown-part strong {
+    background: linear-gradient(110deg, var(--home-gold-warm), var(--home-gold-light), var(--home-cream));
+    background-clip: text;
+    color: transparent;
+    font-size: clamp(1.8rem, 4.5vw, 2.65rem);
+    font-variant-numeric: tabular-nums;
+    font-weight: 900;
+    letter-spacing: -0.055em;
+    line-height: 0.92;
+    -webkit-background-clip: text;
+}
+
+.home-shell .home-event-countdown-part span {
+    margin-top: 0.38rem;
+    color: var(--home-cream-muted);
+    font-size: 0.58rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    line-height: 1;
+    text-transform: uppercase;
+}
+
+.home-shell .home-event-countdown.is-ended .home-event-countdown-grid {
+    opacity: 0.58;
+}
+
 .home-shell .home-show-card {
     padding: 0.75rem;
     border: 1px solid rgba(255, 228, 153, 0.2);
@@ -1307,6 +1413,26 @@
 
     .home-shell .home-show-copy p {
         color: var(--home-cream-muted);
+    }
+
+    .home-shell .home-event-countdown {
+        width: 100%;
+        padding: 0.72rem 0.65rem 0.78rem;
+        border-radius: 0.72rem;
+        box-shadow: inset 0 0 1rem rgba(255, 228, 153, 0.06), 0 0.55rem 1.25rem rgba(8, 5, 3, 0.2);
+    }
+
+    .home-shell .home-event-countdown-part {
+        padding-inline: 0.2rem;
+    }
+
+    .home-shell .home-event-countdown-part strong {
+        font-size: clamp(1.8rem, 9vw, 2.25rem);
+    }
+
+    .home-shell .home-event-countdown-part span {
+        font-size: clamp(0.48rem, 2.2vw, 0.58rem);
+        letter-spacing: 0.055em;
     }
 
     .home-shell .home-show-image,

@@ -136,27 +136,60 @@ const initializeStoreInteractions = (root = document) => {
         };
     });
 
-    const countdownLabel = (target, endedLabel) => {
-        const seconds = Math.max(0, Math.floor((target.getTime() - Date.now()) / 1000));
+    const countdownParts = (target) => {
+        const totalSeconds = Math.max(0, Math.ceil((target.getTime() - Date.now()) / 1000));
 
-        if (!Number.isFinite(seconds) || seconds <= 0) {
+        return {
+            totalSeconds,
+            days: Math.floor(totalSeconds / 86400),
+            hours: Math.floor((totalSeconds % 86400) / 3600),
+            minutes: Math.floor((totalSeconds % 3600) / 60),
+            seconds: totalSeconds % 60,
+        };
+    };
+
+    const countdownLabel = (target, endedLabel) => {
+        const remaining = countdownParts(target);
+
+        if (!Number.isFinite(remaining.totalSeconds) || remaining.totalSeconds <= 0) {
             return endedLabel || 'Today';
         }
 
-        const days = Math.floor(seconds / 86400);
-        const hours = Math.floor((seconds % 86400) / 3600);
-
-        if (days > 0) {
-            return `${days}D ${hours}H`;
+        if (remaining.days > 0) {
+            return `${remaining.days}D ${remaining.hours}H`;
         }
 
-        const minutes = Math.floor((seconds % 3600) / 60);
-
-        if (hours > 0) {
-            return `${hours}H ${minutes}M`;
+        if (remaining.hours > 0) {
+            return `${remaining.hours}H ${remaining.minutes}M`;
         }
 
-        return `${Math.max(1, minutes)}M`;
+        return `${Math.max(1, remaining.minutes)}M`;
+    };
+
+    const renderSegmentedCountdown = (node, target) => {
+        const remaining = countdownParts(target);
+        const ended = !Number.isFinite(remaining.totalSeconds) || remaining.totalSeconds <= 0;
+        const status = node.querySelector('[data-countdown-status]');
+        const runningLabel = node.dataset.countdownRunningLabel || 'Show starts in';
+        const endedLabel = node.dataset.countdownEndedLabel || 'Event started';
+
+        ['days', 'hours', 'minutes', 'seconds'].forEach((unit) => {
+            const value = node.querySelector(`[data-countdown-unit="${unit}"]`);
+
+            if (value) {
+                value.textContent = String(remaining[unit]).padStart(2, '0');
+            }
+        });
+
+        node.classList.toggle('is-ended', ended);
+
+        if (status) {
+            status.textContent = ended ? endedLabel : runningLabel;
+        }
+
+        node.setAttribute('aria-label', ended
+            ? endedLabel
+            : `${runningLabel} ${remaining.days} days, ${remaining.hours} hours, ${remaining.minutes} minutes, and ${remaining.seconds} seconds`);
     };
 
     const renderCountdowns = () => {
@@ -167,6 +200,11 @@ const initializeStoreInteractions = (root = document) => {
                 return;
             }
 
+            if (node.dataset.countdownDisplay === 'segments') {
+                renderSegmentedCountdown(node, target);
+                return;
+            }
+
             node.textContent = countdownLabel(target, node.dataset.countdownEndedLabel);
         });
     };
@@ -174,7 +212,10 @@ const initializeStoreInteractions = (root = document) => {
     if (countdownNodes.length > 0) {
         renderCountdowns();
         window.clearInterval(window.renyStoreCountdownInterval);
-        window.renyStoreCountdownInterval = window.setInterval(renderCountdowns, 60000);
+        const countdownRefreshRate = countdownNodes.some((node) => node.dataset.countdownDisplay === 'segments')
+            ? 1000
+            : 60000;
+        window.renyStoreCountdownInterval = window.setInterval(renderCountdowns, countdownRefreshRate);
     }
 
     const money = (value, suffix = '') => {

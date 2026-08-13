@@ -95,6 +95,42 @@ class HomePageTest extends TestCase
             ->assertSee(asset('images/reny-renteria-logo-white.png'), false);
     }
 
+    public function test_home_renders_a_realtime_countdown_for_every_event_between_details_and_cta(): void
+    {
+        $html = $this->get('/')
+            ->assertOk()
+            ->assertSee('data-countdown-at="2026-09-21T19:30:00-05:00"', false)
+            ->assertSee('data-countdown-at="2026-12-16T19:30:00-05:00"', false)
+            ->getContent();
+
+        preg_match_all('/<article class="home-show-card">(.*?)<\/article>/s', $html, $matches);
+
+        $this->assertCount(2, $matches[1]);
+
+        foreach ($matches[1] as $eventCard) {
+            $detailsPosition = strpos($eventCard, 'class="home-show-copy"');
+            $countdownPosition = strpos($eventCard, 'class="home-event-countdown"');
+            $actionsPosition = strpos($eventCard, 'class="home-show-actions"');
+
+            $this->assertNotFalse($detailsPosition);
+            $this->assertNotFalse($countdownPosition);
+            $this->assertNotFalse($actionsPosition);
+            $this->assertLessThan($countdownPosition, $detailsPosition);
+            $this->assertLessThan($actionsPosition, $countdownPosition);
+            $this->assertSame(4, substr_count($eventCard, 'data-countdown-unit='));
+        }
+
+        $css = $this->frontendCssSource();
+        $javascript = $this->frontendJavaScriptSource();
+
+        $this->assertDoesNotMatchRegularExpression(
+            '/\.home-show-card:not\(:first-child\)\s*\{[^}]*display\s*:\s*none/s',
+            $css,
+        );
+        $this->assertStringContainsString("node.dataset.countdownDisplay === 'segments'", $javascript);
+        $this->assertStringContainsString('? 1000', $javascript);
+    }
+
     public function test_mobile_navigation_uses_shared_compact_sizing_across_public_tabs(): void
     {
         $paths = [
