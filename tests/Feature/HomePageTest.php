@@ -161,6 +161,40 @@ class HomePageTest extends TestCase
             ->assertDontSee('data-countdown-at="2026-09-21T19:30:00-05:00"', false);
     }
 
+    public function test_home_ignores_expired_and_invalid_events_when_selecting_the_next_show(): void
+    {
+        $response = $this->view('home', [
+            'publicCms' => [
+                'storefront' => [],
+                'events' => [
+                    [
+                        'title' => 'Expired Show',
+                        'starts_at' => '2026-08-13 10:00:00',
+                        'timezone' => 'America/Panama',
+                    ],
+                    [
+                        'title' => 'Invalid Date Show',
+                        'starts_at' => 'not-a-date',
+                        'timezone' => 'America/Panama',
+                    ],
+                    [
+                        'title' => 'Next Valid Show',
+                        'starts_at' => '2026-08-14 20:00:00',
+                        'timezone' => 'America/Panama',
+                    ],
+                ],
+            ],
+            'rsvpTickets' => [],
+        ]);
+
+        $response
+            ->assertSee('Next Valid Show')
+            ->assertDontSee('Expired Show')
+            ->assertDontSee('Invalid Date Show');
+
+        $this->assertSame(1, substr_count((string) $response, 'class="home-show-card"'));
+    }
+
     public function test_home_countdown_uses_the_canonical_event_timezone(): void
     {
         $event = $this->publishedContent(ContentType::Event, [
