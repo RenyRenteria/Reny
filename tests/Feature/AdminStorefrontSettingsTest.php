@@ -22,6 +22,7 @@ class AdminStorefrontSettingsTest extends TestCase
     {
         parent::setUp();
 
+        $this->travelTo(CarbonImmutable::parse('2026-08-13 11:34:00', 'America/Panama'));
         config()->set('public_cms.cache_store', 'array');
         Cache::store('array')->flush();
     }
@@ -120,8 +121,6 @@ class AdminStorefrontSettingsTest extends TestCase
 
     public function test_storefront_event_update_syncs_to_cms_and_public_home_and_store(): void
     {
-        $this->travelTo(CarbonImmutable::parse('2026-08-13 11:34:00', 'America/Panama'));
-
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
 
         $this->actingAsAdmin($admin);

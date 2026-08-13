@@ -22,6 +22,7 @@ class HomePageTest extends TestCase
     {
         parent::setUp();
 
+        $this->travelTo(CarbonImmutable::parse('2026-08-13 11:34:00', 'America/Panama'));
         config()->set('public_cms.cache_store', 'array');
         Cache::store('array')->flush();
     }
@@ -135,8 +136,6 @@ class HomePageTest extends TestCase
 
     public function test_home_selects_the_nearest_future_event_by_instant_across_timezones(): void
     {
-        $this->travelTo(CarbonImmutable::parse('2026-08-13 11:34:00', 'America/Panama'));
-
         $this->view('home', [
             'publicCms' => [
                 'storefront' => [
