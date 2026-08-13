@@ -61,6 +61,28 @@
 
         return in_array($numeric, ['0', '0.0', '0.00'], true);
     };
+    $eventTimezone = config('admin.publishing_timezone', config('app.timezone', 'UTC'));
+    $eventCountdownTarget = function (?string $value, ?string $timezone = null) use ($eventTimezone): ?\Carbon\CarbonImmutable {
+        if (! filled($value)) {
+            return null;
+        }
+
+        try {
+            return \Carbon\CarbonImmutable::parse($value, filled($timezone) ? $timezone : $eventTimezone);
+        } catch (\Throwable) {
+            return null;
+        }
+    };
+    $eventCountdownParts = function (\Carbon\CarbonImmutable $target): array {
+        $secondsRemaining = (int) max(0, now()->diffInSeconds($target, false));
+
+        return [
+            'days' => intdiv($secondsRemaining, 86400),
+            'hours' => intdiv($secondsRemaining % 86400, 3600),
+            'minutes' => intdiv($secondsRemaining % 3600, 60),
+            'seconds' => $secondsRemaining % 60,
+        ];
+    };
     $royalImages = collect($publicCms['royal_visuals'] ?? [])
         ->merge([
             asset('images/photos/capri.jpg'),
@@ -194,6 +216,11 @@
                                     $eventHasExchangeablePrice = filled($eventVisiblePrice) && ! $isFreeLeadEvent && $eventPriceValue > 0;
                                     $eventStatusId = 'home-rsvp-status-' . \Illuminate\Support\Str::slug($eventKey);
                                     $rsvpTicket = $rsvpTickets[$eventKey] ?? null;
+                                    $countdownTarget = $eventCountdownTarget(
+                                        $event['countdown_at'] ?? $event['starts_at'] ?? null,
+                                        $event['timezone'] ?? null,
+                                    );
+                                    $countdownParts = $countdownTarget ? $eventCountdownParts($countdownTarget) : null;
                                 @endphp
                                 <article class="home-show-card">
                                     <img class="home-show-image" src="{{ $slotImage($event) }}" alt="{{ $event['image_alt'] ?? $event['title'] }}" loading="{{ $loop->first ? 'eager' : 'lazy' }}" decoding="async">
@@ -208,9 +235,38 @@
                                                     data-price="{{ $eventKey }}"
                                                     data-price-value="{{ number_format($eventPriceValue, 2, '.', '') }}"
                                                 @endif
-                                            >{{ $eventVisiblePrice }}</p>
+                                                >{{ $eventVisiblePrice }}</p>
                                         @endif
+                                    </div>
 
+                                    @if ($countdownTarget && $countdownParts)
+                                        <div
+                                            class="home-event-countdown"
+                                            data-countdown-at="{{ $countdownTarget->toIso8601String() }}"
+                                            data-countdown-display="segments"
+                                            data-countdown-running-label="Show starts in"
+                                            data-countdown-ended-label="Event started"
+                                            role="timer"
+                                            aria-label="Show starts in {{ $countdownParts['days'] }} days, {{ $countdownParts['hours'] }} hours, {{ $countdownParts['minutes'] }} minutes, and {{ $countdownParts['seconds'] }} seconds"
+                                        >
+                                            <span class="home-event-countdown-kicker" data-countdown-status>Show starts in</span>
+                                            <div class="home-event-countdown-grid" aria-hidden="true">
+                                                @foreach ([
+                                                    'days' => 'Days',
+                                                    'hours' => 'Hours',
+                                                    'minutes' => 'Minutes',
+                                                    'seconds' => 'Seconds',
+                                                ] as $unit => $label)
+                                                    <span class="home-event-countdown-part">
+                                                        <strong data-countdown-unit="{{ $unit }}">{{ str_pad((string) $countdownParts[$unit], 2, '0', STR_PAD_LEFT) }}</strong>
+                                                        <span>{{ $label }}</span>
+                                                    </span>
+                                                @endforeach
+                                            </div>
+                                        </div>
+                                    @endif
+
+                                    <div class="home-show-actions">
                                         @if ($isFreeLeadEvent)
                                             <button
                                                 class="home-pill-button"

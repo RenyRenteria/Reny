@@ -95,6 +95,78 @@ class HomePageTest extends TestCase
             ->assertSee(asset('images/reny-renteria-logo-white.png'), false);
     }
 
+    public function test_home_renders_a_realtime_countdown_for_every_event_between_details_and_cta(): void
+    {
+        $html = $this->get('/')
+            ->assertOk()
+            ->assertSee('data-countdown-at="2026-09-21T19:30:00-05:00"', false)
+            ->assertSee('data-countdown-at="2026-12-16T19:30:00-05:00"', false)
+            ->getContent();
+
+        preg_match_all('/<article class="home-show-card">(.*?)<\/article>/s', $html, $matches);
+
+        $this->assertCount(2, $matches[1]);
+
+        foreach ($matches[1] as $eventCard) {
+            $detailsPosition = strpos($eventCard, 'class="home-show-copy"');
+            $countdownPosition = strpos($eventCard, 'class="home-event-countdown"');
+            $actionsPosition = strpos($eventCard, 'class="home-show-actions"');
+
+            $this->assertNotFalse($detailsPosition);
+            $this->assertNotFalse($countdownPosition);
+            $this->assertNotFalse($actionsPosition);
+            $this->assertLessThan($countdownPosition, $detailsPosition);
+            $this->assertLessThan($actionsPosition, $countdownPosition);
+            $this->assertSame(4, substr_count($eventCard, 'data-countdown-unit='));
+        }
+
+        $css = $this->frontendCssSource();
+        $javascript = $this->frontendJavaScriptSource();
+
+        $this->assertDoesNotMatchRegularExpression(
+            '/\.home-show-card:not\(:first-child\)\s*\{[^}]*display\s*:\s*none/s',
+            $css,
+        );
+        $this->assertStringContainsString("node.dataset.countdownDisplay === 'segments'", $javascript);
+        $this->assertStringContainsString('? 1000', $javascript);
+    }
+
+    public function test_home_countdown_uses_the_canonical_event_timezone(): void
+    {
+        $event = $this->publishedContent(ContentType::Event, [
+            'title' => 'New York Evening Show',
+            'purchase_key' => 'new-york-evening-show',
+            'metadata' => [
+                'starts_at' => '2026-09-21 19:30:00',
+                'timezone' => 'America/New_York',
+                'location' => 'New York, NY',
+                'ticketing_mode' => 'rsvp',
+                'action_type' => 'rsvp',
+                'cta_label' => 'RSVP',
+            ],
+        ]);
+        $storefront = app(StorefrontSettingsService::class)->defaults();
+        data_set($storefront, 'slots.event_primary.content_id', $event->id);
+
+        SitePageSetting::create([
+            'page' => StorefrontSettingsService::PAGE,
+            'section' => StorefrontSettingsService::SECTION,
+            'status' => SitePageSetting::STATUS_PUBLISHED,
+            'payload' => $storefront,
+            'published_at' => now(),
+        ]);
+
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('New York Evening Show')
+            ->assertSee('data-countdown-at="2026-09-21T19:30:00-04:00"', false)
+            ->assertDontSee('data-countdown-at="2026-09-21T19:30:00-05:00"', false);
+
+        $this->getJson(route('public-content.payload', 'home'))
+            ->assertOk()
+            ->assertJsonPath('storefront.slots.event_primary.timezone', 'America/New_York');
+    }
+
     public function test_mobile_navigation_uses_shared_compact_sizing_across_public_tabs(): void
     {
         $paths = [

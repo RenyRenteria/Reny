@@ -68,6 +68,7 @@ class StorefrontSettingsService
                     'price_label' => 'FREE',
                     'cta_label' => 'GET TICKETS',
                     'countdown_at' => '2026-09-21 19:30:00',
+                    'timezone' => 'America/Panama',
                     'action_type' => 'rsvp',
                     'product_key' => 'concert',
                     'url' => '',
@@ -85,6 +86,7 @@ class StorefrontSettingsService
                     'price_label' => '',
                     'cta_label' => 'GET TICKETS',
                     'countdown_at' => '',
+                    'timezone' => 'America/Panama',
                     'action_type' => 'buy',
                     'product_key' => 'listening',
                     'url' => '',
@@ -431,14 +433,15 @@ class StorefrontSettingsService
                 ? $this->moneyLabel((int) $product['amount_cents'], (string) $product['currency'])
                 : (string) ($slot['price_label'] ?? ''));
         $description = $content->summary ?: $content->body ?: ($slot['description'] ?? '');
+        $eventTimezone = (string) ($slot['timezone'] ?? config('admin.publishing_timezone', 'America/Panama'));
 
         if ($content->type === ContentType::Event) {
             $startsAt = (string) data_get($content->metadata, 'starts_at', '');
-            $timezone = (string) data_get($content->metadata, 'timezone', 'America/Panama');
+            $eventTimezone = (string) data_get($content->metadata, 'timezone', config('admin.publishing_timezone', 'America/Panama'));
             $description = collect([
                 $content->summary ?: $content->body,
                 data_get($content->metadata, 'location'),
-                $this->eventDateLabel($startsAt, $timezone),
+                $this->eventDateLabel($startsAt, $eventTimezone),
             ])->filter(fn (mixed $line): bool => filled($line))->implode("\n");
         }
 
@@ -454,6 +457,7 @@ class StorefrontSettingsService
             'countdown_at' => $content->type === ContentType::Event
                 ? (string) data_get($content->metadata, 'starts_at', '')
                 : (string) ($slot['countdown_at'] ?? ''),
+            ...($content->type === ContentType::Event ? ['timezone' => $eventTimezone] : []),
             'action_type' => $actionType,
             'product_key' => $content->purchase_key ?: ($slot['product_key'] ?? ''),
             'url' => $actionType === 'link'
@@ -489,6 +493,9 @@ class StorefrontSettingsService
                 : $slot['description'],
             'price_label' => $this->moneyLabel((int) $product['amount_cents'], (string) $product['currency']),
             'countdown_at' => $event['starts_at'] ?? ($slot['countdown_at'] ?? ''),
+            ...($event ? [
+                'timezone' => (string) ($event['timezone'] ?? config('admin.publishing_timezone', 'America/Panama')),
+            ] : []),
             'product_key' => (string) $product['key'],
         ];
     }
