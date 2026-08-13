@@ -1152,12 +1152,6 @@
     transition: background 220ms ease, border-color 220ms ease, transform 220ms ease;
 }
 
-.home-shell .home-show-card:hover {
-    border-color: rgba(255, 228, 153, 0.38);
-    background: rgba(255, 228, 153, 0.1);
-    transform: translateX(0.2rem);
-}
-
 .home-shell .home-show-image,
 .home-shell .home-album-image,
 .home-shell .home-album-cover-button {
@@ -1174,11 +1168,23 @@
     transition: filter 260ms ease, transform 260ms ease;
 }
 
-.home-shell .home-show-card:hover .home-show-image,
 .home-shell .home-album-cover-button:hover .home-album-image,
 .home-shell .home-album-cover-button:focus-visible .home-album-image {
     filter: saturate(1.1) contrast(1.04);
     transform: scale(1.018) rotate(-0.35deg);
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .home-shell .home-show-card:hover {
+        border-color: rgba(255, 228, 153, 0.38);
+        background: rgba(255, 228, 153, 0.1);
+        transform: translateX(0.2rem);
+    }
+
+    .home-shell .home-show-card:hover .home-show-image {
+        filter: saturate(1.1) contrast(1.04);
+        transform: scale(1.018) rotate(-0.35deg);
+    }
 }
 
 .home-shell .home-music {

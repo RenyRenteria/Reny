@@ -9,6 +9,7 @@ use App\Models\EditorialContent;
 use App\Models\MediaAsset;
 use App\Models\SitePageSetting;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
@@ -21,6 +22,7 @@ class AdminStorefrontSettingsTest extends TestCase
     {
         parent::setUp();
 
+        $this->travelTo(CarbonImmutable::parse('2026-08-13 11:34:00', 'America/Panama'));
         config()->set('public_cms.cache_store', 'array');
         Cache::store('array')->flush();
     }
@@ -130,10 +132,10 @@ class AdminStorefrontSettingsTest extends TestCase
             'slots' => [
                 'event_primary' => [
                     'title' => 'Synced Storefront Show',
-                    'description' => "Teatro Nacional\nDec 24 - 8:30 PM",
+                    'description' => "Teatro Nacional\nSep 24 - 8:30 PM",
                     'price_label' => 'FREE',
                     'cta_label' => 'JOIN LIST',
-                    'countdown_at' => '2026-12-24T20:30',
+                    'countdown_at' => '2026-09-24T20:30',
                     'action_type' => 'rsvp',
                     'product_key' => 'synced-storefront-show',
                 ],

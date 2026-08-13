@@ -10,6 +10,7 @@ use App\Models\SitePageSetting;
 use App\Models\User;
 use App\Services\Commerce\ProductCatalog;
 use App\Services\StorefrontSettingsService;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
@@ -22,6 +23,7 @@ class CmsCompletionIssue202Test extends TestCase
     {
         parent::setUp();
 
+        $this->travelTo(CarbonImmutable::parse('2026-08-13 11:34:00', 'America/Panama'));
         config()->set('public_cms.cache_store', 'array');
         Cache::store('array')->flush();
     }
@@ -425,8 +427,9 @@ class CmsCompletionIssue202Test extends TestCase
         $this->get('/store')->assertOk()->assertSee('$23');
         $this->get('/')
             ->assertOk()
-            ->assertSee('$23')
-            ->assertSee('data-buy-price-value="23.00"', false);
+            ->assertSee('Reny Renteria en Concierto')
+            ->assertDontSee('Festival de la Rosa Dorada')
+            ->assertDontSee('data-buy-price-value="23.00"', false);
         $this->get(route('store.checkout', ['product' => 'listening']))
             ->assertOk()
             ->assertSee('$23')
