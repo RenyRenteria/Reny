@@ -73,6 +73,28 @@
             return null;
         }
     };
+    $eventSelectionTime = now();
+    $events = $events
+        ->map(function (array $event) use ($eventCountdownTarget, $eventSelectionTime): ?array {
+            $target = $eventCountdownTarget(
+                $event['countdown_at'] ?? $event['starts_at'] ?? null,
+                $event['timezone'] ?? null,
+            );
+
+            if (! $target || ! $target->greaterThan($eventSelectionTime)) {
+                return null;
+            }
+
+            return [
+                'event' => $event,
+                'timestamp' => $target->getTimestamp(),
+            ];
+        })
+        ->filter()
+        ->sortBy('timestamp')
+        ->take(1)
+        ->pluck('event')
+        ->values();
     $eventCountdownParts = function (\Carbon\CarbonImmutable $target): array {
         $secondsRemaining = (int) max(0, now()->diffInSeconds($target, false));
 

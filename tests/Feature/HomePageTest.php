@@ -8,6 +8,7 @@ use App\Models\EditorialContent;
 use App\Models\SitePageSetting;
 use App\Models\User;
 use App\Services\StorefrontSettingsService;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
@@ -57,7 +58,7 @@ class HomePageTest extends TestCase
             ->assertSee('CMS Home Video')
             ->assertSee('https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&amp;mute=1&amp;playsinline=1&amp;rel=0', false)
             ->assertSee('Reny Renteria en Concierto')
-            ->assertSee('Festival de la Rosa Dorada')
+            ->assertDontSee('Festival de la Rosa Dorada')
             ->assertSee('CMS Album')
             ->assertDontSee('CMS Lead Single')
             ->assertDontSee('Latest Singles')
@@ -95,17 +96,17 @@ class HomePageTest extends TestCase
             ->assertSee(asset('images/reny-renteria-logo-white.png'), false);
     }
 
-    public function test_home_renders_a_realtime_countdown_for_every_event_between_details_and_cta(): void
+    public function test_home_renders_only_the_next_event_with_a_realtime_countdown_between_details_and_cta(): void
     {
         $html = $this->get('/')
             ->assertOk()
             ->assertSee('data-countdown-at="2026-09-21T19:30:00-05:00"', false)
-            ->assertSee('data-countdown-at="2026-12-16T19:30:00-05:00"', false)
+            ->assertDontSee('data-countdown-at="2026-12-16T19:30:00-05:00"', false)
             ->getContent();
 
         preg_match_all('/<article class="home-show-card">(.*?)<\/article>/s', $html, $matches);
 
-        $this->assertCount(2, $matches[1]);
+        $this->assertCount(1, $matches[1]);
 
         foreach ($matches[1] as $eventCard) {
             $detailsPosition = strpos($eventCard, 'class="home-show-copy"');
@@ -123,12 +124,42 @@ class HomePageTest extends TestCase
         $css = $this->frontendCssSource();
         $javascript = $this->frontendJavaScriptSource();
 
-        $this->assertDoesNotMatchRegularExpression(
-            '/\.home-show-card:not\(:first-child\)\s*\{[^}]*display\s*:\s*none/s',
+        $this->assertMatchesRegularExpression(
+            '/@media \(hover: hover\) and \(pointer: fine\)\s*\{\s*\.home-shell \.home-show-card:hover/s',
             $css,
         );
+        $this->assertDoesNotMatchRegularExpression('/\.home-show-card:(?:active|focus-within)/', $css);
         $this->assertStringContainsString("node.dataset.countdownDisplay === 'segments'", $javascript);
         $this->assertStringContainsString('? 1000', $javascript);
+    }
+
+    public function test_home_selects_the_nearest_future_event_by_instant_across_timezones(): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-08-13 11:34:00', 'America/Panama'));
+
+        $this->view('home', [
+            'publicCms' => [
+                'storefront' => [
+                    'slots' => [
+                        'event_primary' => [
+                            'title' => 'Later Panama Show',
+                            'countdown_at' => '2026-09-21 19:30:00',
+                            'timezone' => 'America/Panama',
+                        ],
+                        'event_secondary' => [
+                            'title' => 'Sooner New York Show',
+                            'countdown_at' => '2026-09-21 19:30:00',
+                            'timezone' => 'America/New_York',
+                        ],
+                    ],
+                ],
+            ],
+            'rsvpTickets' => [],
+        ])
+            ->assertSee('Sooner New York Show')
+            ->assertSee('data-countdown-at="2026-09-21T19:30:00-04:00"', false)
+            ->assertDontSee('Later Panama Show')
+            ->assertDontSee('data-countdown-at="2026-09-21T19:30:00-05:00"', false);
     }
 
     public function test_home_countdown_uses_the_canonical_event_timezone(): void
@@ -238,7 +269,7 @@ class HomePageTest extends TestCase
             ->assertSee('class="home-royal-pass is-selected"', false)
             ->assertSee('data-buy="royal"', false)
             ->assertSee('Reny Renteria en Concierto')
-            ->assertSee('Festival de la Rosa Dorada')
+            ->assertDontSee('Festival de la Rosa Dorada')
             ->assertSee('Watch more')
             ->assertDontSee('Latest Singles')
             ->assertDontSee('Authenticated Single')
@@ -270,7 +301,7 @@ class HomePageTest extends TestCase
         $response
             ->assertSee('Upcoming Shows')
             ->assertSee('Reny Renteria en Concierto')
-            ->assertSee('Festival de la Rosa Dorada')
+            ->assertDontSee('Festival de la Rosa Dorada')
             ->assertSee('class="home-royal-pass is-selected"', false);
     }
 
@@ -287,6 +318,8 @@ class HomePageTest extends TestCase
                         'description' => "Current venue\nNov 15 - 8:00 PM",
                         'cta_label' => 'CURRENT CTA',
                         'product_key' => 'current-published-event',
+                        'countdown_at' => '2026-11-15 20:00:00',
+                        'timezone' => 'America/Panama',
                     ],
                 ],
             ],

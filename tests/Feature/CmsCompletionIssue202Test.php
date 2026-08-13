@@ -425,8 +425,9 @@ class CmsCompletionIssue202Test extends TestCase
         $this->get('/store')->assertOk()->assertSee('$23');
         $this->get('/')
             ->assertOk()
-            ->assertSee('$23')
-            ->assertSee('data-buy-price-value="23.00"', false);
+            ->assertSee('Reny Renteria en Concierto')
+            ->assertDontSee('Festival de la Rosa Dorada')
+            ->assertDontSee('data-buy-price-value="23.00"', false);
         $this->get(route('store.checkout', ['product' => 'listening']))
             ->assertOk()
             ->assertSee('$23')
