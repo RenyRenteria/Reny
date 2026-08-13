@@ -73,11 +73,14 @@
             return null;
         }
     };
+    $eventCountdownValue = fn (array $event): ?string => filled($event['countdown_at'] ?? null)
+        ? $event['countdown_at']
+        : ($event['starts_at'] ?? null);
     $eventSelectionTime = now();
     $events = $events
-        ->map(function (array $event) use ($eventCountdownTarget, $eventSelectionTime): ?array {
+        ->map(function (array $event) use ($eventCountdownTarget, $eventCountdownValue, $eventSelectionTime): ?array {
             $target = $eventCountdownTarget(
-                $event['countdown_at'] ?? $event['starts_at'] ?? null,
+                $eventCountdownValue($event),
                 $event['timezone'] ?? null,
             );
 
@@ -239,7 +242,7 @@
                                     $eventStatusId = 'home-rsvp-status-' . \Illuminate\Support\Str::slug($eventKey);
                                     $rsvpTicket = $rsvpTickets[$eventKey] ?? null;
                                     $countdownTarget = $eventCountdownTarget(
-                                        $event['countdown_at'] ?? $event['starts_at'] ?? null,
+                                        $eventCountdownValue($event),
                                         $event['timezone'] ?? null,
                                     );
                                     $countdownParts = $countdownTarget ? $eventCountdownParts($countdownTarget) : null;

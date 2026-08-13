@@ -161,6 +161,31 @@ class HomePageTest extends TestCase
             ->assertDontSee('data-countdown-at="2026-09-21T19:30:00-05:00"', false);
     }
 
+    public function test_home_uses_future_starts_at_when_countdown_at_is_blank(): void
+    {
+        $response = $this->view('home', [
+            'publicCms' => [
+                'storefront' => [
+                    'slots' => [
+                        'event_primary' => [
+                            'title' => 'Future Starts At Show',
+                            'countdown_at' => '',
+                            'starts_at' => '2026-08-14 19:30:00',
+                            'timezone' => 'America/Panama',
+                        ],
+                    ],
+                ],
+            ],
+            'rsvpTickets' => [],
+        ]);
+
+        $response
+            ->assertSee('Future Starts At Show')
+            ->assertSee('data-countdown-at="2026-08-14T19:30:00-05:00"', false);
+
+        $this->assertSame(1, substr_count((string) $response, 'class="home-show-card"'));
+    }
+
     public function test_home_ignores_expired_and_invalid_events_when_selecting_the_next_show(): void
     {
         $response = $this->view('home', [
@@ -193,6 +218,34 @@ class HomePageTest extends TestCase
             ->assertDontSee('Invalid Date Show');
 
         $this->assertSame(1, substr_count((string) $response, 'class="home-show-card"'));
+    }
+
+    public function test_home_renders_no_card_when_all_events_are_expired_or_start_exactly_now(): void
+    {
+        $response = $this->view('home', [
+            'publicCms' => [
+                'storefront' => [],
+                'events' => [
+                    [
+                        'title' => 'Expired Show',
+                        'starts_at' => '2026-08-13 10:00:00',
+                        'timezone' => 'America/Panama',
+                    ],
+                    [
+                        'title' => 'Starting Now Show',
+                        'starts_at' => '2026-08-13 11:34:00',
+                        'timezone' => 'America/Panama',
+                    ],
+                ],
+            ],
+            'rsvpTickets' => [],
+        ]);
+
+        $response
+            ->assertDontSee('Expired Show')
+            ->assertDontSee('Starting Now Show');
+
+        $this->assertSame(0, substr_count((string) $response, 'class="home-show-card"'));
     }
 
     public function test_home_countdown_uses_the_canonical_event_timezone(): void
