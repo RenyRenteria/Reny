@@ -1457,6 +1457,13 @@
         transform: none;
     }
 
+    .home-shell .home-show-card:hover {
+        border-color: rgba(255, 228, 153, 0.36);
+        background:
+            radial-gradient(circle at 100% 0, rgba(231, 170, 81, 0.15), transparent 38%),
+            linear-gradient(135deg, rgba(23, 17, 11, 0.98), rgba(43, 31, 20, 0.96));
+    }
+
     .home-shell .home-royal-pass {
         border-radius: 0.9rem;
         box-shadow: 0 1.1rem 2.75rem rgba(64, 36, 7, 0.26), 0 0 2rem rgba(231, 170, 81, 0.13);

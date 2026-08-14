@@ -134,6 +134,16 @@ class HomePageTest extends TestCase
         $this->assertStringContainsString('? 1000', $javascript);
     }
 
+    public function test_mobile_show_card_restores_its_contrast_after_hover(): void
+    {
+        $css = $this->frontendCssSource();
+
+        $this->assertMatchesRegularExpression(
+            '/@media \(max-width: 53\.75rem\).*\.home-shell \.home-show-card:hover\s*\{\s*border-color:\s*rgba\(255, 228, 153, 0\.36\);\s*background:\s*radial-gradient\(circle at 100% 0, rgba\(231, 170, 81, 0\.15\), transparent 38%\),\s*linear-gradient\(135deg, rgba\(23, 17, 11, 0\.98\), rgba\(43, 31, 20, 0\.96\)\);/s',
+            $css,
+        );
+    }
+
     public function test_home_selects_the_nearest_future_event_by_instant_across_timezones(): void
     {
         $this->view('home', [
