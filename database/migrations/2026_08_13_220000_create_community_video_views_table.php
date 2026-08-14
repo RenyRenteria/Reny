@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
             $table->timestamps();
 
-            $table->index(['video_key', 'viewer_key'], 'community_video_views_viewer_index');
+            $table->unique(['video_key', 'viewer_key'], 'community_video_views_viewer_unique');
             $table->index(['post_key', 'video_key']);
         });
     }

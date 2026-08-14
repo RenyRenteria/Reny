@@ -5,7 +5,9 @@ namespace Tests\Feature;
 use App\Models\CommunityVideoView;
 use App\Models\User;
 use App\Services\CommunityInteractionService;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class CommunityVideoViewsTest extends TestCase
@@ -73,6 +75,38 @@ class CommunityVideoViewsTest extends TestCase
         $this->assertSame(2, $result['view_count']);
         $this->assertDatabaseCount('community_video_views', 2);
         $this->assertSame([$user->id, $user->id], CommunityVideoView::query()->pluck('user_id')->all());
+    }
+
+    public function test_upgrade_replaces_the_existing_unique_viewer_index_without_losing_views(): void
+    {
+        Schema::table('community_video_views', function (Blueprint $table) {
+            $table->dropIndex('community_video_views_viewer_index');
+            $table->unique(['video_key', 'viewer_key'], 'community_video_views_viewer_unique');
+        });
+
+        $video = $this->videoPayload();
+        app(CommunityInteractionService::class)->recordVideoView(
+            null,
+            'returning-viewer',
+            'backstage-post',
+            $video['view_key'],
+            [],
+        );
+
+        $migration = require database_path('migrations/2026_08_14_203000_allow_repeated_community_video_views.php');
+        $migration->up();
+
+        $result = app(CommunityInteractionService::class)->recordVideoView(
+            null,
+            'returning-viewer',
+            'backstage-post',
+            $video['view_key'],
+            [],
+        );
+
+        $this->assertTrue($result['counted']);
+        $this->assertSame(2, $result['view_count']);
+        $this->assertDatabaseCount('community_video_views', 2);
     }
 
     public function test_different_guest_sessions_increment_the_same_video_counter(): void
