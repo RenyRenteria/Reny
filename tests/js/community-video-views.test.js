@@ -67,3 +67,21 @@ test('accumulates actual playback time across pauses and qualifies only once', (
     assert.equal(qualified, 1);
     assert.equal(playback.tracker.snapshot().qualified, true);
 });
+
+test('qualifies again after the completed playback is reset', () => {
+    let qualified = 0;
+    const playback = controlledTracker(() => qualified += 1);
+
+    playback.tracker.start();
+    playback.advance(3000);
+    playback.fireTimer();
+    playback.tracker.stop();
+    playback.tracker.reset();
+
+    playback.tracker.start();
+    playback.advance(3000);
+    playback.fireTimer();
+
+    assert.equal(qualified, 2);
+    assert.equal(playback.tracker.snapshot().qualified, true);
+});

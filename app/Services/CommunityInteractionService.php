@@ -284,16 +284,15 @@ class CommunityInteractionService
         $viewerIdentity = $user
             ? 'user:'.$user->getKey()
             : 'session:'.$sessionId;
-        $view = CommunityVideoView::query()->firstOrCreate([
+        CommunityVideoView::query()->create([
+            'post_key' => $postKey,
             'video_key' => $videoKey,
             'viewer_key' => hash_hmac('sha256', $viewerIdentity, (string) config('app.key')),
-        ], [
-            'post_key' => $postKey,
             'user_id' => $user?->getKey(),
         ]);
 
         return [
-            'counted' => $view->wasRecentlyCreated,
+            'counted' => true,
             'view_count' => CommunityVideoView::query()
                 ->where('video_key', $videoKey)
                 ->count(),

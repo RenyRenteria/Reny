@@ -73,6 +73,12 @@ const createPlaybackThresholdTracker = ({
             clearScheduled();
             qualifyIfReady();
         },
+        reset() {
+            accumulatedMs = 0;
+            startedAt = null;
+            qualified = false;
+            clearScheduled();
+        },
         destroy() {
             startedAt = null;
             clearScheduled();
