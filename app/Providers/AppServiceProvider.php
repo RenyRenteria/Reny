@@ -48,6 +48,14 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(30)->by($request->user()?->id ?: ($request->ip() ?: 'anonymous'));
         });
 
+        RateLimiter::for('community-video-views', function (Request $request) {
+            $viewer = $request->user()?->id
+                ? 'user-'.$request->user()->id
+                : 'session-'.($request->session()->getId() ?: ($request->ip() ?: 'anonymous'));
+
+            return Limit::perMinute(60)->by($viewer);
+        });
+
         RateLimiter::for('community-chat', function (Request $request) {
             return Limit::perMinute(8)->by($request->user()?->id ?: ($request->ip() ?: 'anonymous'));
         });

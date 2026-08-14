@@ -63,6 +63,13 @@ Route::post('/community/posts/{post}/like', [CommunityInteractionController::cla
     ->where('post', '[A-Za-z0-9._-]+')
     ->middleware('throttle:community-writes')
     ->name('community.posts.like');
+Route::post('/community/posts/{post}/videos/{video}/views', [CommunityInteractionController::class, 'recordVideoView'])
+    ->where([
+        'post' => '[A-Za-z0-9._-]+',
+        'video' => '[A-Za-z0-9._-]+',
+    ])
+    ->middleware('throttle:community-video-views')
+    ->name('community.posts.videos.views.store');
 Route::post('/community/posts/{post}/replies', [CommunityInteractionController::class, 'reply'])
     ->where('post', '[A-Za-z0-9._-]+')
     ->middleware('throttle:community-writes')

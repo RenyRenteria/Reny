@@ -5,6 +5,7 @@ import {
     trackElementEvent,
     trackEvent,
 } from './analytics.js';
+import { createPlaybackThresholdTracker } from './community-video-views.js';
 
 const showCommunityToast = (message) => {
     const toast = document.getElementById('communityToast');
@@ -129,6 +130,79 @@ const initializeCommunityReactions = (root = document) => {
             } finally {
                 button.disabled = false;
             }
+        });
+    });
+};
+
+const initializeCommunityVideoViews = (root = document) => {
+    root.querySelectorAll('[data-community-video-view]').forEach((video) => {
+        let requestInFlight = false;
+
+        const updateViewCount = (count) => {
+            const counter = video.closest('[data-community-video]')?.querySelector('[data-video-view-count]');
+            const countNode = counter?.querySelector('[data-video-view-count-value]');
+            const safeCount = Math.max(0, Number(count) || 0);
+
+            if (countNode) {
+                countNode.textContent = safeCount.toLocaleString('es');
+            }
+
+            const label = safeCount === 1 ? 'vista' : 'vistas';
+            const labelNode = counter?.querySelector('[data-video-view-count-label]');
+
+            if (labelNode) {
+                labelNode.textContent = label;
+            }
+
+            counter?.setAttribute('aria-label', `${safeCount} ${label}`);
+        };
+
+        const recordView = async () => {
+            if (requestInFlight || video.dataset.viewRecorded === 'true' || !video.dataset.viewEndpoint) {
+                return;
+            }
+
+            requestInFlight = true;
+
+            try {
+                const payload = await postCommunityJson(video.dataset.viewEndpoint);
+
+                updateViewCount(payload.view_count);
+                video.dataset.viewRecorded = 'true';
+
+                if (payload.counted) {
+                    trackElementEvent(video, 'community_video_viewed', {
+                        item_type: 'community_video',
+                        result: 'viewed',
+                    });
+                }
+            } catch (error) {
+                console.warn('Community video view could not be saved.', error);
+            } finally {
+                requestInFlight = false;
+            }
+        };
+
+        const tracker = createPlaybackThresholdTracker({
+            onQualified: () => {
+                video.dataset.viewQualified = 'true';
+
+                if (video.isConnected) {
+                    recordView();
+                }
+            },
+        });
+
+        bindOnce(video, 'community-video-view-playing', 'playing', () => {
+            tracker.start();
+
+            if (video.dataset.viewQualified === 'true') {
+                recordView();
+            }
+        });
+
+        ['pause', 'waiting', 'seeking', 'ended', 'emptied'].forEach((eventName) => {
+            bindOnce(video, `community-video-view-${eventName}`, eventName, () => tracker.stop());
         });
     });
 };
@@ -1012,6 +1086,7 @@ const initializeCommunityInteractions = (root = document) => {
     initializeCommunityLiveChat(root);
     initializeCommunityToastTriggers(root);
     initializeCommunityReactions(root);
+    initializeCommunityVideoViews(root);
     initializeCommunityPolls(root);
     initializeCommunityClubLinks(root);
     initializeCommunityClubJoins(root);

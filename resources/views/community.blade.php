@@ -181,15 +181,30 @@
                                             @if ($media['type'] === 'image')
                                                 <img src="{{ $media['url'] }}" alt="Contenido visual de {{ $post['title'] }}" loading="lazy">
                                             @elseif ($media['type'] === 'video')
-                                                <video
-                                                    controls
-                                                    preload="metadata"
-                                                    playsinline
-                                                    data-mobile-video-preview
-                                                    @if (! empty($media['poster_url'])) poster="{{ $media['poster_url'] }}" @endif
-                                                >
-                                                    <source src="{{ $media['url'] }}">
-                                                </video>
+                                                <div class="community-post-video" data-community-video>
+                                                    <video
+                                                        controls
+                                                        preload="metadata"
+                                                        playsinline
+                                                        data-mobile-video-preview
+                                                        data-community-video-view
+                                                        data-view-endpoint="{{ $media['view_endpoint'] }}"
+                                                        data-analytics-id="{{ $media['view_key'] }}"
+                                                        data-analytics-type="community_video"
+                                                        @if (! empty($media['poster_url'])) poster="{{ $media['poster_url'] }}" @endif
+                                                    >
+                                                        <source src="{{ $media['url'] }}">
+                                                    </video>
+                                                    <span
+                                                        class="community-video-view-count"
+                                                        data-video-view-count
+                                                        aria-label="{{ $media['view_count'] }} {{ $media['view_count'] === 1 ? 'vista' : 'vistas' }}"
+                                                    >
+                                                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"></path><circle cx="12" cy="12" r="2.5"></circle></svg>
+                                                        <span data-video-view-count-value>{{ number_format($media['view_count']) }}</span>
+                                                        <span data-video-view-count-label>{{ $media['view_count'] === 1 ? 'vista' : 'vistas' }}</span>
+                                                    </span>
+                                                </div>
                                             @elseif ($media['type'] === 'audio')
                                                 <audio controls preload="metadata">
                                                     <source src="{{ $media['url'] }}">

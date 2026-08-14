@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\CommunityCountryClubMessage;
 use App\Models\User;
 use App\Services\CommunityInteractionService;
+use App\Services\PublicCmsContentService;
 use App\Support\EntitlementMatrix;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class CommunityInteractionController extends Controller
@@ -78,6 +80,33 @@ class CommunityInteractionController extends Controller
         return response()->json([
             'status' => 'ok',
             ...$community->toggleLike($request->user(), $post),
+        ]);
+    }
+
+    public function recordVideoView(
+        Request $request,
+        CommunityInteractionService $community,
+        PublicCmsContentService $cms,
+        string $post,
+        string $video,
+    ): JsonResponse {
+        $publicCms = $cms->community($request->user());
+        $viewerSessionKey = $request->session()->get('community_video_viewer_key');
+
+        if ($request->user() === null && ! is_string($viewerSessionKey)) {
+            $viewerSessionKey = (string) Str::uuid();
+            $request->session()->put('community_video_viewer_key', $viewerSessionKey);
+        }
+
+        return response()->json([
+            'status' => 'ok',
+            ...$community->recordVideoView(
+                $request->user(),
+                is_string($viewerSessionKey) ? $viewerSessionKey : '',
+                $post,
+                $video,
+                $publicCms['posts'] ?? [],
+            ),
         ]);
     }
 

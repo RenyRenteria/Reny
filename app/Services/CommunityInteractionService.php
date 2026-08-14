@@ -11,6 +11,7 @@ use App\Models\CommunityPollVote;
 use App\Models\CommunityPostReaction;
 use App\Models\CommunityPostReply;
 use App\Models\CommunityUserBlock;
+use App\Models\CommunityVideoView;
 use App\Models\EditorialContent;
 use App\Models\User;
 use App\Support\CommunityPostContent;
@@ -255,6 +256,51 @@ class CommunityInteractionService
     }
 
     /**
+     * @param  array<int, array<string, mixed>>  $cmsPosts
+     * @return array{counted: bool, view_count: int}
+     */
+    public function recordVideoView(
+        ?User $user,
+        string $sessionId,
+        string $postKey,
+        string $videoKey,
+        array $cmsPosts,
+    ): array {
+        $post = collect($this->posts($user, $cmsPosts))->firstWhere('key', $postKey);
+        $video = collect($post['media_items'] ?? [])->first(
+            fn (mixed $media): bool => is_array($media)
+                && ($media['type'] ?? null) === 'video'
+                && ($media['view_key'] ?? null) === $videoKey
+        );
+
+        abort_unless(is_array($post) && is_array($video), 404);
+
+        if (! Schema::hasTable('community_video_views')) {
+            return ['counted' => false, 'view_count' => 0];
+        }
+
+        abort_if($user === null && $sessionId === '', 419, 'Session expired.');
+
+        $viewerIdentity = $user
+            ? 'user:'.$user->getKey()
+            : 'session:'.$sessionId;
+        $view = CommunityVideoView::query()->firstOrCreate([
+            'video_key' => $videoKey,
+            'viewer_key' => hash_hmac('sha256', $viewerIdentity, (string) config('app.key')),
+        ], [
+            'post_key' => $postKey,
+            'user_id' => $user?->getKey(),
+        ]);
+
+        return [
+            'counted' => $view->wasRecentlyCreated,
+            'view_count' => CommunityVideoView::query()
+                ->where('video_key', $videoKey)
+                ->count(),
+        ];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function recordVote(User $user, string $pollKey, string $optionKey, ?string $optionLabel = null): array
@@ -482,6 +528,9 @@ class CommunityInteractionService
                     ->map(fn (array $media): array => $media['type'] === 'video' && $imageUrl && empty($media['poster_url'])
                         ? [...$media, 'poster_url' => $imageUrl]
                         : $media)
+                    ->map(fn (array $media): array => $media['type'] === 'video'
+                        ? [...$media, 'view_key' => $this->videoKey($key, $media['url'])]
+                        : $media)
                     ->all();
 
                 return [
@@ -504,18 +553,42 @@ class CommunityInteractionService
         $replyCounts = $this->replyCounts($keys);
         $replies = $this->visibleReplies($keys);
         $likedKeys = $this->likedKeys($user, $keys);
+        $videoViewCounts = $this->videoViewCounts(
+            $sourcePosts
+                ->flatMap(fn (array $post): array => collect($post['media_items'])
+                    ->where('type', 'video')
+                    ->pluck('view_key')
+                    ->all())
+                ->all()
+        );
 
         return $sourcePosts
-            ->map(fn (array $post): array => [
-                ...$post,
-                'like_count' => $post['base_likes'] + (int) ($likeCounts[$post['key']] ?? 0),
-                'reply_count' => $post['base_replies'] + (int) ($replyCounts[$post['key']] ?? 0),
-                'replies' => $replies[$post['key']] ?? [],
-                'liked' => in_array($post['key'], $likedKeys, true),
-                'like_endpoint' => route('community.posts.like', $post['key']),
-                'reply_endpoint' => route('community.posts.replies.store', $post['key']),
-                'share_url' => route('royals').'#'.$post['key'],
-            ])
+            ->map(function (array $post) use ($likeCounts, $replyCounts, $replies, $likedKeys, $videoViewCounts): array {
+                $mediaItems = collect($post['media_items'])
+                    ->map(fn (array $media): array => $media['type'] === 'video'
+                        ? [
+                            ...$media,
+                            'view_count' => (int) ($videoViewCounts[$media['view_key']] ?? 0),
+                            'view_endpoint' => route('community.posts.videos.views.store', [
+                                'post' => $post['key'],
+                                'video' => $media['view_key'],
+                            ]),
+                        ]
+                        : $media)
+                    ->all();
+
+                return [
+                    ...$post,
+                    'media_items' => $mediaItems,
+                    'like_count' => $post['base_likes'] + (int) ($likeCounts[$post['key']] ?? 0),
+                    'reply_count' => $post['base_replies'] + (int) ($replyCounts[$post['key']] ?? 0),
+                    'replies' => $replies[$post['key']] ?? [],
+                    'liked' => in_array($post['key'], $likedKeys, true),
+                    'like_endpoint' => route('community.posts.like', $post['key']),
+                    'reply_endpoint' => route('community.posts.replies.store', $post['key']),
+                    'share_url' => route('royals').'#'.$post['key'],
+                ];
+            })
             ->all();
     }
 
@@ -860,6 +933,26 @@ class CommunityInteractionService
     }
 
     /**
+     * @param  array<int, string>  $videoKeys
+     * @return array<string, int>
+     */
+    private function videoViewCounts(array $videoKeys): array
+    {
+        if ($videoKeys === [] || ! Schema::hasTable('community_video_views')) {
+            return [];
+        }
+
+        return CommunityVideoView::query()
+            ->whereIn('video_key', $videoKeys)
+            ->select('video_key')
+            ->selectRaw('COUNT(*) as aggregate')
+            ->groupBy('video_key')
+            ->pluck('aggregate', 'video_key')
+            ->map(fn ($count): int => (int) $count)
+            ->all();
+    }
+
+    /**
      * @param  array<int, string>  $postKeys
      * @return array<string, array<int, array<string, mixed>>>
      */
@@ -980,6 +1073,11 @@ class CommunityInteractionService
     private function normalizeKey(string $value): string
     {
         return Str::of($value)->lower()->slug('-')->limit(160, '')->toString() ?: 'community-item';
+    }
+
+    private function videoKey(string $postKey, string $url): string
+    {
+        return 'video-'.substr(hash('sha256', $postKey."\0".$url), 0, 32);
     }
 
     private function compactCount(int $count): string
