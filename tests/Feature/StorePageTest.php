@@ -2,12 +2,16 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ContentType;
 use App\Enums\MediaAssetType;
 use App\Enums\MediaProcessingStatus;
+use App\Enums\VisibilityAudience;
+use App\Models\EditorialContent;
 use App\Models\MediaAsset;
 use App\Models\SitePageSetting;
 use App\Models\User;
 use App\Services\StorefrontSettingsService;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
@@ -22,6 +26,7 @@ class StorePageTest extends TestCase
 
         config()->set('public_cms.cache_store', 'array');
         Cache::store('array')->flush();
+        $this->travelTo(CarbonImmutable::parse('2026-08-14 13:00:00', 'America/Panama'));
     }
 
     public function test_store_page_hides_removed_concert_and_renders_remaining_slots_for_guest(): void
@@ -124,7 +129,7 @@ class StorePageTest extends TestCase
             ->assertDontSee('Reny Renteria en Concierto');
     }
 
-    public function test_shows_page_hides_removed_concert_and_keeps_remaining_purchase_flow(): void
+    public function test_shows_page_lists_all_upcoming_shows_once_in_chronological_order(): void
     {
         $response = $this->get(route('shows'));
 
@@ -136,9 +141,9 @@ class StorePageTest extends TestCase
             ->assertSee('class="store-shell home-shell golden-stage-shell store-stage-shell"', false)
             ->assertSee(asset('images/reny-renteria-logo-white.png'), false)
             ->assertSee('class="stage-lights"', false)
-            ->assertDontSee('Reny Renteria en Concierto')
+            ->assertSee('Reny Renteria en Concierto')
             ->assertSee('Festival de la Rosa Dorada')
-            ->assertDontSee('data-free-event-rsvp="concert"', false)
+            ->assertSee('data-free-event-rsvp="concert"', false)
             ->assertSee('data-buy="listening"', false)
             ->assertSee('data-buy-url="'.route('store.checkout', ['product' => 'listening']).'"', false)
             ->assertSee('id="paypalButtons"', false)
@@ -148,7 +153,58 @@ class StorePageTest extends TestCase
             ->assertDontSee('home-royal-pass-images', false)
             ->assertSee('class="tab is-active" href="'.route('shows').'" aria-current="page"', false);
 
-        $this->assertSame(1, substr_count($response->getContent(), 'storefront-card'));
+        $html = $response->getContent();
+
+        $this->assertSame(2, substr_count($html, 'storefront-card'));
+        $this->assertSame(1, substr_count($html, '<h2>Reny Renteria en Concierto</h2>'));
+        $this->assertLessThan(strpos($html, 'Festival de la Rosa Dorada'), strpos($html, 'Reny Renteria en Concierto'));
+    }
+
+    public function test_shows_page_includes_additional_published_future_events_and_hides_past_events(): void
+    {
+        EditorialContent::factory()->published()->create([
+            'type' => ContentType::Event->value,
+            'title' => 'Future CMS Show',
+            'visibility' => VisibilityAudience::Open->value,
+            'purchase_key' => 'future-cms-show',
+            'metadata' => [
+                'starts_at' => '2026-09-30T20:00',
+                'timezone' => 'America/Panama',
+                'location' => 'Panama City',
+                'ticketing_mode' => 'rsvp',
+                'action_type' => 'rsvp',
+                'price_cents' => 0,
+            ],
+        ]);
+
+        EditorialContent::factory()->published()->create([
+            'type' => ContentType::Event->value,
+            'title' => 'Past CMS Show',
+            'visibility' => VisibilityAudience::Open->value,
+            'purchase_key' => 'past-cms-show',
+            'metadata' => [
+                'starts_at' => '2026-08-01T20:00',
+                'timezone' => 'America/Panama',
+                'location' => 'Panama City',
+                'ticketing_mode' => 'rsvp',
+                'action_type' => 'rsvp',
+                'price_cents' => 0,
+            ],
+        ]);
+
+        $response = $this->get(route('shows'))
+            ->assertOk()
+            ->assertSee('Reny Renteria en Concierto')
+            ->assertSee('Future CMS Show')
+            ->assertSee('Festival de la Rosa Dorada')
+            ->assertDontSee('Past CMS Show')
+            ->assertSee('data-free-event-rsvp="future-cms-show"', false);
+
+        $html = $response->getContent();
+
+        $this->assertSame(3, substr_count($html, 'storefront-card'));
+        $this->assertLessThan(strpos($html, 'Future CMS Show'), strpos($html, 'Reny Renteria en Concierto'));
+        $this->assertLessThan(strpos($html, 'Festival de la Rosa Dorada'), strpos($html, 'Future CMS Show'));
     }
 
     public function test_store_page_normalizes_legacy_royal_pass_cta_label(): void

@@ -15,6 +15,18 @@
 
         return $prefix.number_format($amountCents / 100, $amountCents % 100 === 0 ? 0 : 2);
     };
+    $storeTimezone = config('admin.publishing_timezone', config('app.timezone', 'UTC'));
+    $slotCountdownTarget = function (?string $value, ?string $timezone = null) use ($storeTimezone) {
+        if (! filled($value)) {
+            return null;
+        }
+
+        try {
+            return \Carbon\CarbonImmutable::parse($value, filled($timezone) ? $timezone : $storeTimezone);
+        } catch (\Throwable) {
+            return null;
+        }
+    };
     $cmsEventSlots = collect($publicCms['events'] ?? [])->map(function (array $event) use ($moneyLabel): array {
         $isRsvp = ($event['mode'] ?? null) === 'rsvp';
 
@@ -67,10 +79,33 @@
         ->concat($cmsProductSlots)
         ->reject(fn (array $slot, int $index): bool => $index >= $baseStorefrontSlots->count()
             && $representedProductKeys->contains($slot['product_key'] ?? null))
-        ->reject(fn (array $slot): bool => ($slot['product_key'] ?? null) === 'concert'
-            || str((string) ($slot['title'] ?? ''))->squish()->lower()->toString() === 'reny renteria en concierto')
+        ->reject(fn (array $slot): bool => ! $isShowsPage && (
+            ($slot['product_key'] ?? null) === 'concert'
+            || str((string) ($slot['title'] ?? ''))->squish()->lower()->toString() === 'reny renteria en concierto'
+        ))
         ->unique(fn (array $slot): string => (string) ($slot['product_key'] ?? $slot['key'] ?? ''))
         ->values();
+
+    if ($isShowsPage) {
+        $showSelectionTime = now();
+        $storefrontSlots = $storefrontSlots
+            ->map(function (array $slot) use ($slotCountdownTarget): array {
+                $target = $slotCountdownTarget($slot['countdown_at'] ?? null, $slot['timezone'] ?? null);
+                $title = str((string) ($slot['title'] ?? ''))->squish()->lower()->toString();
+
+                return [
+                    'slot' => $slot,
+                    'target' => $target,
+                    'identity' => $title.'|'.($target?->format('Y-m-d') ?? ''),
+                ];
+            })
+            ->filter(fn (array $show): bool => $show['target']?->greaterThan($showSelectionTime) === true)
+            ->unique('identity')
+            ->sortBy(fn (array $show): int => $show['target']->getTimestamp())
+            ->pluck('slot')
+            ->values();
+    }
+
     $rsvpTickets = $rsvpTickets ?? [];
     $slotImage = fn (array $slot): string => $slot['image_url'] ?? asset($slot['image'] ?? 'images/store/work-in-progress.png');
     $slotType = fn (array $slot): string => $slot['eyebrow'] ?: str($slot['kind'] ?? 'product')->headline()->toString();
@@ -82,18 +117,6 @@
         $numeric = preg_replace('/[^0-9.]/', '', $price);
 
         return in_array($numeric, ['0', '0.0', '0.00'], true);
-    };
-    $storeTimezone = config('admin.publishing_timezone', config('app.timezone', 'UTC'));
-    $slotCountdownTarget = function (?string $value, ?string $timezone = null) use ($storeTimezone) {
-        if (! filled($value)) {
-            return null;
-        }
-
-        try {
-            return \Carbon\CarbonImmutable::parse($value, filled($timezone) ? $timezone : $storeTimezone);
-        } catch (\Throwable) {
-            return null;
-        }
     };
     $slotCountdownLabel = function ($target): ?string {
         if (! $target) {
