@@ -982,6 +982,31 @@ body.has-modal-open {
     width: 100%;
 }
 
+.community-post-video {
+    display: grid;
+    gap: 0.4rem;
+}
+
+.community-video-view-count {
+    display: inline-flex;
+    align-items: center;
+    justify-self: end;
+    color: var(--muted);
+    font-size: 0.6875rem;
+    font-weight: 750;
+    gap: 0.3rem;
+}
+
+.community-video-view-count svg {
+    width: 1rem;
+    height: 1rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.7;
+}
+
 .community-post-embeds > a {
     display: flex;
     min-height: 3rem;
