@@ -11,8 +11,10 @@ const initializeStoreInteractions = (root = document) => {
     const scope = root === document ? document : root;
     const storeShell = scope.querySelector?.('.store-shell') || document.querySelector('.store-shell');
     const storeCheckoutLayer = document.getElementById('bagLayer');
+    const dedicatedCheckout = document.querySelector('[data-dedicated-checkout][data-checkout-product]');
     const commerceRoot = storeShell
         || storeCheckoutLayer
+        || dedicatedCheckout
         || scope.querySelector?.('[data-free-event-rsvp]')
         || scope.querySelector?.('[data-buy]')
         || scope.querySelector?.('[data-rsvp]')
@@ -77,6 +79,8 @@ const initializeStoreInteractions = (root = document) => {
     const purchaseConfirmationTitle = document.getElementById('purchaseConfirmationTitle');
     const purchaseConfirmationMessage = document.getElementById('purchaseConfirmationMessage');
     const purchaseConfirmationAccount = document.getElementById('purchaseConfirmationAccount');
+    const purchaseConfirmationPanel = document.getElementById('purchaseConfirmationPanel');
+    const dedicatedPaymentPanel = document.querySelector('[data-checkout-payment-panel]');
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     let activePaymentMethod = 'paypal';
     let selectedRoyalPassProduct = null;
@@ -135,6 +139,28 @@ const initializeStoreInteractions = (root = document) => {
             cta: button.textContent?.trim() || products[key]?.cta || 'Add to bag',
         };
     });
+
+    if (dedicatedCheckout) {
+        const key = dedicatedCheckout.dataset.checkoutProduct;
+        const checkoutPriceValue = Number.parseFloat(dedicatedCheckout.dataset.productPriceValue || '');
+
+        if (Number.isFinite(checkoutPriceValue)) {
+            prices[key] = checkoutPriceValue;
+        }
+
+        products[key] = {
+            name: dedicatedCheckout.dataset.productName || key,
+            type: dedicatedCheckout.dataset.productType || 'Product',
+            priceKey: key,
+            availability: 'Available',
+            points: '+0 pts',
+            pass: 'Royal Pass included',
+            access: 'Checkout unlocks in profile',
+            summary: dedicatedCheckout.dataset.productSummary || 'Store checkout',
+            image: dedicatedCheckout.dataset.productImage,
+            cta: 'Pay with PayPal',
+        };
+    }
 
     const countdownParts = (target) => {
         const totalSeconds = Math.max(0, Math.ceil((target.getTime() - Date.now()) / 1000));
@@ -272,12 +298,17 @@ const initializeStoreInteractions = (root = document) => {
 
     const isValidPhone = (value) => /^\+[1-9][0-9]{6,14}$/.test(normalizeInternationalPhone(value));
 
-    const markFieldValidity = (field, valid) => {
+    const markFieldValidity = (field, valid, message = '') => {
         if (!field) {
             return;
         }
 
         field.setAttribute('aria-invalid', valid ? 'false' : 'true');
+        const error = document.getElementById(`${field.id}Error`);
+
+        if (error) {
+            error.textContent = valid ? '' : message;
+        }
     };
 
     const customerDetailsComplete = () => {
@@ -294,25 +325,46 @@ const initializeStoreInteractions = (root = document) => {
         const email = emailField?.value?.trim() || '';
         const phone = phoneField?.value?.trim() || '';
         const country = countryField?.value?.trim() || '';
+        const validations = [
+            {
+                field: nameField,
+                valid: name.length > 0,
+                fieldMessage: 'Add your name.',
+                userMessage: 'Add your name.',
+                reason: 'missing_name',
+            },
+            {
+                field: emailField,
+                valid: isValidEmail(email),
+                fieldMessage: 'Add a valid receipt email.',
+                userMessage: 'Add a valid receipt email.',
+                reason: 'invalid_email',
+            },
+            {
+                field: phoneField,
+                valid: isValidPhone(phone),
+                fieldMessage: 'Use an international number starting with +.',
+                userMessage: 'Add a valid international phone number.',
+                reason: 'invalid_phone',
+            },
+            {
+                field: countryField,
+                valid: country.length > 0,
+                fieldMessage: 'Select your country.',
+                userMessage: 'Select your country.',
+                reason: 'missing_country',
+            },
+        ];
 
-        if (!name) {
-            markFieldValidity(nameField, false);
-            throw checkoutError('Add your name.', 'validation_failed', 'missing_name');
-        }
+        validations.forEach((validation) => {
+            markFieldValidity(validation.field, validation.valid, validation.fieldMessage);
+        });
 
-        if (!isValidEmail(email)) {
-            markFieldValidity(emailField, false);
-            throw checkoutError('Add a valid receipt email.', 'validation_failed', 'invalid_email');
-        }
+        const firstError = validations.find((validation) => !validation.valid);
 
-        if (!isValidPhone(phone)) {
-            markFieldValidity(phoneField, false);
-            throw checkoutError('Add a valid international phone number.', 'validation_failed', 'invalid_phone');
-        }
-
-        if (!country) {
-            markFieldValidity(countryField, false);
-            throw checkoutError('Select your country.', 'validation_failed', 'missing_country');
+        if (firstError) {
+            firstError.field?.focus();
+            throw checkoutError(firstError.userMessage, 'validation_failed', firstError.reason);
         }
 
         return {
@@ -480,6 +532,13 @@ const initializeStoreInteractions = (root = document) => {
             purchaseConfirmationAccount.href = payload.account_url || purchaseConfirmationAccount.href;
         }
 
+        if (purchaseConfirmationPanel && dedicatedPaymentPanel) {
+            dedicatedPaymentPanel.hidden = true;
+            purchaseConfirmationPanel.hidden = false;
+            purchaseConfirmationPanel.focus();
+            return;
+        }
+
         openStoreLayer('purchaseConfirmationLayer');
     };
 
@@ -490,7 +549,11 @@ const initializeStoreInteractions = (root = document) => {
 
         bag = [];
         renderBag();
-        closeStoreLayer('bagLayer');
+
+        if (!dedicatedCheckout) {
+            closeStoreLayer('bagLayer');
+        }
+
         showStoreToast('PayPal confirmed. Hub updated.');
         showPurchaseConfirmation(payload);
     };
@@ -715,6 +778,7 @@ const initializeStoreInteractions = (root = document) => {
 
     const renderBag = () => {
         if (!bagList || !bagTotal) {
+            refreshCheckoutControls();
             return;
         }
 
@@ -1369,6 +1433,10 @@ const initializeStoreInteractions = (root = document) => {
         });
     });
 
+    document.getElementById('checkoutCustomerForm')?.addEventListener('submit', (event) => {
+        event.preventDefault();
+    });
+
     const openRequestedCheckout = () => {
         const autoOpenButton = document.querySelector('[data-auto-open-checkout="true"][data-buy]');
 
@@ -1384,6 +1452,29 @@ const initializeStoreInteractions = (root = document) => {
         }
 
         openCheckoutModal(requestedProduct, { source: 'query_buy', itemType: 'checkout' });
+    };
+
+    const initializeDedicatedCheckout = () => {
+        const key = dedicatedCheckout?.dataset.checkoutProduct;
+
+        if (!key || !setCheckoutProduct(key)) {
+            return false;
+        }
+
+        const product = products[key];
+        paymentAnalytics.beginCheckout();
+        selectPaymentMethod('paypal', { track: false });
+        trackEvent('store_checkout_started', {
+            item_type: product?.type || 'checkout',
+            item_id: key,
+            item_label: product?.name,
+            item_count: bag.length,
+            source: 'dedicated_checkout_url',
+            result: 'opened',
+        }, { eventId: createAnalyticsId() });
+        void initializeVisiblePayPalCheckout();
+
+        return true;
     };
 
     const openAutoCheckout = () => {
@@ -1441,8 +1532,10 @@ const initializeStoreInteractions = (root = document) => {
             }
         });
     });
-    openRequestedCheckout();
-    openAutoCheckout();
+    if (!initializeDedicatedCheckout()) {
+        openRequestedCheckout();
+        openAutoCheckout();
+    }
 };
 
 export { initializeStoreInteractions };
