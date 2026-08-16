@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Commerce;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\OrderRefund;
+use App\Services\Commerce\PayPalCheckoutFinalizer;
+use App\Services\Commerce\PayPalSandboxE2eControl;
 use App\Services\PayPalService;
 use App\Services\RoyalPassService;
 use App\Services\UserHubPurchaseSync;
@@ -12,9 +14,32 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Log;
 
 class PaypalWebhookController extends Controller
 {
+    public function handle(
+        Request $request,
+        RoyalPassService $royalPass,
+        PayPalService $payPal,
+        UserHubPurchaseSync $purchaseSync,
+        PayPalCheckoutFinalizer $finalizer,
+        PayPalSandboxE2eControl $e2eControl,
+    ): JsonResponse {
+        abort_unless($payPal->verifyWebhook($request), 401);
+
+        return match ($request->input('event_type')) {
+            'PAYMENT.CAPTURE.COMPLETED' => $e2eControl->shouldHoldCaptureWebhook()
+                ? $this->holdCaptureWebhook($request)
+                : $this->completeCapture($request, $finalizer),
+            'PAYMENT.CAPTURE.REFUNDED' => $this->processRefund($request, $royalPass, $purchaseSync),
+            default => response()->json([
+                'status' => 'ignored',
+                'reason' => 'event_not_subscribed',
+            ]),
+        };
+    }
+
     public function refund(
         Request $request,
         RoyalPassService $royalPass,
@@ -24,6 +49,14 @@ class PaypalWebhookController extends Controller
         abort_unless($payPal->verifyWebhook($request), 401);
         abort_unless($request->input('event_type') === 'PAYMENT.CAPTURE.REFUNDED', 422);
 
+        return $this->processRefund($request, $royalPass, $purchaseSync);
+    }
+
+    private function processRefund(
+        Request $request,
+        RoyalPassService $royalPass,
+        UserHubPurchaseSync $purchaseSync,
+    ): JsonResponse {
         $orders = $this->refundedOrders($request);
 
         abort_if($orders->isEmpty(), 404);
@@ -62,6 +95,158 @@ class PaypalWebhookController extends Controller
             'refunded_orders' => $processed,
             'royal_status' => $orders->first()->user?->fresh()->accessState()->value,
         ]);
+    }
+
+    private function completeCapture(Request $request, PayPalCheckoutFinalizer $finalizer): JsonResponse
+    {
+        $paypalOrderId = $this->providerOrderId($request);
+        $captureId = $this->completedCaptureId($request);
+
+        if ($paypalOrderId === null || $captureId === null) {
+            return response()->json([
+                'status' => 'ignored',
+                'reason' => 'missing_capture_reference',
+            ]);
+        }
+
+        $orders = $this->capturedOrders($paypalOrderId);
+
+        if ($orders->isEmpty()) {
+            return response()->json([
+                'status' => 'ignored',
+                'reason' => 'order_not_found',
+            ]);
+        }
+
+        if ($orders->contains(fn (Order $order): bool => ! in_array($order->status, ['pending', 'payment_review', 'completed'], true))) {
+            return response()->json([
+                'status' => 'ignored',
+                'reason' => 'order_not_reconcilable',
+            ]);
+        }
+
+        $amountCents = $this->completedAmountCents($request);
+        $currency = strtoupper((string) Arr::get($request->all(), 'resource.amount.currency_code', ''));
+        $expectedCurrency = strtoupper((string) $orders->pluck('currency')->unique()->sole());
+
+        if ($amountCents === null || $amountCents !== (int) $orders->sum('amount_cents') || $currency !== $expectedCurrency) {
+            Order::query()
+                ->whereKey($orders->pluck('id'))
+                ->whereIn('status', ['pending', 'payment_review'])
+                ->update([
+                    'provider_capture_id' => $captureId,
+                    'status' => 'payment_review',
+                    'updated_at' => now(),
+                ]);
+
+            Log::warning('PayPal capture webhook requires payment review.', $this->webhookLogContext($request, $paypalOrderId, $captureId, [
+                'paypal_issue' => 'capture_amount_or_currency_mismatch',
+            ]));
+
+            return response()->json([
+                'status' => 'payment_review',
+                'reason' => 'capture_amount_or_currency_mismatch',
+            ]);
+        }
+
+        $result = $finalizer->finalize($orders, [
+            'order_id' => $paypalOrderId,
+            'capture_id' => $captureId,
+            'payer_id' => Arr::get($request->all(), 'resource.payer.payer_id'),
+            'debug_id' => null,
+            'http_status' => 200,
+        ]);
+
+        Log::info('PayPal capture webhook reconciled checkout.', $this->webhookLogContext($request, $paypalOrderId, $captureId, [
+            'paypal_result' => $result['finalized'] ? 'finalized' : 'replayed',
+        ]));
+
+        return response()->json([
+            'status' => $result['finalized'] ? 'completed' : 'already_completed',
+            'completed_orders' => $result['finalized'] ? $result['orders']->count() : 0,
+        ]);
+    }
+
+    private function holdCaptureWebhook(Request $request): JsonResponse
+    {
+        $paypalOrderId = $this->providerOrderId($request);
+        $captureId = $this->completedCaptureId($request);
+        $eventId = (string) $request->input('id', '');
+
+        Log::warning('PayPal capture webhook held for sandbox fault verification.', [
+            'paypal_capture_reference' => $captureId ? $this->reference($captureId) : null,
+            'paypal_debug_id' => null,
+            'paypal_endpoint' => '/paypal/webhook',
+            'paypal_event_reference' => filled($eventId) ? $this->reference($eventId) : null,
+            'paypal_http_status' => 503,
+            'paypal_order_reference' => $paypalOrderId ? $this->reference($paypalOrderId) : null,
+            'paypal_stage' => 'capture_webhook_hold',
+        ]);
+
+        return response()->json(['status' => 'retry'], 503);
+    }
+
+    /**
+     * @return Collection<int, Order>
+     */
+    private function capturedOrders(string $providerOrderId): Collection
+    {
+        return Order::query()
+            ->with('user')
+            ->where('provider', 'paypal')
+            ->where(function ($query) use ($providerOrderId) {
+                $query
+                    ->where('provider_order_id', $providerOrderId)
+                    ->orWhereRaw('provider_order_id LIKE ? ESCAPE ?', [
+                        $this->escapeLike($providerOrderId).'-%',
+                        '\\',
+                    ]);
+            })
+            ->orderBy('id')
+            ->get();
+    }
+
+    private function completedCaptureId(Request $request): ?string
+    {
+        $value = Arr::get($request->all(), 'resource.id');
+
+        return filled($value) ? (string) $value : null;
+    }
+
+    private function completedAmountCents(Request $request): ?int
+    {
+        $value = Arr::get($request->all(), 'resource.amount.value');
+
+        return is_numeric($value) ? max(0, (int) round(((float) $value) * 100)) : null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $extra
+     * @return array<string, mixed>
+     */
+    private function webhookLogContext(
+        Request $request,
+        string $paypalOrderId,
+        string $captureId,
+        array $extra = [],
+    ): array {
+        $eventId = (string) $request->input('id', '');
+
+        return [
+            'paypal_capture_reference' => $this->reference($captureId),
+            'paypal_debug_id' => null,
+            'paypal_endpoint' => '/paypal/webhook',
+            'paypal_event_reference' => filled($eventId) ? $this->reference($eventId) : null,
+            'paypal_http_status' => 200,
+            'paypal_order_reference' => $this->reference($paypalOrderId),
+            'paypal_stage' => 'capture_webhook',
+            ...$extra,
+        ];
+    }
+
+    private function reference(string $value): string
+    {
+        return substr(hash('sha256', $value), 0, 16);
     }
 
     /**

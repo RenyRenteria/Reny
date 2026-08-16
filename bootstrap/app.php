@@ -29,6 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             'analytics/events',
             'paypal/*',
+            'qa/paypal-e2e/*',
             'mux/*',
         ]);
     })
