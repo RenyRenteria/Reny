@@ -70,10 +70,6 @@
             <span>Publicar o programar para</span>
             <input name="scheduled_at" type="datetime-local" value="{{ $scheduledAt }}">
         </label>
-        <label class="video-cms-field">
-            <span>Orden en la colección</span>
-            <input name="metadata[sort_order]" type="number" min="0" max="10000" value="{{ $field('sort_order', 999) }}">
-        </label>
         @if ($isPlaylist)
             <input name="metadata[is_featured]" type="hidden" value="0">
         @else
