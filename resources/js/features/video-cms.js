@@ -84,9 +84,32 @@ const initializeFilters = (cms) => {
     search.addEventListener('input', filter);
 };
 
+export const orderedVideoIds = (cms) => Array.from(
+    cms.querySelectorAll('[data-video-sort-list] [data-video-row]'),
+    (row) => row.dataset.videoId,
+).filter(Boolean);
+
+export const serializeVideoOrder = (cms, form, createElement = (tagName) => document.createElement(tagName)) => {
+    form.querySelectorAll('[data-video-order-input]').forEach((input) => input.remove());
+
+    const videoIds = orderedVideoIds(cms);
+
+    videoIds.forEach((videoId) => {
+        const input = createElement('input');
+        input.type = 'hidden';
+        input.name = 'video_ids[]';
+        input.value = videoId;
+        input.setAttribute('data-video-order-input', '');
+        form.append(input);
+    });
+
+    return videoIds;
+};
+
 const initializeSorting = (cms) => {
     let dragging = null;
     const status = cms.querySelector('[data-video-order-status]');
+    const form = cms.querySelector('[data-video-order-form]');
 
     cms.querySelectorAll('[data-video-sort-list]').forEach((list) => {
         list.querySelectorAll('[data-video-row]').forEach((row) => {
@@ -113,6 +136,8 @@ const initializeSorting = (cms) => {
             });
         });
     });
+
+    form?.addEventListener('submit', () => serializeVideoOrder(cms, form));
 };
 
 const initializeForms = (cms) => {

@@ -114,12 +114,20 @@ class VideoCatalogService
         DB::transaction(function () use ($actor, $videoIds): void {
             $videos = EditorialContent::query()
                 ->where('type', ContentType::Video->value)
-                ->whereIn('id', $videoIds)
+                ->where('status', '!=', EditorialStatus::Archived->value)
                 ->lockForUpdate()
                 ->get()
+                ->reject(fn (EditorialContent $content): bool => VideoCatalog::isFeaturedOnly($content))
                 ->keyBy('id');
 
-            abort_unless($videos->count() === count($videoIds), 422, 'The video order contains an invalid item.');
+            $expectedIds = $videos->keys()->map(fn ($id): int => (int) $id)->sort()->values()->all();
+            $submittedIds = collect($videoIds)->sort()->values()->all();
+
+            abort_unless(
+                $expectedIds === $submittedIds,
+                422,
+                'The video order must contain the complete catalog.',
+            );
 
             foreach ($videoIds as $position => $videoId) {
                 $video = $videos->get($videoId);
