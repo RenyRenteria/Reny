@@ -293,7 +293,7 @@ class CheckoutController extends Controller
             'analytics_session_id' => ['nullable', 'string', 'max:64', 'regex:/^[A-Za-z0-9._:-]+$/'],
             'customer_name' => [$requireCustomerDetails ? 'required' : 'sometimes', 'string', 'max:120'],
             'customer_email' => [$requireCustomerDetails ? 'required' : 'sometimes', 'email', 'max:255'],
-            'customer_phone' => [$requireCustomerDetails ? 'required' : 'sometimes', 'string', 'max:32', 'regex:/^\+[1-9][0-9]{6,14}$/'],
+            'customer_phone' => ['nullable', 'string', 'max:32', 'regex:/^\+[1-9][0-9]{6,14}$/'],
             'customer_country' => [$requireCustomerDetails ? 'required' : 'sometimes', 'string', 'max:80'],
             'paypal_order_id' => [$requirePaypalOrder ? 'required' : 'sometimes', 'string', 'max:255'],
             'local_reference' => [

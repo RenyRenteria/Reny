@@ -286,6 +286,7 @@ class StorePageTest extends TestCase
             ->assertSee('id="nameField"', false)
             ->assertSee('id="emailField"', false)
             ->assertSee('id="phoneField"', false)
+            ->assertSee('Phone (optional)')
             ->assertSee('id="countryField"', false)
             ->assertSee('pattern="^\+[1-9][0-9]{6,14}$"', false)
             ->assertSee('Select country')
@@ -378,7 +379,8 @@ class StorePageTest extends TestCase
         $this->assertStringContainsString("image.className = 'store-bag-image';", $js);
         $this->assertStringContainsString('customer_name', $js);
         $this->assertStringContainsString('customer_country', $js);
-        $this->assertStringContainsString('Add a valid international phone number.', $js);
+        $this->assertStringContainsString('phone.length === 0 || isValidPhone(phone)', $js);
+        $this->assertStringContainsString('Use a valid international phone number or leave it blank.', $js);
         $this->assertStringNotContainsString('completePurchaseButton', $js);
         $this->assertStringNotContainsString('Load PayPal checkout', $js);
     }

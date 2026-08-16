@@ -90,7 +90,7 @@
                         <input class="store-input" id="emailField" type="email" value="" autocomplete="email" required>
                     </div>
                     <div class="store-field">
-                        <label for="phoneField">Phone</label>
+                        <label for="phoneField">Phone (optional)</label>
                         <input
                             class="store-input"
                             id="phoneField"
@@ -100,7 +100,6 @@
                             inputmode="tel"
                             placeholder="+507 6000 0000"
                             pattern="^\+[1-9][0-9]{6,14}$"
-                            required
                         >
                     </div>
                     <div class="store-field">

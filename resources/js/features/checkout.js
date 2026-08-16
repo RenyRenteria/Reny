@@ -322,10 +322,9 @@ const initializeStoreInteractions = (root = document) => {
     const customerDetailsComplete = () => {
         const name = nameField?.value?.trim() || '';
         const email = emailField?.value?.trim() || '';
-        const phone = phoneField?.value?.trim() || '';
         const country = countryField?.value?.trim() || '';
 
-        return name.length > 0 && isValidEmail(email) && isValidPhone(phone) && country.length > 0;
+        return name.length > 0 && isValidEmail(email) && country.length > 0;
     };
 
     const contactPayload = () => {
@@ -350,9 +349,9 @@ const initializeStoreInteractions = (root = document) => {
             },
             {
                 field: phoneField,
-                valid: isValidPhone(phone),
+                valid: phone.length === 0 || isValidPhone(phone),
                 fieldMessage: 'Use an international number starting with +.',
-                userMessage: 'Add a valid international phone number.',
+                userMessage: 'Use a valid international phone number or leave it blank.',
                 reason: 'invalid_phone',
             },
             {
@@ -379,7 +378,7 @@ const initializeStoreInteractions = (root = document) => {
             identifier: email,
             customer_name: name,
             customer_email: email,
-            customer_phone: normalizeInternationalPhone(phone),
+            customer_phone: phone.length > 0 ? normalizeInternationalPhone(phone) : null,
             customer_country: country,
         };
     };
