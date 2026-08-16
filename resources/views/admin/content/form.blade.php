@@ -232,6 +232,8 @@
                         <label><span>Playlist</span><input name="metadata[playlist]" type="text" maxlength="160" value="{{ $metaValue('playlist') }}"></label>
                         <label><span>Access tier</span>@include('admin.partials.visibility-select', ['name' => 'metadata[access_tier]', 'selected' => $metaValue('access_tier', 'open'), 'visibilityAudiences' => $visibilityAudiences])</label>
                         <label><span>Thumbnail</span>@include('admin.partials.asset-select', ['name' => 'metadata[thumbnail_asset_id]', 'selected' => $metaValue('thumbnail_asset_id'), 'mediaAssets' => $mediaAssets, 'types' => ['image', 'thumbnail']])</label>
+                        <label><span>Sort order</span><input name="metadata[sort_order]" type="number" min="0" max="10000" value="{{ $metaValue('sort_order', 999) }}"></label>
+                        <label class="admin-checkbox"><input name="metadata[is_featured]" type="hidden" value="0"><input name="metadata[is_featured]" type="checkbox" value="1" @checked((bool) $metaValue('is_featured'))><span>Featured video</span></label>
                     </div>
                 </fieldset>
 

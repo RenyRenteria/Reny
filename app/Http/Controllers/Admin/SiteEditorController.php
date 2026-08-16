@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\ContentType;
+use App\Enums\EditorialStatus;
 use App\Enums\MediaAssetType;
 use App\Enums\VisibilityAudience;
 use App\Http\Controllers\Controller;
@@ -11,6 +12,7 @@ use App\Models\EditorialContent;
 use App\Models\MediaAsset;
 use App\Models\SitePageSetting;
 use App\Models\User;
+use App\Services\Admin\VideoCatalogService;
 use App\Services\CmsPreviewContext;
 use App\Services\Commerce\ProductCatalog;
 use App\Services\CommunityInteractionService;
@@ -23,6 +25,7 @@ use App\Services\PageSettingsService;
 use App\Services\PublicCmsContentService;
 use App\Services\StorefrontSettingsService;
 use App\Support\SiteEditorPageRegistry;
+use App\Support\VideoCatalog;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -46,6 +49,7 @@ class SiteEditorController extends Controller
         PublicCmsContentService $cms,
         CommunityMemberDirectory $members,
         CommunityRsvpDirectory $rsvps,
+        VideoCatalogService $videoCatalog,
         string $page,
     ): View {
         $pageConfig = $this->registry->page($page);
@@ -73,6 +77,9 @@ class SiteEditorController extends Controller
                 : null,
             'musicContentForm' => $page === 'music'
                 ? $this->musicContentFormData()
+                : null,
+            'videoContentForm' => $page === 'videos'
+                ? $this->videoContentFormData($videoCatalog)
                 : null,
             'storefront' => $usesStorefrontEditor
                 ? app(StorefrontSettingsService::class)->editorPayload()
@@ -109,6 +116,74 @@ class SiteEditorController extends Controller
             'contents' => $this->manageableMusicContents(),
             'defaultType' => ContentType::MusicalAlbum->value,
         ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function videoContentFormData(VideoCatalogService $catalog): array
+    {
+        $contents = $catalog->contents();
+        $catalogContents = $contents->reject(
+            fn (EditorialContent $content): bool => VideoCatalog::isFeaturedOnly($content)
+        );
+        $featureCandidates = $contents->filter(
+            fn (EditorialContent $content): bool => $catalog->canFeature($content)
+        );
+
+        return [
+            'contents' => $contents,
+            'catalogContents' => $catalogContents,
+            'featured' => $featureCandidates->first(
+                fn (EditorialContent $content): bool => VideoCatalog::isFeatured($content)
+            ) ?? $featureCandidates->first(),
+            'featureCandidates' => $featureCandidates,
+            'groups' => VideoCatalog::groups(),
+            'grouped' => $catalogContents->groupBy(
+                fn (EditorialContent $content): string => VideoCatalog::groupFor($content)
+            ),
+            'publishedCount' => $catalogContents->where('status', EditorialStatus::Published)->count(),
+            'draftCount' => $catalogContents->where('status', EditorialStatus::Draft)->count(),
+            'scheduledCount' => $catalogContents->where('status', EditorialStatus::Scheduled)->count(),
+            'visibilityAudiences' => VisibilityAudience::cases(),
+        ];
+    }
+
+    public function updateVideoOrder(Request $request, VideoCatalogService $catalog): RedirectResponse
+    {
+        $validated = $request->validate([
+            'video_ids' => ['required', 'array', 'max:300'],
+            'video_ids.*' => ['required', 'integer', 'distinct'],
+        ]);
+
+        $catalog->reorder($request->user(), array_map('intval', $validated['video_ids']));
+
+        return redirect()
+            ->route('admin.site-editor.show', ['page' => 'videos'])
+            ->with('status', 'Orden del catálogo de videos actualizado.');
+    }
+
+    public function updateFeaturedVideo(
+        Request $request,
+        VideoCatalogService $catalog,
+    ): RedirectResponse {
+        $validated = $request->validate([
+            'video_id' => [
+                'required',
+                'integer',
+                Rule::exists('editorial_contents', 'id')->where(
+                    fn ($query) => $query
+                        ->where('type', ContentType::Video->value)
+                        ->where('status', EditorialStatus::Published->value)
+                ),
+            ],
+        ]);
+        $video = EditorialContent::query()->findOrFail($validated['video_id']);
+        $catalog->setFeatured($request->user(), $video);
+
+        return redirect()
+            ->route('admin.site-editor.show', ['page' => 'videos'])
+            ->with('status', sprintf('"%s" ahora es el video destacado.', $video->title));
     }
 
     /**

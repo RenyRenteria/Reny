@@ -27,45 +27,22 @@
         ],
     ];
 
-    $staticVideoGroups = [
-        'music_videos' => [
-            ['id' => 'Ue8orNrHw9s', 'title' => 'I Swear', 'meta' => 'Official Music Video'],
-            ['id' => 'mfaOU7LFheE', 'title' => 'Ag&uuml;ita de Coco', 'meta' => 'Video Oficial'],
-            ['id' => 'GUISQgRCY44', 'title' => 'Want a man', 'meta' => 'Official Music Video'],
-            ['id' => 'w-W-Szxuk_A', 'title' => 'Crossroads', 'meta' => 'Official Music Video'],
-            ['id' => 'FBw7qjIngms', 'title' => 'Nada de m&iacute;', 'meta' => 'Official Music Video'],
-            ['id' => 'M5rPAEwICrA', 'title' => 'Lay on my shoulder', 'meta' => 'Music Video'],
-        ],
-        'series' => [
-            ['id' => 'Ij8QJWR1LP0', 'title' => 'Raspao a Dolar', 'meta' => 'Conversaciones, cultura pop y temas de actualidad con formato de episodio.'],
-            ['id' => 'USfTD9rZ3o8', 'title' => 'Studio Sessions', 'meta' => 'Recording sessions, studio clips, rehearsals, and in-progress music moments.'],
-        ],
-        'performances' => [
-            ['id' => '6PSCI5m43wk', 'title' => 'Places', 'meta' => 'Live en Tu Ma&ntilde;ana'],
-            ['id' => 'PrOrIS-6NvE', 'title' => 'Ag&uuml;ita de Coco', 'meta' => 'En vivo en Tu Ma&ntilde;ana'],
-            ['id' => 'q_pDpnIijWY', 'title' => 'Stamina', 'meta' => 'Live at Miss Universe Panama 2024'],
-            ['id' => 'sfOvmqQjpu0', 'title' => 'You Better Run', 'meta' => 'Live at Festival de La Rosa Dorada'],
-            ['id' => 'Sb0IcEiAPbA', 'title' => 'Touch it', 'meta' => 'Live performance on Tu Ma&ntilde;ana'],
-            ['id' => '0Xvjl-s4PwI', 'title' => 'In Your Heart', 'meta' => 'Live Performance Music Video'],
-        ],
-        'behind_the_scenes' => [
-            ['id' => 'USfTD9rZ3o8', 'title' => 'Wave', 'meta' => 'Studio Recording Session'],
-            ['id' => 'pBmyvcI8vtQ', 'title' => 'Places', 'meta' => 'Studio Clip'],
-            ['id' => 'cXo8awFAt4s', 'title' => 'Places', 'meta' => 'Dance Rehearsal with Ching'],
-            ['id' => '7ujK5dYKF7Q', 'title' => 'Make It Louder', 'meta' => 'Studio Recording Session'],
-        ],
-        'vlogs' => [
-            ['id' => 'fA7CVtk0uNw', 'title' => 'Visitando Mas23', 'meta' => 'Panama vlog short'],
-            ['id' => 'yz6mBW-BshM', 'title' => 'IA o arte real?', 'meta' => 'Craftmanship by Christian Javier'],
-            ['id' => 'fcGJ7aZ39Hw', 'title' => 'New merch out now', 'meta' => '5D Stage update'],
-        ],
-    ];
+    $staticVideoGroups = collect(config('reny_videos.groups', []))
+        ->map(fn (array $videos): array => collect($videos)
+            ->map(fn (array $video): array => [
+                'id' => $video['youtube_id'],
+                'title' => $video['title'],
+                'meta' => $video['meta'],
+            ])
+            ->all())
+        ->all();
 
     $pageSettings = $publicCms['page'] ?? [];
+    $configuredFeaturedVideo = config('reny_videos.featured', []);
     $defaultFeaturedVideo = [
-        'id' => 'UWDLtZCoTag',
-        'title' => 'Reny Renteria - Take a bite (Official Music Video)',
-        'meta' => 'Featured YouTube premiere',
+        'id' => $configuredFeaturedVideo['youtube_id'] ?? null,
+        'title' => $configuredFeaturedVideo['title'] ?? 'Featured video',
+        'meta' => $configuredFeaturedVideo['meta'] ?? 'Featured YouTube premiere',
     ];
 
     $cmsVideoCount = array_sum(array_map(

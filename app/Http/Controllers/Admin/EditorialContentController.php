@@ -12,11 +12,14 @@ use App\Models\EditorialContent;
 use App\Models\MediaAsset;
 use App\Models\Taxonomy;
 use App\Services\Admin\MusicContentUploadService;
+use App\Services\Admin\VideoCatalogService;
 use App\Services\Commerce\CommercePublicationValidator;
 use App\Services\EditorialWorkflowService;
 use App\Services\Media\MediaLibraryService;
 use App\Services\Media\MediaUploadException;
+use App\Services\PublicCms\PayloadMediaResolver;
 use App\Support\AdminCmsSections;
+use App\Support\VideoCatalog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -28,7 +31,10 @@ use Illuminate\View\View;
 
 class EditorialContentController extends Controller
 {
-    public function __construct(private readonly MusicContentUploadService $musicContent) {}
+    public function __construct(
+        private readonly MusicContentUploadService $musicContent,
+        private readonly VideoCatalogService $videoCatalog,
+    ) {}
 
     public function index(Request $request): View
     {
@@ -116,7 +122,11 @@ class EditorialContentController extends Controller
         $content->delete();
 
         return redirect()
-            ->route('admin.content.index')
+            ->route($request->boolean('return_to_video_editor')
+                ? 'admin.site-editor.show'
+                : 'admin.content.index', $request->boolean('return_to_video_editor')
+                ? ['page' => 'videos']
+                : [])
             ->with('status', sprintf('Draft "%s" deleted.', $title));
     }
 
@@ -200,6 +210,10 @@ class EditorialContentController extends Controller
             $content->taxonomies()->sync(collect($taxonomyIds)->filter()->unique()->values()->all());
         }
 
+        if ($content->type === ContentType::Video) {
+            $this->videoCatalog->ensureSingleFeatured($content);
+        }
+
         $message = match ($action) {
             'publish' => sprintf('Content "%s" approved and published.', $content->title),
             'schedule' => sprintf('Content "%s" scheduled in Panama time.', $content->title),
@@ -213,6 +227,12 @@ class EditorialContentController extends Controller
         if ($request->boolean('return_to_music_editor')) {
             return redirect()
                 ->route('admin.site-editor.show', ['page' => 'music'])
+                ->with('status', $message);
+        }
+
+        if ($request->boolean('return_to_video_editor')) {
+            return redirect()
+                ->route('admin.site-editor.show', ['page' => 'videos'])
                 ->with('status', $message);
         }
 
@@ -296,10 +316,38 @@ class EditorialContentController extends Controller
 
         $validator->after(function ($validator) use ($request, $input, $type): void {
             $this->musicContent->addValidationErrors($validator, $request, $input, $type);
+
+            if ($type !== ContentType::Video->value) {
+                return;
+            }
+
+            $url = (string) data_get($input, 'metadata.youtube_url', '');
+            $group = VideoCatalog::groupFor((array) data_get($input, 'metadata', []));
+            $media = app(PayloadMediaResolver::class);
+            $validVideo = $media->youtubeId($url) !== null;
+            $validPlaylist = $group === 'series' && $media->youtubePlaylistId($url) !== null;
+            $isFeatured = filter_var(
+                data_get($input, 'metadata.is_featured', false),
+                FILTER_VALIDATE_BOOL,
+            );
+
+            if (! $validVideo && ! $validPlaylist) {
+                $validator->errors()->add(
+                    'metadata.youtube_url',
+                    'Enter a valid YouTube video or playlist URL.',
+                );
+            }
+
+            if ($group === 'series' && $isFeatured) {
+                $validator->errors()->add(
+                    'metadata.is_featured',
+                    'Las playlists no pueden usarse como video destacado.',
+                );
+            }
         });
 
         $payload = $validator->validate();
-        $payload['metadata'] = $this->normalizedMetadataForType($payload['metadata'] ?? [], $type);
+        $payload['metadata'] = $this->normalizedMetadataForType($payload['metadata'] ?? [], $type, $content);
         $payload['release_windows'] = $this->pruneEmptyValues($payload['release_windows'] ?? []);
         $payload = $this->musicContent->payloadWithReleaseWindows($payload, $type);
 
@@ -334,6 +382,9 @@ class EditorialContentController extends Controller
                 'metadata.category' => ['required', 'string', 'max:120'],
                 'metadata.access_tier' => ['required', Rule::in(VisibilityAudience::values())],
                 'metadata.playlist' => ['nullable', 'string', 'max:160'],
+                'metadata.sort_order' => ['nullable', 'integer', 'min:0', 'max:10000'],
+                'metadata.is_featured' => ['nullable', 'boolean'],
+                'metadata.featured_only' => ['nullable', 'boolean'],
             ],
             ContentType::Photo->value => [
                 'metadata.image_asset_id' => $assetRule,
@@ -408,8 +459,11 @@ class EditorialContentController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function normalizedMetadataForType(array $metadata, string $type): array
-    {
+    private function normalizedMetadataForType(
+        array $metadata,
+        string $type,
+        ?EditorialContent $content = null,
+    ): array {
         if ($this->musicContent->isMusicType($type)) {
             return $this->musicContent->normalizeMetadataForType($metadata, $type);
         }
@@ -417,6 +471,7 @@ class EditorialContentController extends Controller
         $metadata = $this->pruneEmptyValues($metadata);
 
         return match ($type) {
+            ContentType::Video->value => $this->videoCatalog->normalizeMetadata($metadata, $content),
             ContentType::Product->value => [
                 ...$metadata,
                 'currency' => strtoupper((string) ($metadata['currency'] ?? 'USD')),
