@@ -109,6 +109,10 @@
     $rsvpTickets = $rsvpTickets ?? [];
     $slotImage = fn (array $slot): string => $slot['image_url'] ?? asset($slot['image'] ?? 'images/store/work-in-progress.png');
     $slotType = fn (array $slot): string => $slot['eyebrow'] ?: str($slot['kind'] ?? 'product')->headline()->toString();
+    $slotDescriptionLines = fn (array $slot): array => array_values(array_filter(
+        preg_split('/\r\n|\r|\n/', (string) ($slot['description'] ?? '')),
+        fn (string $line): bool => trim($line) !== '',
+    ));
     $isFreeEventPrice = function (string $price): bool {
         if (preg_match('/(^|[^a-z])free([^a-z]|$)/i', $price) === 1) {
             return true;
@@ -143,6 +147,16 @@
         }
 
         return max(1, $minutes).'M';
+    };
+    $slotCountdownParts = function (\Carbon\CarbonImmutable $target): array {
+        $secondsRemaining = (int) max(0, now()->diffInSeconds($target, false));
+
+        return [
+            'days' => intdiv($secondsRemaining, 86400),
+            'hours' => intdiv($secondsRemaining % 86400, 3600),
+            'minutes' => intdiv($secondsRemaining % 3600, 60),
+            'seconds' => $secondsRemaining % 60,
+        ];
     };
 @endphp
 
@@ -217,6 +231,7 @@
                                 $slotProductKey = $slot['product_key'] ?? $slotKey;
                                 $slotActionType = $slot['action_type'] ?? 'buy';
                                 $slotVisiblePrice = trim((string) ($slot['price_label'] ?? ''));
+                                $showVisiblePrice = strcasecmp($slotVisiblePrice, 'free') === 0 ? '$ FREE' : $slotVisiblePrice;
                                 $isFreeLeadEvent = ($slot['kind'] ?? '') === 'event' && $isFreeEventPrice($slotVisiblePrice);
                                 $slotPriceValue = (float) preg_replace('/[^0-9.]/', '', $slotVisiblePrice);
                                 $slotHasExchangeablePrice = filled($slotVisiblePrice) && ! $isFreeLeadEvent && $slotPriceValue > 0;
@@ -226,100 +241,104 @@
                                     ? $slotCountdownTarget($slot['countdown_at'] ?? null, $slot['timezone'] ?? null)
                                     : null;
                                 $countdownLabel = $slotCountdownLabel($countdownTarget);
+                                $countdownParts = $countdownTarget ? $slotCountdownParts($countdownTarget) : null;
                             @endphp
-                            <article @class([
-                                'storefront-card',
-                                'is-event' => ($slot['kind'] ?? '') === 'event',
-                                'is-product' => ($slot['kind'] ?? '') !== 'event',
-                            ])>
-                                <img
-                                    class="storefront-image"
-                                    src="{{ $slotImage($slot) }}"
-                                    alt="{{ $slot['image_alt'] ?? $slot['title'] }}"
-                                    loading="{{ $loop->first ? 'eager' : 'lazy' }}"
-                                    decoding="async"
-                                >
-                                <div class="storefront-copy">
-                                    @if (filled($slot['eyebrow'] ?? null))
-                                        <span>{{ $slot['eyebrow'] }}</span>
-                                    @endif
-                                    <h2>{{ $slot['title'] }}</h2>
-                                    <p>{!! nl2br(e($slot['description'] ?? '')) !!}</p>
-                                    @if (filled($slotVisiblePrice))
-                                        <strong
-                                            class="storefront-price"
-                                            @if ($slotHasExchangeablePrice)
-                                                data-price="{{ $slotProductKey }}"
-                                                data-price-value="{{ number_format($slotPriceValue, 2, '.', '') }}"
-                                            @endif
-                                        >{{ $slotVisiblePrice }}</strong>
-                                    @endif
-
-                                    <div class="storefront-action-row">
-                                        @if ($isFreeLeadEvent)
-                                            <button
-                                                class="store-button store-button-light"
-                                                type="button"
-                                                data-free-event-rsvp="{{ $slotProductKey }}"
-                                                data-free-event-name="{{ $slot['title'] }}"
-                                                data-free-event-price="{{ $slotVisiblePrice }}"
-                                                data-free-event-rsvp-endpoint="{{ route('community.free-event-rsvp.store') }}"
-                                            >{{ $slot['cta_label'] ?? 'GET TICKETS' }}</button>
-                                        @elseif ($slotActionType === 'rsvp')
-                                            <button
-                                                class="store-button store-button-light"
-                                                type="button"
-                                                data-rsvp="{{ $slotProductKey }}"
-                                                data-rsvp-name="{{ $slot['title'] }}"
-                                                data-rsvp-endpoint="{{ route('store.rsvp') }}"
-                                                data-rsvp-status-target="{{ $slotStatusId }}"
-                                                data-rsvp-confirmed="{{ $rsvpTicket ? 'true' : 'false' }}"
-                                                aria-describedby="{{ $slotStatusId }}"
-                                            >{{ $rsvpTicket ? 'RSVP confirmed' : ($slot['cta_label'] ?? 'GET TICKETS') }}</button>
-                                        @elseif ($slotActionType === 'link')
-                                            @if (filled($slot['url'] ?? null))
-                                                <a class="store-button store-button-light" href="{{ $slot['url'] }}" target="_blank" rel="noreferrer">{{ $slot['cta_label'] ?? 'OPEN' }}</a>
-                                            @else
-                                                <span class="store-button store-button-light" aria-disabled="true">Unavailable</span>
-                                            @endif
-                                        @else
-                                            <button
-                                                class="store-button store-button-light"
-                                                type="button"
-                                                data-buy="{{ $slotProductKey }}"
-                                                data-buy-name="{{ $slot['title'] }}"
-                                                data-buy-type="{{ $slotType($slot) }}"
-                                                data-buy-summary="{{ str_replace("\n", ' - ', $slot['description'] ?? '') }}"
-                                                data-buy-image="{{ $slotImage($slot) }}"
-                                                @if ($slotPriceValue > 0) data-buy-price-value="{{ number_format($slotPriceValue, 2, '.', '') }}" @endif
-                                                data-buy-url="{{ route('store.checkout', ['product' => $slotProductKey]) }}"
-                                            >{{ $slot['cta_label'] ?? 'BUY' }}</button>
-                                        @endif
-
-                                        @if ($countdownTarget && $countdownLabel)
-                                            <span
-                                                class="storefront-countdown"
-                                                data-countdown-at="{{ $countdownTarget->toIso8601String() }}"
-                                                data-countdown-ended-label="Today"
-                                                aria-live="polite"
-                                            >{{ $countdownLabel }}</span>
+                            @if ($isShowsPage)
+                                <article class="home-show-card">
+                                    <img
+                                        class="home-show-image"
+                                        src="{{ $slotImage($slot) }}"
+                                        alt="{{ $slot['image_alt'] ?? $slot['title'] }}"
+                                        loading="{{ $loop->first ? 'eager' : 'lazy' }}"
+                                        decoding="async"
+                                    >
+                                    <div class="home-show-copy">
+                                        <h2>{{ $slot['title'] }}</h2>
+                                        @foreach ($slotDescriptionLines($slot) as $line)
+                                            <p>{{ $line }}</p>
+                                        @endforeach
+                                        @if (filled($showVisiblePrice))
+                                            <p
+                                                @if ($slotHasExchangeablePrice)
+                                                    data-price="{{ $slotProductKey }}"
+                                                    data-price-value="{{ number_format($slotPriceValue, 2, '.', '') }}"
+                                                @endif
+                                            >{{ $showVisiblePrice }}</p>
                                         @endif
                                     </div>
 
-                                    @if ($slotActionType === 'rsvp' && ! $isFreeLeadEvent)
-                                        <p
-                                            class="storefront-rsvp-status sr-only {{ $rsvpTicket ? 'is-confirmed' : '' }}"
-                                            id="{{ $slotStatusId }}"
+                                    @if ($countdownTarget && $countdownParts)
+                                        <div
+                                            class="home-event-countdown"
+                                            data-countdown-at="{{ $countdownTarget->toIso8601String() }}"
+                                            data-countdown-display="segments"
+                                            data-countdown-running-label="Show starts in"
+                                            data-countdown-ended-label="Event started"
+                                            role="timer"
+                                            aria-label="Show starts in {{ $countdownParts['days'] }} days, {{ $countdownParts['hours'] }} hours, {{ $countdownParts['minutes'] }} minutes, and {{ $countdownParts['seconds'] }} seconds"
                                         >
-                                            @if ($rsvpTicket)
-                                                Reserved - {{ str_replace('_', ' ', $rsvpTicket['status']) }} - Code {{ $rsvpTicket['code'] }}
-                                            @else
-                                                RSVP confirms a reservation on this account.
-                                            @endif
-                                        </p>
+                                            <span class="home-event-countdown-kicker" data-countdown-status>Show starts in</span>
+                                            <div class="home-event-countdown-grid" aria-hidden="true">
+                                                @foreach ([
+                                                    'days' => 'Days',
+                                                    'hours' => 'Hours',
+                                                    'minutes' => 'Minutes',
+                                                    'seconds' => 'Seconds',
+                                                ] as $unit => $label)
+                                                    <span class="home-event-countdown-part">
+                                                        <strong data-countdown-unit="{{ $unit }}">{{ str_pad((string) $countdownParts[$unit], 2, '0', STR_PAD_LEFT) }}</strong>
+                                                        <span>{{ $label }}</span>
+                                                    </span>
+                                                @endforeach
+                                            </div>
+                                        </div>
                                     @endif
-                                </div>
-                            </article>
+
+                                    <div class="home-show-actions">
+                                        @include('partials.storefront-card-actions', [
+                                            'cardButtonClass' => 'home-pill-button',
+                                            'showCompactCountdown' => false,
+                                        ])
+                                    </div>
+                                </article>
+                            @else
+                                <article @class([
+                                    'storefront-card',
+                                    'is-event' => ($slot['kind'] ?? '') === 'event',
+                                    'is-product' => ($slot['kind'] ?? '') !== 'event',
+                                ])>
+                                    <img
+                                        class="storefront-image"
+                                        src="{{ $slotImage($slot) }}"
+                                        alt="{{ $slot['image_alt'] ?? $slot['title'] }}"
+                                        loading="{{ $loop->first ? 'eager' : 'lazy' }}"
+                                        decoding="async"
+                                    >
+                                    <div class="storefront-copy">
+                                        @if (filled($slot['eyebrow'] ?? null))
+                                            <span>{{ $slot['eyebrow'] }}</span>
+                                        @endif
+                                        <h2>{{ $slot['title'] }}</h2>
+                                        <p>{!! nl2br(e($slot['description'] ?? '')) !!}</p>
+                                        @if (filled($slotVisiblePrice))
+                                            <strong
+                                                class="storefront-price"
+                                                @if ($slotHasExchangeablePrice)
+                                                    data-price="{{ $slotProductKey }}"
+                                                    data-price-value="{{ number_format($slotPriceValue, 2, '.', '') }}"
+                                                @endif
+                                            >{{ $slotVisiblePrice }}</strong>
+                                        @endif
+
+                                        <div class="storefront-action-row">
+                                            @include('partials.storefront-card-actions', [
+                                                'cardButtonClass' => 'store-button store-button-light',
+                                                'showCompactCountdown' => true,
+                                            ])
+                                        </div>
+                                    </div>
+                                </article>
+                            @endif
                             @endforeach
                         </div>
                     </section>
