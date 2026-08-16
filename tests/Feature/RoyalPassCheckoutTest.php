@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Models\UserUnlock;
 use App\Services\RoyalPassService;
 use App\Services\UserHubPurchaseSync;
+use App\Support\PayPalReference;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
@@ -93,6 +94,7 @@ class RoyalPassCheckoutTest extends TestCase
     public function test_checkout_creates_paypal_order_before_capture(): void
     {
         $this->fakeCreatedOrder('PAYPAL-CREATED-100');
+        Log::spy();
 
         $this->postJson('/checkout/paypal/orders', [
             'identifier' => 'fan@renyrenteria.com',
@@ -137,6 +139,16 @@ class RoyalPassCheckoutTest extends TestCase
             'paypal-browser-session',
             data_get($order->metadata, 'checkout.analytics_session_id'),
         ));
+
+        Log::shouldHaveReceived('info')
+            ->once()
+            ->with('PayPal API request completed.', Mockery::on(fn (array $context): bool => $context === [
+                'paypal_debug_id' => 'debug-create-success',
+                'paypal_endpoint' => '/v2/checkout/orders',
+                'paypal_http_status' => 201,
+                'paypal_stage' => 'create_order',
+                'paypal_order_reference' => PayPalReference::hash('PAYPAL-CREATED-100'),
+            ]));
     }
 
     public function test_checkout_requires_customer_details_before_paypal_order_creation(): void
@@ -1275,7 +1287,18 @@ class RoyalPassCheckoutTest extends TestCase
         ]);
 
         Log::shouldHaveReceived('error')
-            ->with('Captured PayPal checkout requires local payment review.', Mockery::on(fn (array $context): bool => $context['paypal_stage'] === 'persist_capture'));
+            ->with('Captured PayPal checkout requires local payment review.', Mockery::on(function (array $context): bool {
+                $serialized = json_encode($context);
+
+                return $context['paypal_stage'] === 'persist_capture'
+                    && $context['paypal_endpoint'] === '/v2/checkout/orders/{order_id}/capture'
+                    && $context['paypal_http_status'] === 201
+                    && $context['paypal_debug_id'] === 'debug-capture-success'
+                    && $context['paypal_order_reference'] === PayPalReference::hash('PAYPAL-REVIEW-100')
+                    && $context['paypal_capture_reference'] === PayPalReference::hash('CAPTURE-REVIEW-100')
+                    && ! str_contains($serialized, 'PAYPAL-REVIEW-100')
+                    && ! str_contains($serialized, 'CAPTURE-REVIEW-100');
+            }));
     }
 
     public function test_checkout_requires_paypal_order_capture(): void
@@ -1623,7 +1646,9 @@ class RoyalPassCheckoutTest extends TestCase
             'https://paypal.test/v2/checkout/orders' => Http::response([
                 'id' => $orderId,
                 'status' => 'CREATED',
-            ], 201),
+            ], 201, [
+                'PayPal-Debug-Id' => 'debug-create-success',
+            ]),
         ]);
     }
 
@@ -1678,7 +1703,9 @@ class RoyalPassCheckoutTest extends TestCase
                         ],
                     ],
                 ],
-            ], 201),
+            ], 201, [
+                'PayPal-Debug-Id' => 'debug-capture-success',
+            ]),
         ]);
     }
 

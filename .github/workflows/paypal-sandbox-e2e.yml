@@ -1,0 +1,58 @@
+name: PayPal Sandbox E2E
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: paypal-sandbox-e2e
+  cancel-in-progress: false
+
+jobs:
+  checkout:
+    name: Real sandbox checkout gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: paypal-sandbox-e2e
+    env:
+      PAYPAL_API_BASE_URL: https://api-m.sandbox.paypal.com
+      PAYPAL_E2E_BASE_URL: ${{ vars.PAYPAL_E2E_BASE_URL }}
+      PAYPAL_E2E_EXPECTED_HOST: ${{ vars.PAYPAL_E2E_EXPECTED_HOST }}
+      PAYPAL_E2E_CONTROL_TOKEN: ${{ secrets.PAYPAL_E2E_CONTROL_TOKEN }}
+      PAYPAL_E2E_REFERENCE_KEY: ${{ secrets.PAYPAL_E2E_REFERENCE_KEY }}
+      PAYPAL_SANDBOX_BUSINESS_EMAIL: ${{ secrets.PAYPAL_SANDBOX_BUSINESS_EMAIL }}
+      PAYPAL_SANDBOX_BUYER_EMAIL: ${{ secrets.PAYPAL_SANDBOX_BUYER_EMAIL }}
+      PAYPAL_SANDBOX_BUYER_PASSWORD: ${{ secrets.PAYPAL_SANDBOX_BUYER_PASSWORD }}
+      PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_SANDBOX_CLIENT_ID }}
+      PAYPAL_CLIENT_SECRET: ${{ secrets.PAYPAL_SANDBOX_CLIENT_SECRET }}
+      PAYPAL_WEBHOOK_ID: ${{ secrets.PAYPAL_SANDBOX_WEBHOOK_ID }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run PayPal sandbox gate
+        run: npm run test:e2e:paypal
+
+      - name: Upload sanitized evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: paypal-sandbox-e2e-${{ github.run_id }}
+          path: test-results/paypal-sandbox/evidence.json
+          if-no-files-found: warn
+          retention-days: 7

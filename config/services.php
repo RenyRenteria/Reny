@@ -40,6 +40,12 @@ return [
         'client_id' => env('PAYPAL_CLIENT_ID'),
         'client_secret' => env('PAYPAL_CLIENT_SECRET'),
         'webhook_id' => env('PAYPAL_WEBHOOK_ID'),
+        'e2e' => [
+            'enabled' => env('PAYPAL_E2E_ENABLED', false),
+            'control_token' => env('PAYPAL_E2E_CONTROL_TOKEN'),
+            'reference_key' => env('PAYPAL_E2E_REFERENCE_KEY'),
+            'release_sha' => env('PAYPAL_E2E_RELEASE_SHA'),
+        ],
     ],
 
     'mux' => [

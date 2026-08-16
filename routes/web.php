@@ -18,6 +18,7 @@ use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Commerce\CheckoutController;
+use App\Http\Controllers\Commerce\PayPalSandboxE2eController;
 use App\Http\Controllers\Commerce\PaypalWebhookController;
 use App\Http\Controllers\CommunityInteractionController;
 use App\Http\Controllers\FreeEventRsvpController;
@@ -222,5 +223,12 @@ Route::post('/checkout/paypal', [CheckoutController::class, 'store'])
 Route::post('/checkout/local', [CheckoutController::class, 'local'])
     ->middleware('throttle:checkout')
     ->name('checkout.local');
+Route::post('/paypal/webhook', [PaypalWebhookController::class, 'handle'])->name('paypal.webhook');
 Route::post('/paypal/refund', [PaypalWebhookController::class, 'refund'])->name('paypal.refund');
+Route::prefix('/qa/paypal-e2e')->middleware('throttle:paypal-e2e')->group(function () {
+    Route::post('/prepare', [PayPalSandboxE2eController::class, 'prepare']);
+    Route::post('/arm', [PayPalSandboxE2eController::class, 'arm']);
+    Route::post('/release', [PayPalSandboxE2eController::class, 'release']);
+    Route::post('/state', [PayPalSandboxE2eController::class, 'state']);
+});
 Route::post('/mux/webhook', MuxWebhookController::class)->name('mux.webhook');

@@ -5,10 +5,12 @@ namespace App\Http\Controllers\Commerce;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\User;
+use App\Services\Commerce\PayPalCheckoutFinalizer;
+use App\Services\Commerce\PayPalSandboxE2eControl;
 use App\Services\Commerce\ProductCatalog;
 use App\Services\PayPalService;
 use App\Services\RoyalPassService;
-use App\Services\UserHubPurchaseSync;
+use App\Support\PayPalReference;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -31,9 +33,9 @@ class CheckoutController extends Controller
 
     public function store(
         Request $request,
-        RoyalPassService $royalPass,
         PayPalService $payPal,
-        UserHubPurchaseSync $purchaseSync,
+        PayPalCheckoutFinalizer $finalizer,
+        PayPalSandboxE2eControl $e2eControl,
     ): JsonResponse {
         $validated = $this->validateCheckout($request, requirePaypalOrder: true);
 
@@ -58,38 +60,20 @@ class CheckoutController extends Controller
                 ]);
             }
 
-            $this->ensureUnusedPayPalCapture($capture, $pendingOrders);
+            if ($e2eControl->consumeBrowserPersistFailure($user, $validated['paypal_order_id'])) {
+                throw new \RuntimeException('Sandbox E2E forced a post-capture persistence failure.');
+            }
 
-            $orders = DB::transaction(function () use ($authenticatedUser, $capture, $checkoutTokenHash, $purchaseSync, $royalPass, $user, $validated) {
-                $orders = $this->pendingPayPalOrders($validated['paypal_order_id'], $authenticatedUser, $checkoutTokenHash, lock: true);
-                $this->ensurePendingPayPalOrders($validated['paypal_order_id'], $orders);
-                $this->ensureUnusedPayPalCapture($capture, $orders);
-
-                return $orders->map(function (Order $order) use ($capture, $purchaseSync, $royalPass, $user) {
-                    $order->forceFill([
-                        'provider_capture_id' => $capture['capture_id'],
-                        'status' => 'completed',
-                        'completed_at' => now(),
-                    ])->save();
-
-                    $royalPass->log($user, 'purchase', 'order', $order->provider_order_id, [
-                        'product_key' => $order->product_key,
-                        'provider' => 'paypal',
-                        'paypal_capture_id' => $capture['capture_id'],
-                    ]);
-
-                    $royalPass->grantMonth($user, $order);
-                    $purchaseSync->recordCompletedOrder($user, $order, $capture);
-
-                    return $order;
-                });
-            });
+            $orders = $finalizer->finalize($pendingOrders, $capture)['orders'];
         } catch (Throwable $exception) {
             $this->markCapturedPayPalOrderForReview($validated['paypal_order_id'], $user, $capture);
             Log::error('Captured PayPal checkout requires local payment review.', [
                 'exception' => $exception::class,
-                'paypal_capture_reference' => substr(hash('sha256', $capture['capture_id']), 0, 16),
-                'paypal_order_reference' => substr(hash('sha256', $validated['paypal_order_id']), 0, 16),
+                'paypal_debug_id' => $capture['debug_id'] ?? null,
+                'paypal_endpoint' => '/v2/checkout/orders/{order_id}/capture',
+                'paypal_capture_reference' => PayPalReference::hash($capture['capture_id']),
+                'paypal_http_status' => $capture['http_status'] ?? null,
+                'paypal_order_reference' => PayPalReference::hash($validated['paypal_order_id']),
                 'paypal_stage' => 'persist_capture',
             ]);
 
@@ -637,34 +621,7 @@ class CheckoutController extends Controller
     }
 
     /**
-     * @param  array{order_id: string, capture_id: string, payer_id: string|null, payload: array<string, mixed>}  $capture
-     * @param  Collection<int, Order>  $pendingOrders
-     */
-    private function ensureUnusedPayPalCapture(array $capture, Collection $pendingOrders): void
-    {
-        $paypalOrderId = $capture['order_id'];
-        $paypalCaptureId = $capture['capture_id'];
-        $pendingOrderIds = $pendingOrders->pluck('id');
-
-        if (! Order::query()
-            ->where('provider', 'paypal')
-            ->whereNotIn('id', $pendingOrderIds)
-            ->where(function ($query) use ($paypalCaptureId, $paypalOrderId) {
-                $query
-                    ->where('provider_capture_id', $paypalCaptureId)
-                    ->orWhere('provider_order_id', 'like', "{$paypalOrderId}-%");
-            })
-            ->exists()) {
-            return;
-        }
-
-        throw ValidationException::withMessages([
-            'paypal_order_id' => 'This PayPal payment has already been recorded.',
-        ]);
-    }
-
-    /**
-     * @param  array{order_id: string, capture_id: string, payer_id: string|null, payload: array<string, mixed>}  $capture
+     * @param  array{order_id: string, capture_id: string, payer_id: string|null, payload: array<string, mixed>, debug_id?: string|null, http_status?: int|null}  $capture
      */
     private function markCapturedPayPalOrderForReview(string $paypalOrderId, User $user, array $capture): void
     {
