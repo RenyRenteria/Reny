@@ -14,7 +14,10 @@ use App\Services\UserHubPurchaseSync;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use Mockery;
+use RuntimeException;
 use Tests\TestCase;
 
 class RoyalPassCheckoutTest extends TestCase
@@ -1097,13 +1100,20 @@ class RoyalPassCheckoutTest extends TestCase
 
     public function test_failed_paypal_order_creation_marks_pending_order_failed(): void
     {
+        Log::spy();
         Http::fake([
             'https://paypal.test/v1/oauth2/token' => Http::response([
                 'access_token' => 'paypal-token',
             ], 200),
             'https://paypal.test/v2/checkout/orders' => Http::response([
+                'name' => 'INTERNAL_SERVER_ERROR',
                 'message' => 'PayPal unavailable',
-            ], 500),
+                'details' => [
+                    ['issue' => 'SERVICE_UNAVAILABLE'],
+                ],
+            ], 500, [
+                'PayPal-Debug-Id' => 'debug-create-500',
+            ]),
         ]);
 
         $this->postJson('/checkout/paypal/orders', [
@@ -1115,8 +1125,9 @@ class RoyalPassCheckoutTest extends TestCase
             'product_keys' => ['merch'],
             'currency' => 'USD',
         ])
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors('paypal');
+            ->assertStatus(502)
+            ->assertJsonValidationErrors('paypal')
+            ->assertJsonPath('errors.paypal.0', 'We could not start PayPal checkout. No charge was made. Try again.');
 
         $user = User::where('email', 'failed@renyrenteria.com')->firstOrFail();
 
@@ -1127,6 +1138,92 @@ class RoyalPassCheckoutTest extends TestCase
             'status' => 'failed',
             'provider_capture_id' => null,
         ]);
+
+        Log::shouldHaveReceived('warning')
+            ->once()
+            ->with('PayPal API request failed.', Mockery::on(fn (array $context): bool => $context === [
+                'paypal_debug_id' => 'debug-create-500',
+                'paypal_endpoint' => '/v2/checkout/orders',
+                'paypal_error_code' => 'INTERNAL_SERVER_ERROR',
+                'paypal_error_issue' => 'SERVICE_UNAVAILABLE',
+                'paypal_http_status' => 500,
+                'paypal_stage' => 'create_order',
+            ]));
+    }
+
+    public function test_failed_paypal_capture_is_actionable_and_keeps_pending_order(): void
+    {
+        $this->createPendingPayPalOrder('capture-failed@renyrenteria.com', ['merch'], 'PAYPAL-CAPTURE-FAILED');
+        Log::spy();
+        Http::fake([
+            'https://paypal.test/v1/oauth2/token' => Http::response([
+                'access_token' => 'paypal-token',
+            ], 200),
+            'https://paypal.test/v2/checkout/orders/PAYPAL-CAPTURE-FAILED/capture' => Http::response([
+                'name' => 'INTERNAL_SERVER_ERROR',
+                'details' => [
+                    ['issue' => 'SERVICE_UNAVAILABLE'],
+                ],
+            ], 500, [
+                'PayPal-Debug-Id' => 'debug-capture-500',
+            ]),
+        ]);
+
+        $this->postJson('/checkout/paypal', [
+            'identifier' => 'capture-failed@renyrenteria.com',
+            'product_keys' => ['merch'],
+            'currency' => 'USD',
+            'paypal_order_id' => 'PAYPAL-CAPTURE-FAILED',
+        ])
+            ->assertStatus(502)
+            ->assertJsonValidationErrors('paypal')
+            ->assertJsonPath('errors.paypal.0', 'PayPal approved the payment, but confirmation is pending. Do not retry; contact support with the time and amount.');
+
+        $this->assertDatabaseHas('orders', [
+            'provider_order_id' => 'PAYPAL-CAPTURE-FAILED-1-merch',
+            'provider_capture_id' => null,
+            'status' => 'pending',
+        ]);
+
+        Log::shouldHaveReceived('warning')
+            ->once()
+            ->with('PayPal API request failed.', Mockery::on(fn (array $context): bool => $context['paypal_debug_id'] === 'debug-capture-500'
+                && $context['paypal_endpoint'] === '/v2/checkout/orders/{order_id}/capture'
+                && $context['paypal_http_status'] === 500
+                && $context['paypal_stage'] === 'capture_order'));
+    }
+
+    public function test_captured_payment_is_kept_for_review_when_local_persistence_fails(): void
+    {
+        $this->createPendingPayPalOrder('review@renyrenteria.com', ['merch'], 'PAYPAL-REVIEW-100');
+        $this->fakeSuccessfulCapture('PAYPAL-REVIEW-100', '48.00', 'CAPTURE-REVIEW-100');
+
+        $purchaseSync = Mockery::mock(UserHubPurchaseSync::class);
+        $purchaseSync->shouldReceive('recordCompletedOrder')
+            ->once()
+            ->andThrow(new RuntimeException('Simulated local persistence failure.'));
+        $this->app->instance(UserHubPurchaseSync::class, $purchaseSync);
+        Log::spy();
+
+        $this->postJson('/checkout/paypal', [
+            'identifier' => 'review@renyrenteria.com',
+            'product_keys' => ['merch'],
+            'currency' => 'USD',
+            'paypal_order_id' => 'PAYPAL-REVIEW-100',
+        ])->assertServerError();
+
+        $this->assertDatabaseHas('orders', [
+            'provider_order_id' => 'PAYPAL-REVIEW-100-1-merch',
+            'provider_capture_id' => 'CAPTURE-REVIEW-100',
+            'status' => 'payment_review',
+        ]);
+        $this->assertDatabaseMissing('users', [
+            'email' => 'review@renyrenteria.com',
+            'royal_status' => 'royal_active',
+        ]);
+
+        Log::shouldHaveReceived('error')
+            ->with('Captured PayPal checkout requires local payment review.', Mockery::on(fn (array $context): bool => $context['paypal_stage'] === 'persist_capture'));
     }
 
     public function test_checkout_requires_paypal_order_capture(): void

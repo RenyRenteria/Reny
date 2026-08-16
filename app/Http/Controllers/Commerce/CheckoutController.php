@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Throwable;
@@ -50,15 +51,15 @@ class CheckoutController extends Controller
             $this->orderCurrency($pendingOrders, $currency),
         );
 
-        if ($capture['order_id'] !== $validated['paypal_order_id']) {
-            throw ValidationException::withMessages([
-                'paypal_order_id' => 'PayPal returned a different order than this checkout.',
-            ]);
-        }
-
-        $this->ensureUnusedPayPalCapture($capture, $pendingOrders);
-
         try {
+            if ($capture['order_id'] !== $validated['paypal_order_id']) {
+                throw ValidationException::withMessages([
+                    'paypal_order_id' => 'PayPal returned a different order than this checkout.',
+                ]);
+            }
+
+            $this->ensureUnusedPayPalCapture($capture, $pendingOrders);
+
             $orders = DB::transaction(function () use ($authenticatedUser, $capture, $checkoutTokenHash, $purchaseSync, $royalPass, $user, $validated) {
                 $orders = $this->pendingPayPalOrders($validated['paypal_order_id'], $authenticatedUser, $checkoutTokenHash, lock: true);
                 $this->ensurePendingPayPalOrders($validated['paypal_order_id'], $orders);
@@ -85,6 +86,12 @@ class CheckoutController extends Controller
             });
         } catch (Throwable $exception) {
             $this->markCapturedPayPalOrderForReview($validated['paypal_order_id'], $user, $capture);
+            Log::error('Captured PayPal checkout requires local payment review.', [
+                'exception' => $exception::class,
+                'paypal_capture_reference' => substr(hash('sha256', $capture['capture_id']), 0, 16),
+                'paypal_order_reference' => substr(hash('sha256', $validated['paypal_order_id']), 0, 16),
+                'paypal_stage' => 'persist_capture',
+            ]);
 
             throw $exception;
         }

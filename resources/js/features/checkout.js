@@ -6,6 +6,12 @@ import {
     trackEvent,
 } from './analytics.js';
 import { createPaymentAnalyticsTracker } from './checkout-analytics.js';
+import {
+    annotatePayPalError,
+    checkoutRequestError,
+    resolvePayPalCallbackError,
+    shouldCancelPendingPayPalOrder,
+} from './checkout-paypal.js';
 
 const initializeStoreInteractions = (root = document) => {
     const scope = root === document ? document : root;
@@ -88,6 +94,8 @@ const initializeStoreInteractions = (root = document) => {
     let paypalButtonsLoading = false;
     let paypalSdkPromise = null;
     let activePayPalOrderId = null;
+    let lastPayPalError = null;
+    let paypalStage = 'idle';
 
     document.querySelectorAll('[data-detail]').forEach((button) => {
         products[button.dataset.detail] = {
@@ -395,7 +403,7 @@ const initializeStoreInteractions = (root = document) => {
         };
     };
 
-    const postCheckoutJson = async (url, body) => {
+    const postCheckoutJson = async (url, body, stage = 'create') => {
         const response = await fetch(url, {
             method: 'POST',
             headers: {
@@ -408,10 +416,11 @@ const initializeStoreInteractions = (root = document) => {
         const payload = await response.json().catch(() => ({}));
 
         if (!response.ok) {
-            const validationMessage = Object.values(payload.errors || {})[0]?.[0];
-            const checkoutState = response.status === 422 ? 'validation_failed' : 'payment_failed';
-
-            throw checkoutError(validationMessage || payload.message || 'Checkout failed.', checkoutState, payload.message || 'checkout_request_failed');
+            throw checkoutRequestError({
+                payload,
+                stage,
+                status: response.status,
+            });
         }
 
         return payload;
@@ -428,7 +437,7 @@ const initializeStoreInteractions = (root = document) => {
 
         await postCheckoutJson(endpoint, {
             paypal_order_id: paypalOrderId,
-        });
+        }, 'cancel');
     };
 
     const rsvpError = (message, reason = null) => Object.assign(new Error(message), {
@@ -592,35 +601,55 @@ const initializeStoreInteractions = (root = document) => {
                     label: 'paypal',
                 },
                 createOrder: async () => {
-                    const payload = checkoutPayload();
-                    [nameField, emailField, phoneField, countryField].forEach((field) => markFieldValidity(field, true));
-                    setPaymentStatus('Creating PayPal order...');
-                    trackPaymentState('paypal', 'payment_started', {
-                        item_count: payload.product_keys.length,
-                        currency: payload.currency,
-                    });
-                    const order = await postCheckoutJson(paypalButtons.dataset.createOrderEndpoint, payload);
-                    activePayPalOrderId = order.paypal_order_id;
-                    setPaymentStatus('Approve payment in PayPal.');
+                    paypalStage = 'create';
+                    lastPayPalError = null;
 
-                    return order.paypal_order_id;
+                    try {
+                        const payload = checkoutPayload();
+                        [nameField, emailField, phoneField, countryField].forEach((field) => markFieldValidity(field, true));
+                        setPaymentStatus('Creating PayPal order...');
+                        trackPaymentState('paypal', 'payment_started', {
+                            item_count: payload.product_keys.length,
+                            currency: payload.currency,
+                        });
+                        const order = await postCheckoutJson(paypalButtons.dataset.createOrderEndpoint, payload, 'create');
+                        activePayPalOrderId = order.paypal_order_id;
+                        paypalStage = 'approval';
+                        setPaymentStatus('Approve payment in PayPal.');
+
+                        return order.paypal_order_id;
+                    } catch (error) {
+                        lastPayPalError = annotatePayPalError(error, 'create');
+                        throw lastPayPalError;
+                    }
                 },
                 onApprove: async (data) => {
-                    const payload = checkoutPayload();
-                    const paypalOrderId = data.orderID || activePayPalOrderId;
-                    setPaymentStatus('Capturing approved PayPal payment...');
-                    const capture = await postCheckoutJson(paypalButtons.dataset.captureEndpoint, {
-                        ...payload,
-                        paypal_order_id: paypalOrderId,
-                    });
+                    paypalStage = 'capture';
+                    lastPayPalError = null;
 
-                    activePayPalOrderId = null;
-                    completeApprovedCheckout(capture);
-                    trackPaymentState('paypal', 'payment_success', {
-                        paypal_order_id: paypalOrderId,
-                    });
+                    try {
+                        const payload = checkoutPayload();
+                        const paypalOrderId = data.orderID || activePayPalOrderId;
+                        setPaymentStatus('Capturing approved PayPal payment...');
+                        const capture = await postCheckoutJson(paypalButtons.dataset.captureEndpoint, {
+                            ...payload,
+                            paypal_order_id: paypalOrderId,
+                        }, 'capture');
+
+                        activePayPalOrderId = null;
+                        paypalStage = 'completed';
+                        completeApprovedCheckout(capture);
+                        trackPaymentState('paypal', 'payment_success', {
+                            paypal_order_id: paypalOrderId,
+                        });
+                    } catch (error) {
+                        lastPayPalError = annotatePayPalError(error, 'capture');
+                        throw lastPayPalError;
+                    }
                 },
                 onCancel: async () => {
+                    paypalStage = 'canceled';
+                    lastPayPalError = null;
                     await cancelPendingPayPalOrder().catch((error) => console.warn(error));
                     setPaymentStatus('PayPal checkout canceled. No purchase was recorded.');
                     showStoreToast('PayPal checkout canceled.');
@@ -628,14 +657,31 @@ const initializeStoreInteractions = (root = document) => {
                         reason: 'canceled',
                     });
                 },
-                onError: (error) => {
-                    console.error(error);
-                    cancelPendingPayPalOrder().catch((cancelError) => console.warn(cancelError));
-                    setPaymentStatus(error.userMessage || 'PayPal checkout failed. No purchase was recorded.');
-                    showStoreToast(error.userMessage || 'PayPal checkout failed.');
-                    trackPaymentState('paypal', error.checkoutState || 'payment_failed', {
-                        reason: error.userMessage || error.message || 'paypal_error',
+                onError: (callbackError) => {
+                    const failedStage = lastPayPalError?.paypalStage || paypalStage || 'approval';
+                    const error = resolvePayPalCallbackError({
+                        callbackError,
+                        lastError: lastPayPalError,
+                        stage: failedStage,
                     });
+
+                    console.error(error);
+
+                    if (shouldCancelPendingPayPalOrder({
+                        activeOrderId: activePayPalOrderId,
+                        stage: failedStage,
+                    })) {
+                        cancelPendingPayPalOrder().catch((cancelError) => console.warn(cancelError));
+                    }
+
+                    setPaymentStatus(error.userMessage);
+                    showStoreToast(error.userMessage);
+                    trackPaymentState('paypal', error.checkoutState || 'payment_failed', {
+                        reason: error.reason || error.message || 'paypal_error',
+                        stage: failedStage,
+                    });
+                    lastPayPalError = null;
+                    paypalStage = 'error';
                 },
             }).render(paypalButtons);
 
