@@ -96,17 +96,20 @@ class CheckoutController extends Controller
             throw $exception;
         }
 
-        if (! $authenticatedUser) {
+        if (! $authenticatedUser && $this->sessionOwnsGuestCustomer($request, $user)) {
             Auth::login($user);
             $request->session()->regenerate();
         }
+
+        $accountIsAuthenticated = Auth::check();
 
         return response()->json([
             'status' => 'completed',
             'royal_status' => $user->fresh()->accessState()->value,
             'royal_ends_at' => $user->fresh()->royal_ends_at?->toIso8601String(),
             'order_ids' => $orders->pluck('provider_order_id')->values(),
-            'account_url' => route('account.show'),
+            'account_access' => $accountIsAuthenticated ? 'authenticated' : 'login_required',
+            'account_url' => $accountIsAuthenticated ? route('account.show') : route('login'),
         ]);
     }
 
@@ -114,7 +117,12 @@ class CheckoutController extends Controller
     {
         $validated = $this->validateCheckout($request, requireCustomerDetails: true);
         $currency = $this->currency($validated);
-        $user = $this->resolveCheckoutCustomer($request, $royalPass, $validated['identifier']);
+        $user = $this->resolveCheckoutCustomer(
+            $request,
+            $royalPass,
+            $validated['identifier'],
+            allowExistingGuestCheckout: true,
+        );
         $checkoutTokenHash = $this->checkoutTokenHash($request);
         $products = $this->resolveProducts($validated['product_keys'], $user);
 
@@ -464,8 +472,12 @@ class CheckoutController extends Controller
         return $user;
     }
 
-    private function resolveCheckoutCustomer(Request $request, RoyalPassService $royalPass, string $identifier): User
-    {
+    private function resolveCheckoutCustomer(
+        Request $request,
+        RoyalPassService $royalPass,
+        string $identifier,
+        bool $allowExistingGuestCheckout = false,
+    ): User {
         $authenticatedUser = Auth::user();
 
         if ($authenticatedUser) {
@@ -475,7 +487,7 @@ class CheckoutController extends Controller
         $existingCustomer = $royalPass->findCustomer($identifier);
 
         if ($existingCustomer) {
-            if ($this->sessionOwnsGuestCustomer($request, $existingCustomer)) {
+            if ($allowExistingGuestCheckout || $this->sessionOwnsGuestCustomer($request, $existingCustomer)) {
                 return $existingCustomer;
             }
 

@@ -526,19 +526,23 @@ const initializeStoreInteractions = (root = document) => {
 
     const showPurchaseConfirmation = (payload) => {
         const royalActive = payload.royal_status === 'royal_active';
+        const accountRequiresLogin = payload.account_access === 'login_required';
 
         if (purchaseConfirmationTitle) {
             purchaseConfirmationTitle.textContent = royalActive ? 'Royal Pass confirmed' : 'Purchase confirmed';
         }
 
         if (purchaseConfirmationMessage) {
-            purchaseConfirmationMessage.textContent = royalActive
-                ? 'Your Royal Pass is active. Confirmation was saved to your account.'
-                : 'Payment confirmed. Your purchase was saved to your account.';
+            purchaseConfirmationMessage.textContent = accountRequiresLogin
+                ? 'Payment confirmed. Your purchase was saved to your existing account. Sign in to access it.'
+                : royalActive
+                    ? 'Your Royal Pass is active. Confirmation was saved to your account.'
+                    : 'Payment confirmed. Your purchase was saved to your account.';
         }
 
         if (purchaseConfirmationAccount) {
             purchaseConfirmationAccount.href = payload.account_url || purchaseConfirmationAccount.href;
+            purchaseConfirmationAccount.textContent = accountRequiresLogin ? 'Sign in to view account' : 'View account';
         }
 
         if (purchaseConfirmationPanel && dedicatedPaymentPanel) {

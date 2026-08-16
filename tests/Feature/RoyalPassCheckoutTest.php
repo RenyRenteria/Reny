@@ -51,7 +51,9 @@ class RoyalPassCheckoutTest extends TestCase
         $response
             ->assertOk()
             ->assertJsonPath('status', 'completed')
-            ->assertJsonPath('royal_status', 'royal_active');
+            ->assertJsonPath('royal_status', 'royal_active')
+            ->assertJsonPath('account_access', 'authenticated')
+            ->assertJsonPath('account_url', route('account.show'));
 
         $user = User::where('phone', '15553034040')->firstOrFail();
 
@@ -158,12 +160,12 @@ class RoyalPassCheckoutTest extends TestCase
         Http::assertNothingSent();
     }
 
-    public function test_public_paypal_order_creation_requires_login_for_existing_email(): void
+    public function test_public_paypal_order_creation_allows_existing_email_without_authenticating_it(): void
     {
-        User::factory()->create([
+        $user = User::factory()->create([
             'email' => 'existing@renyrenteria.com',
         ]);
-        Http::fake();
+        $this->fakeCreatedOrder('PAYPAL-EXISTING-EMAIL');
 
         $this->postJson('/checkout/paypal/orders', [
             'identifier' => 'existing@renyrenteria.com',
@@ -174,20 +176,24 @@ class RoyalPassCheckoutTest extends TestCase
             'product_keys' => ['deluxe'],
             'currency' => 'USD',
         ])
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors('identifier');
+            ->assertOk()
+            ->assertJsonPath('status', 'created')
+            ->assertJsonPath('paypal_order_id', 'PAYPAL-EXISTING-EMAIL');
 
         $this->assertGuest();
-        $this->assertDatabaseCount('orders', 0);
-        Http::assertNothingSent();
+        $this->assertDatabaseHas('orders', [
+            'user_id' => $user->id,
+            'provider_order_id' => 'PAYPAL-EXISTING-EMAIL-1-deluxe',
+            'status' => 'pending',
+        ]);
     }
 
-    public function test_public_paypal_order_creation_requires_login_for_existing_phone(): void
+    public function test_public_paypal_order_creation_allows_existing_phone_without_authenticating_it(): void
     {
-        User::factory()->create([
+        $user = User::factory()->create([
             'phone' => '50760000009',
         ]);
-        Http::fake();
+        $this->fakeCreatedOrder('PAYPAL-EXISTING-PHONE');
 
         $this->postJson('/checkout/paypal/orders', [
             'identifier' => '+507 6000-0009',
@@ -198,12 +204,58 @@ class RoyalPassCheckoutTest extends TestCase
             'product_keys' => ['deluxe'],
             'currency' => 'USD',
         ])
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors('identifier');
+            ->assertOk()
+            ->assertJsonPath('status', 'created')
+            ->assertJsonPath('paypal_order_id', 'PAYPAL-EXISTING-PHONE');
 
         $this->assertGuest();
-        $this->assertDatabaseCount('orders', 0);
-        Http::assertNothingSent();
+        $this->assertDatabaseHas('orders', [
+            'user_id' => $user->id,
+            'provider_order_id' => 'PAYPAL-EXISTING-PHONE-1-deluxe',
+            'status' => 'pending',
+        ]);
+    }
+
+    public function test_public_paypal_capture_for_existing_account_completes_without_logging_in_as_that_user(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'existing-buyer@renyrenteria.com',
+            'royal_status' => 'open',
+        ]);
+        $this->fakeCreatedOrder('PAYPAL-EXISTING-CAPTURE');
+
+        $this->postJson('/checkout/paypal/orders', [
+            'identifier' => $user->email,
+            'customer_name' => 'Existing Buyer',
+            'customer_email' => $user->email,
+            'customer_phone' => '+50760000010',
+            'customer_country' => 'Panama',
+            'product_keys' => ['deluxe'],
+            'currency' => 'USD',
+        ])->assertOk();
+
+        $this->fakeSuccessfulCapture('PAYPAL-EXISTING-CAPTURE', '24.00', 'CAPTURE-EXISTING');
+
+        $this->postJson('/checkout/paypal', [
+            'identifier' => $user->email,
+            'product_keys' => ['deluxe'],
+            'currency' => 'USD',
+            'paypal_order_id' => 'PAYPAL-EXISTING-CAPTURE',
+        ])
+            ->assertOk()
+            ->assertJsonPath('status', 'completed')
+            ->assertJsonPath('royal_status', 'royal_active')
+            ->assertJsonPath('account_access', 'login_required')
+            ->assertJsonPath('account_url', route('login'));
+
+        $this->assertGuest();
+        $this->assertTrue($user->fresh()->hasRoyalAccess());
+        $this->assertDatabaseHas('orders', [
+            'user_id' => $user->id,
+            'provider_order_id' => 'PAYPAL-EXISTING-CAPTURE-1-deluxe',
+            'provider_capture_id' => 'CAPTURE-EXISTING',
+            'status' => 'completed',
+        ]);
     }
 
     public function test_public_paypal_order_creation_does_not_authenticate_guest_customer(): void
