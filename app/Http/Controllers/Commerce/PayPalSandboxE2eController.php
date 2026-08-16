@@ -12,7 +12,10 @@ class PayPalSandboxE2eController extends Controller
     public function prepare(Request $request, PayPalSandboxE2eControl $control): JsonResponse
     {
         $control->authorize($request);
-        $control->prepareExistingCustomer();
+        $validated = $request->validate([
+            'run_reference' => ['required', 'string', 'max:64', 'regex:/^[A-Za-z0-9._:-]+$/'],
+        ]);
+        $control->prepareExistingCustomer($validated['run_reference']);
 
         return response()->json([
             'status' => 'ready',
@@ -23,7 +26,10 @@ class PayPalSandboxE2eController extends Controller
     public function arm(Request $request, PayPalSandboxE2eControl $control): JsonResponse
     {
         $control->authorize($request);
-        $control->armPostCaptureFailure();
+        $validated = $request->validate([
+            'run_reference' => ['required', 'string', 'max:64', 'regex:/^[A-Za-z0-9._:-]+$/'],
+        ]);
+        $control->armPostCaptureFailure($validated['run_reference']);
 
         return response()->json(['status' => 'armed']);
     }
@@ -31,7 +37,10 @@ class PayPalSandboxE2eController extends Controller
     public function release(Request $request, PayPalSandboxE2eControl $control): JsonResponse
     {
         $control->authorize($request);
-        $control->releaseCaptureWebhook();
+        $validated = $request->validate([
+            'paypal_order_id' => ['required', 'string', 'max:255', 'regex:/^[A-Za-z0-9._:-]+$/'],
+        ]);
+        $control->releaseCaptureWebhook($validated['paypal_order_id']);
 
         return response()->json(['status' => 'released']);
     }

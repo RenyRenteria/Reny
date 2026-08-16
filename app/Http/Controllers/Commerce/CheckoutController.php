@@ -10,6 +10,7 @@ use App\Services\Commerce\PayPalSandboxE2eControl;
 use App\Services\Commerce\ProductCatalog;
 use App\Services\PayPalService;
 use App\Services\RoyalPassService;
+use App\Support\PayPalReference;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -59,7 +60,7 @@ class CheckoutController extends Controller
                 ]);
             }
 
-            if ($e2eControl->consumeBrowserPersistFailure()) {
+            if ($e2eControl->consumeBrowserPersistFailure($user, $validated['paypal_order_id'])) {
                 throw new \RuntimeException('Sandbox E2E forced a post-capture persistence failure.');
             }
 
@@ -70,9 +71,9 @@ class CheckoutController extends Controller
                 'exception' => $exception::class,
                 'paypal_debug_id' => $capture['debug_id'] ?? null,
                 'paypal_endpoint' => '/v2/checkout/orders/{order_id}/capture',
-                'paypal_capture_reference' => substr(hash('sha256', $capture['capture_id']), 0, 16),
+                'paypal_capture_reference' => PayPalReference::hash($capture['capture_id']),
                 'paypal_http_status' => $capture['http_status'] ?? null,
-                'paypal_order_reference' => substr(hash('sha256', $validated['paypal_order_id']), 0, 16),
+                'paypal_order_reference' => PayPalReference::hash($validated['paypal_order_id']),
                 'paypal_stage' => 'persist_capture',
             ]);
 

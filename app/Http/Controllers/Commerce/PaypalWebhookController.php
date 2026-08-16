@@ -10,6 +10,7 @@ use App\Services\Commerce\PayPalSandboxE2eControl;
 use App\Services\PayPalService;
 use App\Services\RoyalPassService;
 use App\Services\UserHubPurchaseSync;
+use App\Support\PayPalReference;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -29,7 +30,7 @@ class PaypalWebhookController extends Controller
         abort_unless($payPal->verifyWebhook($request), 401);
 
         return match ($request->input('event_type')) {
-            'PAYMENT.CAPTURE.COMPLETED' => $e2eControl->shouldHoldCaptureWebhook()
+            'PAYMENT.CAPTURE.COMPLETED' => $e2eControl->shouldHoldCaptureWebhook($this->providerOrderId($request))
                 ? $this->holdCaptureWebhook($request)
                 : $this->completeCapture($request, $finalizer),
             'PAYMENT.CAPTURE.REFUNDED' => $this->processRefund($request, $royalPass, $purchaseSync),
@@ -246,7 +247,7 @@ class PaypalWebhookController extends Controller
 
     private function reference(string $value): string
     {
-        return substr(hash('sha256', $value), 0, 16);
+        return PayPalReference::hash($value);
     }
 
     /**

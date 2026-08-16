@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, createHmac } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 
 import { expect, test } from '@playwright/test';
@@ -7,19 +7,25 @@ const requiredEnvironment = [
     'PAYPAL_E2E_BASE_URL',
     'PAYPAL_E2E_EXPECTED_HOST',
     'PAYPAL_E2E_CONTROL_TOKEN',
-    'PAYPAL_E2E_EXISTING_CUSTOMER_EMAIL',
+    'PAYPAL_E2E_REFERENCE_KEY',
     'PAYPAL_SANDBOX_BUSINESS_EMAIL',
     'PAYPAL_SANDBOX_BUYER_EMAIL',
     'PAYPAL_SANDBOX_BUYER_PASSWORD',
     'PAYPAL_CLIENT_ID',
     'PAYPAL_CLIENT_SECRET',
     'PAYPAL_WEBHOOK_ID',
+    'GITHUB_SHA',
 ];
 const paypalApiBaseUrl = process.env.PAYPAL_API_BASE_URL || 'https://api-m.sandbox.paypal.com';
 const evidence = [];
 let paypalAccessToken;
+let currentCustomerEmail;
+let currentRunReference;
+let verifiedRevision;
 
-const reference = (value) => createHash('sha256').update(value).digest('hex').slice(0, 16);
+const digest = (value) => createHash('sha256').update(value).digest('hex');
+const reference = (value) => createHmac('sha256', process.env.PAYPAL_E2E_REFERENCE_KEY).update(value).digest('hex').slice(0, 16);
+const fixtureEmail = (runReference) => `qa+paypal-${digest(runReference).slice(0, 20)}@renyrenteria.test`;
 const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
 const requireEnvironment = () => {
@@ -96,15 +102,16 @@ const preflight = async () => {
     expect(baseUrl.hostname.toLowerCase()).not.toBe('renyrenteria.com');
     expect(paypalApiBaseUrl).toBe('https://api-m.sandbox.paypal.com');
     expect(process.env.PAYPAL_SANDBOX_BUYER_EMAIL.toLowerCase()).not.toBe(process.env.PAYPAL_SANDBOX_BUSINESS_EMAIL.toLowerCase());
-    expect(process.env.PAYPAL_E2E_EXISTING_CUSTOMER_EMAIL).toMatch(/^qa\+paypal-[^@]+@renyrenteria\.test$/);
-
-    const appConfiguration = await appRequest('/qa/paypal-e2e/prepare');
+    const preflightRunReference = `preflight-${process.env.GITHUB_RUN_ID}-${process.env.GITHUB_RUN_ATTEMPT || '1'}`;
+    const appConfiguration = await appRequest('/qa/paypal-e2e/prepare', { run_reference: preflightRunReference });
     expect(appConfiguration).toMatchObject({
         status: 'ready',
         paypal_api_environment: 'sandbox',
         paypal_client_reference: reference(process.env.PAYPAL_CLIENT_ID),
         paypal_webhook_reference: reference(process.env.PAYPAL_WEBHOOK_ID),
+        deployed_revision: process.env.GITHUB_SHA,
     });
+    verifiedRevision = appConfiguration.deployed_revision;
 
     const webhook = await paypalRequest(`/v1/notifications/webhooks/${encodeURIComponent(process.env.PAYPAL_WEBHOOK_ID)}`);
     const expectedWebhookUrl = new URL('/paypal/webhook', baseUrl).toString();
@@ -118,7 +125,7 @@ const preflight = async () => {
 const fillCheckout = async (page) => {
     await page.goto('/store/checkout/listening');
     await page.locator('#nameField').fill('PayPal Sandbox QA');
-    await page.locator('#emailField').fill(process.env.PAYPAL_E2E_EXISTING_CUSTOMER_EMAIL);
+    await page.locator('#emailField').fill(currentCustomerEmail);
     await page.locator('#phoneField').fill('+50760009998');
     await page.locator('#countryField').selectOption({ label: 'Panama' });
     await expect(page.locator('#paymentStatus')).toContainText(/Use the PayPal button|approve with PayPal/i);
@@ -233,18 +240,18 @@ const waitForState = async (orderId, predicate, timeout = 90_000) => {
     throw new Error(`Sandbox checkout ${reference(orderId)} did not reach the expected state.`);
 };
 
-const findCaptureEvent = async (orderId, startedAt) => {
+const findWebhookEvent = async (eventType, startedAt, matches) => {
     const deadline = Date.now() + 90_000;
 
     while (Date.now() < deadline) {
         const query = new URLSearchParams({
             start_time: new Date(startedAt - 300_000).toISOString(),
             end_time: new Date().toISOString(),
-            event_type: 'PAYMENT.CAPTURE.COMPLETED',
+            event_type: eventType,
             page_size: '100',
         });
         const payload = await paypalRequest(`/v1/notifications/webhooks-events?${query}`);
-        const event = (payload.events || []).find((candidate) => candidate.resource?.supplementary_data?.related_ids?.order_id === orderId);
+        const event = (payload.events || []).find(matches);
 
         if (event?.id) {
             return event.id;
@@ -253,13 +260,51 @@ const findCaptureEvent = async (orderId, startedAt) => {
         await sleep(2_000);
     }
 
-    throw new Error(`PayPal capture event for ${reference(orderId)} was not available for resend.`);
+    throw new Error(`PayPal ${eventType} event was not available for resend.`);
 };
+
+const findCaptureEvent = (orderId, startedAt) => findWebhookEvent(
+    'PAYMENT.CAPTURE.COMPLETED',
+    startedAt,
+    (candidate) => candidate.resource?.supplementary_data?.related_ids?.order_id === orderId,
+);
 
 const resendEvent = (eventId) => paypalRequest(`/v1/notifications/webhooks-events/${encodeURIComponent(eventId)}/resend`, {
     method: 'POST',
     body: JSON.stringify({ webhook_ids: [process.env.PAYPAL_WEBHOOK_ID] }),
 });
+
+const refundAndVerifyReplay = async (orderId, captureId) => {
+    const startedAt = Date.now();
+    const refund = await paypalRequest(`/v2/payments/captures/${encodeURIComponent(captureId)}/refund`, {
+        method: 'POST',
+        headers: {
+            'PayPal-Request-Id': `reny-e2e-refund-${reference(captureId)}`,
+        },
+        body: '{}',
+    });
+    const refundedState = await waitForState(orderId, (candidate) => candidate.refund_count === 1);
+    const eventId = await findWebhookEvent(
+        'PAYMENT.CAPTURE.REFUNDED',
+        startedAt,
+        (candidate) => candidate.resource?.supplementary_data?.related_ids?.capture_id === captureId,
+    );
+
+    await resendEvent(eventId);
+    await sleep(3_000);
+    const replayState = await stateFor(orderId);
+
+    expect(replayState.refund_count).toBe(1);
+    expect(replayState.membership_expired_event_count).toBe(refundedState.membership_expired_event_count);
+
+    return {
+        provider_refund_status: refund.status,
+        refund_reference: reference(refund.id),
+        refund_event_reference: reference(eventId),
+        local_refund_count: replayState.refund_count,
+        membership_expired_event_count: replayState.membership_expired_event_count,
+    };
+};
 
 test.describe.configure({ mode: 'serial' });
 
@@ -268,15 +313,18 @@ test.describe('reusable PayPal sandbox checkout gate', () => {
         await preflight();
     });
 
-    test.beforeEach(async () => {
-        await appRequest('/qa/paypal-e2e/prepare');
+    test.beforeEach(async ({}, testInfo) => {
+        const titleReference = digest(testInfo.titlePath.join(':')).slice(0, 12);
+        currentRunReference = `${process.env.GITHUB_RUN_ID}-${process.env.GITHUB_RUN_ATTEMPT || '1'}-${titleReference}`;
+        currentCustomerEmail = fixtureEmail(currentRunReference);
+        await appRequest('/qa/paypal-e2e/prepare', { run_reference: currentRunReference });
     });
 
     test.afterAll(async () => {
         const outputDirectory = 'test-results/paypal-sandbox';
         const payload = {
             schema_version: 1,
-            commit: process.env.GITHUB_SHA || null,
+            commit: verifiedRevision || null,
             environment_host: process.env.PAYPAL_E2E_EXPECTED_HOST || null,
             generated_at: new Date().toISOString(),
             scenarios: evidence,
@@ -316,6 +364,7 @@ test.describe('reusable PayPal sandbox checkout gate', () => {
             purchase_event_count: 1,
             membership_event_count: 1,
         });
+        const refundEvidence = await refundAndVerifyReplay(orderId, captures[0].id);
 
         evidence.push({
             scenario: 'existing_logged_out_success',
@@ -328,6 +377,7 @@ test.describe('reusable PayPal sandbox checkout gate', () => {
                 purchases: state.purchase_event_count,
                 memberships: state.membership_event_count,
             },
+            cleanup: refundEvidence,
         });
     });
 
@@ -359,7 +409,7 @@ test.describe('reusable PayPal sandbox checkout gate', () => {
 
     test('post-capture failure, retry, webhook, and replay remain exactly once', async ({ page }) => {
         const startedAt = Date.now();
-        await appRequest('/qa/paypal-e2e/arm');
+        await appRequest('/qa/paypal-e2e/arm', { run_reference: currentRunReference });
         await fillCheckout(page);
         const { orderId, popup } = await openPayPal(page);
         await signInToPayPal(popup);
@@ -399,7 +449,7 @@ test.describe('reusable PayPal sandbox checkout gate', () => {
 
             return response.status;
         }, {
-            identifier: process.env.PAYPAL_E2E_EXISTING_CUSTOMER_EMAIL,
+            identifier: currentCustomerEmail,
             orderId,
         });
         expect(retryStatus).toBe(422);
@@ -409,7 +459,7 @@ test.describe('reusable PayPal sandbox checkout gate', () => {
         expect(capturesBeforeWebhook).toHaveLength(1);
 
         const eventId = await findCaptureEvent(orderId, startedAt);
-        await appRequest('/qa/paypal-e2e/release');
+        await appRequest('/qa/paypal-e2e/release', { paypal_order_id: orderId });
         await resendEvent(eventId);
         const completedState = await waitForState(orderId, (candidate) => candidate.statuses?.completed === 1);
         await resendEvent(eventId);
@@ -426,6 +476,7 @@ test.describe('reusable PayPal sandbox checkout gate', () => {
             membership_event_count: 1,
         });
         expect(replayState).toMatchObject(completedState);
+        const refundEvidence = await refundAndVerifyReplay(orderId, capturesBeforeWebhook[0].id);
 
         evidence.push({
             scenario: 'payment_review_retry_webhook_replay',
@@ -441,6 +492,7 @@ test.describe('reusable PayPal sandbox checkout gate', () => {
                 purchases: replayState.purchase_event_count,
                 memberships: replayState.membership_event_count,
             },
+            cleanup: refundEvidence,
         });
     });
 });

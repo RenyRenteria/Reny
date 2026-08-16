@@ -6,9 +6,8 @@ use App\Models\AccessEvent;
 use App\Models\BillingProfile;
 use App\Models\Order;
 use App\Models\OrderRefund;
-use App\Models\Ticket;
 use App\Models\User;
-use App\Models\UserUnlock;
+use App\Support\PayPalReference;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -17,9 +16,9 @@ use Illuminate\Support\Str;
 
 class PayPalSandboxE2eControl
 {
-    private const FAIL_BROWSER_PERSIST_KEY = 'paypal_sandbox_e2e.fail_browser_persist';
+    private const FAIL_BROWSER_PERSIST_KEY_PREFIX = 'paypal_sandbox_e2e.fail_browser_persist.';
 
-    private const HOLD_CAPTURE_WEBHOOK_KEY = 'paypal_sandbox_e2e.hold_capture_webhook';
+    private const HOLD_CAPTURE_WEBHOOK_KEY_PREFIX = 'paypal_sandbox_e2e.hold_capture_webhook.';
 
     public function authorize(Request $request): void
     {
@@ -39,28 +38,25 @@ class PayPalSandboxE2eControl
     }
 
     /**
-     * @return array{paypal_api_environment: string, paypal_client_reference: string|null, paypal_webhook_reference: string|null}
+     * @return array{paypal_api_environment: string, paypal_client_reference: string|null, paypal_webhook_reference: string|null, deployed_revision: string|null}
      */
     public function configuration(): array
     {
         $clientId = (string) config('services.paypal.client_id', '');
         $webhookId = (string) config('services.paypal.webhook_id', '');
+        $revision = trim((string) config('services.paypal.e2e.release_sha', ''));
 
         return [
             'paypal_api_environment' => 'sandbox',
             'paypal_client_reference' => filled($clientId) ? $this->reference($clientId) : null,
             'paypal_webhook_reference' => filled($webhookId) ? $this->reference($webhookId) : null,
+            'deployed_revision' => filled($revision) ? $revision : null,
         ];
     }
 
-    public function prepareExistingCustomer(): void
+    public function prepareExistingCustomer(string $runReference): void
     {
-        $email = Str::lower(trim((string) config('services.paypal.e2e.existing_customer_email')));
-
-        $isDedicatedFixture = str_starts_with($email, 'qa+paypal-')
-            && str_ends_with($email, '@renyrenteria.test');
-
-        abort_unless(filter_var($email, FILTER_VALIDATE_EMAIL) && $isDedicatedFixture, 503, 'Sandbox E2E customer is not configured.');
+        $email = $this->fixtureEmail($runReference);
 
         DB::transaction(function () use ($email): void {
             $user = User::query()->firstOrCreate([
@@ -70,14 +66,12 @@ class PayPalSandboxE2eControl
                 'password' => Hash::make(Str::password(32)),
                 'role' => User::ROLE_FAN,
             ]);
-            $orderIds = Order::query()->where('user_id', $user->id)->pluck('id');
 
-            OrderRefund::query()->whereIn('order_id', $orderIds)->delete();
-            Ticket::query()->whereIn('order_id', $orderIds)->delete();
-            UserUnlock::query()->where('user_id', $user->id)->delete();
-            BillingProfile::query()->where('user_id', $user->id)->delete();
-            AccessEvent::query()->where('user_id', $user->id)->delete();
-            Order::query()->whereKey($orderIds)->delete();
+            abort_if(
+                Order::query()->where('user_id', $user->id)->exists(),
+                409,
+                'Sandbox E2E run reference has already created financial records.'
+            );
 
             $user->forceFill([
                 'name' => 'PayPal Sandbox Existing Customer',
@@ -88,29 +82,65 @@ class PayPalSandboxE2eControl
             ])->save();
         });
 
-        Cache::forget(self::FAIL_BROWSER_PERSIST_KEY);
-        Cache::forget(self::HOLD_CAPTURE_WEBHOOK_KEY);
     }
 
-    public function armPostCaptureFailure(): void
+    public function armPostCaptureFailure(string $runReference): void
     {
-        Cache::put(self::FAIL_BROWSER_PERSIST_KEY, true, now()->addMinutes(15));
-        Cache::put(self::HOLD_CAPTURE_WEBHOOK_KEY, true, now()->addMinutes(15));
+        $user = User::query()->where('email', $this->fixtureEmail($runReference))->first();
+
+        abort_unless($user !== null, 409, 'Prepare the sandbox E2E fixture before arming a fault.');
+        abort_if(Order::query()->where('user_id', $user->id)->exists(), 409, 'Arm the fault before creating an order.');
+
+        Cache::put($this->failureKey($user->id), true, now()->addMinutes(15));
     }
 
-    public function consumeBrowserPersistFailure(): bool
+    public function consumeBrowserPersistFailure(User $user, string $paypalOrderId): bool
     {
-        return $this->enabled() && (bool) Cache::pull(self::FAIL_BROWSER_PERSIST_KEY, false);
+        if (! $this->enabled()) {
+            return false;
+        }
+
+        if (! (bool) Cache::pull($this->failureKey($user->id), false)) {
+            return false;
+        }
+
+        Cache::put($this->holdKey($paypalOrderId), true, now()->addMinutes(15));
+
+        return true;
     }
 
-    public function shouldHoldCaptureWebhook(): bool
+    public function shouldHoldCaptureWebhook(?string $paypalOrderId): bool
     {
-        return $this->enabled() && (bool) Cache::get(self::HOLD_CAPTURE_WEBHOOK_KEY, false);
+        if (! $this->enabled() || blank($paypalOrderId)) {
+            return false;
+        }
+
+        if ((bool) Cache::get($this->holdKey((string) $paypalOrderId), false)) {
+            return true;
+        }
+
+        $userId = Order::query()
+            ->where('provider', 'paypal')
+            ->where(function ($query) use ($paypalOrderId) {
+                $query
+                    ->where('provider_order_id', $paypalOrderId)
+                    ->orWhereRaw('provider_order_id LIKE ? ESCAPE ?', [
+                        $this->escapeLike((string) $paypalOrderId).'-%',
+                        '\\',
+                    ]);
+            })
+            ->value('user_id');
+
+        return $userId !== null && (bool) Cache::get($this->failureKey((int) $userId), false);
     }
 
-    public function releaseCaptureWebhook(): void
+    public function releaseCaptureWebhook(string $paypalOrderId): void
     {
-        Cache::forget(self::HOLD_CAPTURE_WEBHOOK_KEY);
+        abort_unless(
+            (bool) Cache::pull($this->holdKey($paypalOrderId), false),
+            409,
+            'No matching sandbox webhook hold exists.'
+        );
     }
 
     /**
@@ -139,7 +169,14 @@ class PayPalSandboxE2eControl
             'billing_profile_count' => $user ? BillingProfile::query()->where('user_id', $user->id)->count() : 0,
             'purchase_event_count' => $user ? AccessEvent::query()->where('user_id', $user->id)->where('event_name', 'purchase')->count() : 0,
             'membership_event_count' => $user ? AccessEvent::query()->where('user_id', $user->id)->where('event_name', 'membership_started')->count() : 0,
+            'membership_expired_event_count' => $user ? AccessEvent::query()->where('user_id', $user->id)->where('event_name', 'membership_expired')->count() : 0,
+            'refund_count' => OrderRefund::query()->whereIn('order_id', $orders->pluck('id'))->count(),
         ];
+    }
+
+    public function fixtureEmail(string $runReference): string
+    {
+        return 'qa+paypal-'.substr(hash('sha256', $runReference), 0, 20).'@renyrenteria.test';
     }
 
     private function escapeLike(string $value): string
@@ -147,8 +184,18 @@ class PayPalSandboxE2eControl
         return str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $value);
     }
 
+    private function failureKey(int $userId): string
+    {
+        return self::FAIL_BROWSER_PERSIST_KEY_PREFIX.$userId;
+    }
+
+    private function holdKey(string $paypalOrderId): string
+    {
+        return self::HOLD_CAPTURE_WEBHOOK_KEY_PREFIX.hash('sha256', $paypalOrderId);
+    }
+
     private function reference(string $value): string
     {
-        return substr(hash('sha256', $value), 0, 16);
+        return PayPalReference::hash($value, (string) config('services.paypal.e2e.reference_key'));
     }
 }

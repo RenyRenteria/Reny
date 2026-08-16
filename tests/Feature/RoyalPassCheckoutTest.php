@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Models\UserUnlock;
 use App\Services\RoyalPassService;
 use App\Services\UserHubPurchaseSync;
+use App\Support\PayPalReference;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
@@ -146,7 +147,7 @@ class RoyalPassCheckoutTest extends TestCase
                 'paypal_endpoint' => '/v2/checkout/orders',
                 'paypal_http_status' => 201,
                 'paypal_stage' => 'create_order',
-                'paypal_order_reference' => substr(hash('sha256', 'PAYPAL-CREATED-100'), 0, 16),
+                'paypal_order_reference' => PayPalReference::hash('PAYPAL-CREATED-100'),
             ]));
     }
 
@@ -1293,8 +1294,8 @@ class RoyalPassCheckoutTest extends TestCase
                     && $context['paypal_endpoint'] === '/v2/checkout/orders/{order_id}/capture'
                     && $context['paypal_http_status'] === 201
                     && $context['paypal_debug_id'] === 'debug-capture-success'
-                    && $context['paypal_order_reference'] === substr(hash('sha256', 'PAYPAL-REVIEW-100'), 0, 16)
-                    && $context['paypal_capture_reference'] === substr(hash('sha256', 'CAPTURE-REVIEW-100'), 0, 16)
+                    && $context['paypal_order_reference'] === PayPalReference::hash('PAYPAL-REVIEW-100')
+                    && $context['paypal_capture_reference'] === PayPalReference::hash('CAPTURE-REVIEW-100')
                     && ! str_contains($serialized, 'PAYPAL-REVIEW-100')
                     && ! str_contains($serialized, 'CAPTURE-REVIEW-100');
             }));

@@ -6,6 +6,7 @@ use App\Models\AccessEvent;
 use App\Models\Order;
 use App\Models\User;
 use App\Services\Commerce\PayPalSandboxE2eControl;
+use App\Support\PayPalReference;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -71,8 +72,8 @@ class PaypalCaptureWebhookTest extends TestCase
                 return $context['paypal_stage'] === 'capture_webhook'
                     && $context['paypal_endpoint'] === '/paypal/webhook'
                     && $context['paypal_http_status'] === 200
-                    && $context['paypal_order_reference'] === substr(hash('sha256', 'PAYPAL-REVIEW-100'), 0, 16)
-                    && $context['paypal_capture_reference'] === substr(hash('sha256', 'CAPTURE-REVIEW-100'), 0, 16)
+                    && $context['paypal_order_reference'] === PayPalReference::hash('PAYPAL-REVIEW-100')
+                    && $context['paypal_capture_reference'] === PayPalReference::hash('CAPTURE-REVIEW-100')
                     && ! str_contains($serialized, 'PAYPAL-REVIEW-100')
                     && ! str_contains($serialized, 'CAPTURE-REVIEW-100');
             }))
@@ -114,7 +115,7 @@ class PaypalCaptureWebhookTest extends TestCase
             'services.paypal.base_url' => 'https://api-m.sandbox.paypal.com',
             'services.paypal.e2e.enabled' => true,
             'services.paypal.e2e.control_token' => 'sandbox-control-token',
-            'services.paypal.e2e.existing_customer_email' => 'qa+paypal-existing@renyrenteria.test',
+            'services.paypal.e2e.reference_key' => 'sandbox-reference-key',
         ]);
         Http::fake([
             'https://api-m.sandbox.paypal.com/v1/oauth2/token' => Http::response(['access_token' => 'paypal-token'], 200),
@@ -122,10 +123,11 @@ class PaypalCaptureWebhookTest extends TestCase
                 'verification_status' => 'SUCCESS',
             ], 200),
         ]);
-        $user = User::factory()->create(['royal_status' => 'open']);
-        $order = $this->paymentReviewOrder($user);
         $control = app(PayPalSandboxE2eControl::class);
-        $control->armPostCaptureFailure();
+        $control->prepareExistingCustomer('webhook-run');
+        $user = User::query()->where('email', $control->fixtureEmail('webhook-run'))->sole();
+        $control->armPostCaptureFailure('webhook-run');
+        $order = $this->paymentReviewOrder($user);
 
         $this->postCapture()
             ->assertStatus(503)
@@ -133,7 +135,8 @@ class PaypalCaptureWebhookTest extends TestCase
         $this->assertSame('payment_review', $order->fresh()->status);
         $this->assertFalse($user->fresh()->hasRoyalAccess());
 
-        $control->releaseCaptureWebhook();
+        $this->assertTrue($control->consumeBrowserPersistFailure($user, 'PAYPAL-REVIEW-100'));
+        $control->releaseCaptureWebhook('PAYPAL-REVIEW-100');
 
         $this->postCapture()
             ->assertOk()

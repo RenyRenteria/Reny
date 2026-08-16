@@ -43,7 +43,8 @@ return [
         'e2e' => [
             'enabled' => env('PAYPAL_E2E_ENABLED', false),
             'control_token' => env('PAYPAL_E2E_CONTROL_TOKEN'),
-            'existing_customer_email' => env('PAYPAL_E2E_EXISTING_CUSTOMER_EMAIL'),
+            'reference_key' => env('PAYPAL_E2E_REFERENCE_KEY'),
+            'release_sha' => env('PAYPAL_E2E_RELEASE_SHA'),
         ],
     ],
 

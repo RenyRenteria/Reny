@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\PayPalReference;
 use Illuminate\Http\Client\Response;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -344,7 +345,7 @@ class PayPalService
 
     private function reference(string $value): string
     {
-        return substr(hash('sha256', $value), 0, 16);
+        return PayPalReference::hash($value);
     }
 
     private function paypal()

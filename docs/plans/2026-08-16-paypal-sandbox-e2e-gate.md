@@ -18,8 +18,8 @@ The gate must prove:
 
 1. `PayPalCheckoutFinalizer` owns the local exactly-once transaction. The browser capture callback and capture-completed webhook share it.
 2. `/paypal/webhook` verifies PayPal signatures before dispatching supported events. Capture completion reconciles `pending` or `payment_review`; refund handling remains available through the new endpoint and the legacy `/paypal/refund` route.
-3. PayPal API success/failure logs use endpoint templates and 16-character SHA-256 reference prefixes. Raw order/capture/event IDs, payer data, request bodies, credentials, and PII are excluded.
-4. A disabled-by-default sandbox control surface prepares one synthetic existing account, arms a one-shot post-capture persistence failure, temporarily holds capture reconciliation, releases it, and returns only redacted state counts.
+3. PayPal API success/failure logs use endpoint templates and keyed 16-character HMAC-SHA-256 reference prefixes. Raw order/capture/event IDs, payer data, request bodies, credentials, and PII are excluded.
+4. A disabled-by-default sandbox control surface prepares a unique synthetic account per scenario without deleting history, arms a fixture-scoped one-shot post-capture persistence failure, holds only that PayPal order's reconciliation, releases it, and returns only redacted state counts.
 5. Playwright runs serially against a dedicated HTTPS deployment and a personal sandbox buyer. It never records screenshots, video, or traces of PayPal authentication.
 6. `.github/workflows/paypal-sandbox-e2e.yml` is manual, environment-scoped, non-required, concurrency one, and independent of normal CI.
 
@@ -30,8 +30,10 @@ The gate must prove:
 - The workflow accepts no caller-supplied URL. Base URL and exact expected host come from protected environment variables.
 - The PayPal API host is fixed to `https://api-m.sandbox.paypal.com`.
 - Business and buyer sandbox accounts must differ.
+- The deployed app exposes its immutable release SHA through the protected control response, and Playwright requires it to equal `GITHUB_SHA` before checkout.
+- Captured fixtures are fully refunded and the real signed refund event is replayed to verify local idempotency without deleting financial records.
 - Browser retries are disabled because a generic test retry could replay a payment flow.
-- Evidence includes hashes and counts only and is retained for seven days.
+- Evidence includes keyed HMAC references and counts only and is retained for seven days.
 
 ## Validation
 

@@ -2,8 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\AccessEvent;
-use App\Models\BillingProfile;
 use App\Models\Order;
 use App\Models\User;
 use App\Services\Commerce\PayPalSandboxE2eControl;
@@ -24,7 +22,8 @@ class PayPalSandboxE2eControlTest extends TestCase
             'services.paypal.webhook_id' => 'sandbox-webhook-id',
             'services.paypal.e2e.enabled' => true,
             'services.paypal.e2e.control_token' => 'sandbox-control-token',
-            'services.paypal.e2e.existing_customer_email' => 'qa+paypal-existing@renyrenteria.test',
+            'services.paypal.e2e.reference_key' => 'sandbox-reference-key',
+            'services.paypal.e2e.release_sha' => 'abc123',
         ]);
     }
 
@@ -32,70 +31,62 @@ class PayPalSandboxE2eControlTest extends TestCase
     {
         config(['services.paypal.e2e.enabled' => false]);
 
-        $this->postJson('/qa/paypal-e2e/prepare', [], $this->headers())
+        $this->postJson('/qa/paypal-e2e/prepare', ['run_reference' => 'run-1'], $this->headers())
             ->assertNotFound();
 
         config(['services.paypal.e2e.enabled' => true]);
 
-        $this->postJson('/qa/paypal-e2e/prepare', [], [
+        $this->postJson('/qa/paypal-e2e/prepare', ['run_reference' => 'run-1'], [
             'Authorization' => 'Bearer wrong-token',
         ])->assertUnauthorized();
 
         config(['services.paypal.base_url' => 'https://api-m.paypal.com']);
 
-        $this->postJson('/qa/paypal-e2e/prepare', [], $this->headers())
+        $this->postJson('/qa/paypal-e2e/prepare', ['run_reference' => 'run-1'], $this->headers())
             ->assertNotFound();
     }
 
-    public function test_prepare_resets_only_the_dedicated_existing_customer_fixture(): void
+    public function test_prepare_creates_a_unique_fixture_without_deleting_financial_history(): void
     {
-        $fixture = User::factory()->royal()->create([
-            'email' => 'qa+paypal-existing@renyrenteria.test',
-            'phone' => '50760009999',
-        ]);
-        $other = User::factory()->royal()->create();
-        $fixtureOrder = $this->completedOrder($fixture, 'PAYPAL-E2E-OLD-1-merch');
-        $otherOrder = $this->completedOrder($other, 'PAYPAL-OTHER-1-merch');
-        BillingProfile::create([
-            'user_id' => $fixture->id,
-            'provider' => 'paypal',
-            'status' => 'active',
-        ]);
-        AccessEvent::create([
-            'user_id' => $fixture->id,
-            'event_name' => 'purchase',
-            'resource_type' => 'order',
-            'resource_key' => $fixtureOrder->provider_order_id,
-        ]);
+        $control = app(PayPalSandboxE2eControl::class);
 
-        $this->postJson('/qa/paypal-e2e/prepare', [], $this->headers())
+        $this->postJson('/qa/paypal-e2e/prepare', ['run_reference' => 'run-1'], $this->headers())
             ->assertOk()
             ->assertExactJson([
                 'status' => 'ready',
                 'paypal_api_environment' => 'sandbox',
-                'paypal_client_reference' => substr(hash('sha256', 'sandbox-client-id'), 0, 16),
-                'paypal_webhook_reference' => substr(hash('sha256', 'sandbox-webhook-id'), 0, 16),
+                'paypal_client_reference' => $this->reference('sandbox-client-id'),
+                'paypal_webhook_reference' => $this->reference('sandbox-webhook-id'),
+                'deployed_revision' => 'abc123',
             ]);
 
-        $this->assertSame('open', $fixture->fresh()->royal_status);
-        $this->assertNull($fixture->fresh()->royal_ends_at);
-        $this->assertNull($fixture->fresh()->phone);
-        $this->assertDatabaseMissing('orders', ['id' => $fixtureOrder->id]);
-        $this->assertDatabaseMissing('billing_profiles', ['user_id' => $fixture->id]);
-        $this->assertDatabaseMissing('access_events', ['user_id' => $fixture->id]);
+        $firstFixture = User::query()->where('email', $control->fixtureEmail('run-1'))->sole();
+        $historicalOrder = $this->completedOrder($firstFixture, 'PAYPAL-E2E-HISTORY-1-merch');
 
-        $this->assertDatabaseHas('orders', ['id' => $otherOrder->id]);
-        $this->assertTrue($other->fresh()->hasRoyalAccess());
+        $this->postJson('/qa/paypal-e2e/prepare', ['run_reference' => 'run-1'], $this->headers())
+            ->assertConflict();
+
+        $this->postJson('/qa/paypal-e2e/prepare', ['run_reference' => 'run-2'], $this->headers())
+            ->assertOk();
+
+        $this->assertDatabaseHas('orders', ['id' => $historicalOrder->id]);
+        $this->assertDatabaseHas('users', ['email' => $control->fixtureEmail('run-2')]);
+        $this->assertNotSame($control->fixtureEmail('run-1'), $control->fixtureEmail('run-2'));
     }
 
-    public function test_fault_controls_are_one_shot_and_state_output_contains_only_hashed_references(): void
+    public function test_fault_controls_are_one_shot_scoped_and_state_contains_only_hmac_references(): void
     {
-        $user = User::factory()->create([
-            'email' => 'qa+paypal-existing@renyrenteria.test',
-            'royal_status' => 'open',
-        ]);
+        $control = app(PayPalSandboxE2eControl::class);
+        $control->prepareExistingCustomer('target-run');
+        $targetUser = User::query()->where('email', $control->fixtureEmail('target-run'))->sole();
+        $otherUser = User::factory()->create();
+
+        $this->postJson('/qa/paypal-e2e/arm', ['run_reference' => 'target-run'], $this->headers())
+            ->assertOk()
+            ->assertExactJson(['status' => 'armed']);
+
         $order = Order::create([
-            'user_id' => $user->id,
+            'user_id' => $targetUser->id,
             'provider' => 'paypal',
             'provider_order_id' => 'PAYPAL-E2E-STATE-1-merch',
             'provider_capture_id' => 'CAPTURE-E2E-STATE',
@@ -106,30 +97,33 @@ class PayPalSandboxE2eControlTest extends TestCase
             'grants_royal_month' => true,
         ]);
 
-        $this->postJson('/qa/paypal-e2e/arm', [], $this->headers())
-            ->assertOk()
-            ->assertExactJson(['status' => 'armed']);
-
-        $control = app(PayPalSandboxE2eControl::class);
-        $this->assertTrue($control->consumeBrowserPersistFailure());
-        $this->assertFalse($control->consumeBrowserPersistFailure());
-        $this->assertTrue($control->shouldHoldCaptureWebhook());
+        $this->assertFalse($control->consumeBrowserPersistFailure($otherUser, 'PAYPAL-OTHER'));
+        $this->assertFalse($control->shouldHoldCaptureWebhook('PAYPAL-OTHER'));
+        $this->assertTrue($control->shouldHoldCaptureWebhook('PAYPAL-E2E-STATE'));
+        $this->assertTrue($control->consumeBrowserPersistFailure($targetUser, 'PAYPAL-E2E-STATE'));
+        $this->assertFalse($control->consumeBrowserPersistFailure($targetUser, 'PAYPAL-E2E-STATE'));
+        $this->assertTrue($control->shouldHoldCaptureWebhook('PAYPAL-E2E-STATE'));
 
         $this->postJson('/qa/paypal-e2e/state', [
             'paypal_order_id' => 'PAYPAL-E2E-STATE',
         ], $this->headers())
             ->assertOk()
-            ->assertJsonPath('order_reference', substr(hash('sha256', 'PAYPAL-E2E-STATE'), 0, 16))
-            ->assertJsonPath('capture_reference', substr(hash('sha256', 'CAPTURE-E2E-STATE'), 0, 16))
+            ->assertJsonPath('order_reference', $this->reference('PAYPAL-E2E-STATE'))
+            ->assertJsonPath('capture_reference', $this->reference('CAPTURE-E2E-STATE'))
             ->assertJsonPath('order_count', 1)
             ->assertJsonPath('statuses.payment_review', 1)
+            ->assertJsonPath('refund_count', 0)
             ->assertJsonMissing(['paypal_order_id' => 'PAYPAL-E2E-STATE'])
             ->assertJsonMissing(['provider_capture_id' => 'CAPTURE-E2E-STATE']);
 
-        $this->postJson('/qa/paypal-e2e/release', [], $this->headers())
+        $this->postJson('/qa/paypal-e2e/release', ['paypal_order_id' => 'PAYPAL-OTHER'], $this->headers())
+            ->assertConflict();
+        $this->assertTrue($control->shouldHoldCaptureWebhook('PAYPAL-E2E-STATE'));
+
+        $this->postJson('/qa/paypal-e2e/release', ['paypal_order_id' => 'PAYPAL-E2E-STATE'], $this->headers())
             ->assertOk()
             ->assertExactJson(['status' => 'released']);
-        $this->assertFalse($control->shouldHoldCaptureWebhook());
+        $this->assertFalse($control->shouldHoldCaptureWebhook('PAYPAL-E2E-STATE'));
         $this->assertSame('payment_review', $order->fresh()->status);
     }
 
@@ -147,6 +141,11 @@ class PayPalSandboxE2eControlTest extends TestCase
             'grants_royal_month' => true,
             'completed_at' => now(),
         ]);
+    }
+
+    private function reference(string $value): string
+    {
+        return substr(hash_hmac('sha256', $value, 'sandbox-reference-key'), 0, 16);
     }
 
     /**

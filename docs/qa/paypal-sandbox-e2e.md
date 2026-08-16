@@ -30,7 +30,8 @@ PAYPAL_CLIENT_SECRET=<sandbox app secret>
 PAYPAL_WEBHOOK_ID=<sandbox webhook id>
 PAYPAL_E2E_ENABLED=true
 PAYPAL_E2E_CONTROL_TOKEN=<random 32+ byte secret>
-PAYPAL_E2E_EXISTING_CUSTOMER_EMAIL=qa+paypal-existing@renyrenteria.test
+PAYPAL_E2E_REFERENCE_KEY=<random 32+ byte shared HMAC secret>
+PAYPAL_E2E_RELEASE_SHA=<exact deployed git commit SHA>
 ```
 
 Requirements:
@@ -38,6 +39,7 @@ Requirements:
 - The host must not serve production data.
 - The control surface refuses to run unless the app itself uses `https://api-m.sandbox.paypal.com`.
 - The webhook URL must be reachable publicly on HTTPS port 443.
+- `PAYPAL_E2E_RELEASE_SHA` must be set by the deployment from its immutable revision. The gate refuses evidence when it differs from `GITHUB_SHA`.
 - If the app has multiple instances, they must share the configured cache because the one-shot failure and webhook hold use cache state.
 - Never enable `PAYPAL_E2E_ENABLED` in production. The code also refuses the control surface when `APP_ENV=production`.
 - Clear/reload application configuration after rotating any value.
@@ -49,13 +51,13 @@ Create the repository environment `paypal-sandbox-e2e`. Add these **environment 
 ```text
 PAYPAL_E2E_BASE_URL=https://<sandbox-host>
 PAYPAL_E2E_EXPECTED_HOST=<sandbox-host>
-PAYPAL_E2E_EXISTING_CUSTOMER_EMAIL=qa+paypal-existing@renyrenteria.test
 ```
 
 Add these **environment secrets**:
 
 ```text
 PAYPAL_E2E_CONTROL_TOKEN
+PAYPAL_E2E_REFERENCE_KEY
 PAYPAL_SANDBOX_BUSINESS_EMAIL
 PAYPAL_SANDBOX_BUYER_EMAIL
 PAYPAL_SANDBOX_BUYER_PASSWORD
@@ -64,24 +66,27 @@ PAYPAL_SANDBOX_CLIENT_SECRET
 PAYPAL_SANDBOX_WEBHOOK_ID
 ```
 
-Use environment protection appropriate to the repository. The workflow has read-only repository permissions and serial concurrency. Do not copy these values to repository-level variables or secrets.
+Use the same `PAYPAL_E2E_REFERENCE_KEY` value in the app and GitHub environment so artifact references correlate with sanitized application logs. Use environment protection appropriate to the repository. The workflow has read-only repository permissions and serial concurrency. Do not copy these values to repository-level variables or secrets.
 
 ## 4. Run and review
 
 From GitHub Actions, dispatch **PayPal Sandbox E2E**. The workflow performs:
 
-1. strict host, account-separation, API-host, webhook-URL, and event-subscription preflight;
+1. strict host, deployed-SHA, account-separation, API-host, webhook-URL, and event-subscription preflight;
 2. existing logged-out success with one provider capture and one local activation;
 3. explicit cancellation with zero captures and side effects;
 4. one-shot post-capture failure into `payment_review`;
 5. same-session retry rejected before another PayPal capture;
-6. actual signed capture webhook resend and replay with exactly one finalization.
+6. actual signed capture webhook resend and replay with exactly one finalization;
+7. full sandbox refunds, signed refund delivery, and refund replay without duplicate local records.
+
+Each scenario gets a new synthetic local account derived from its run reference. Historical orders, refunds, billing records, and access events are retained; the gate never deletes financial history. Fault injection is scoped to that fixture and its PayPal order, so unrelated sandbox traffic cannot consume it or be held.
 
 Run it twice against the same deployed commit before accepting the gate. Save both GitHub run URLs. The uploaded `evidence.json` is intentionally limited to:
 
 - commit and environment host;
 - scenario names;
-- PayPal order/capture/event SHA-256 prefixes;
+- PayPal order/capture/refund/event HMAC-SHA-256 prefixes;
 - provider/local states, HTTP status, and side-effect counts.
 
 The workflow disables Playwright traces, screenshots, and video so the buyer login cannot enter artifacts.
