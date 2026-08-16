@@ -157,7 +157,7 @@
                                         <p class="checkout-field-error" id="emailFieldError"></p>
                                     </div>
                                     <div class="store-field">
-                                        <label for="phoneField">Phone</label>
+                                        <label for="phoneField">Phone (optional)</label>
                                         <input
                                             class="store-input"
                                             id="phoneField"
@@ -169,7 +169,6 @@
                                             placeholder="+507 6000 0000"
                                             pattern="^\+[1-9][0-9]{6,14}$"
                                             aria-describedby="phoneFieldError"
-                                            required
                                         >
                                         <p class="checkout-field-error" id="phoneFieldError"></p>
                                     </div>

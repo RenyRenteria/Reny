@@ -152,12 +152,39 @@ class RoyalPassCheckoutTest extends TestCase
             ->assertJsonValidationErrors([
                 'customer_name',
                 'customer_email',
-                'customer_phone',
                 'customer_country',
-            ]);
+            ])
+            ->assertJsonMissingValidationErrors('customer_phone');
 
         $this->assertDatabaseCount('orders', 0);
         Http::assertNothingSent();
+    }
+
+    public function test_checkout_allows_customer_details_without_phone(): void
+    {
+        $this->fakeCreatedOrder('PAYPAL-NO-PHONE');
+
+        $this->postJson('/checkout/paypal/orders', [
+            'identifier' => 'no-phone@renyrenteria.com',
+            'customer_name' => 'No Phone Fan',
+            'customer_email' => 'no-phone@renyrenteria.com',
+            'customer_phone' => null,
+            'customer_country' => 'Panama',
+            'product_keys' => ['listening'],
+            'currency' => 'USD',
+        ])
+            ->assertOk()
+            ->assertJsonPath('status', 'created')
+            ->assertJsonPath('paypal_order_id', 'PAYPAL-NO-PHONE');
+
+        $order = Order::query()
+            ->where('provider_order_id', 'PAYPAL-NO-PHONE-1-listening')
+            ->firstOrFail();
+
+        $this->assertSame('No Phone Fan', data_get($order->metadata, 'customer.name'));
+        $this->assertSame('no-phone@renyrenteria.com', data_get($order->metadata, 'customer.email'));
+        $this->assertSame('Panama', data_get($order->metadata, 'customer.country'));
+        $this->assertArrayNotHasKey('phone', data_get($order->metadata, 'customer'));
     }
 
     public function test_public_paypal_order_creation_allows_existing_email_without_authenticating_it(): void
