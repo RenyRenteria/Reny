@@ -41,7 +41,7 @@
 
 @section('content')
     <section class="admin-dashboard-section is-active site-editor-screen">
-        @if ($pageSettings && $pageSettingsForm && $activePage !== 'community')
+        @if ($pageSettings && $pageSettingsForm && ! in_array($activePage, ['community', 'videos'], true))
             @include('admin.site-editor.page-settings')
         @endif
 
@@ -203,6 +203,8 @@
                     activate(root.dataset.musicInitialTab || 'banner');
                 })();
             </script>
+        @elseif ($activePage === 'videos' && $videoContentForm)
+            @include('admin.site-editor.videos')
         @elseif ($activePage === 'community')
             @include('admin.site-editor.community-posts', [
                 'communityPostForm' => $communityPostForm,

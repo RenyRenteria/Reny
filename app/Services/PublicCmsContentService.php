@@ -91,7 +91,7 @@ class PublicCmsContentService
     {
         return $this->page('videos', $user, fn (): array => [
             ...$this->videoPayloads->build(
-                $this->contentQuery->visibleContents($user, [ContentType::Video])->get()
+                $this->contentQuery->visibleContents($user, [ContentType::Video], null)->get()
             ),
             'page' => $this->pageSettings->publicPayload('videos'),
         ]);

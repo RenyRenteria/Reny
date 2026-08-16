@@ -3,6 +3,7 @@
 namespace App\Services\PublicCms;
 
 use App\Models\EditorialContent;
+use App\Support\VideoCatalog;
 use Illuminate\Support\Collection;
 
 class VideoPayloadBuilder
@@ -25,14 +26,27 @@ class VideoPayloadBuilder
             'vlogs' => [],
         ];
 
-        foreach ($contents as $content) {
+        $featuredContent = $contents->first(
+            fn (EditorialContent $content): bool => VideoCatalog::isFeatured($content)
+        ) ?? $contents->first();
+        $groupOrder = array_flip(array_keys(VideoCatalog::groups()));
+        $catalogContents = $contents
+            ->reject(fn (EditorialContent $content): bool => VideoCatalog::isFeaturedOnly($content))
+            ->sortBy(fn (EditorialContent $content): string => sprintf(
+                '%02d-%010d-%010d',
+                $groupOrder[VideoCatalog::groupFor($content)] ?? 99,
+                VideoCatalog::sortOrder($content),
+                $content->id,
+            ));
+
+        foreach ($catalogContents as $content) {
             $payload = $this->video($content);
             $groups[$payload['group']][] = $payload;
         }
 
         return [
             ...$groups,
-            'featured_video' => $this->featured($contents->first()),
+            'featured_video' => $this->featured($featuredContent),
         ];
     }
 
@@ -45,7 +59,8 @@ class VideoPayloadBuilder
             return null;
         }
 
-        $youtubeId = $this->media->youtubeId((string) $this->media->metadata($content, 'youtube_url', ''));
+        $youtubeUrl = (string) $this->media->metadata($content, 'youtube_url', '');
+        $youtubeId = $this->media->youtubeId($youtubeUrl);
 
         if ($youtubeId === null) {
             return null;
@@ -55,6 +70,7 @@ class VideoPayloadBuilder
             'id' => $youtubeId,
             'title' => $content->title,
             'meta' => $content->summary ?: 'Featured CMS video',
+            'external_url' => $youtubeUrl,
             'url' => route('public.content.show', $content),
         ];
     }
@@ -64,23 +80,19 @@ class VideoPayloadBuilder
      */
     public function video(EditorialContent $content): array
     {
-        $youtubeId = $this->media->youtubeId((string) $this->media->metadata($content, 'youtube_url', ''));
-        $category = str((string) $this->media->metadata($content, 'category', 'music-video'))->lower()->slug('_')->toString();
-        $group = match ($category) {
-            'playlist', 'series', 'series_playlist', 'music_playlist' => 'series',
-            'performance', 'performances', 'live', 'live_performance' => 'performances',
-            'behind_the_scenes', 'behind', 'bts', 'studio' => 'behind_the_scenes',
-            'vlog', 'vlogs' => 'vlogs',
-            default => 'music_videos',
-        };
+        $youtubeUrl = (string) $this->media->metadata($content, 'youtube_url', '');
+        $youtubeId = $this->media->youtubeId($youtubeUrl);
+        $group = VideoCatalog::groupFor($content);
+        $hasYoutubeDestination = $youtubeId !== null
+            || ($group === 'series' && $this->media->youtubePlaylistId($youtubeUrl) !== null);
 
         return [
             'id' => $youtubeId,
             'title' => e($content->title),
             'meta' => e($content->summary ?: (string) $this->media->metadata($content, 'playlist', 'CMS video')),
-            'external_url' => $youtubeId ? "https://www.youtube.com/watch?v={$youtubeId}" : null,
+            'external_url' => $hasYoutubeDestination ? $youtubeUrl : null,
             'group' => $group,
-            'play_state' => $youtubeId ? 'ready' : 'unavailable',
+            'play_state' => $hasYoutubeDestination ? 'ready' : 'unavailable',
             'url' => route('public.content.show', $content),
         ];
     }

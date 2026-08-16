@@ -123,19 +123,57 @@ class PayloadMediaResolver
 
     public function youtubeId(string $url): ?string
     {
+        $url = trim($url);
+
         if ($url === '') {
             return null;
         }
 
         $parts = parse_url($url);
+        $host = strtolower((string) ($parts['host'] ?? ''));
+        $path = trim((string) ($parts['path'] ?? ''), '/');
 
-        if (($parts['host'] ?? '') === 'youtu.be') {
-            return trim($parts['path'] ?? '', '/');
+        if (in_array($host, ['youtu.be', 'www.youtu.be'], true)) {
+            return $this->validYoutubeId(explode('/', $path)[0] ?? null);
+        }
+
+        if (! in_array($host, ['youtube.com', 'www.youtube.com', 'm.youtube.com'], true)) {
+            return null;
         }
 
         parse_str($parts['query'] ?? '', $query);
 
-        return isset($query['v']) ? (string) $query['v'] : null;
+        if (isset($query['v'])) {
+            return $this->validYoutubeId((string) $query['v']);
+        }
+
+        if (preg_match('#^(?:shorts|embed)/([^/]+)#', $path, $matches) === 1) {
+            return $this->validYoutubeId($matches[1]);
+        }
+
+        return null;
+    }
+
+    public function youtubePlaylistId(string $url): ?string
+    {
+        $parts = parse_url(trim($url));
+        $host = strtolower((string) ($parts['host'] ?? ''));
+
+        if (! in_array($host, ['youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtu.be', 'www.youtu.be'], true)) {
+            return null;
+        }
+
+        parse_str($parts['query'] ?? '', $query);
+        $playlistId = trim((string) ($query['list'] ?? ''));
+
+        return preg_match('/^[A-Za-z0-9_-]{6,80}$/', $playlistId) === 1 ? $playlistId : null;
+    }
+
+    private function validYoutubeId(?string $value): ?string
+    {
+        $value = trim((string) $value);
+
+        return preg_match('/^[A-Za-z0-9_-]{6,20}$/', $value) === 1 ? $value : null;
     }
 
     public function availability(EditorialContent $content): string

@@ -126,6 +126,8 @@ Route::prefix(config('admin.path', 'admin'))->name('admin.')->group(function () 
         Route::post('/site-editor/{page}/settings', [SiteEditorController::class, 'updatePageSettings'])->middleware('admin.cms')->name('site-editor.page-settings.update');
         Route::get('/site-editor/community/members.csv', AdminCommunityMemberController::class)->middleware('admin.cms')->name('site-editor.community-members.export');
         Route::get('/site-editor/community/rsvps.csv', AdminCommunityRsvpController::class)->middleware('admin.cms')->name('site-editor.community-rsvps.export');
+        Route::post('/site-editor/videos/order', [SiteEditorController::class, 'updateVideoOrder'])->middleware('admin.cms')->name('site-editor.videos.order');
+        Route::post('/site-editor/videos/featured', [SiteEditorController::class, 'updateFeaturedVideo'])->middleware('admin.cms')->name('site-editor.videos.featured');
         Route::middleware(['admin.cms', 'admin.community-posts'])->group(function () {
             Route::post('/site-editor/community/posts', [AdminCommunityPostController::class, 'store'])->name('site-editor.community-posts.store');
             Route::patch('/site-editor/community/posts/{post}', [AdminCommunityPostController::class, 'update'])->whereNumber('post')->name('site-editor.community-posts.update');
