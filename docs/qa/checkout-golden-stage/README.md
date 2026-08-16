@@ -1,6 +1,8 @@
 # Golden Stage dedicated checkout UAT
 
-Validated on August 10, 2026.
+Browser flow and responsive coverage were validated on August 10, 2026. The
+implementation was rebased onto the current `main` and its PHP, JS, build, Pint,
+and diff checks were rerun on August 16, 2026.
 
 ## Coverage
 
@@ -14,7 +16,15 @@ Validated on August 10, 2026.
 - No horizontal overflow at 320, 375, 430, 768, 1024, or 1440 pixels.
 - At 375 x 500 pixels, the payment status and panel clear the fixed bottom navigation.
 
-## Screenshots
+## Homepage reference
 
-- [Desktop, 1440px](desktop.png)
-- [Mobile, 375px](mobile.png)
+The checkout deliberately reuses the homepage shell, warm gold stage, dark
+panels, typography, rounded controls, sidebar, and fixed mobile navigation.
+
+- [Homepage desktop reference, 1440px](../pr-207/home-desktop-1440px.jpg)
+- [Homepage mobile reference, 375px](../pr-207/home-375px.jpg)
+
+## Checkout screenshots
+
+- [Checkout desktop, 1440px](desktop.png)
+- [Checkout mobile, 375px](mobile.png)

@@ -294,6 +294,44 @@ class HomePageTest extends TestCase
             ->assertJsonPath('storefront.slots.event_primary.timezone', 'America/New_York');
     }
 
+    public function test_home_paid_event_cta_uses_the_canonical_cms_key_price_and_checkout_url(): void
+    {
+        $event = $this->publishedContent(ContentType::Event, [
+            'title' => 'CMS Paid Checkout Show',
+            'purchase_key' => 'cms-paid-checkout-show',
+            'metadata' => [
+                'starts_at' => '2026-08-20 19:30:00',
+                'timezone' => 'America/Panama',
+                'location' => 'Panama City',
+                'ticketing_mode' => 'ticket',
+                'action_type' => 'buy',
+                'price_cents' => 2550,
+                'currency' => 'USD',
+                'inventory' => 40,
+                'checkout_enabled' => true,
+                'is_active' => true,
+                'cta_label' => 'GET CMS TICKETS',
+            ],
+        ]);
+        $storefront = app(StorefrontSettingsService::class)->defaults();
+        data_set($storefront, 'slots.event_primary.content_id', $event->id);
+
+        SitePageSetting::create([
+            'page' => StorefrontSettingsService::PAGE,
+            'section' => StorefrontSettingsService::SECTION,
+            'status' => SitePageSetting::STATUS_PUBLISHED,
+            'payload' => $storefront,
+            'published_at' => now(),
+        ]);
+
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('CMS Paid Checkout Show')
+            ->assertSee('data-buy="cms-paid-checkout-show"', false)
+            ->assertSee('data-buy-price-value="25.50"', false)
+            ->assertSee('data-buy-url="'.route('store.checkout', ['product' => 'cms-paid-checkout-show']).'"', false);
+    }
+
     public function test_mobile_navigation_uses_shared_compact_sizing_across_public_tabs(): void
     {
         $paths = [
