@@ -155,9 +155,41 @@ class StorePageTest extends TestCase
 
         $html = $response->getContent();
 
-        $this->assertSame(2, substr_count($html, 'storefront-card'));
+        $this->assertSame(2, substr_count($html, 'class="home-show-card"'));
+        $this->assertSame(0, substr_count($html, 'storefront-card'));
         $this->assertSame(1, substr_count($html, '<h2>Reny Renteria en Concierto</h2>'));
         $this->assertLessThan(strpos($html, 'Festival de la Rosa Dorada'), strpos($html, 'Reny Renteria en Concierto'));
+    }
+
+    public function test_shows_page_uses_the_home_show_card_structure_and_segmented_countdown(): void
+    {
+        $html = $this->get(route('shows'))
+            ->assertOk()
+            ->assertSee('class="home-show-image"', false)
+            ->assertSee('class="home-show-copy"', false)
+            ->assertSee('class="home-event-countdown"', false)
+            ->assertSee('data-countdown-display="segments"', false)
+            ->assertSee('class="home-show-actions"', false)
+            ->assertSee('class="home-pill-button"', false)
+            ->assertSee('>$ FREE</p>', false)
+            ->getContent();
+
+        preg_match_all('/<article class="home-show-card">(.*?)<\/article>/s', $html, $matches);
+
+        $this->assertCount(2, $matches[1]);
+
+        foreach ($matches[1] as $showCard) {
+            $detailsPosition = strpos($showCard, 'class="home-show-copy"');
+            $countdownPosition = strpos($showCard, 'class="home-event-countdown"');
+            $actionsPosition = strpos($showCard, 'class="home-show-actions"');
+
+            $this->assertNotFalse($detailsPosition);
+            $this->assertNotFalse($countdownPosition);
+            $this->assertNotFalse($actionsPosition);
+            $this->assertLessThan($countdownPosition, $detailsPosition);
+            $this->assertLessThan($actionsPosition, $countdownPosition);
+            $this->assertSame(4, substr_count($showCard, 'data-countdown-unit='));
+        }
     }
 
     public function test_shows_page_includes_additional_published_future_events_and_hides_past_events(): void
@@ -202,7 +234,7 @@ class StorePageTest extends TestCase
 
         $html = $response->getContent();
 
-        $this->assertSame(3, substr_count($html, 'storefront-card'));
+        $this->assertSame(3, substr_count($html, 'class="home-show-card"'));
         $this->assertLessThan(strpos($html, 'Future CMS Show'), strpos($html, 'Reny Renteria en Concierto'));
         $this->assertLessThan(strpos($html, 'Festival de la Rosa Dorada'), strpos($html, 'Future CMS Show'));
     }
@@ -365,14 +397,14 @@ class StorePageTest extends TestCase
             ->assertNotFound();
     }
 
-    public function test_store_event_images_use_golden_stage_card_ratio_rules(): void
+    public function test_shows_page_uses_home_card_ratio_rules(): void
     {
         $css = $this->frontendCssSource();
 
-        $this->assertStringContainsString('.store-stage-shell .storefront-card.is-event .storefront-image', $css);
+        $this->assertStringContainsString('.home-shell .home-show-card', $css);
+        $this->assertStringContainsString('.home-shell .home-show-image', $css);
         $this->assertStringContainsString('aspect-ratio: 1;', $css);
         $this->assertStringContainsString('object-fit: cover;', $css);
-        $this->assertStringContainsString('.store-stage-shell #shows .storefront-card', $css);
         $this->assertStringNotContainsString('storefront-card.is-event-secondary .storefront-image', $css);
     }
 
