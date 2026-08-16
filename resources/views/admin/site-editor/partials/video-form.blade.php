@@ -14,6 +14,7 @@
     method="POST"
     action="{{ $isEditing ? route('admin.content.update', $video) : route('admin.content.store') }}"
     data-video-content-form
+    data-video-content-kind="{{ $isPlaylist ? 'playlist' : 'video' }}"
 >
     @csrf
     @if ($isEditing)
@@ -73,11 +74,15 @@
             <span>Orden en la colección</span>
             <input name="metadata[sort_order]" type="number" min="0" max="10000" value="{{ $field('sort_order', 999) }}">
         </label>
-        <label class="video-cms-check">
+        @if ($isPlaylist)
             <input name="metadata[is_featured]" type="hidden" value="0">
-            <input name="metadata[is_featured]" type="checkbox" value="1" @checked((bool) $field('is_featured', false))>
-            <span>Usar como video destacado sin moverlo de su colección</span>
-        </label>
+        @else
+            <label class="video-cms-check">
+                <input name="metadata[is_featured]" type="hidden" value="0">
+                <input name="metadata[is_featured]" type="checkbox" value="1" @checked((bool) $field('is_featured', false))>
+                <span>Usar como video destacado sin moverlo de su colección</span>
+            </label>
+        @endif
     </div>
 
     <div class="video-cms-form-actions">

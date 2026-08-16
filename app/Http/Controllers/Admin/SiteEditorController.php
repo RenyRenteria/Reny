@@ -127,16 +127,17 @@ class SiteEditorController extends Controller
         $catalogContents = $contents->reject(
             fn (EditorialContent $content): bool => VideoCatalog::isFeaturedOnly($content)
         );
+        $featureCandidates = $contents->filter(
+            fn (EditorialContent $content): bool => $catalog->canFeature($content)
+        );
 
         return [
             'contents' => $contents,
             'catalogContents' => $catalogContents,
-            'featured' => $contents->first(
+            'featured' => $featureCandidates->first(
                 fn (EditorialContent $content): bool => VideoCatalog::isFeatured($content)
-            ) ?? $contents->first(),
-            'featureCandidates' => $contents->filter(
-                fn (EditorialContent $content): bool => $catalog->canFeature($content)
-            ),
+            ) ?? $featureCandidates->first(),
+            'featureCandidates' => $featureCandidates,
             'groups' => VideoCatalog::groups(),
             'grouped' => $catalogContents->groupBy(
                 fn (EditorialContent $content): string => VideoCatalog::groupFor($content)

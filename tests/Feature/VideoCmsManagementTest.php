@@ -170,6 +170,81 @@ class VideoCmsManagementTest extends TestCase
             ->assertJsonPath('series.2.play_state', 'ready');
     }
 
+    public function test_playlist_cannot_be_featured_or_remove_the_public_hero(): void
+    {
+        app(PublicVideoCatalogSeeder::class)->seed();
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $this->actingAsAdmin($admin);
+        $payload = [
+            'return_to_video_editor' => '1',
+            '_video_editor_tab' => 'add-playlist',
+            'action' => 'publish',
+            'type' => ContentType::Video->value,
+            'title' => 'Invalid Featured Playlist',
+            'summary' => 'Must not replace the public hero',
+            'visibility' => VisibilityAudience::Open->value,
+            'metadata' => [
+                'youtube_url' => 'https://www.youtube.com/playlist?list=PL123456789',
+                'category' => 'series',
+                'access_tier' => VisibilityAudience::Open->value,
+                'sort_order' => 999,
+                'is_featured' => true,
+            ],
+        ];
+
+        $this->post(route('admin.content.store'), $payload)
+            ->assertSessionHasErrors('metadata.is_featured');
+        $this->assertDatabaseMissing('editorial_contents', ['title' => 'Invalid Featured Playlist']);
+
+        $playlist = EditorialContent::query()
+            ->where('type', ContentType::Video->value)
+            ->get()
+            ->first(fn (EditorialContent $content): bool => VideoCatalog::groupFor($content) === 'series');
+        $this->assertNotNull($playlist);
+
+        $this->post(route('admin.site-editor.videos.featured'), ['video_id' => $playlist->id])
+            ->assertUnprocessable();
+
+        $this->getJson(route('public-content.payload', 'videos'))
+            ->assertOk()
+            ->assertJsonPath('featured_video.id', 'UWDLtZCoTag');
+        $this->assertSame(1, substr_count($this->get('/videos')->assertOk()->getContent(), '<iframe'));
+    }
+
+    public function test_playlist_forms_do_not_render_the_featured_checkbox(): void
+    {
+        app(PublicVideoCatalogSeeder::class)->seed();
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $this->actingAsAdmin($admin);
+
+        $html = $this->get(route('admin.site-editor.show', ['page' => 'videos']))
+            ->assertOk()
+            ->getContent();
+        preg_match_all('/<form[^>]+data-video-content-kind="playlist"[^>]*>(.*?)<\/form>/s', $html, $matches);
+
+        $this->assertNotEmpty($matches[1]);
+        foreach ($matches[1] as $playlistForm) {
+            $this->assertStringNotContainsString('type="checkbox" value="1"', $playlistForm);
+        }
+    }
+
+    public function test_public_payload_ignores_a_legacy_featured_playlist(): void
+    {
+        app(PublicVideoCatalogSeeder::class)->seed();
+        $contents = EditorialContent::query()->where('type', ContentType::Video->value)->get();
+
+        foreach ($contents as $content) {
+            $metadata = $content->metadata ?? [];
+            $metadata['is_featured'] = VideoCatalog::groupFor($content) === 'series';
+            $content->forceFill(['metadata' => $metadata])->saveQuietly();
+        }
+
+        $this->getJson(route('public-content.payload', 'videos'))
+            ->assertOk()
+            ->assertJsonPath('featured_video.id', 'UWDLtZCoTag');
+        $this->assertSame(1, substr_count($this->get('/videos')->assertOk()->getContent(), '<iframe'));
+    }
+
     public function test_admin_can_reorder_a_collection_without_changing_other_groups(): void
     {
         app(PublicVideoCatalogSeeder::class)->seed();

@@ -28,7 +28,8 @@ class VideoPayloadBuilder
 
         $featuredContent = $contents->first(
             fn (EditorialContent $content): bool => VideoCatalog::isFeatured($content)
-        ) ?? $contents->first();
+                && $this->canFeature($content)
+        ) ?? $contents->first(fn (EditorialContent $content): bool => $this->canFeature($content));
         $groupOrder = array_flip(array_keys(VideoCatalog::groups()));
         $catalogContents = $contents
             ->reject(fn (EditorialContent $content): bool => VideoCatalog::isFeaturedOnly($content))
@@ -73,6 +74,14 @@ class VideoPayloadBuilder
             'external_url' => $youtubeUrl,
             'url' => route('public.content.show', $content),
         ];
+    }
+
+    private function canFeature(EditorialContent $content): bool
+    {
+        return VideoCatalog::groupFor($content) !== 'series'
+            && $this->media->youtubeId(
+                (string) $this->media->metadata($content, 'youtube_url', '')
+            ) !== null;
     }
 
     /**

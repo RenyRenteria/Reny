@@ -326,11 +326,22 @@ class EditorialContentController extends Controller
             $media = app(PayloadMediaResolver::class);
             $validVideo = $media->youtubeId($url) !== null;
             $validPlaylist = $group === 'series' && $media->youtubePlaylistId($url) !== null;
+            $isFeatured = filter_var(
+                data_get($input, 'metadata.is_featured', false),
+                FILTER_VALIDATE_BOOL,
+            );
 
             if (! $validVideo && ! $validPlaylist) {
                 $validator->errors()->add(
                     'metadata.youtube_url',
                     'Enter a valid YouTube video or playlist URL.',
+                );
+            }
+
+            if ($group === 'series' && $isFeatured) {
+                $validator->errors()->add(
+                    'metadata.is_featured',
+                    'Las playlists no pueden usarse como video destacado.',
                 );
             }
         });

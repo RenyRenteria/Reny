@@ -52,10 +52,8 @@ class VideoCatalogService
         $metadata['sort_order'] = is_numeric($metadata['sort_order'] ?? null)
             ? max(0, (int) $metadata['sort_order'])
             : 999;
-        $metadata['is_featured'] = filter_var(
-            $metadata['is_featured'] ?? false,
-            FILTER_VALIDATE_BOOL,
-        );
+        $metadata['is_featured'] = VideoCatalog::groupFor($metadata) !== 'series'
+            && filter_var($metadata['is_featured'] ?? false, FILTER_VALIDATE_BOOL);
 
         return $metadata;
     }
@@ -102,6 +100,7 @@ class VideoCatalogService
     public function canFeature(EditorialContent $content): bool
     {
         return $content->status === EditorialStatus::Published
+            && VideoCatalog::groupFor($content) !== 'series'
             && $this->media->youtubeId((string) data_get($content->metadata, 'youtube_url')) !== null;
     }
 
