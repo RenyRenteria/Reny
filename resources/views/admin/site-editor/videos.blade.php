@@ -129,7 +129,6 @@
                                         data-video-status="{{ $status }}"
                                         data-video-search-value="{{ $searchValue }}"
                                     >
-                                        <input form="video-cms-order-form" type="hidden" name="video_ids[]" value="{{ $content->id }}" data-video-order-input>
                                         <button class="video-cms-drag" type="button" aria-label="Mover {{ $content->title }}">⋮⋮</button>
                                         <div class="video-cms-thumb">
                                             @if ($contentYoutubeId)
@@ -177,8 +176,11 @@
                     @endforeach
                 </div>
 
-                <form id="video-cms-order-form" method="POST" action="{{ route('admin.site-editor.videos.order') }}" class="video-cms-order-actions">
+                <form id="video-cms-order-form" method="POST" action="{{ route('admin.site-editor.videos.order') }}" class="video-cms-order-actions" data-video-order-form>
                     @csrf
+                    @foreach ($videoContentForm['catalogContents'] as $content)
+                        <input type="hidden" name="video_ids[]" value="{{ $content->id }}" data-video-order-input>
+                    @endforeach
                     <span data-video-order-status>El orden actual está sincronizado con el website.</span>
                     <button class="admin-button admin-button-primary" type="submit" @disabled(! auth()->user()->canPublishContent())>Guardar orden</button>
                 </form>

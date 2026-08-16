@@ -8,6 +8,7 @@ use App\Enums\VisibilityAudience;
 use App\Models\EditorialContent;
 use App\Models\SitePageSetting;
 use App\Models\User;
+use App\Services\Admin\VideoCatalogService;
 use App\Services\PublicCms\PayloadMediaResolver;
 use App\Services\PublicVideoCatalogSeeder;
 use App\Support\VideoCatalog;
@@ -245,32 +246,76 @@ class VideoCmsManagementTest extends TestCase
         $this->assertSame(1, substr_count($this->get('/videos')->assertOk()->getContent(), '<iframe'));
     }
 
-    public function test_admin_can_reorder_a_collection_without_changing_other_groups(): void
+    public function test_complete_browser_order_persists_after_reload_without_changing_other_groups(): void
     {
         app(PublicVideoCatalogSeeder::class)->seed();
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
         $this->actingAsAdmin($admin);
 
-        $musicVideos = EditorialContent::query()
-            ->where('type', ContentType::Video->value)
-            ->get()
-            ->filter(fn (EditorialContent $content): bool => VideoCatalog::groupFor($content) === 'music_videos'
-                && ! VideoCatalog::isFeaturedOnly($content))
-            ->sortBy(fn (EditorialContent $content): int => VideoCatalog::sortOrder($content))
+        $catalog = app(VideoCatalogService::class)->contents()
+            ->reject(fn (EditorialContent $content): bool => VideoCatalog::isFeaturedOnly($content))
             ->values();
-        $reorderedIds = $musicVideos->pluck('id')->reverse()->values()->all();
+        $originalIdsByGroup = collect(VideoCatalog::groups())->mapWithKeys(
+            fn (array $group, string $groupKey): array => [
+                $groupKey => $catalog
+                    ->filter(fn (EditorialContent $content): bool => VideoCatalog::groupFor($content) === $groupKey)
+                    ->pluck('id')
+                    ->values()
+                    ->all(),
+            ],
+        );
+        $reorderedMusicIds = array_reverse($originalIdsByGroup['music_videos']);
+        $completeOrder = collect(VideoCatalog::groups())->flatMap(
+            fn (array $group, string $groupKey): array => $groupKey === 'music_videos'
+                ? $reorderedMusicIds
+                : $originalIdsByGroup[$groupKey],
+        )->values()->all();
 
         $this->post(route('admin.site-editor.videos.order'), [
-            'video_ids' => $reorderedIds,
+            'video_ids' => $completeOrder,
         ])->assertRedirect(route('admin.site-editor.show', ['page' => 'videos']));
 
+        $reloadedHtml = $this->get(route('admin.site-editor.show', ['page' => 'videos']))
+            ->assertOk()
+            ->getContent();
+        preg_match_all('/<article\b(?=[^>]*\bdata-video-row\b)[^>]*\bdata-video-id="(\d+)"/s', $reloadedHtml, $matches);
+        $this->assertSame($completeOrder, array_map('intval', $matches[1]));
+
         $payload = $this->getJson(route('public-content.payload', 'videos'))->assertOk()->json();
+        $titlesFor = fn (array $ids): array => collect($ids)
+            ->map(fn (int $id): string => $catalog->firstWhere('id', $id)->title)
+            ->all();
 
         $this->assertSame(
-            $musicVideos->pluck('title')->reverse()->values()->all(),
+            $titlesFor($reorderedMusicIds),
             collect($payload['music_videos'])->pluck('title')->all(),
         );
-        $this->assertSame('Raspao a Dolar', $payload['series'][0]['title']);
+        foreach (array_keys(VideoCatalog::groups()) as $groupKey) {
+            if ($groupKey !== 'music_videos') {
+                $this->assertSame($titlesFor($originalIdsByGroup[$groupKey]), collect($payload[$groupKey])->pluck('title')->all());
+            }
+        }
+        $this->assertSame('UWDLtZCoTag', data_get($payload, 'featured_video.id'));
+        $this->assertCount(19, collect($payload)->only(array_keys(VideoCatalog::groups()))->except('series')->flatten(1));
+        $this->assertCount(2, $payload['series']);
+    }
+
+    public function test_reorder_rejects_an_incomplete_catalog_payload(): void
+    {
+        app(PublicVideoCatalogSeeder::class)->seed();
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $this->actingAsAdmin($admin);
+        $catalogIds = app(VideoCatalogService::class)->contents()
+            ->reject(fn (EditorialContent $content): bool => VideoCatalog::isFeaturedOnly($content))
+            ->pluck('id')
+            ->values()
+            ->all();
+
+        array_pop($catalogIds);
+
+        $this->post(route('admin.site-editor.videos.order'), [
+            'video_ids' => $catalogIds,
+        ])->assertUnprocessable();
     }
 
     public function test_non_publisher_cannot_reorder_or_change_the_featured_video(): void
