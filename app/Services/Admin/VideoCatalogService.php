@@ -44,13 +44,16 @@ class VideoCatalogService
      */
     public function normalizeMetadata(array $metadata, ?EditorialContent $content = null): array
     {
+        $sortOrder = $content instanceof EditorialContent
+            ? data_get($content->metadata, 'sort_order')
+            : ($metadata['sort_order'] ?? null);
         $metadata = [
             ...($content?->metadata ?? []),
             ...$metadata,
         ];
         $metadata['category'] = VideoCatalog::groupFor($metadata);
-        $metadata['sort_order'] = is_numeric($metadata['sort_order'] ?? null)
-            ? max(0, (int) $metadata['sort_order'])
+        $metadata['sort_order'] = is_numeric($sortOrder)
+            ? max(0, (int) $sortOrder)
             : 999;
         $metadata['is_featured'] = VideoCatalog::groupFor($metadata) !== 'series'
             && filter_var($metadata['is_featured'] ?? false, FILTER_VALIDATE_BOOL);
@@ -129,14 +132,20 @@ class VideoCatalogService
                 'The video order must contain the complete catalog.',
             );
 
-            foreach ($videoIds as $position => $videoId) {
-                $video = $videos->get($videoId);
-                $metadata = $video->metadata ?? [];
-                $metadata['sort_order'] = $position + 1;
-                $video->forceFill([
-                    'metadata' => $metadata,
-                    'updated_by_id' => $actor->id,
-                ])->saveQuietly();
+            foreach (array_keys(VideoCatalog::groups()) as $group) {
+                $groupVideoIds = collect($videoIds)
+                    ->filter(fn (int $videoId): bool => VideoCatalog::groupFor($videos->get($videoId)) === $group)
+                    ->values();
+
+                foreach ($groupVideoIds as $position => $videoId) {
+                    $video = $videos->get($videoId);
+                    $metadata = $video->metadata ?? [];
+                    $metadata['sort_order'] = $position + 1;
+                    $video->forceFill([
+                        'metadata' => $metadata,
+                        'updated_by_id' => $actor->id,
+                    ])->saveQuietly();
+                }
             }
         });
 
