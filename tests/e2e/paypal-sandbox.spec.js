@@ -14,6 +14,8 @@ const requiredEnvironment = [
     'PAYPAL_CLIENT_ID',
     'PAYPAL_CLIENT_SECRET',
     'PAYPAL_WEBHOOK_ID',
+    'GITHUB_RUN_ATTEMPT',
+    'GITHUB_RUN_ID',
     'GITHUB_SHA',
 ];
 const paypalApiBaseUrl = process.env.PAYPAL_API_BASE_URL || 'https://api-m.sandbox.paypal.com';
@@ -284,6 +286,12 @@ const refundAndVerifyReplay = async (orderId, captureId) => {
         body: '{}',
     });
     const refundedState = await waitForState(orderId, (candidate) => candidate.refund_count === 1);
+    expect(refundedState).toMatchObject({
+        statuses: { refunded: 1 },
+        royal_status: 'refunded',
+        refund_count: 1,
+        membership_expired_event_count: 1,
+    });
     const eventId = await findWebhookEvent(
         'PAYMENT.CAPTURE.REFUNDED',
         startedAt,

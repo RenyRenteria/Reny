@@ -81,7 +81,6 @@ class PayPalSandboxE2eControl
                 'royal_ends_at' => null,
             ])->save();
         });
-
     }
 
     public function armPostCaptureFailure(string $runReference): void
