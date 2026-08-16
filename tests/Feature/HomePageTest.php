@@ -97,6 +97,36 @@ class HomePageTest extends TestCase
             ->assertSee(asset('images/reny-renteria-logo-white.png'), false);
     }
 
+    public function test_home_page_uses_the_featured_video_instead_of_the_latest_published_video(): void
+    {
+        $this->publishedContent(ContentType::Video, [
+            'title' => 'Reny Renteria - Take a bite (Official Music Video)',
+            'published_at' => now()->subMinute(),
+            'metadata' => [
+                'youtube_url' => 'https://www.youtube.com/watch?v=UWDLtZCoTag',
+                'category' => 'music_videos',
+                'is_featured' => true,
+            ],
+        ]);
+        $this->publishedContent(ContentType::Video, [
+            'title' => 'Places',
+            'metadata' => [
+                'youtube_url' => 'https://www.youtube.com/watch?v=6PSCI5m43wk',
+                'category' => 'performances',
+                'is_featured' => false,
+            ],
+        ]);
+
+        $this->getJson(route('public-content.payload', 'home'))
+            ->assertOk()
+            ->assertJsonPath('featured_video.id', 'UWDLtZCoTag');
+
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('https://www.youtube.com/embed/UWDLtZCoTag?autoplay=1&amp;mute=1&amp;playsinline=1&amp;rel=0', false)
+            ->assertDontSee('https://www.youtube.com/embed/6PSCI5m43wk', false);
+    }
+
     public function test_home_renders_only_the_next_event_with_a_realtime_countdown_between_details_and_cta(): void
     {
         $html = $this->get('/')
