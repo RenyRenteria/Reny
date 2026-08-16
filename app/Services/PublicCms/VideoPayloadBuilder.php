@@ -26,10 +26,6 @@ class VideoPayloadBuilder
             'vlogs' => [],
         ];
 
-        $featuredContent = $contents->first(
-            fn (EditorialContent $content): bool => VideoCatalog::isFeatured($content)
-                && $this->canFeature($content)
-        ) ?? $contents->first(fn (EditorialContent $content): bool => $this->canFeature($content));
         $groupOrder = array_flip(array_keys(VideoCatalog::groups()));
         $catalogContents = $contents
             ->reject(fn (EditorialContent $content): bool => VideoCatalog::isFeaturedOnly($content))
@@ -47,8 +43,22 @@ class VideoPayloadBuilder
 
         return [
             ...$groups,
-            'featured_video' => $this->featured($featuredContent),
+            'featured_video' => $this->featuredFrom($contents),
         ];
+    }
+
+    /**
+     * @param  Collection<int, EditorialContent>  $contents
+     * @return array<string, mixed>|null
+     */
+    public function featuredFrom(Collection $contents): ?array
+    {
+        $featuredContent = $contents->first(
+            fn (EditorialContent $content): bool => VideoCatalog::isFeatured($content)
+                && $this->canFeature($content)
+        ) ?? $contents->first(fn (EditorialContent $content): bool => $this->canFeature($content));
+
+        return $this->featured($featuredContent);
     }
 
     /**

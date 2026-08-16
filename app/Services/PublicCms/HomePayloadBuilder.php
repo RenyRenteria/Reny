@@ -23,8 +23,8 @@ class HomePayloadBuilder
     public function build(?User $user): array
     {
         $storefront = $this->storefrontSettings->publicPayload($user);
-        $featuredVideo = $this->videoPayloads->featured(
-            $this->contentQuery->visibleContents($user, [ContentType::Video])->first()
+        $featuredVideo = $this->videoPayloads->featuredFrom(
+            $this->contentQuery->visibleContents($user, [ContentType::Video], null)->get()
         );
         $selectedAlbumId = (int) data_get($storefront, 'slots.album.content_id', 0);
         $latestAlbum = $selectedAlbumId > 0
