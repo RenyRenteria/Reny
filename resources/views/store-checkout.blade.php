@@ -157,23 +157,6 @@
                                         <p class="checkout-field-error" id="emailFieldError"></p>
                                     </div>
                                     <div class="store-field">
-                                        <label for="phoneField">Phone</label>
-                                        <input
-                                            class="store-input"
-                                            id="phoneField"
-                                            name="phone"
-                                            type="tel"
-                                            value=""
-                                            autocomplete="tel"
-                                            inputmode="tel"
-                                            placeholder="+507 6000 0000"
-                                            pattern="^\+[1-9][0-9]{6,14}$"
-                                            aria-describedby="phoneFieldError"
-                                            required
-                                        >
-                                        <p class="checkout-field-error" id="phoneFieldError"></p>
-                                    </div>
-                                    <div class="store-field">
                                         <label for="countryField">Country</label>
                                         <select class="store-input" id="countryField" name="country" autocomplete="country-name" aria-describedby="countryFieldError" required>
                                             <option value="">Select country</option>
@@ -194,12 +177,6 @@
                             </form>
 
                             <div class="checkout-paybox" id="checkoutPanel">
-                                <div class="checkout-pay-head">
-                                    <strong>Pay with</strong>
-                                    <div class="store-payments" role="radiogroup" aria-label="Payment method">
-                                        <button class="is-active" type="button" data-payment-method="paypal" data-provider-available="true" role="radio" aria-checked="true">PayPal</button>
-                                    </div>
-                                </div>
                                 <div
                                     class="store-paypal-buttons"
                                     id="paypalButtons"

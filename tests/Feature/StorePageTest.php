@@ -57,7 +57,7 @@ class StorePageTest extends TestCase
         $response->assertSee('images/store/rosa-dorada.png');
         $response->assertSee('images/store/crown-collection.png');
         $response->assertSee('images/store/royal-pass.png');
-        $response->assertSee('Selected currency is a reference. PayPal checkout is charged in USD.');
+        $response->assertSee('PayPal charges in USD. Every completed purchase activates Royal Pass for 1 month on this account.');
         $response->assertDontSee('data-free-event-rsvp="concert"', false);
         $response->assertSee('data-buy="listening"', false);
         $response->assertSee('data-royal-pass-option="royal"', false);
@@ -73,13 +73,14 @@ class StorePageTest extends TestCase
         $response->assertDontSee(route('store.checkout', ['product' => 'deluxe']), false);
         $response->assertSee('data-buy-url="'.route('store.checkout', ['product' => 'merch']).'"', false);
         $response->assertDontSee('data-buy="concert"', false);
-        $response->assertSee('PayPal Checkout');
+        $response->assertSee('Complete your order');
+        $response->assertSee('Name + email only');
         $response->assertSee('id="paypalButtons"', false);
         $response->assertDontSee('Load PayPal checkout');
         $response->assertSee('class="tab is-active"', false);
         $response->assertSee('href="'.url('/store').'"', false);
-        $response->assertSee('data-payment-method="paypal"', false);
-        $response->assertSee('role="radio"', false);
+        $response->assertDontSee('data-payment-method="paypal"', false);
+        $response->assertDontSee('role="radiogroup"', false);
         $response->assertSee('data-free-event-rsvp-endpoint="'.route('community.free-event-rsvp.store').'"', false);
         $response->assertSee('id="freeEventRsvpForm"', false);
         $response->assertSee('Correo electrónico');
@@ -282,14 +283,14 @@ class StorePageTest extends TestCase
             ->assertDontSee('data-auto-open-checkout', false)
             ->assertDontSee('id="bagLayer"', false)
             ->assertSee('id="paypalButtons"', false)
-            ->assertSee('Pay with')
+            ->assertSee('Your payment details are handled securely by PayPal.')
             ->assertSee('id="nameField"', false)
             ->assertSee('id="emailField"', false)
-            ->assertSee('id="phoneField"', false)
+            ->assertDontSee('id="phoneField"', false)
             ->assertSee('id="countryField"', false)
-            ->assertSee('pattern="^\+[1-9][0-9]{6,14}$"', false)
+            ->assertDontSee('pattern="^\+[1-9][0-9]{6,14}$"', false)
             ->assertSee('Select country')
-            ->assertSee('data-payment-method="paypal"', false)
+            ->assertDontSee('data-payment-method="paypal"', false)
             ->assertSee('data-create-order-endpoint="'.route('checkout.paypal.orders').'"', false)
             ->assertSee('id="purchaseConfirmationPanel"', false)
             ->assertSee('data-checkout-payment-panel', false)
@@ -378,7 +379,8 @@ class StorePageTest extends TestCase
         $this->assertStringContainsString("image.className = 'store-bag-image';", $js);
         $this->assertStringContainsString('customer_name', $js);
         $this->assertStringContainsString('customer_country', $js);
-        $this->assertStringContainsString('Add a valid international phone number.', $js);
+        $this->assertStringNotContainsString('customer_phone', $js);
+        $this->assertStringNotContainsString('Add a valid international phone number.', $js);
         $this->assertStringNotContainsString('completePurchaseButton', $js);
         $this->assertStringNotContainsString('Load PayPal checkout', $js);
     }
@@ -392,7 +394,8 @@ class StorePageTest extends TestCase
         $this->assertStringContainsString('scope.querySelector?.(\'[data-buy]\')', $js);
         $this->assertStringContainsString('document.getElementById(\'openBag\')?.addEventListener', $js);
         $this->assertStringContainsString('document.querySelectorAll(\'[data-close]\')', $js);
-        $this->assertStringContainsString('paymentButtons.forEach((button) =>', $js);
+        $this->assertStringContainsString('paypalButtons.hidden = !hasItems;', $js);
+        $this->assertStringNotContainsString('paymentButtons.forEach((button) =>', $js);
         $this->assertStringContainsString('window.renyStoreKeydownAbort?.abort();', $js);
     }
 
