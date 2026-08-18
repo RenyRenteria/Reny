@@ -1575,6 +1575,8 @@ class RoyalPassCheckoutTest extends TestCase
         $this->get('/store/checkout/royal')
             ->assertOk()
             ->assertSee('$3.99/mo')
+            ->assertSee('Name, email and country are captured before PayPal approval.')
+            ->assertDontSee('international phone')
             ->assertSee('data-price-value="3.99"', false)
             ->assertSee('data-product-price-value="3.99"', false);
     }

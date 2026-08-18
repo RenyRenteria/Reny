@@ -383,6 +383,7 @@ class StorePageTest extends TestCase
         $this->assertStringNotContainsString('Add a valid international phone number.', $js);
         $this->assertStringNotContainsString('completePurchaseButton', $js);
         $this->assertStringNotContainsString('Load PayPal checkout', $js);
+        $this->assertStringContainsString('input, select, textarea, iframe, [tabindex]', $js);
     }
 
     public function test_store_checkout_rehydrates_after_persistent_public_navigation(): void

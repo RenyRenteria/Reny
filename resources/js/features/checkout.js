@@ -688,7 +688,7 @@ const initializeStoreInteractions = (root = document) => {
         });
     };
 
-    const getStoreFocusable = (layer) => [...layer.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')]
+    const getStoreFocusable = (layer) => [...layer.querySelectorAll('button, [href], input, select, textarea, iframe, [tabindex]:not([tabindex="-1"])')]
         .filter((node) => !node.disabled && node.offsetParent !== null);
 
     const trapStoreFocus = (layer, event) => {
