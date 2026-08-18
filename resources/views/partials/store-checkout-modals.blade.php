@@ -70,16 +70,43 @@
 </section>
 
 <section class="store-modal-layer" id="bagLayer" hidden inert>
-    <div class="store-dialog" role="dialog" aria-modal="true" aria-labelledby="bagTitle">
+    <div class="store-dialog store-checkout-dialog" role="dialog" aria-modal="true" aria-labelledby="bagTitle">
         <div class="store-dialog-head">
-            <h2 id="bagTitle">Checkout</h2>
-            <button class="store-icon-button" type="button" data-close="bagLayer" aria-label="Close checkout">Close</button>
+            <div class="store-checkout-title-lockup">
+                <span>Secure checkout</span>
+                <h2 id="bagTitle">Complete your order</h2>
+            </div>
+            <button class="store-icon-button store-checkout-close" type="button" data-close="bagLayer" aria-label="Close checkout">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true">
+                    <path d="M6 6l12 12M18 6 6 18" />
+                </svg>
+            </button>
         </div>
         <div class="store-checkout-grid">
-            <div class="store-checkout-panel">
-                <h3>Product</h3>
-                <p class="store-checkout-note">Selected currency is a reference. PayPal checkout is charged in USD. Every completed purchase activates Royal Pass for 1 month on this account.</p>
+            <section class="store-checkout-panel store-checkout-order-panel" aria-labelledby="bagOrderTitle">
+                <div class="store-checkout-section-heading">
+                    <h3 id="bagOrderTitle">Your order</h3>
+                    <span>1 month access</span>
+                </div>
                 <div class="store-bag-list" id="bagList"></div>
+                <div class="store-checkout-benefits" aria-label="Royal Pass benefits">
+                    <span>Exclusive content</span>
+                    <span>Royal community</span>
+                    <span>Member access</span>
+                </div>
+                <p class="store-checkout-order-note">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <circle cx="12" cy="12" r="9" />
+                        <path d="M12 10v6M12 7h.01" />
+                    </svg>
+                    PayPal charges in USD. Every completed purchase activates Royal Pass for 1 month on this account.
+                </p>
+            </section>
+            <section class="store-checkout-panel store-checkout-contact-panel" id="checkoutPanel" aria-labelledby="bagContactTitle">
+                <div class="store-checkout-section-heading">
+                    <h3 id="bagContactTitle">Contact details</h3>
+                    <span>Name + email only</span>
+                </div>
                 <div class="store-contact-grid">
                     <div class="store-field">
                         <label for="nameField">Name</label>
@@ -89,21 +116,7 @@
                         <label for="emailField">Email</label>
                         <input class="store-input" id="emailField" type="email" value="" autocomplete="email" required>
                     </div>
-                    <div class="store-field">
-                        <label for="phoneField">Phone</label>
-                        <input
-                            class="store-input"
-                            id="phoneField"
-                            type="tel"
-                            value=""
-                            autocomplete="tel"
-                            inputmode="tel"
-                            placeholder="+507 6000 0000"
-                            pattern="^\+[1-9][0-9]{6,14}$"
-                            required
-                        >
-                    </div>
-                    <div class="store-field">
+                    <div class="store-field store-checkout-country">
                         <label for="countryField">Country</label>
                         <select class="store-input" id="countryField" autocomplete="country-name" required>
                             <option value="">Select country</option>
@@ -121,14 +134,11 @@
                     </div>
                 </div>
                 <div class="store-total-row">
-                    <span>Total</span>
+                    <span>
+                        <strong>Total</strong>
+                        <small>Charged in USD</small>
+                    </span>
                     <strong id="bagTotal">$0</strong>
-                </div>
-            </div>
-            <div class="store-checkout-panel" id="checkoutPanel">
-                <h3>PayPal Checkout</h3>
-                <div class="store-payments" role="radiogroup" aria-label="Payment method">
-                    <button class="is-active" type="button" data-payment-method="paypal" data-provider-available="true" role="radio" aria-checked="true">PayPal</button>
                 </div>
                 <div
                     class="store-paypal-buttons"
@@ -138,8 +148,15 @@
                     data-cancel-order-endpoint="{{ route('checkout.paypal.orders.cancel') }}"
                     data-capture-endpoint="{{ route('checkout.paypal') }}"
                 ></div>
-                <p class="store-checkout-note" id="paymentStatus">Add a product to enable PayPal checkout.</p>
-            </div>
+                <p class="store-checkout-security">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <rect x="5" y="10" width="14" height="10" rx="2" />
+                        <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+                    </svg>
+                    Secure payment processed by PayPal. Your payment details are never stored here.
+                </p>
+                <p class="store-checkout-note store-checkout-payment-status" id="paymentStatus" role="status" aria-live="polite">Add a product to enable PayPal checkout.</p>
+            </section>
         </div>
     </div>
 </section>

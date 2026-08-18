@@ -61,9 +61,9 @@ const initializeStoreInteractions = (root = document) => {
     const bagCount = document.getElementById('bagCount');
     const bagList = document.getElementById('bagList');
     const bagTotal = document.getElementById('bagTotal');
+    const bagTitle = document.getElementById('bagTitle');
     const nameField = document.getElementById('nameField');
     const emailField = document.getElementById('emailField');
-    const phoneField = document.getElementById('phoneField');
     const countryField = document.getElementById('countryField');
     const freeEventRsvpLayer = document.getElementById('freeEventRsvpLayer');
     const freeEventRsvpForm = document.getElementById('freeEventRsvpForm');
@@ -76,7 +76,6 @@ const initializeStoreInteractions = (root = document) => {
     const freeEventRsvpStatus = document.getElementById('freeEventRsvpStatus');
     const paypalButtons = document.getElementById('paypalButtons');
     const paymentStatus = document.getElementById('paymentStatus');
-    const paymentButtons = [...document.querySelectorAll('.store-payments button[data-payment-method]')];
     const freeEventRsvpButtons = [...document.querySelectorAll('[data-free-event-rsvp]')];
     const rsvpButtons = [...document.querySelectorAll('[data-rsvp]')];
     const countdownNodes = [...document.querySelectorAll('[data-countdown-at]')];
@@ -88,7 +87,6 @@ const initializeStoreInteractions = (root = document) => {
     const purchaseConfirmationPanel = document.getElementById('purchaseConfirmationPanel');
     const dedicatedPaymentPanel = document.querySelector('[data-checkout-payment-panel]');
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-    let activePaymentMethod = 'paypal';
     let selectedRoyalPassProduct = null;
     let paypalButtonsRendered = false;
     let paypalButtonsLoading = false;
@@ -302,10 +300,6 @@ const initializeStoreInteractions = (root = document) => {
 
     const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
-    const normalizeInternationalPhone = (value) => String(value || '').trim().replace(/[()\s.-]/g, '');
-
-    const isValidPhone = (value) => /^\+[1-9][0-9]{6,14}$/.test(normalizeInternationalPhone(value));
-
     const markFieldValidity = (field, valid, message = '') => {
         if (!field) {
             return;
@@ -322,16 +316,14 @@ const initializeStoreInteractions = (root = document) => {
     const customerDetailsComplete = () => {
         const name = nameField?.value?.trim() || '';
         const email = emailField?.value?.trim() || '';
-        const phone = phoneField?.value?.trim() || '';
         const country = countryField?.value?.trim() || '';
 
-        return name.length > 0 && isValidEmail(email) && isValidPhone(phone) && country.length > 0;
+        return name.length > 0 && isValidEmail(email) && country.length > 0;
     };
 
     const contactPayload = () => {
         const name = nameField?.value?.trim() || '';
         const email = emailField?.value?.trim() || '';
-        const phone = phoneField?.value?.trim() || '';
         const country = countryField?.value?.trim() || '';
         const validations = [
             {
@@ -347,13 +339,6 @@ const initializeStoreInteractions = (root = document) => {
                 fieldMessage: 'Add a valid receipt email.',
                 userMessage: 'Add a valid receipt email.',
                 reason: 'invalid_email',
-            },
-            {
-                field: phoneField,
-                valid: isValidPhone(phone),
-                fieldMessage: 'Use an international number starting with +.',
-                userMessage: 'Add a valid international phone number.',
-                reason: 'invalid_phone',
             },
             {
                 field: countryField,
@@ -379,7 +364,6 @@ const initializeStoreInteractions = (root = document) => {
             identifier: email,
             customer_name: name,
             customer_email: email,
-            customer_phone: normalizeInternationalPhone(phone),
             customer_country: country,
         };
     };
@@ -395,7 +379,6 @@ const initializeStoreInteractions = (root = document) => {
             identifier: contact.identifier,
             customer_name: contact.customer_name,
             customer_email: contact.customer_email,
-            customer_phone: contact.customer_phone,
             customer_country: contact.customer_country,
             product_keys: [...bag],
             currency: settlementCurrency.toUpperCase(),
@@ -610,7 +593,7 @@ const initializeStoreInteractions = (root = document) => {
 
                     try {
                         const payload = checkoutPayload();
-                        [nameField, emailField, phoneField, countryField].forEach((field) => markFieldValidity(field, true));
+                        [nameField, emailField, countryField].forEach((field) => markFieldValidity(field, true));
                         setPaymentStatus('Creating PayPal order...');
                         trackPaymentState('paypal', 'payment_started', {
                             item_count: payload.product_keys.length,
@@ -705,7 +688,7 @@ const initializeStoreInteractions = (root = document) => {
         });
     };
 
-    const getStoreFocusable = (layer) => [...layer.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')]
+    const getStoreFocusable = (layer) => [...layer.querySelectorAll('button, [href], input, select, textarea, iframe, [tabindex]:not([tabindex="-1"])')]
         .filter((node) => !node.disabled && node.offsetParent !== null);
 
     const trapStoreFocus = (layer, event) => {
@@ -753,26 +736,11 @@ const initializeStoreInteractions = (root = document) => {
         focusedBeforeStoreModal?.focus();
     };
 
-    const paymentMethodLabel = (method) => ({
-        apple_pay: 'Apple Pay',
-        card: 'Card',
-        paypal: 'PayPal',
-    }[method] || method);
-
-    const unavailableReason = (method) => paymentButtons.find((button) => button.dataset.paymentMethod === method)?.dataset.unavailableReason
-        || `${method}_provider_not_configured`;
-
-    const isPaymentMethodAvailable = (method) => paymentButtons.find((button) => button.dataset.paymentMethod === method)?.dataset.providerAvailable === 'true';
-
     const refreshCheckoutControls = ({ preserveStatus = false } = {}) => {
         const hasItems = bag.length > 0;
 
-        paymentButtons.forEach((button) => {
-            button.disabled = !hasItems;
-        });
-
         if (paypalButtons) {
-            paypalButtons.hidden = activePaymentMethod !== 'paypal' || !hasItems;
+            paypalButtons.hidden = !hasItems;
         }
 
         if (!hasItems) {
@@ -782,48 +750,21 @@ const initializeStoreInteractions = (root = document) => {
             return;
         }
 
-        if (activePaymentMethod === 'paypal') {
-            if (!preserveStatus) {
-                setPaymentStatus(paypalButtonsRendered
-                    ? (customerDetailsComplete() ? 'Use the PayPal button to approve payment.' : 'Add customer details, then approve with PayPal.')
-                    : 'Loading PayPal checkout...');
-            }
-            return;
-        }
-
         if (!preserveStatus) {
-            setPaymentStatus(`${paymentMethodLabel(activePaymentMethod)} checkout needs a real provider before purchases can complete.`);
+            setPaymentStatus(paypalButtonsRendered
+                ? (customerDetailsComplete() ? 'Use the PayPal button to approve payment.' : 'Add customer details, then approve with PayPal.')
+                : 'Loading PayPal checkout...');
         }
     };
 
-    const selectPaymentMethod = (method, { track = true } = {}) => {
-        activePaymentMethod = method;
-
-        paymentButtons.forEach((button) => {
-            const active = button.dataset.paymentMethod === method;
-            button.classList.toggle('is-active', active);
-            button.setAttribute('aria-checked', active ? 'true' : 'false');
-        });
-
-        refreshCheckoutControls();
-
-        if (!track) {
-            return;
-        }
-
+    const trackPayPalSelection = () => {
         trackEvent('store_payment_method_selected', {
             item_type: 'payment_method',
-            item_id: method,
-            method,
-            checkout_state: isPaymentMethodAvailable(method) ? 'selected' : 'unavailable',
+            item_id: 'paypal',
+            method: 'paypal',
+            checkout_state: 'selected',
             result: 'selected',
         });
-
-        if (!isPaymentMethodAvailable(method)) {
-            trackPaymentState(method, 'unavailable', {
-                reason: unavailableReason(method),
-            });
-        }
     };
 
     const renderBag = () => {
@@ -878,7 +819,21 @@ const initializeStoreInteractions = (root = document) => {
             price.className = 'store-bag-price';
             price.textContent = money(prices[priceKey] || 0, priceKey === 'royal' ? '/mo' : '');
 
-            if (product.image) {
+            if (key === 'royal') {
+                const mark = document.createElement('span');
+                mark.className = 'store-bag-mark';
+                mark.setAttribute('aria-hidden', 'true');
+                mark.innerHTML = `
+                    <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linejoin="round">
+                        <path d="M8 17l8 8 8-14 8 14 8-8-4 21H12L8 17Z" />
+                        <path d="M14 33h20" />
+                        <circle cx="8" cy="14" r="2" fill="currentColor" stroke="none" />
+                        <circle cx="24" cy="8" r="2" fill="currentColor" stroke="none" />
+                        <circle cx="40" cy="14" r="2" fill="currentColor" stroke="none" />
+                    </svg>
+                `;
+                item.append(mark);
+            } else if (product.image) {
                 const image = document.createElement('img');
                 image.className = 'store-bag-image';
                 image.src = product.image;
@@ -902,6 +857,9 @@ const initializeStoreInteractions = (root = document) => {
         }
 
         bag = [key];
+        if (bagTitle) {
+            bagTitle.textContent = key === 'royal' ? 'Complete your Royal Pass' : 'Complete your order';
+        }
         renderBag();
 
         return true;
@@ -998,14 +956,6 @@ const initializeStoreInteractions = (root = document) => {
     };
 
     const initializeVisiblePayPalCheckout = async () => {
-        if (activePaymentMethod !== 'paypal') {
-            setPaymentStatus(`${paymentMethodLabel(activePaymentMethod)} checkout needs a real provider before purchases can complete.`);
-            trackPaymentState(activePaymentMethod, 'unavailable', {
-                reason: unavailableReason(activePaymentMethod),
-            });
-            return;
-        }
-
         try {
             await renderPayPalButtons();
         } catch (error) {
@@ -1026,7 +976,7 @@ const initializeStoreInteractions = (root = document) => {
 
         const product = products[key];
         paymentAnalytics.beginCheckout();
-        selectPaymentMethod('paypal', { track: false });
+        trackPayPalSelection();
         openStoreLayer('bagLayer');
         trackEvent('store_checkout_started', {
             item_type: itemType || product?.type || 'checkout',
@@ -1477,12 +1427,6 @@ const initializeStoreInteractions = (root = document) => {
         }
     });
 
-    paymentButtons.forEach((button) => {
-        button.addEventListener('click', () => {
-            selectPaymentMethod(button.dataset.paymentMethod || 'paypal');
-        });
-    });
-
     document.getElementById('checkoutCustomerForm')?.addEventListener('submit', (event) => {
         event.preventDefault();
     });
@@ -1513,7 +1457,7 @@ const initializeStoreInteractions = (root = document) => {
 
         const product = products[key];
         paymentAnalytics.beginCheckout();
-        selectPaymentMethod('paypal', { track: false });
+        trackPayPalSelection();
         trackEvent('store_checkout_started', {
             item_type: product?.type || 'checkout',
             item_id: key,
@@ -1562,11 +1506,10 @@ const initializeStoreInteractions = (root = document) => {
         }
     }, { signal: window.renyStoreKeydownAbort.signal });
 
-    selectPaymentMethod('paypal', { track: false });
     refreshRoyalPassOptions();
     updateStorePrices();
     renderBag();
-    [nameField, emailField, phoneField, countryField, freeEventRsvpName, freeEventRsvpEmail, freeEventRsvpCountry].forEach((field) => {
+    [nameField, emailField, countryField, freeEventRsvpName, freeEventRsvpEmail, freeEventRsvpCountry].forEach((field) => {
         field?.addEventListener('input', () => {
             markFieldValidity(field, true);
             refreshCheckoutControls();

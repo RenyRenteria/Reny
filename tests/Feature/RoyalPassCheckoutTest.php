@@ -98,7 +98,6 @@ class RoyalPassCheckoutTest extends TestCase
             'identifier' => 'fan@renyrenteria.com',
             'customer_name' => 'Reny Fan',
             'customer_email' => 'fan@renyrenteria.com',
-            'customer_phone' => '+50760000000',
             'customer_country' => 'Panama',
             'product_keys' => ['deluxe', 'singles'],
             'currency' => 'USD',
@@ -137,6 +136,7 @@ class RoyalPassCheckoutTest extends TestCase
             'paypal-browser-session',
             data_get($order->metadata, 'checkout.analytics_session_id'),
         ));
+        $orders->each(fn (Order $order) => $this->assertArrayNotHasKey('phone', data_get($order->metadata, 'customer', [])));
     }
 
     public function test_checkout_requires_customer_details_before_paypal_order_creation(): void
@@ -152,9 +152,9 @@ class RoyalPassCheckoutTest extends TestCase
             ->assertJsonValidationErrors([
                 'customer_name',
                 'customer_email',
-                'customer_phone',
                 'customer_country',
-            ]);
+            ])
+            ->assertJsonMissingValidationErrors('customer_phone');
 
         $this->assertDatabaseCount('orders', 0);
         Http::assertNothingSent();
@@ -1558,8 +1558,8 @@ class RoyalPassCheckoutTest extends TestCase
         $this->get('/store')
             ->assertOk()
             ->assertSee('Every completed purchase activates Royal Pass for 1 month')
-            ->assertSee('PayPal checkout is charged in USD')
-            ->assertSee('PayPal Checkout')
+            ->assertSee('PayPal charges in USD')
+            ->assertSee('Name + email only')
             ->assertSee('id="purchaseConfirmationLayer"', false)
             ->assertSee('Royal Pass confirmed')
             ->assertSee('id="paypalButtons"', false)
@@ -1567,12 +1567,16 @@ class RoyalPassCheckoutTest extends TestCase
             ->assertSee(route('checkout.paypal.orders.cancel'))
             ->assertSee(route('checkout.paypal'))
             ->assertDontSee('Load PayPal checkout')
+            ->assertDontSee('id="phoneField"', false)
+            ->assertDontSee('data-payment-method="paypal"', false)
             ->assertDontSee('Submit a bank/Yappy receipt')
             ->assertDontSee(route('checkout.local'));
 
         $this->get('/store/checkout/royal')
             ->assertOk()
             ->assertSee('$3.99/mo')
+            ->assertSee('Name, email and country are captured before PayPal approval.')
+            ->assertDontSee('international phone')
             ->assertSee('data-price-value="3.99"', false)
             ->assertSee('data-product-price-value="3.99"', false);
     }

@@ -123,7 +123,6 @@ class AnalyticsInstrumentationTest extends TestCase
             'paypal_sdk_unavailable',
             'missing_name',
             'invalid_email',
-            'invalid_phone',
             'missing_country',
         ] as $checkoutState) {
             $this->assertStringContainsString($checkoutState, $script);
