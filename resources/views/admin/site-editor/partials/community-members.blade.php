@@ -24,7 +24,7 @@
         <input name="community_section" type="hidden" value="members">
         <label>
             <span>Search</span>
-            <input name="member_search" type="search" value="{{ $communityMembers['search'] }}" placeholder="Username, name or country">
+            <input name="member_search" type="search" value="{{ $communityMembers['search'] }}" placeholder="Username, name, email or country">
         </label>
         <label>
             <span>Plan</span>
@@ -43,7 +43,7 @@
     <div class="community-member-table-wrap">
         <table class="community-member-table">
             <thead>
-                <tr><th>Plan</th><th>Photo</th><th>Username</th><th>Country</th><th>A member since</th></tr>
+                <tr><th>Plan</th><th>Photo</th><th>Username</th><th>Email</th><th>Country</th><th>A member since</th></tr>
             </thead>
             <tbody>
                 @forelse ($members as $member)
@@ -65,11 +65,12 @@
                             </span>
                         </td>
                         <td><strong>{{ $member->username ? '@'.$member->username : $member->name }}</strong></td>
+                        <td>{{ $member->email }}</td>
                         <td>{{ $directory->countryLabel($member->country_code) }}</td>
                         <td>{{ $member->created_at?->timezone(config('admin.publishing_timezone', 'America/Panama'))->format('M j, Y') ?? '—' }}</td>
                     </tr>
                 @empty
-                    <tr><td colspan="5">No members match these filters.</td></tr>
+                    <tr><td colspan="6">No members match these filters.</td></tr>
                 @endforelse
             </tbody>
         </table>

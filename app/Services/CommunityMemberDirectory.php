@@ -41,6 +41,7 @@ class CommunityMemberDirectory
                     $query
                         ->where('username', 'like', "%{$search}%")
                         ->orWhere('name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%")
                         ->orWhere('country_code', 'like', "%{$search}%");
 
                     if ($matchingCountryCodes !== []) {
