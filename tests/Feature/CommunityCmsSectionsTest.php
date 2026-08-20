@@ -48,6 +48,7 @@ class CommunityCmsSectionsTest extends TestCase
         $free = User::factory()->create([
             'username' => 'freefan',
             'name' => 'Free Fan',
+            'email' => 'freefan@example.com',
             'country_code' => 'PA',
             'avatar_path' => 'storage/avatars/freefan.jpg',
             'created_at' => '2025-04-12 10:00:00',
@@ -55,6 +56,7 @@ class CommunityCmsSectionsTest extends TestCase
         $royal = User::factory()->royal()->create([
             'username' => 'royalfan',
             'name' => 'Royal Fan',
+            'email' => 'royalfan@example.com',
             'country_code' => 'DO',
             'created_at' => '2025-05-20 10:00:00',
         ]);
@@ -70,9 +72,11 @@ class CommunityCmsSectionsTest extends TestCase
         ]))
             ->assertOk()
             ->assertSee('data-community-panel="members"', false)
-            ->assertSeeInOrder(['Plan', 'Photo', 'Username', 'Country', 'A member since'])
+            ->assertSeeInOrder(['Plan', 'Photo', 'Username', 'Email', 'Country', 'A member since'])
             ->assertSee('@'.$free->username)
             ->assertSee('@'.$royal->username)
+            ->assertSee($free->email)
+            ->assertSee($royal->email)
             ->assertSee('Panama')
             ->assertSee('Dominican Republic')
             ->assertDontSee('@'.$admin->username);
@@ -81,7 +85,7 @@ class CommunityCmsSectionsTest extends TestCase
             'page' => 'community',
             'community_section' => 'members',
             'member_plan' => 'royal',
-            'member_search' => 'royal',
+            'member_search' => 'royalfan@example.com',
         ]))
             ->assertOk()
             ->assertSee('@'.$royal->username)
@@ -100,13 +104,13 @@ class CommunityCmsSectionsTest extends TestCase
 
         $csv = $this->get(route('admin.site-editor.community-members.export', [
             'member_plan' => 'royal',
-            'member_search' => 'royal',
+            'member_search' => 'royalfan@example.com',
         ]))
             ->assertOk()
             ->streamedContent();
 
-        $this->assertStringContainsString('plan,photo,username,country,"member since"', $csv);
-        $this->assertStringContainsString('"Royal Pass",,royalfan,"Dominican Republic",2025-05-20', $csv);
+        $this->assertStringContainsString('plan,photo,username,email,country,"member since"', $csv);
+        $this->assertStringContainsString('"Royal Pass",,royalfan,royalfan@example.com,"Dominican Republic",2025-05-20', $csv);
         $this->assertStringNotContainsString('freefan', $csv);
         $this->assertStringNotContainsString('staff-account', $csv);
     }
