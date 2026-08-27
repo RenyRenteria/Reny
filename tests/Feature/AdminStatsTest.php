@@ -15,7 +15,7 @@ class AdminStatsTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_original_monthly_kpis_render_before_the_current_reports_dashboard(): void
+    public function test_activity_kpis_follow_the_global_range_and_homepage_uses_unique_sessions(): void
     {
         $this->travelTo(CarbonImmutable::parse('2026-07-07 12:00:00', 'America/Panama'));
 
@@ -28,13 +28,15 @@ class AdminStatsTest extends TestCase
             'event_name' => 'page_view',
             'resource_type' => 'page',
             'resource_key' => 'home',
+            'session_id' => 'homepage-session-a',
             'created_at' => $this->utc('2026-07-02 10:00:00'),
             'updated_at' => $this->utc('2026-07-02 10:00:00'),
         ]);
         AccessEvent::forceCreate([
-            'event_name' => 'permission_denied',
-            'resource_type' => 'access_gate',
-            'resource_key' => 'royal',
+            'event_name' => 'page_view',
+            'resource_type' => 'page',
+            'resource_key' => 'home',
+            'session_id' => 'homepage-session-a',
             'created_at' => $this->utc('2026-07-03 10:00:00'),
             'updated_at' => $this->utc('2026-07-03 10:00:00'),
         ]);
@@ -42,6 +44,23 @@ class AdminStatsTest extends TestCase
             'event_name' => 'page_view',
             'resource_type' => 'page',
             'resource_key' => 'home',
+            'session_id' => null,
+            'created_at' => $this->utc('2026-07-04 10:00:00'),
+            'updated_at' => $this->utc('2026-07-04 10:00:00'),
+        ]);
+        AccessEvent::forceCreate([
+            'event_name' => 'permission_denied',
+            'resource_type' => 'access_gate',
+            'resource_key' => 'royal',
+            'session_id' => 'paywall-session-a',
+            'created_at' => $this->utc('2026-07-03 10:00:00'),
+            'updated_at' => $this->utc('2026-07-03 10:00:00'),
+        ]);
+        AccessEvent::forceCreate([
+            'event_name' => 'page_view',
+            'resource_type' => 'page',
+            'resource_key' => 'home',
+            'session_id' => 'homepage-session-before-range',
             'created_at' => $this->utc('2026-06-30 23:59:59'),
             'updated_at' => $this->utc('2026-06-30 23:59:59'),
         ]);
@@ -53,7 +72,8 @@ class AdminStatsTest extends TestCase
             'amount_cents' => 12500,
             'currency' => 'USD',
             'status' => 'completed',
-            'created_at' => $this->utc('2026-07-04 10:00:00'),
+            'completed_at' => $this->utc('2026-07-04 10:00:00'),
+            'created_at' => $this->utc('2026-06-30 23:00:00'),
             'updated_at' => $this->utc('2026-07-04 10:00:00'),
         ]);
         Order::forceCreate([
@@ -63,6 +83,7 @@ class AdminStatsTest extends TestCase
             'amount_cents' => 90000,
             'currency' => 'EUR',
             'status' => 'completed',
+            'completed_at' => $this->utc('2026-07-04 10:00:00'),
             'created_at' => $this->utc('2026-07-04 10:00:00'),
             'updated_at' => $this->utc('2026-07-04 10:00:00'),
         ]);
@@ -71,23 +92,26 @@ class AdminStatsTest extends TestCase
 
         $response = $this->get(route('admin.dashboard', ['preset' => '7d']))
             ->assertOk()
-            ->assertViewHas('monthlyStats', fn (array $stats): bool => $stats['homepageViews']['value'] === 1
-                && $stats['paywallViews']['value'] === 1
-                && $stats['royalMembers']['value'] === 2
-                && $stats['monthlySales']['value'] === 12500)
-            ->assertSee('Homepage Views')
-            ->assertSee('Paywall Views')
-            ->assertSee('Royal Members')
-            ->assertSee('Monthly Sales')
-            ->assertSee('$125')
+            ->assertViewHas('activityStats', fn (array $stats): bool => $stats['homepageSessions']['current'] === 1
+                && $stats['paywallViews']['current'] === 1)
+            ->assertSee('Sesiones únicas en homepage')
+            ->assertSee('Bloqueos de paywall')
+            ->assertDontSee('Homepage Views')
+            ->assertDontSee('Monthly Sales')
+            ->assertDontSee('Resumen mensual')
+            ->assertDontSee('Mes actual')
+            ->assertSee('USD 125.00')
+            ->assertSee('EUR 900.00')
             ->assertSee('Ventas netas')
             ->assertSee('Productos')
             ->assertSee('Contenido')
-            ->assertSee('Shows');
+            ->assertSee('Shows')
+            ->assertSee('Cómo se calculan estas métricas')
+            ->assertSee('Varias visitas o recargas dentro de la misma sesión cuentan una sola vez.');
 
         $html = $response->getContent();
-        $this->assertLessThan(strpos($html, 'data-report-filter'), strpos($html, 'data-monthly-kpi="homepageViews"'));
-        $this->assertLessThan(strpos($html, 'Ventas netas'), strpos($html, 'Homepage Views'));
+        $this->assertLessThan(strpos($html, 'data-activity-kpi="homepageSessions"'), strpos($html, 'data-report-filter'));
+        $this->assertLessThan(strpos($html, 'Ventas netas'), strpos($html, 'data-report-filter'));
     }
 
     public function test_admin_reports_apply_custom_range_previous_period_refunds_and_multi_currency(): void
@@ -264,6 +288,29 @@ class AdminStatsTest extends TestCase
             'resource_type' => 'access_gate',
             'resource_key' => 'royal',
         ]);
+    }
+
+    public function test_community_note_label_is_persisted_for_the_content_ranking(): void
+    {
+        $this->postJson(route('analytics.events.store'), [
+            'name' => 'community_note_opened',
+            'schema_version' => 1,
+            'session_id' => 'community-session-1',
+            'event_id' => 'community-note-opened-1',
+            'payload' => [
+                'screen' => 'community',
+                'path' => '/community',
+                'item_type' => 'reny_note',
+                'item_id' => 'note-42',
+                'item_label' => 'Una nota para la comunidad',
+                'result' => 'opened',
+            ],
+            'timestamp' => now()->toIso8601String(),
+        ])->assertCreated();
+
+        $event = AccessEvent::query()->where('event_name', 'community_note_opened')->sole();
+
+        $this->assertSame('Una nota para la comunidad', $event->metadata['item_label']);
     }
 
     public function test_analytics_events_are_versioned_anonymous_idempotent_and_do_not_store_referrers(): void

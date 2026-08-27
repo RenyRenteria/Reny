@@ -130,10 +130,12 @@ final class DashboardReportService
         $current = $this->netSalesByBucket(
             $this->capturedOrders($this->range->startUtc(), $this->range->endExclusiveUtc()),
             $this->refunds($this->range->startUtc(), $this->range->endExclusiveUtc()),
+            $this->range->startLocal,
         );
         $previous = $this->netSalesByBucket(
             $this->capturedOrders($this->range->previousStartUtc(), $this->range->previousEndExclusiveUtc()),
             $this->refunds($this->range->previousStartUtc(), $this->range->previousEndExclusiveUtc()),
+            $this->range->previousStartLocal,
         );
         $currencies = collect([...$current->keys(), ...$previous->keys()])->unique()->sort()->values();
 
@@ -515,20 +517,23 @@ final class DashboardReportService
      * @param  Collection<int, OrderRefund>  $refunds
      * @return Collection<string, Collection<string, int>>
      */
-    private function netSalesByBucket(Collection $captures, Collection $refunds): Collection
-    {
+    private function netSalesByBucket(
+        Collection $captures,
+        Collection $refunds,
+        CarbonImmutable $periodStart,
+    ): Collection {
         $totals = collect();
 
-        $captures->each(function (Order $order) use ($totals): void {
+        $captures->each(function (Order $order) use ($periodStart, $totals): void {
             $currency = $order->currency;
-            $bucket = $this->bucketKey($order->completed_at ?? $order->created_at);
+            $bucket = $this->bucketKey($order->completed_at ?? $order->created_at, $periodStart);
             $values = $totals->get($currency, collect());
             $values->put($bucket, (int) $values->get($bucket, 0) + (int) $order->amount_cents);
             $totals->put($currency, $values);
         });
-        $refunds->each(function (OrderRefund $refund) use ($totals): void {
+        $refunds->each(function (OrderRefund $refund) use ($periodStart, $totals): void {
             $currency = $refund->currency;
-            $bucket = $this->bucketKey($refund->refunded_at);
+            $bucket = $this->bucketKey($refund->refunded_at, $periodStart);
             $values = $totals->get($currency, collect());
             $values->put($bucket, (int) $values->get($bucket, 0) - (int) $refund->amount_cents);
             $totals->put($currency, $values);
@@ -543,23 +548,29 @@ final class DashboardReportService
     private function slots(CarbonImmutable $start, CarbonImmutable $end): Collection
     {
         $slots = collect();
-        $cursor = $start;
+        $index = 0;
 
-        while ($cursor->lt($end)) {
+        while (true) {
+            $cursor = $this->range->granularity() === 'day'
+                ? $start->addDays($index)
+                : $start->addMonthsNoOverflow($index);
+
+            if ($cursor->gte($end)) {
+                break;
+            }
+
             $slots->push([
-                'key' => $this->range->granularity() === 'day' ? $cursor->format('Y-m-d') : $cursor->format('Y-m'),
+                'key' => $cursor->format('Y-m-d'),
                 'date' => $cursor->toDateString(),
                 'label' => $this->range->granularity() === 'day' ? $cursor->format('M j') : $cursor->format('M Y'),
             ]);
-            $cursor = $this->range->granularity() === 'day'
-                ? $cursor->addDay()
-                : $cursor->startOfMonth()->addMonth();
+            $index++;
         }
 
-        return $slots->unique('key')->values();
+        return $slots;
     }
 
-    private function bucketKey(?CarbonInterface $timestamp): string
+    private function bucketKey(?CarbonInterface $timestamp, CarbonImmutable $periodStart): string
     {
         if (! $timestamp) {
             return '';
@@ -567,7 +578,19 @@ final class DashboardReportService
 
         $local = CarbonImmutable::instance($timestamp)->setTimezone($this->range->timezone);
 
-        return $this->range->granularity() === 'day' ? $local->format('Y-m-d') : $local->format('Y-m');
+        if ($this->range->granularity() === 'day') {
+            return $local->format('Y-m-d');
+        }
+
+        $index = 0;
+        $bucketStart = $periodStart;
+
+        while ($periodStart->addMonthsNoOverflow($index + 1)->lte($local)) {
+            $index++;
+            $bucketStart = $periodStart->addMonthsNoOverflow($index);
+        }
+
+        return $bucketStart->format('Y-m-d');
     }
 
     /**

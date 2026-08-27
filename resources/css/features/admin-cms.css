@@ -4146,6 +4146,53 @@ body.admin-cms-body[data-theme="royal"] {
     font-weight: 700;
 }
 
+.stats-definitions {
+    margin-top: 0.75rem;
+    padding: 0.875rem 1rem;
+    border: 1px solid #e0cdb8;
+    border-radius: 0.75rem;
+    background: #fffaf4;
+    color: #322a22;
+    box-shadow: 0 0.25rem 1.25rem rgba(68, 45, 21, 0.04);
+}
+
+.stats-definitions summary {
+    min-height: 1.5rem;
+    color: #4e3823;
+    font-size: 0.75rem;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.stats-definitions summary:focus-visible {
+    outline: 3px solid #5d86ff;
+    outline-offset: 3px;
+}
+
+.stats-definitions dl {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin: 1rem 0 0;
+    gap: 0.875rem 1.25rem;
+}
+
+.stats-definitions dl > div {
+    padding-top: 0.75rem;
+    border-top: 1px solid #ead9c5;
+}
+
+.stats-definitions dt {
+    font-size: 0.75rem;
+    font-weight: 900;
+}
+
+.stats-definitions dd {
+    margin: 0.25rem 0 0;
+    color: #6b6259;
+    font-size: 0.75rem;
+    line-height: 1.5;
+}
+
 .stats-card-money-row {
     display: grid;
     width: 100%;
@@ -4378,6 +4425,7 @@ body.admin-cms-body[data-theme="royal"] {
     .stats-summary-grid,
     .stats-funnel-grid,
     .stats-loading { grid-template-columns: 1fr; }
+    .stats-definitions dl { grid-template-columns: 1fr; }
     .stats-panel-head > a { align-self: flex-start; }
     .stats-panel-actions { align-items: stretch; justify-content: flex-start; }
     .stats-line-chart { padding-left: 0; padding-top: 1.25rem; }

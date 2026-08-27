@@ -18,26 +18,14 @@
         'product_sort' => $productSort,
     ]);
     $retryUrl = route('admin.dashboard', [...$range->query(), 'product_sort' => $productSort]);
-    $monthlySummaryCards = [
+    $activityCards = [
         [
-            'key' => 'homepageViews',
-            'label' => 'Homepage Views',
-            'value' => number_format($monthlyStats['homepageViews']['value']),
+            'key' => 'homepageSessions',
+            'label' => 'Sesiones únicas en homepage',
         ],
         [
             'key' => 'paywallViews',
-            'label' => 'Paywall Views',
-            'value' => number_format($monthlyStats['paywallViews']['value']),
-        ],
-        [
-            'key' => 'royalMembers',
-            'label' => 'Royal Members',
-            'value' => number_format($monthlyStats['royalMembers']['value']),
-        ],
-        [
-            'key' => 'monthlySales',
-            'label' => 'Monthly Sales',
-            'value' => '$'.number_format($monthlyStats['monthlySales']['value'] / 100, 0),
+            'label' => 'Bloqueos de paywall',
         ],
     ];
 @endphp
@@ -66,33 +54,8 @@
                     <h1 id="stats-title">Reportes</h1>
                     <p>Del {{ $range->startLocal->isoFormat('D MMM YYYY') }} al {{ $range->endExclusiveLocal->subDay()->isoFormat('D MMM YYYY') }}</p>
                 </div>
-                <span class="stats-timezone" title="Todos los límites de fecha se calculan en esta zona horaria">{{ $range->timezone }}</span>
+                <span class="stats-timezone" aria-label="Zona horaria usada para todos los límites de fecha">{{ $range->timezone }}</span>
             </header>
-
-            <section class="stats-monthly-summary" aria-labelledby="monthly-summary-title">
-                <div class="stats-monthly-summary-head">
-                    <div>
-                        <p class="stats-eyebrow">Mes actual</p>
-                        <h2 id="monthly-summary-title">Resumen mensual</h2>
-                    </div>
-                    <p>KPIs originales</p>
-                </div>
-
-                <div class="stats-summary-grid" aria-label="KPIs originales del mes actual">
-                    @foreach ($monthlySummaryCards as $card)
-                        @php
-                            $metric = $monthlyStats[$card['key']];
-                        @endphp
-                        <article class="stats-summary-card" data-monthly-kpi="{{ $card['key'] }}">
-                            <div class="stats-card-label">
-                                <p>{{ $card['label'] }}</p>
-                            </div>
-                            <strong @class(['is-error' => $metric['has_error']])>{{ $card['value'] }}</strong>
-                            <span>{{ $metric['has_error'] ? 'No se pudo consultar' : 'Mes actual' }}</span>
-                        </article>
-                    @endforeach
-                </div>
-            </section>
 
             <form class="stats-filter" method="GET" action="{{ route('admin.dashboard') }}" data-report-filter>
                 <fieldset class="stats-presets">
@@ -151,7 +114,6 @@
                     <article class="stats-summary-card stats-summary-card-wide">
                         <div class="stats-card-label">
                             <p>Ventas netas</p>
-                            <button type="button" title="{{ $kpis['definitions']['sales'] }}" aria-label="Definición de ventas netas">?</button>
                         </div>
                         @foreach ($kpis['sales'] as $sales)
                             <div class="stats-card-money-row">
@@ -166,7 +128,6 @@
                     <article class="stats-summary-card">
                         <div class="stats-card-label">
                             <p>Órdenes completadas</p>
-                            <button type="button" title="{{ $kpis['definitions']['orders'] }}" aria-label="Definición de órdenes completadas">?</button>
                         </div>
                         <strong>{{ number_format($kpis['orders']['current']) }}</strong>
                         <span @class(['is-positive' => $kpis['orders']['absolute'] > 0, 'is-negative' => $kpis['orders']['absolute'] < 0])>{{ $numberChange($kpis['orders']) }}</span>
@@ -175,7 +136,6 @@
                     <article class="stats-summary-card">
                         <div class="stats-card-label">
                             <p>Royals activos</p>
-                            <button type="button" title="{{ $kpis['definitions']['royals'] }}" aria-label="Definición de Royals activos">?</button>
                         </div>
                         <strong>{{ number_format($kpis['royals']['current']) }}</strong>
                         <span>Snapshot actual · sin comparación histórica</span>
@@ -184,12 +144,47 @@
                     <article class="stats-summary-card">
                         <div class="stats-card-label">
                             <p>Nuevos usuarios</p>
-                            <button type="button" title="{{ $kpis['definitions']['users'] }}" aria-label="Definición de nuevos usuarios">?</button>
                         </div>
                         <strong>{{ number_format($kpis['users']['current']) }}</strong>
                         <span @class(['is-positive' => $kpis['users']['absolute'] > 0, 'is-negative' => $kpis['users']['absolute'] < 0])>{{ $numberChange($kpis['users']) }}</span>
                     </article>
                 </section>
+            @endif
+
+            <section class="stats-summary-grid" aria-label="Actividad del sitio en el rango">
+                @foreach ($activityCards as $card)
+                    @php
+                        $metric = $activityStats[$card['key']];
+                    @endphp
+                    <article class="stats-summary-card" data-activity-kpi="{{ $card['key'] }}">
+                        <div class="stats-card-label">
+                            <p>{{ $card['label'] }}</p>
+                        </div>
+                        <strong @class(['is-error' => $metric['has_error']])>{{ $metric['has_error'] ? 'N/A' : number_format($metric['current']) }}</strong>
+                        @if ($metric['has_error'])
+                            <span>No se pudo consultar este indicador</span>
+                        @else
+                            <span @class(['is-positive' => $metric['absolute'] > 0, 'is-negative' => $metric['absolute'] < 0])>{{ $numberChange($metric) }}</span>
+                        @endif
+                    </article>
+                @endforeach
+            </section>
+
+            <details class="stats-definitions">
+                <summary>Cómo se calculan estas métricas</summary>
+                <dl>
+                    @if ($reports['kpis']['status'] === 'ready')
+                        <div><dt>Ventas netas</dt><dd>{{ $kpis['definitions']['sales'] }}</dd></div>
+                        <div><dt>Órdenes completadas</dt><dd>{{ $kpis['definitions']['orders'] }}</dd></div>
+                        <div><dt>Royals activos</dt><dd>{{ $kpis['definitions']['royals'] }}</dd></div>
+                        <div><dt>Nuevos usuarios</dt><dd>{{ $kpis['definitions']['users'] }}</dd></div>
+                    @endif
+                    <div><dt>Sesiones únicas en homepage</dt><dd>{{ $activityStats['definitions']['homepageSessions'] }}</dd></div>
+                    <div><dt>Bloqueos de paywall</dt><dd>{{ $activityStats['definitions']['paywallViews'] }}</dd></div>
+                </dl>
+            </details>
+
+            @if ($reports['kpis']['status'] === 'ready')
                 <div class="stats-export-row">
                     <a href="{{ $exportUrl('summary') }}">Exportar resumen CSV</a>
                 </div>

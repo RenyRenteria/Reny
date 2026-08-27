@@ -463,6 +463,22 @@ class DashboardReportingTest extends TestCase
         $this->assertLessThanOrEqual(20, $queryCount, "Dashboard executed {$queryCount} queries.");
     }
 
+    public function test_twelve_month_preset_uses_exactly_twelve_rolling_month_buckets(): void
+    {
+        $request = Request::create('/reports', 'GET', ['preset' => '12m']);
+        $range = ReportRange::fromRequest($request);
+
+        $sales = (new DashboardReportService($range))->salesSeries();
+        $points = $sales['series'][0]['points'];
+
+        $this->assertSame('month', $sales['granularity']);
+        $this->assertCount(12, $points);
+        $this->assertSame('2025-08-07', $points[0]['date']);
+        $this->assertSame('2026-07-07', $points[11]['date']);
+        $this->assertSame('2024-08-07', $points[0]['previous_date']);
+        $this->assertSame('2025-07-07', $points[11]['previous_date']);
+    }
+
     private function service(string $start, string $end): DashboardReportService
     {
         $request = Request::create('/reports', 'GET', [
