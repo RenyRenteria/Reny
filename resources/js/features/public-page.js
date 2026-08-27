@@ -1,4 +1,5 @@
-import { trackEvent } from './analytics.js';
+import { currentAnalyticsScreen, trackEvent } from './analytics.js';
+import { trackAccessGateViews } from './access-gate-analytics.js';
 import { activateTab, tabFromHash } from './tabs.js';
 import {
     closeVideoPlayer,
@@ -146,6 +147,7 @@ const navigatePublicPage = async (url, { push = true } = {}) => {
             referrer: null,
             result: 'viewed',
         });
+        trackAccessGateViews(nextRoot, trackEvent, currentAnalyticsScreen());
         initializePublicPage(nextRoot);
 
         return true;

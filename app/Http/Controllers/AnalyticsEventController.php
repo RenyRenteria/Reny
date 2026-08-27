@@ -191,7 +191,7 @@ class AnalyticsEventController extends Controller
     {
         $metadata = Arr::only($payload, self::SAFE_METADATA_KEYS);
 
-        if (! in_array($name, ['music_play_started', 'video_play_started', 'photo_opened'], true)) {
+        if (! in_array($name, ['music_play_started', 'video_play_started', 'photo_opened', 'community_note_opened'], true)) {
             unset($metadata['item_label']);
         }
 

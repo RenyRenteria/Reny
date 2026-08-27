@@ -1,3 +1,5 @@
+import { trackAccessGateViews } from './access-gate-analytics.js';
+
 const normalizeAnalyticsKey = (value) => String(value || '')
     .trim()
     .toLowerCase()
@@ -249,14 +251,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    document.querySelectorAll('.access-gate').forEach((gate) => {
-        trackEvent('permission_denied', {
-            section: gate.dataset.section || currentAnalyticsScreen(),
-            item_type: 'access_gate',
-            item_id: gate.dataset.section || currentAnalyticsScreen(),
-            result: 'blocked',
-        });
-    });
+    trackAccessGateViews(document, trackEvent, currentAnalyticsScreen());
 }, { once: true });
 
 export {
