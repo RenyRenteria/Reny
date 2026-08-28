@@ -104,7 +104,17 @@ class DashboardExportController extends Controller
      */
     private function audienceRows(array $data): array
     {
-        $headers = ['metric', 'current', 'previous', 'absolute_change', 'percent_change', 'available_from'];
+        $headers = [
+            'metric',
+            'current',
+            'previous',
+            'absolute_change',
+            'percent_change',
+            'available_from',
+            'current_coverage_status',
+            'previous_coverage_status',
+            'comparison_available',
+        ];
         $rows = collect([
             'unique_visitors' => $data['visitors'],
             'sessions' => $data['sessions'],
@@ -118,6 +128,9 @@ class DashboardExportController extends Controller
             $metric['absolute'],
             $metric['percent'],
             $data['available_from'],
+            $data['current_coverage_status'],
+            $data['previous_coverage_status'],
+            $data['comparison_available'] ? 'true' : 'false',
         ])->values()->all();
 
         return [$headers, $rows];
@@ -140,6 +153,9 @@ class DashboardExportController extends Controller
             'page_views',
             'previous_sessions',
             'available_from',
+            'current_coverage_status',
+            'previous_coverage_status',
+            'comparison_available',
         ];
         $mapRows = fn (array $rows, string $dimension): array => collect($rows)
             ->map(fn (array $row): array => [
@@ -154,6 +170,9 @@ class DashboardExportController extends Controller
                 $row['page_views'],
                 $row['previous_sessions'],
                 $data['available_from'],
+                $data['current_coverage_status'],
+                $data['previous_coverage_status'],
+                $data['comparison_available'] ? 'true' : 'false',
             ])->all();
         $rows = [
             ...$mapRows($data['channels'], 'channel'),

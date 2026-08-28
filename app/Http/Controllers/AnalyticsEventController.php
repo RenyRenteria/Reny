@@ -66,6 +66,14 @@ class AnalyticsEventController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        if (! $request->isJson()) {
+            return response()->json(['message' => 'Content-Type must be application/json.'], Response::HTTP_UNSUPPORTED_MEDIA_TYPE);
+        }
+
+        if (! $this->isFirstPartyRequest($request)) {
+            return response()->json(['message' => 'Cross-site analytics requests are not allowed.'], Response::HTTP_FORBIDDEN);
+        }
+
         if (strlen($request->getContent()) > self::MAX_BODY_BYTES) {
             return response()->json(['message' => 'Payload too large.'], Response::HTTP_REQUEST_ENTITY_TOO_LARGE);
         }
@@ -267,5 +275,18 @@ class AnalyticsEventController extends Controller
         }
 
         return null;
+    }
+
+    private function isFirstPartyRequest(Request $request): bool
+    {
+        $fetchSite = Str::lower((string) $request->header('Sec-Fetch-Site'));
+
+        if ($fetchSite !== '' && $fetchSite !== 'same-origin') {
+            return false;
+        }
+
+        $origin = Str::lower(rtrim((string) $request->header('Origin'), '/'));
+
+        return $origin === '' || hash_equals(Str::lower($request->getSchemeAndHttpHost()), $origin);
     }
 }

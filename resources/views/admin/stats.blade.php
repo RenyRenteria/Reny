@@ -1,6 +1,15 @@
 @php
     $money = static fn (int $cents, string $currency): string => $currency.' '.number_format($cents / 100, 2);
+    $coverageLabel = static fn (string $status): string => match ($status) {
+        'complete' => 'completa',
+        'partial' => 'parcial',
+        default => 'no disponible',
+    };
     $numberChange = static function (array $comparison): string {
+        if ($comparison['previous'] === null || $comparison['absolute'] === null) {
+            return 'Sin comparación confiable';
+        }
+
         $absolute = (int) $comparison['absolute'];
         $percent = $comparison['percent'];
 
@@ -191,7 +200,9 @@
                     @if ($audience['coverage_unavailable'])
                         <p class="stats-module-state is-unavailable">La medición de visitantes empieza con esta versión; aún no hay datos identificados en el rango.</p>
                     @elseif ($audience['coverage_partial'])
-                        <p class="stats-module-state is-partial">Cobertura parcial. Visitantes identificados desde {{ $audience['available_from'] }}; {{ number_format($audience['identified_page_view_percent'] ?? 0, 1) }}% de las vistas del rango tienen identificador.</p>
+                        <p class="stats-module-state is-partial">
+                            Cobertura {{ $coverageLabel($audience['current_coverage_status']) }} en el rango actual y {{ $coverageLabel($audience['previous_coverage_status']) }} en el período anterior. Comparación histórica oculta. Visitantes identificados desde {{ $audience['available_from'] }}; {{ number_format($audience['identified_page_view_percent'] ?? 0, 1) }}% de las vistas actuales tienen identificador.
+                        </p>
                     @else
                         <p class="stats-coverage">Cobertura de identidad desde {{ $audience['available_from'] }} · {{ number_format($audience['identified_page_view_percent'] ?? 0, 1) }}% de vistas identificadas.</p>
                     @endif
@@ -255,7 +266,9 @@
                     @if ($acquisition['coverage_unavailable'])
                         <p class="stats-module-state is-unavailable">La atribución empieza con esta versión; aún no hay tráfico clasificado en el rango.</p>
                     @elseif ($acquisition['coverage_partial'])
-                        <p class="stats-module-state is-partial">Cobertura parcial. La atribución está disponible desde {{ $acquisition['available_from'] }}; {{ number_format($acquisition['attributed_page_view_percent'] ?? 0, 1) }}% de las vistas del rango están clasificadas.</p>
+                        <p class="stats-module-state is-partial">
+                            Cobertura {{ $coverageLabel($acquisition['current_coverage_status']) }} en el rango actual y {{ $coverageLabel($acquisition['previous_coverage_status']) }} en el período anterior. Comparación histórica oculta. La atribución está disponible desde {{ $acquisition['available_from'] }}; {{ number_format($acquisition['attributed_page_view_percent'] ?? 0, 1) }}% de las vistas actuales están clasificadas.
+                        </p>
                     @else
                         <p class="stats-coverage">Atribución disponible desde {{ $acquisition['available_from'] }} · {{ number_format($acquisition['attributed_page_view_percent'] ?? 0, 1) }}% de vistas clasificadas.</p>
                     @endif
@@ -264,7 +277,7 @@
                         <h3 class="stats-subsection-title">Canales y campañas</h3>
                         <div class="stats-table-scroll"><table><thead><tr><th>Fuente / medio</th><th>Campaña</th><th>Visitantes</th><th>Sesiones</th><th>Anterior</th><th>Vistas</th></tr></thead><tbody>
                             @foreach ($acquisition['channels'] as $channel)
-                                <tr><th scope="row"><span>{{ $channel['traffic_source'] ?? 'Sin atribución' }}</span><small>{{ $channel['traffic_medium'] ?? 'desconocido' }}</small></th><td>{{ $channel['traffic_campaign'] ?? '—' }}</td><td>{{ number_format($channel['visitors']) }}</td><td>{{ number_format($channel['sessions']) }}</td><td>{{ number_format($channel['previous_sessions']) }}</td><td>{{ number_format($channel['page_views']) }}</td></tr>
+                                <tr><th scope="row"><span>{{ $channel['traffic_source'] ?? 'Sin atribución' }}</span><small>{{ $channel['traffic_medium'] ?? 'desconocido' }}</small></th><td>{{ $channel['traffic_campaign'] ?? '—' }}</td><td>{{ number_format($channel['visitors']) }}</td><td>{{ number_format($channel['sessions']) }}</td><td>{{ $channel['previous_sessions'] === null ? 'N/A' : number_format($channel['previous_sessions']) }}</td><td>{{ number_format($channel['page_views']) }}</td></tr>
                             @endforeach
                         </tbody></table></div>
 

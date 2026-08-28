@@ -111,7 +111,9 @@ const analyticsEndpoint = () => document.querySelector('meta[name="reny-analytic
     || '/analytics/events';
 
 const persistAnalyticsEvent = (event) => {
-    if (!persistedAnalyticsEvents.has(event.name) || typeof fetch !== 'function') {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+
+    if (!persistedAnalyticsEvents.has(event.name) || typeof fetch !== 'function' || !csrfToken) {
         return;
     }
 
@@ -128,6 +130,7 @@ const persistAnalyticsEvent = (event) => {
         headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
         },
         body: JSON.stringify({ ...event, payload }),
         keepalive: true,

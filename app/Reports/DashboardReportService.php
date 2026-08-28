@@ -147,21 +147,35 @@ final class DashboardReportService
         $availableDate = $availableFrom
             ? CarbonImmutable::parse($availableFrom, 'UTC')->setTimezone($this->range->timezone)->toDateString()
             : null;
+        $currentCoverage = $this->analyticsPeriodCoverage(
+            $availableDate,
+            $this->range->startDate(),
+            $this->range->endDate(),
+            $current['identified_page_views'],
+            $current['observed_page_views'],
+        );
+        $previousCoverage = $this->analyticsPeriodCoverage(
+            $availableDate,
+            $this->range->previousStartLocal->toDateString(),
+            $this->range->previousEndExclusiveLocal->subDay()->toDateString(),
+            $previous['identified_page_views'],
+            $previous['observed_page_views'],
+        );
+        $comparisonAvailable = $currentCoverage === 'complete' && $previousCoverage === 'complete';
 
         return [
-            'visitors' => $this->comparison($current['visitors'], $previous['visitors']),
-            'sessions' => $this->comparison($current['sessions'], $previous['sessions']),
-            'page_views' => $this->comparison($current['page_views'], $previous['page_views']),
-            'new_visitors' => $this->comparison($current['new_visitors'], $previous['new_visitors']),
-            'returning_visitors' => $this->comparison($current['returning_visitors'], $previous['returning_visitors']),
+            'visitors' => $this->comparison($current['visitors'], $previous['visitors'], $comparisonAvailable),
+            'sessions' => $this->comparison($current['sessions'], $previous['sessions'], $comparisonAvailable),
+            'page_views' => $this->comparison($current['page_views'], $previous['page_views'], $comparisonAvailable),
+            'new_visitors' => $this->comparison($current['new_visitors'], $previous['new_visitors'], $comparisonAvailable),
+            'returning_visitors' => $this->comparison($current['returning_visitors'], $previous['returning_visitors'], $comparisonAvailable),
             'identified_page_view_percent' => $this->rate($current['identified_page_views'], $current['observed_page_views']),
             'available_from' => $availableDate,
-            'coverage_unavailable' => $availableDate === null || $this->range->endDate() < $availableDate,
-            'coverage_partial' => $availableDate !== null
-                && (
-                    ($this->range->startDate() < $availableDate && $this->range->endDate() >= $availableDate)
-                    || $current['identified_page_views'] < $current['observed_page_views']
-                ),
+            'coverage_unavailable' => $currentCoverage === 'unavailable',
+            'coverage_partial' => $currentCoverage !== 'complete' || $previousCoverage !== 'complete',
+            'current_coverage_status' => $currentCoverage,
+            'previous_coverage_status' => $previousCoverage,
+            'comparison_available' => $comparisonAvailable,
             'definitions' => [
                 'visitors' => 'Navegadores anónimos distintos. El identificador no contiene nombre, email, IP ni otros datos personales.',
                 'sessions' => 'Sesiones distintas con hasta 30 minutos de inactividad entre eventos. Una misma persona puede iniciar varias sesiones.',
@@ -189,23 +203,37 @@ final class DashboardReportService
             ? CarbonImmutable::parse($availableFrom, 'UTC')->setTimezone($this->range->timezone)->toDateString()
             : null;
         $attributedPageViews = $currentAttributed->count();
+        $currentCoverage = $this->analyticsPeriodCoverage(
+            $availableDate,
+            $this->range->startDate(),
+            $this->range->endDate(),
+            $attributedPageViews,
+            $current->count(),
+        );
+        $previousCoverage = $this->analyticsPeriodCoverage(
+            $availableDate,
+            $this->range->previousStartLocal->toDateString(),
+            $this->range->previousEndExclusiveLocal->subDay()->toDateString(),
+            $previousAttributed->count(),
+            $previous->count(),
+        );
+        $comparisonAvailable = $currentCoverage === 'complete' && $previousCoverage === 'complete';
 
         return [
             'channels' => $this->dimensionRows($currentAttributed, $previousAttributed, [
                 'traffic_source',
                 'traffic_medium',
                 'traffic_campaign',
-            ]),
-            'devices' => $this->dimensionRows($currentAttributed, $previousAttributed, ['device_category']),
-            'countries' => $this->dimensionRows($currentAttributed, $previousAttributed, ['country_code']),
+            ], $comparisonAvailable),
+            'devices' => $this->dimensionRows($currentAttributed, $previousAttributed, ['device_category'], $comparisonAvailable),
+            'countries' => $this->dimensionRows($currentAttributed, $previousAttributed, ['country_code'], $comparisonAvailable),
             'attributed_page_view_percent' => $this->rate($attributedPageViews, $current->count()),
             'available_from' => $availableDate,
-            'coverage_unavailable' => $availableDate === null || $this->range->endDate() < $availableDate,
-            'coverage_partial' => $availableDate !== null
-                && (
-                    ($this->range->startDate() < $availableDate && $this->range->endDate() >= $availableDate)
-                    || $attributedPageViews < $current->count()
-                ),
+            'coverage_unavailable' => $currentCoverage === 'unavailable',
+            'coverage_partial' => $currentCoverage !== 'complete' || $previousCoverage !== 'complete',
+            'current_coverage_status' => $currentCoverage,
+            'previous_coverage_status' => $previousCoverage,
+            'comparison_available' => $comparisonAvailable,
         ];
     }
 
@@ -848,6 +876,24 @@ final class DashboardReportService
         ];
     }
 
+    private function analyticsPeriodCoverage(
+        ?string $availableDate,
+        string $startDate,
+        string $endDate,
+        int $measuredPageViews,
+        int $observedPageViews,
+    ): string {
+        if ($availableDate === null || $endDate < $availableDate) {
+            return 'unavailable';
+        }
+
+        if ($startDate < $availableDate || $measuredPageViews < $observedPageViews) {
+            return 'partial';
+        }
+
+        return 'complete';
+    }
+
     /**
      * @param  Collection<int, AccessEvent>  $events
      * @return array{visitors: int, sessions: int, page_views: int, observed_page_views: int, identified_page_views: int, new_visitors: int, returning_visitors: int}
@@ -885,8 +931,12 @@ final class DashboardReportService
      * @param  array<int, string>  $dimensions
      * @return array<int, array<string, mixed>>
      */
-    private function dimensionRows(Collection $current, Collection $previous, array $dimensions): array
-    {
+    private function dimensionRows(
+        Collection $current,
+        Collection $previous,
+        array $dimensions,
+        bool $comparisonAvailable = true,
+    ): array {
         $group = function (Collection $events) use ($dimensions): Collection {
             return $events->groupBy(function (AccessEvent $event) use ($dimensions): string {
                 return collect($dimensions)->map(
@@ -897,9 +947,13 @@ final class DashboardReportService
         $currentGroups = $group($current);
         $previousGroups = $group($previous);
 
-        return collect([...$currentGroups->keys(), ...$previousGroups->keys()])
+        $dimensionKeys = $comparisonAvailable
+            ? [...$currentGroups->keys(), ...$previousGroups->keys()]
+            : $currentGroups->keys()->all();
+
+        return collect($dimensionKeys)
             ->unique()
-            ->map(function (string $key) use ($currentGroups, $dimensions, $previousGroups): array {
+            ->map(function (string $key) use ($comparisonAvailable, $currentGroups, $dimensions, $previousGroups): array {
                 $currentEvents = $currentGroups->get($key, collect());
                 $previousEvents = $previousGroups->get($key, collect());
                 $values = explode('|', $key);
@@ -916,7 +970,9 @@ final class DashboardReportService
                     'visitors' => $currentEvents->pluck('visitor_id')->filter()->unique()->count(),
                     'sessions' => $currentEvents->pluck('session_id')->filter()->unique()->count(),
                     'page_views' => $currentEvents->count(),
-                    'previous_sessions' => $previousEvents->pluck('session_id')->filter()->unique()->count(),
+                    'previous_sessions' => $comparisonAvailable
+                        ? $previousEvents->pluck('session_id')->filter()->unique()->count()
+                        : null,
                 ];
             })
             ->sortByDesc('sessions')
@@ -944,10 +1000,19 @@ final class DashboardReportService
     }
 
     /**
-     * @return array{current: int, previous: int, absolute: int, percent: float|null}
+     * @return array{current: int, previous: int|null, absolute: int|null, percent: float|null}
      */
-    private function comparison(int $current, int $previous): array
+    private function comparison(int $current, int $previous, bool $comparisonAvailable = true): array
     {
+        if (! $comparisonAvailable) {
+            return [
+                'current' => $current,
+                'previous' => null,
+                'absolute' => null,
+                'percent' => null,
+            ];
+        }
+
         return [
             'current' => $current,
             'previous' => $previous,

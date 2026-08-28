@@ -181,6 +181,72 @@ class AdminStatsTest extends TestCase
         $this->assertStringNotContainsString('visitor-returning', $export);
     }
 
+    public function test_audience_and_acquisition_suppress_comparisons_when_previous_coverage_is_partial(): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-08-27 12:00:00', 'America/Panama'));
+
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+
+        foreach ([
+            ['visitor-previous', 'session-previous', '2026-08-17 10:00:00', 'facebook'],
+            ['visitor-current', 'session-current', '2026-08-21 10:00:00', 'google'],
+        ] as [$visitor, $session, $timestamp, $source]) {
+            AccessEvent::forceCreate([
+                'event_name' => 'page_view',
+                'schema_version' => 2,
+                'occurred_at' => $this->utc($timestamp),
+                'session_id' => $session,
+                'visitor_id' => $visitor,
+                'traffic_source' => $source,
+                'traffic_medium' => 'organic',
+                'device_category' => 'desktop',
+                'country_code' => 'PA',
+                'resource_type' => 'page',
+                'resource_key' => 'home',
+                'result' => 'viewed',
+                'created_at' => $this->utc($timestamp),
+                'updated_at' => $this->utc($timestamp),
+            ]);
+        }
+
+        $this->actingAsAdmin($admin);
+
+        $this->get(route('admin.dashboard', ['preset' => '7d']))
+            ->assertOk()
+            ->assertViewHas('reports', function (array $reports): bool {
+                $audience = $reports['audience']['data'];
+                $acquisition = $reports['acquisition']['data'];
+
+                return $audience['current_coverage_status'] === 'complete'
+                    && $audience['previous_coverage_status'] === 'partial'
+                    && $audience['comparison_available'] === false
+                    && $audience['visitors']['previous'] === null
+                    && $audience['visitors']['absolute'] === null
+                    && $acquisition['current_coverage_status'] === 'complete'
+                    && $acquisition['previous_coverage_status'] === 'partial'
+                    && $acquisition['comparison_available'] === false
+                    && count($acquisition['channels']) === 1
+                    && collect($acquisition['channels'])->firstWhere('traffic_source', 'google')['previous_sessions'] === null;
+            })
+            ->assertSee('Comparación histórica oculta')
+            ->assertSee('Sin comparación confiable')
+            ->assertSee('N/A');
+
+        $audienceCsv = $this->get(route('admin.reports.export', [
+            'preset' => '7d',
+            'report' => 'audience',
+        ]))->assertOk()->streamedContent();
+        $acquisitionCsv = $this->get(route('admin.reports.export', [
+            'preset' => '7d',
+            'report' => 'acquisition',
+        ]))->assertOk()->streamedContent();
+
+        $this->assertStringContainsString('current_coverage_status,previous_coverage_status,comparison_available', $audienceCsv);
+        $this->assertStringContainsString('2026-08-17,complete,partial,false', $audienceCsv);
+        $this->assertStringContainsString('current_coverage_status,previous_coverage_status,comparison_available', $acquisitionCsv);
+        $this->assertStringContainsString('2026-08-17,complete,partial,false', $acquisitionCsv);
+    }
+
     public function test_admin_reports_apply_custom_range_previous_period_refunds_and_multi_currency(): void
     {
         $this->travelTo(CarbonImmutable::parse('2026-07-07 12:00:00', 'America/Panama'));
@@ -448,6 +514,50 @@ class AdminStatsTest extends TestCase
         $this->assertSame('mobile', $event->device_category);
         $this->assertSame('PA', $event->country_code);
         $this->assertArrayNotHasKey('referrer', $event->metadata);
+    }
+
+    public function test_analytics_endpoint_rejects_cross_site_and_form_requests(): void
+    {
+        $payload = [
+            'name' => 'page_view',
+            'schema_version' => 2,
+            'visitor_id' => 'anonymous-visitor-cross-site',
+            'session_id' => 'anonymous-session-cross-site',
+            'event_id' => 'page-view-cross-site',
+            'traffic_source' => 'spam_campaign',
+            'payload' => [
+                'screen' => 'home',
+                'path' => '/',
+                'result' => 'viewed',
+            ],
+        ];
+
+        $this->withHeaders([
+            'Origin' => 'https://evil.example',
+            'Sec-Fetch-Site' => 'cross-site',
+        ])->post(route('analytics.events.store'), $payload)
+            ->assertStatus(415);
+
+        $this->withHeaders([
+            'Origin' => 'https://evil.example',
+            'Sec-Fetch-Site' => 'cross-site',
+        ])->postJson(route('analytics.events.store'), $payload)
+            ->assertForbidden();
+
+        $this->assertDatabaseCount('access_events', 0);
+
+        $this->withHeaders([
+            'Origin' => 'http://localhost',
+            'Sec-Fetch-Site' => 'same-origin',
+        ])->postJson(route('analytics.events.store'), [
+            ...$payload,
+            'event_id' => 'page-view-first-party',
+            'traffic_source' => 'direct',
+        ])->assertCreated();
+
+        $this->assertDatabaseCount('access_events', 1);
+        $this->assertDatabaseHas('access_events', ['traffic_source' => 'direct']);
+        $this->assertDatabaseMissing('access_events', ['traffic_source' => 'spam_campaign']);
     }
 
     public function test_analytics_endpoint_rejects_untracked_events_and_unexpected_payload_shape(): void
