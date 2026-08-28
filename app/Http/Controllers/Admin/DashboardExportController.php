@@ -11,7 +11,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class DashboardExportController extends Controller
 {
-    private const REPORTS = ['summary', 'sales', 'funnel', 'products', 'content', 'shows'];
+    private const REPORTS = ['summary', 'audience', 'acquisition', 'sales', 'funnel', 'products', 'content', 'shows'];
 
     public function __invoke(Request $request): StreamedResponse
     {
@@ -49,6 +49,8 @@ class DashboardExportController extends Controller
     {
         return match ($report) {
             'summary' => $this->summaryRows($service->kpis()),
+            'audience' => $this->audienceRows($service->audience()),
+            'acquisition' => $this->acquisitionRows($service->acquisition()),
             'sales' => $this->salesRows($service->salesSeries()),
             'funnel' => $this->funnelRows($service->funnel()),
             'products' => $this->productRows($service->products($productSort)),
@@ -95,6 +97,90 @@ class DashboardExportController extends Controller
             ->all();
 
         return [['date', 'net_sales', 'previous_period_date', 'previous_period_net_sales', 'currency'], $rows];
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function audienceRows(array $data): array
+    {
+        $headers = [
+            'metric',
+            'current',
+            'previous',
+            'absolute_change',
+            'percent_change',
+            'available_from',
+            'current_coverage_status',
+            'previous_coverage_status',
+            'comparison_available',
+        ];
+        $rows = collect([
+            'unique_visitors' => $data['visitors'],
+            'sessions' => $data['sessions'],
+            'page_views' => $data['page_views'],
+            'new_visitors' => $data['new_visitors'],
+            'returning_visitors' => $data['returning_visitors'],
+        ])->map(fn (array $metric, string $key): array => [
+            $key,
+            $metric['current'],
+            $metric['previous'],
+            $metric['absolute'],
+            $metric['percent'],
+            $data['available_from'],
+            $data['current_coverage_status'],
+            $data['previous_coverage_status'],
+            $data['comparison_available'] ? 'true' : 'false',
+        ])->values()->all();
+
+        return [$headers, $rows];
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function acquisitionRows(array $data): array
+    {
+        $headers = [
+            'dimension',
+            'source',
+            'medium',
+            'campaign',
+            'device',
+            'country',
+            'visitors',
+            'sessions',
+            'page_views',
+            'previous_sessions',
+            'available_from',
+            'current_coverage_status',
+            'previous_coverage_status',
+            'comparison_available',
+        ];
+        $mapRows = fn (array $rows, string $dimension): array => collect($rows)
+            ->map(fn (array $row): array => [
+                $dimension,
+                $row['traffic_source'] ?? null,
+                $row['traffic_medium'] ?? null,
+                $row['traffic_campaign'] ?? null,
+                $row['device_category'] ?? null,
+                $row['country_code'] ?? null,
+                $row['visitors'],
+                $row['sessions'],
+                $row['page_views'],
+                $row['previous_sessions'],
+                $data['available_from'],
+                $data['current_coverage_status'],
+                $data['previous_coverage_status'],
+                $data['comparison_available'] ? 'true' : 'false',
+            ])->all();
+        $rows = [
+            ...$mapRows($data['channels'], 'channel'),
+            ...$mapRows($data['devices'], 'device'),
+            ...$mapRows($data['countries'], 'country'),
+        ];
+
+        return [$headers, $rows];
     }
 
     /**

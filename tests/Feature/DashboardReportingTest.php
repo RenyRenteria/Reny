@@ -380,7 +380,7 @@ class DashboardReportingTest extends TestCase
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
         $this->actingAs($admin)->withSession(['admin_authenticated_at' => now()->timestamp]);
 
-        foreach (['summary', 'sales', 'funnel', 'products', 'content', 'shows'] as $report) {
+        foreach (['summary', 'audience', 'acquisition', 'sales', 'funnel', 'products', 'content', 'shows'] as $report) {
             $response = $this->get(route('admin.reports.export', [
                 'report' => $report,
                 'preset' => '30d',

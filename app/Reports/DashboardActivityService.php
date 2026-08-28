@@ -68,6 +68,9 @@ final class DashboardActivityService
         return $this->events('page_view', $start, $end)
             ->where('resource_type', 'page')
             ->where('resource_key', 'home')
+            ->where(function (Builder $query): void {
+                $query->whereNull('device_category')->orWhere('device_category', '!=', 'bot');
+            })
             ->whereNotNull('session_id')
             ->distinct()
             ->count('session_id');

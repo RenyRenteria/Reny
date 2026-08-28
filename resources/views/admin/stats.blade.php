@@ -1,6 +1,15 @@
 @php
     $money = static fn (int $cents, string $currency): string => $currency.' '.number_format($cents / 100, 2);
+    $coverageLabel = static fn (string $status): string => match ($status) {
+        'complete' => 'completa',
+        'partial' => 'parcial',
+        default => 'no disponible',
+    };
     $numberChange = static function (array $comparison): string {
+        if ($comparison['previous'] === null || $comparison['absolute'] === null) {
+            return 'Sin comparación confiable';
+        }
+
         $absolute = (int) $comparison['absolute'];
         $percent = $comparison['percent'];
 
@@ -170,6 +179,52 @@
                 @endforeach
             </section>
 
+            @if ($reports['audience']['status'] === 'error')
+                <section class="stats-module-state is-error" role="alert">
+                    <strong>Audiencia no disponible</strong>
+                    <p>{{ $reports['audience']['message'] }}</p>
+                    <a href="{{ $retryUrl }}">Reintentar</a>
+                </section>
+            @else
+                @php
+                    $audience = $reports['audience']['data'];
+                @endphp
+                <section class="stats-report-panel" aria-labelledby="audience-title">
+                    <div class="stats-panel-head">
+                        <div>
+                            <p class="stats-eyebrow">Personas anónimas · sesiones de 30 minutos</p>
+                            <h2 id="audience-title">Audiencia</h2>
+                        </div>
+                        <a href="{{ $exportUrl('audience') }}">Exportar CSV</a>
+                    </div>
+                    @if ($audience['coverage_unavailable'])
+                        <p class="stats-module-state is-unavailable">La medición de visitantes empieza con esta versión; aún no hay datos identificados en el rango.</p>
+                    @elseif ($audience['coverage_partial'])
+                        <p class="stats-module-state is-partial">
+                            Cobertura {{ $coverageLabel($audience['current_coverage_status']) }} en el rango actual y {{ $coverageLabel($audience['previous_coverage_status']) }} en el período anterior. Comparación histórica oculta. Visitantes identificados desde {{ $audience['available_from'] }}; {{ number_format($audience['identified_page_view_percent'] ?? 0, 1) }}% de las vistas actuales tienen identificador.
+                        </p>
+                    @else
+                        <p class="stats-coverage">Cobertura de identidad desde {{ $audience['available_from'] }} · {{ number_format($audience['identified_page_view_percent'] ?? 0, 1) }}% de vistas identificadas.</p>
+                    @endif
+                    <div class="stats-summary-grid" aria-label="Resumen de audiencia">
+                        @foreach ([
+                            ['key' => 'visitors', 'label' => 'Visitantes únicos'],
+                            ['key' => 'sessions', 'label' => 'Sesiones'],
+                            ['key' => 'page_views', 'label' => 'Vistas de página'],
+                            ['key' => 'new_visitors', 'label' => 'Visitantes nuevos'],
+                            ['key' => 'returning_visitors', 'label' => 'Visitantes recurrentes'],
+                        ] as $card)
+                            @php $metric = $audience[$card['key']]; @endphp
+                            <article class="stats-summary-card">
+                                <div class="stats-card-label"><p>{{ $card['label'] }}</p></div>
+                                <strong>{{ number_format($metric['current']) }}</strong>
+                                <span @class(['is-positive' => $metric['absolute'] > 0, 'is-negative' => $metric['absolute'] < 0])>{{ $numberChange($metric) }}</span>
+                            </article>
+                        @endforeach
+                    </div>
+                </section>
+            @endif
+
             <details class="stats-definitions">
                 <summary>Cómo se calculan estas métricas</summary>
                 <dl>
@@ -181,6 +236,12 @@
                     @endif
                     <div><dt>Sesiones únicas en homepage</dt><dd>{{ $activityStats['definitions']['homepageSessions'] }}</dd></div>
                     <div><dt>Bloqueos de paywall</dt><dd>{{ $activityStats['definitions']['paywallViews'] }}</dd></div>
+                    @if ($reports['audience']['status'] === 'ready')
+                        <div><dt>Visitantes únicos</dt><dd>{{ $audience['definitions']['visitors'] }}</dd></div>
+                        <div><dt>Sesiones</dt><dd>{{ $audience['definitions']['sessions'] }}</dd></div>
+                        <div><dt>Vistas de página</dt><dd>{{ $audience['definitions']['page_views'] }}</dd></div>
+                        <div><dt>Nuevos vs recurrentes</dt><dd>{{ $audience['definitions']['new_returning'] }}</dd></div>
+                    @endif
                 </dl>
             </details>
 
@@ -189,6 +250,60 @@
                     <a href="{{ $exportUrl('summary') }}">Exportar resumen CSV</a>
                 </div>
             @endif
+
+            <section class="stats-report-panel" aria-labelledby="acquisition-title">
+                <div class="stats-panel-head">
+                    <div>
+                        <p class="stats-eyebrow">UTM · buscadores · social · referidos</p>
+                        <h2 id="acquisition-title">Adquisición</h2>
+                    </div>
+                    <a href="{{ $exportUrl('acquisition') }}">Exportar CSV</a>
+                </div>
+                @if ($reports['acquisition']['status'] === 'error')
+                    <div class="stats-module-state is-error" role="alert"><strong>Adquisición no disponible</strong><p>{{ $reports['acquisition']['message'] }}</p><a href="{{ $retryUrl }}">Reintentar</a></div>
+                @else
+                    @php $acquisition = $reports['acquisition']['data']; @endphp
+                    @if ($acquisition['coverage_unavailable'])
+                        <p class="stats-module-state is-unavailable">La atribución empieza con esta versión; aún no hay tráfico clasificado en el rango.</p>
+                    @elseif ($acquisition['coverage_partial'])
+                        <p class="stats-module-state is-partial">
+                            Cobertura {{ $coverageLabel($acquisition['current_coverage_status']) }} en el rango actual y {{ $coverageLabel($acquisition['previous_coverage_status']) }} en el período anterior. Comparación histórica oculta. La atribución está disponible desde {{ $acquisition['available_from'] }}; {{ number_format($acquisition['attributed_page_view_percent'] ?? 0, 1) }}% de las vistas actuales están clasificadas.
+                        </p>
+                    @else
+                        <p class="stats-coverage">Atribución disponible desde {{ $acquisition['available_from'] }} · {{ number_format($acquisition['attributed_page_view_percent'] ?? 0, 1) }}% de vistas clasificadas.</p>
+                    @endif
+
+                    @if (! $acquisition['coverage_unavailable'] && $acquisition['channels'] !== [])
+                        <h3 class="stats-subsection-title">Canales y campañas</h3>
+                        <div class="stats-table-scroll"><table><thead><tr><th>Fuente / medio</th><th>Campaña</th><th>Visitantes</th><th>Sesiones</th><th>Anterior</th><th>Vistas</th></tr></thead><tbody>
+                            @foreach ($acquisition['channels'] as $channel)
+                                <tr><th scope="row"><span>{{ $channel['traffic_source'] ?? 'Sin atribución' }}</span><small>{{ $channel['traffic_medium'] ?? 'desconocido' }}</small></th><td>{{ $channel['traffic_campaign'] ?? '—' }}</td><td>{{ number_format($channel['visitors']) }}</td><td>{{ number_format($channel['sessions']) }}</td><td>{{ $channel['previous_sessions'] === null ? 'N/A' : number_format($channel['previous_sessions']) }}</td><td>{{ number_format($channel['page_views']) }}</td></tr>
+                            @endforeach
+                        </tbody></table></div>
+
+                        <div class="stats-breakdown-grid">
+                            <section aria-labelledby="device-title">
+                                <h3 id="device-title" class="stats-subsection-title">Dispositivos</h3>
+                                <div class="stats-table-scroll"><table><thead><tr><th>Tipo</th><th>Visitantes</th><th>Sesiones</th><th>Vistas</th></tr></thead><tbody>
+                                    @foreach ($acquisition['devices'] as $device)
+                                        <tr><th scope="row">{{ match ($device['device_category']) { 'desktop' => 'Computadora', 'mobile' => 'Móvil', 'tablet' => 'Tablet', default => 'Desconocido' } }}</th><td>{{ number_format($device['visitors']) }}</td><td>{{ number_format($device['sessions']) }}</td><td>{{ number_format($device['page_views']) }}</td></tr>
+                                    @endforeach
+                                </tbody></table></div>
+                            </section>
+                            <section aria-labelledby="country-title">
+                                <h3 id="country-title" class="stats-subsection-title">Países</h3>
+                                <div class="stats-table-scroll"><table><thead><tr><th>País</th><th>Visitantes</th><th>Sesiones</th><th>Vistas</th></tr></thead><tbody>
+                                    @foreach (collect($acquisition['countries'])->take(10) as $country)
+                                        <tr><th scope="row">{{ $country['country_code'] ?? 'Desconocido' }}</th><td>{{ number_format($country['visitors']) }}</td><td>{{ number_format($country['sessions']) }}</td><td>{{ number_format($country['page_views']) }}</td></tr>
+                                    @endforeach
+                                </tbody></table></div>
+                            </section>
+                        </div>
+                    @elseif (! $acquisition['coverage_unavailable'])
+                        <p class="stats-module-state is-empty">No hubo vistas de página en el rango.</p>
+                    @endif
+                @endif
+            </section>
 
             <section class="stats-report-panel" aria-labelledby="sales-title">
                 <div class="stats-panel-head">

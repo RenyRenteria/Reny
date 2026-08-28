@@ -114,6 +114,139 @@ class AdminStatsTest extends TestCase
         $this->assertLessThan(strpos($html, 'Ventas netas'), strpos($html, 'data-report-filter'));
     }
 
+    public function test_stats_reports_anonymous_audience_acquisition_devices_and_countries(): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-07-07 12:00:00', 'America/Panama'));
+
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $events = [
+            ['visitor-returning', 'session-previous', '2026-06-30 10:00:00', 'google', 'organic', null, 'mobile', 'PA'],
+            ['visitor-returning', 'session-current-a', '2026-07-02 10:00:00', 'google', 'organic', null, 'mobile', 'PA'],
+            ['visitor-new', 'session-current-b', '2026-07-03 10:00:00', 'instagram', 'social', 'royal_launch', 'desktop', 'ES'],
+            ['visitor-new', 'session-current-b', '2026-07-03 10:05:00', 'instagram', 'social', 'royal_launch', 'desktop', 'ES'],
+            ['visitor-bot', 'session-bot', '2026-07-04 10:00:00', 'crawler', 'referral', null, 'bot', 'US'],
+        ];
+
+        foreach ($events as [$visitor, $session, $timestamp, $source, $medium, $campaign, $device, $country]) {
+            AccessEvent::forceCreate([
+                'event_name' => 'page_view',
+                'schema_version' => 2,
+                'occurred_at' => $this->utc($timestamp),
+                'session_id' => $session,
+                'visitor_id' => $visitor,
+                'traffic_source' => $source,
+                'traffic_medium' => $medium,
+                'traffic_campaign' => $campaign,
+                'device_category' => $device,
+                'country_code' => $country,
+                'resource_type' => 'page',
+                'resource_key' => 'home',
+                'result' => 'viewed',
+                'created_at' => $this->utc($timestamp),
+                'updated_at' => $this->utc($timestamp),
+            ]);
+        }
+
+        $this->actingAsAdmin($admin);
+
+        $response = $this->get(route('admin.dashboard', ['preset' => '7d']))
+            ->assertOk()
+            ->assertViewHas('reports', function (array $reports): bool {
+                $audience = $reports['audience']['data'];
+                $acquisition = $reports['acquisition']['data'];
+                $instagram = collect($acquisition['channels'])->firstWhere('traffic_source', 'instagram');
+
+                return $audience['visitors']['current'] === 2
+                    && $audience['sessions']['current'] === 2
+                    && $audience['page_views']['current'] === 3
+                    && $audience['new_visitors']['current'] === 1
+                    && $audience['returning_visitors']['current'] === 1
+                    && $instagram['sessions'] === 1
+                    && $instagram['page_views'] === 2;
+            })
+            ->assertSee('Audiencia')
+            ->assertSee('Visitantes únicos')
+            ->assertSee('Adquisición')
+            ->assertSee('royal_launch')
+            ->assertSee('Móvil')
+            ->assertSee('PA');
+
+        $this->assertStringNotContainsString('visitor-returning', $response->getContent());
+
+        $export = $this->get(route('admin.reports.export', ['preset' => '7d', 'report' => 'acquisition']))
+            ->assertOk()
+            ->streamedContent();
+
+        $this->assertStringContainsString('instagram', $export);
+        $this->assertStringNotContainsString('visitor-returning', $export);
+    }
+
+    public function test_audience_and_acquisition_suppress_comparisons_when_previous_coverage_is_partial(): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-08-27 12:00:00', 'America/Panama'));
+
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+
+        foreach ([
+            ['visitor-previous', 'session-previous', '2026-08-17 10:00:00', 'facebook'],
+            ['visitor-current', 'session-current', '2026-08-21 10:00:00', 'google'],
+        ] as [$visitor, $session, $timestamp, $source]) {
+            AccessEvent::forceCreate([
+                'event_name' => 'page_view',
+                'schema_version' => 2,
+                'occurred_at' => $this->utc($timestamp),
+                'session_id' => $session,
+                'visitor_id' => $visitor,
+                'traffic_source' => $source,
+                'traffic_medium' => 'organic',
+                'device_category' => 'desktop',
+                'country_code' => 'PA',
+                'resource_type' => 'page',
+                'resource_key' => 'home',
+                'result' => 'viewed',
+                'created_at' => $this->utc($timestamp),
+                'updated_at' => $this->utc($timestamp),
+            ]);
+        }
+
+        $this->actingAsAdmin($admin);
+
+        $this->get(route('admin.dashboard', ['preset' => '7d']))
+            ->assertOk()
+            ->assertViewHas('reports', function (array $reports): bool {
+                $audience = $reports['audience']['data'];
+                $acquisition = $reports['acquisition']['data'];
+
+                return $audience['current_coverage_status'] === 'complete'
+                    && $audience['previous_coverage_status'] === 'partial'
+                    && $audience['comparison_available'] === false
+                    && $audience['visitors']['previous'] === null
+                    && $audience['visitors']['absolute'] === null
+                    && $acquisition['current_coverage_status'] === 'complete'
+                    && $acquisition['previous_coverage_status'] === 'partial'
+                    && $acquisition['comparison_available'] === false
+                    && count($acquisition['channels']) === 1
+                    && collect($acquisition['channels'])->firstWhere('traffic_source', 'google')['previous_sessions'] === null;
+            })
+            ->assertSee('Comparación histórica oculta')
+            ->assertSee('Sin comparación confiable')
+            ->assertSee('N/A');
+
+        $audienceCsv = $this->get(route('admin.reports.export', [
+            'preset' => '7d',
+            'report' => 'audience',
+        ]))->assertOk()->streamedContent();
+        $acquisitionCsv = $this->get(route('admin.reports.export', [
+            'preset' => '7d',
+            'report' => 'acquisition',
+        ]))->assertOk()->streamedContent();
+
+        $this->assertStringContainsString('current_coverage_status,previous_coverage_status,comparison_available', $audienceCsv);
+        $this->assertStringContainsString('2026-08-17,complete,partial,false', $audienceCsv);
+        $this->assertStringContainsString('current_coverage_status,previous_coverage_status,comparison_available', $acquisitionCsv);
+        $this->assertStringContainsString('2026-08-17,complete,partial,false', $acquisitionCsv);
+    }
+
     public function test_admin_reports_apply_custom_range_previous_period_refunds_and_multi_currency(): void
     {
         $this->travelTo(CarbonImmutable::parse('2026-07-07 12:00:00', 'America/Panama'));
@@ -346,6 +479,85 @@ class AdminStatsTest extends TestCase
         $this->assertNotNull($event->occurred_at);
         $this->assertArrayNotHasKey('referrer', $event->metadata);
         $this->assertArrayNotHasKey('path', $event->metadata);
+    }
+
+    public function test_analytics_endpoint_hashes_visitor_identity_and_stores_safe_audience_dimensions(): void
+    {
+        $this->withHeaders([
+            'User-Agent' => 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Mobile/15E148',
+            'CF-IPCountry' => 'PA',
+        ])->postJson(route('analytics.events.store'), [
+            'name' => 'page_view',
+            'schema_version' => 2,
+            'visitor_id' => 'anonymous-visitor-1',
+            'session_id' => 'anonymous-session-1',
+            'event_id' => 'page-view-identity-1',
+            'traffic_source' => 'Instagram_Ads',
+            'traffic_medium' => 'Paid_Social',
+            'traffic_campaign' => 'Royal_Launch',
+            'payload' => [
+                'screen' => 'home',
+                'path' => '/',
+                'result' => 'viewed',
+                'referrer' => 'https://instagram.com/private/path?email=private@example.com',
+            ],
+            'timestamp' => now()->toIso8601String(),
+        ])->assertCreated();
+
+        $event = AccessEvent::query()->sole();
+
+        $this->assertSame(2, $event->schema_version);
+        $this->assertSame(hash('sha256', 'analytics-visitor:anonymous-visitor-1'), $event->visitor_id);
+        $this->assertSame('instagram_ads', $event->traffic_source);
+        $this->assertSame('paid_social', $event->traffic_medium);
+        $this->assertSame('royal_launch', $event->traffic_campaign);
+        $this->assertSame('mobile', $event->device_category);
+        $this->assertSame('PA', $event->country_code);
+        $this->assertArrayNotHasKey('referrer', $event->metadata);
+    }
+
+    public function test_analytics_endpoint_rejects_cross_site_and_form_requests(): void
+    {
+        $payload = [
+            'name' => 'page_view',
+            'schema_version' => 2,
+            'visitor_id' => 'anonymous-visitor-cross-site',
+            'session_id' => 'anonymous-session-cross-site',
+            'event_id' => 'page-view-cross-site',
+            'traffic_source' => 'spam_campaign',
+            'payload' => [
+                'screen' => 'home',
+                'path' => '/',
+                'result' => 'viewed',
+            ],
+        ];
+
+        $this->withHeaders([
+            'Origin' => 'https://evil.example',
+            'Sec-Fetch-Site' => 'cross-site',
+        ])->post(route('analytics.events.store'), $payload)
+            ->assertStatus(415);
+
+        $this->withHeaders([
+            'Origin' => 'https://evil.example',
+            'Sec-Fetch-Site' => 'cross-site',
+        ])->postJson(route('analytics.events.store'), $payload)
+            ->assertForbidden();
+
+        $this->assertDatabaseCount('access_events', 0);
+
+        $this->withHeaders([
+            'Origin' => 'http://localhost',
+            'Sec-Fetch-Site' => 'same-origin',
+        ])->postJson(route('analytics.events.store'), [
+            ...$payload,
+            'event_id' => 'page-view-first-party',
+            'traffic_source' => 'direct',
+        ])->assertCreated();
+
+        $this->assertDatabaseCount('access_events', 1);
+        $this->assertDatabaseHas('access_events', ['traffic_source' => 'direct']);
+        $this->assertDatabaseMissing('access_events', ['traffic_source' => 'spam_campaign']);
     }
 
     public function test_analytics_endpoint_rejects_untracked_events_and_unexpected_payload_shape(): void

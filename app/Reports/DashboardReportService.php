@@ -43,6 +43,12 @@ final class DashboardReportService
     /** @var array<string, Collection<int, AccessEvent>> */
     private array $eventCache = [];
 
+    /** @var Collection<int, AccessEvent>|null */
+    private ?Collection $comparisonPageViews = null;
+
+    /** @var array{visitor_available_from: string|null, traffic_available_from: string|null}|null */
+    private ?array $analyticsCoverage = null;
+
     public function __construct(private readonly ReportRange $range) {}
 
     /**
@@ -53,6 +59,8 @@ final class DashboardReportService
         return [
             'commerce_coverage' => $this->resolve(fn (): array => $this->commerceCoverage()),
             'kpis' => $this->resolve(fn (): array => $this->kpis()),
+            'audience' => $this->resolve(fn (): array => $this->audience()),
+            'acquisition' => $this->resolve(fn (): array => $this->acquisition()),
             'sales' => $this->resolve(fn (): array => $this->salesSeries()),
             'funnel' => $this->resolve(fn (): array => $this->funnel()),
             'products' => $this->resolve(fn (): array => $this->products($productSort)),
@@ -117,6 +125,115 @@ final class DashboardReportService
                 'royals' => 'Membresías activas o en gracia al momento actual. El modelo no conserva snapshots históricos confiables.',
                 'users' => 'Cuentas fan creadas en el rango; excluye cuentas con roles administrativos o de moderación.',
             ],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function audience(): array
+    {
+        $currentEvents = $this->humanPageViews(
+            $this->range->startUtc(),
+            $this->range->endExclusiveUtc(),
+        );
+        $previousEvents = $this->humanPageViews(
+            $this->range->previousStartUtc(),
+            $this->range->previousEndExclusiveUtc(),
+        );
+        $current = $this->audiencePeriod($currentEvents, $this->range->startUtc());
+        $previous = $this->audiencePeriod($previousEvents, $this->range->previousStartUtc());
+        $availableFrom = $this->analyticsCoverage()['visitor_available_from'];
+        $availableDate = $availableFrom
+            ? CarbonImmutable::parse($availableFrom, 'UTC')->setTimezone($this->range->timezone)->toDateString()
+            : null;
+        $currentCoverage = $this->analyticsPeriodCoverage(
+            $availableDate,
+            $this->range->startDate(),
+            $this->range->endDate(),
+            $current['identified_page_views'],
+            $current['observed_page_views'],
+        );
+        $previousCoverage = $this->analyticsPeriodCoverage(
+            $availableDate,
+            $this->range->previousStartLocal->toDateString(),
+            $this->range->previousEndExclusiveLocal->subDay()->toDateString(),
+            $previous['identified_page_views'],
+            $previous['observed_page_views'],
+        );
+        $comparisonAvailable = $currentCoverage === 'complete' && $previousCoverage === 'complete';
+
+        return [
+            'visitors' => $this->comparison($current['visitors'], $previous['visitors'], $comparisonAvailable),
+            'sessions' => $this->comparison($current['sessions'], $previous['sessions'], $comparisonAvailable),
+            'page_views' => $this->comparison($current['page_views'], $previous['page_views'], $comparisonAvailable),
+            'new_visitors' => $this->comparison($current['new_visitors'], $previous['new_visitors'], $comparisonAvailable),
+            'returning_visitors' => $this->comparison($current['returning_visitors'], $previous['returning_visitors'], $comparisonAvailable),
+            'identified_page_view_percent' => $this->rate($current['identified_page_views'], $current['observed_page_views']),
+            'available_from' => $availableDate,
+            'coverage_unavailable' => $currentCoverage === 'unavailable',
+            'coverage_partial' => $currentCoverage !== 'complete' || $previousCoverage !== 'complete',
+            'current_coverage_status' => $currentCoverage,
+            'previous_coverage_status' => $previousCoverage,
+            'comparison_available' => $comparisonAvailable,
+            'definitions' => [
+                'visitors' => 'Navegadores anónimos distintos. El identificador no contiene nombre, email, IP ni otros datos personales.',
+                'sessions' => 'Sesiones distintas con hasta 30 minutos de inactividad entre eventos. Una misma persona puede iniciar varias sesiones.',
+                'page_views' => 'Cargas identificadas de páginas públicas, incluidas navegaciones internas de la SPA. Se excluyen el CMS, eventos históricos sin identidad y agentes identificados como bots.',
+                'new_returning' => 'Nuevo significa que no existe una visita anterior con el mismo identificador anónimo; recurrente significa que sí existe.',
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function acquisition(): array
+    {
+        $current = $this->humanPageViews($this->range->startUtc(), $this->range->endExclusiveUtc());
+        $previous = $this->humanPageViews($this->range->previousStartUtc(), $this->range->previousEndExclusiveUtc());
+        $currentAttributed = $current->filter(
+            fn (AccessEvent $event): bool => $event->traffic_source !== null,
+        )->values();
+        $previousAttributed = $previous->filter(
+            fn (AccessEvent $event): bool => $event->traffic_source !== null,
+        )->values();
+        $availableFrom = $this->analyticsCoverage()['traffic_available_from'];
+        $availableDate = $availableFrom
+            ? CarbonImmutable::parse($availableFrom, 'UTC')->setTimezone($this->range->timezone)->toDateString()
+            : null;
+        $attributedPageViews = $currentAttributed->count();
+        $currentCoverage = $this->analyticsPeriodCoverage(
+            $availableDate,
+            $this->range->startDate(),
+            $this->range->endDate(),
+            $attributedPageViews,
+            $current->count(),
+        );
+        $previousCoverage = $this->analyticsPeriodCoverage(
+            $availableDate,
+            $this->range->previousStartLocal->toDateString(),
+            $this->range->previousEndExclusiveLocal->subDay()->toDateString(),
+            $previousAttributed->count(),
+            $previous->count(),
+        );
+        $comparisonAvailable = $currentCoverage === 'complete' && $previousCoverage === 'complete';
+
+        return [
+            'channels' => $this->dimensionRows($currentAttributed, $previousAttributed, [
+                'traffic_source',
+                'traffic_medium',
+                'traffic_campaign',
+            ], $comparisonAvailable),
+            'devices' => $this->dimensionRows($currentAttributed, $previousAttributed, ['device_category'], $comparisonAvailable),
+            'countries' => $this->dimensionRows($currentAttributed, $previousAttributed, ['country_code'], $comparisonAvailable),
+            'attributed_page_view_percent' => $this->rate($attributedPageViews, $current->count()),
+            'available_from' => $availableDate,
+            'coverage_unavailable' => $currentCoverage === 'unavailable',
+            'coverage_partial' => $currentCoverage !== 'complete' || $previousCoverage !== 'complete',
+            'current_coverage_status' => $currentCoverage,
+            'previous_coverage_status' => $previousCoverage,
+            'comparison_available' => $comparisonAvailable,
         ];
     }
 
@@ -718,6 +835,151 @@ final class DashboardReportService
         return $event->session_id ?: 'legacy-event:'.$event->id;
     }
 
+    /**
+     * @return Collection<int, AccessEvent>
+     */
+    private function humanPageViews(CarbonImmutable $start, CarbonImmutable $end): Collection
+    {
+        $pageViews = $this->comparisonPageViews ??= $this->events(
+            ['page_view'],
+            $this->range->previousStartUtc(),
+            $this->range->endExclusiveUtc(),
+        )->filter(fn (AccessEvent $event): bool => $event->device_category !== 'bot')->values();
+
+        return $pageViews
+            ->filter(function (AccessEvent $event) use ($end, $start): bool {
+                $timestamp = $event->occurred_at ?? $event->created_at;
+
+                return $timestamp !== null && $timestamp->gte($start) && $timestamp->lt($end);
+            })
+            ->values();
+    }
+
+    /**
+     * @return array{visitor_available_from: string|null, traffic_available_from: string|null}
+     */
+    private function analyticsCoverage(): array
+    {
+        if ($this->analyticsCoverage !== null) {
+            return $this->analyticsCoverage;
+        }
+
+        $coverage = AccessEvent::query()
+            ->where('event_name', 'page_view')
+            ->selectRaw('MIN(CASE WHEN visitor_id IS NOT NULL THEN occurred_at END) AS visitor_available_from')
+            ->selectRaw('MIN(CASE WHEN traffic_source IS NOT NULL THEN occurred_at END) AS traffic_available_from')
+            ->first();
+
+        return $this->analyticsCoverage = [
+            'visitor_available_from' => $coverage?->getRawOriginal('visitor_available_from'),
+            'traffic_available_from' => $coverage?->getRawOriginal('traffic_available_from'),
+        ];
+    }
+
+    private function analyticsPeriodCoverage(
+        ?string $availableDate,
+        string $startDate,
+        string $endDate,
+        int $measuredPageViews,
+        int $observedPageViews,
+    ): string {
+        if ($availableDate === null || $endDate < $availableDate) {
+            return 'unavailable';
+        }
+
+        if ($startDate < $availableDate || $measuredPageViews < $observedPageViews) {
+            return 'partial';
+        }
+
+        return 'complete';
+    }
+
+    /**
+     * @param  Collection<int, AccessEvent>  $events
+     * @return array{visitors: int, sessions: int, page_views: int, observed_page_views: int, identified_page_views: int, new_visitors: int, returning_visitors: int}
+     */
+    private function audiencePeriod(Collection $events, CarbonImmutable $start): array
+    {
+        $identifiedEvents = $events->filter(fn (AccessEvent $event): bool => $event->visitor_id !== null);
+        $visitorIds = $identifiedEvents->pluck('visitor_id')->unique()->values();
+        $returningVisitors = $visitorIds->isEmpty() ? 0 : AccessEvent::query()
+            ->where('event_name', 'page_view')
+            ->whereIn('visitor_id', $visitorIds)
+            ->where(function (Builder $query) use ($start): void {
+                $query->where('occurred_at', '<', $start)
+                    ->orWhere(function (Builder $query) use ($start): void {
+                        $query->whereNull('occurred_at')->where('created_at', '<', $start);
+                    });
+            })
+            ->distinct()
+            ->count('visitor_id');
+
+        return [
+            'visitors' => $visitorIds->count(),
+            'sessions' => $identifiedEvents->pluck('session_id')->filter()->unique()->count(),
+            'page_views' => $identifiedEvents->count(),
+            'observed_page_views' => $events->count(),
+            'identified_page_views' => $identifiedEvents->count(),
+            'new_visitors' => $visitorIds->count() - $returningVisitors,
+            'returning_visitors' => $returningVisitors,
+        ];
+    }
+
+    /**
+     * @param  Collection<int, AccessEvent>  $current
+     * @param  Collection<int, AccessEvent>  $previous
+     * @param  array<int, string>  $dimensions
+     * @return array<int, array<string, mixed>>
+     */
+    private function dimensionRows(
+        Collection $current,
+        Collection $previous,
+        array $dimensions,
+        bool $comparisonAvailable = true,
+    ): array {
+        $group = function (Collection $events) use ($dimensions): Collection {
+            return $events->groupBy(function (AccessEvent $event) use ($dimensions): string {
+                return collect($dimensions)->map(
+                    fn (string $dimension): string => (string) ($event->{$dimension} ?: 'unknown'),
+                )->implode('|');
+            });
+        };
+        $currentGroups = $group($current);
+        $previousGroups = $group($previous);
+
+        $dimensionKeys = $comparisonAvailable
+            ? [...$currentGroups->keys(), ...$previousGroups->keys()]
+            : $currentGroups->keys()->all();
+
+        return collect($dimensionKeys)
+            ->unique()
+            ->map(function (string $key) use ($comparisonAvailable, $currentGroups, $dimensions, $previousGroups): array {
+                $currentEvents = $currentGroups->get($key, collect());
+                $previousEvents = $previousGroups->get($key, collect());
+                $values = explode('|', $key);
+                $row = [];
+
+                foreach ($dimensions as $index => $dimension) {
+                    $row[$dimension] = ($values[$index] ?? 'unknown') === 'unknown'
+                        ? null
+                        : $values[$index];
+                }
+
+                return [
+                    ...$row,
+                    'visitors' => $currentEvents->pluck('visitor_id')->filter()->unique()->count(),
+                    'sessions' => $currentEvents->pluck('session_id')->filter()->unique()->count(),
+                    'page_views' => $currentEvents->count(),
+                    'previous_sessions' => $comparisonAvailable
+                        ? $previousEvents->pluck('session_id')->filter()->unique()->count()
+                        : null,
+                ];
+            })
+            ->sortByDesc('sessions')
+            ->values()
+            ->all();
+    }
+
     private function transactionKey(Order $order): string
     {
         return (string) ($order->provider_capture_id ?: $order->provider_order_id ?: 'order:'.$order->id);
@@ -738,10 +1000,19 @@ final class DashboardReportService
     }
 
     /**
-     * @return array{current: int, previous: int, absolute: int, percent: float|null}
+     * @return array{current: int, previous: int|null, absolute: int|null, percent: float|null}
      */
-    private function comparison(int $current, int $previous): array
+    private function comparison(int $current, int $previous, bool $comparisonAvailable = true): array
     {
+        if (! $comparisonAvailable) {
+            return [
+                'current' => $current,
+                'previous' => null,
+                'absolute' => null,
+                'percent' => null,
+            ];
+        }
+
         return [
             'current' => $current,
             'previous' => $previous,

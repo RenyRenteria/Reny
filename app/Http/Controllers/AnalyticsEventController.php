@@ -66,15 +66,27 @@ class AnalyticsEventController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        if (! $request->isJson()) {
+            return response()->json(['message' => 'Content-Type must be application/json.'], Response::HTTP_UNSUPPORTED_MEDIA_TYPE);
+        }
+
+        if (! $this->isFirstPartyRequest($request)) {
+            return response()->json(['message' => 'Cross-site analytics requests are not allowed.'], Response::HTTP_FORBIDDEN);
+        }
+
         if (strlen($request->getContent()) > self::MAX_BODY_BYTES) {
             return response()->json(['message' => 'Payload too large.'], Response::HTTP_REQUEST_ENTITY_TOO_LARGE);
         }
 
         $data = $request->validate([
             'name' => ['required', 'string', Rule::in(self::EVENT_NAMES)],
-            'schema_version' => ['nullable', 'integer', 'min:1', 'max:1'],
+            'schema_version' => ['nullable', 'integer', 'min:1', 'max:2'],
             'session_id' => ['nullable', 'string', 'max:64', 'regex:/^[A-Za-z0-9._:-]+$/'],
+            'visitor_id' => ['nullable', 'string', 'max:64', 'regex:/^[A-Za-z0-9._:-]+$/'],
             'event_id' => ['nullable', 'string', 'max:64', 'regex:/^[A-Za-z0-9._:-]+$/'],
+            'traffic_source' => ['nullable', 'string', 'max:120', 'regex:/^[A-Za-z0-9._:-]+$/'],
+            'traffic_medium' => ['nullable', 'string', 'max:120', 'regex:/^[A-Za-z0-9._:-]+$/'],
+            'traffic_campaign' => ['nullable', 'string', 'max:120', 'regex:/^[A-Za-z0-9._:-]+$/'],
             'payload' => ['nullable', 'array:'.implode(',', self::INPUT_METADATA_KEYS), 'max:21'],
             'payload.screen' => ['nullable', 'string', 'max:80', 'regex:/^[A-Za-z0-9._:-]+$/'],
             'payload.path' => ['nullable', 'string', 'max:200'],
@@ -116,6 +128,12 @@ class AnalyticsEventController extends Controller
                 'schema_version' => $data['schema_version'] ?? 1,
                 'occurred_at' => now(),
                 'session_id' => $sessionId,
+                'visitor_id' => isset($data['visitor_id']) ? $this->clientVisitorId($data['visitor_id']) : null,
+                'traffic_source' => $this->trafficDimension($data['traffic_source'] ?? null),
+                'traffic_medium' => $this->trafficDimension($data['traffic_medium'] ?? null),
+                'traffic_campaign' => $this->trafficDimension($data['traffic_campaign'] ?? null),
+                'device_category' => $this->deviceCategory($request),
+                'country_code' => $this->countryCode($request),
                 'idempotency_key' => $idempotencyKey,
                 'resource_type' => $resource['type'],
                 'resource_key' => $resource['key'],
@@ -208,5 +226,67 @@ class AnalyticsEventController extends Controller
     private function clientIdempotencyKey(string $eventId): string
     {
         return 'client:'.substr(hash('sha256', $eventId), 0, 57);
+    }
+
+    private function clientVisitorId(string $visitorId): string
+    {
+        return hash('sha256', 'analytics-visitor:'.$visitorId);
+    }
+
+    private function trafficDimension(?string $value): ?string
+    {
+        return $value === null ? null : Str::lower($value);
+    }
+
+    private function deviceCategory(Request $request): string
+    {
+        $userAgent = Str::lower((string) $request->userAgent());
+
+        if ($userAgent === '') {
+            return 'unknown';
+        }
+
+        if (preg_match('/bot|crawler|spider|slurp|facebookexternalhit|preview/', $userAgent) === 1) {
+            return 'bot';
+        }
+
+        if (
+            preg_match('/ipad|tablet|kindle|silk/', $userAgent) === 1
+            || (str_contains($userAgent, 'android') && ! str_contains($userAgent, 'mobile'))
+        ) {
+            return 'tablet';
+        }
+
+        if (preg_match('/mobile|iphone|ipod|android/', $userAgent) === 1) {
+            return 'mobile';
+        }
+
+        return 'desktop';
+    }
+
+    private function countryCode(Request $request): ?string
+    {
+        foreach (['CF-IPCountry', 'X-Vercel-IP-Country', 'CloudFront-Viewer-Country', 'X-Country-Code'] as $header) {
+            $country = Str::upper((string) $request->header($header));
+
+            if (preg_match('/^[A-Z]{2}$/', $country) === 1 && ! in_array($country, ['XX', 'T1'], true)) {
+                return $country;
+            }
+        }
+
+        return null;
+    }
+
+    private function isFirstPartyRequest(Request $request): bool
+    {
+        $fetchSite = Str::lower((string) $request->header('Sec-Fetch-Site'));
+
+        if ($fetchSite !== '' && $fetchSite !== 'same-origin') {
+            return false;
+        }
+
+        $origin = Str::lower(rtrim((string) $request->header('Origin'), '/'));
+
+        return $origin === '' || hash_equals(Str::lower($request->getSchemeAndHttpHost()), $origin);
     }
 }

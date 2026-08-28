@@ -3,6 +3,7 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="csrf-token" content="{{ csrf_token() }}">
         @include('partials.public-seo', [
             'seo' => [
                 'meta_title' => data_get($content->metadata, 'meta_title', $content->title.' | Reny Renteria'),
