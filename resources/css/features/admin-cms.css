@@ -4370,6 +4370,26 @@ body.admin-cms-body[data-theme="royal"] {
     gap: 0.5rem;
 }
 
+.stats-subsection-title {
+    margin: 1rem 0 0.625rem;
+    color: #3f342a;
+    font-size: 0.875rem;
+}
+
+.stats-breakdown-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.stats-breakdown-grid > section {
+    min-width: 0;
+}
+
+.stats-breakdown-grid .stats-table-scroll table {
+    min-width: 28rem;
+}
+
 .stats-table-scroll {
     max-width: 100%;
     overflow-x: auto;
@@ -4410,6 +4430,7 @@ body.admin-cms-body[data-theme="royal"] {
     .admin-stats-main { width: min(calc(100vw - 1.5rem), 74rem); }
     .stats-filter { grid-template-columns: 1fr; }
     .stats-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .stats-breakdown-grid { grid-template-columns: 1fr; }
     .stats-custom-dates { justify-content: flex-start; }
     .stats-primary-button { justify-self: start; }
 }

@@ -149,6 +149,16 @@ class AnalyticsInstrumentationTest extends TestCase
         $this->assertStringContainsString('analytics_session_id: window.renyAnalytics?.sessionId?.()', $checkout);
     }
 
+    public function test_first_party_page_views_are_not_recorded_from_the_admin_cms(): void
+    {
+        $analytics = file_get_contents(resource_path('js/features/analytics.js'));
+
+        $this->assertMatchesRegularExpression(
+            "/DOMContentLoaded'.*admin-cms-body.*return;.*trackEvent\('page_view'/s",
+            $analytics,
+        );
+    }
+
     public function test_opening_an_empty_bag_does_not_start_checkout_analytics(): void
     {
         $checkout = file_get_contents(resource_path('js/features/checkout.js'));

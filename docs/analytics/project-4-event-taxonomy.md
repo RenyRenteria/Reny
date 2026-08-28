@@ -4,6 +4,8 @@ Date: 2026-06-16
 
 Reporting extension: 2026-08-06
 
+Audience and acquisition extension: 2026-08-27
+
 This taxonomy defines the baseline instrumentation for Project 4 before final provider selection. The browser adapter is provider-neutral:
 
 - Always records events in `window.renyAnalytics.events`.
@@ -15,9 +17,11 @@ This taxonomy defines the baseline instrumentation for Project 4 before final pr
 
 Every event should include:
 
-- `schema_version`: currently `1`.
-- `session_id`: opaque anonymous browser-session identifier; never an email, phone, user-agent, or IP.
+- `schema_version`: currently `2` for browser events; version `1` remains valid for historical events.
+- `visitor_id`: opaque browser identifier persisted locally and hashed before storage; never an email, phone, user-agent, or IP.
+- `session_id`: opaque anonymous session identifier. Sessions continue across tabs, renew after 30 minutes of inactivity, and restart when a new attributed campaign arrives.
 - `event_id`: unique idempotency key generated once per browser event. The server stores it in a hashed `client:` namespace so it cannot collide with canonical server events.
+- `traffic_source`, `traffic_medium`, and optional `traffic_campaign`: session-scoped attribution from UTM parameters or the referrer's hostname. Full referrer URLs are never persisted.
 - `screen`: stable page or surface key.
 - `path`: browser path.
 - `result`: `viewed`, `clicked`, `started`, `opened`, `blocked`, `failed`, `succeeded`, or another explicit outcome.
@@ -136,6 +140,8 @@ The first-party reporting allowlist is:
 
 The server sets `occurred_at`; `timestamp` from the client is diagnostic metadata only. Duplicate `event_id` values return success without inserting another row. Browser events and the new RSVP/ticket/check-in events do not persist `user_id`. RSVP, ticket purchase, and check-in also emit idempotent server-side events, while dashboard totals continue to use their canonical tables.
 
+For browser events, the server hashes `visitor_id`, derives only a coarse `desktop`, `mobile`, `tablet`, `bot`, or `unknown` device category, and accepts only a two-letter country code supplied by supported edge headers. Raw user-agent and IP values are not stored. Identified bots are excluded from audience and acquisition reporting.
+
 `music_play_started` is emitted once per real audio load, not again after pause/resume. `video_play_started` is emitted only after the YouTube Player API reports the `PLAYING` state; loading an iframe is not counted as a reproduction.
 
 ## Reporting Sources of Truth
@@ -146,6 +152,7 @@ The server sets `occurred_at`; `timestamp` from the client is diagnostic metadat
 - RSVP: `rsvps` and non-purchase RSVP tickets.
 - Tickets sold and check-ins: `tickets` joined to captured orders.
 - Visits, checkout starts, payment-failure diagnostics, and content consumption: allowlisted `access_events`.
+- Unique visitors, sessions, acquisition channels, devices, and countries: version 2 `page_view` events. The dashboard shows explicit partial or unavailable coverage for ranges predating version 2.
 
 Funnel purchase conversion compares only canonical transactions whose order metadata contains the same opaque `analytics_session_id` as a persisted checkout-start event in the selected period. The checkout API copies that browser-session identifier into the order snapshot. Transactions without that traceable link remain visible as canonical transaction events, but are excluded from comparable purchase sessions; the conversion is `N/A` and coverage is marked partial instead of mixing unrelated populations.
 
@@ -153,7 +160,7 @@ Different currencies are never added together. A later refund subtracts revenue 
 
 ## Privacy Contract
 
-Persisted analytics and report exports must never include names, email addresses, phone numbers, payment tokens, provider payloads, raw IP addresses, or full referrer URLs. The first-party endpoint validates an explicit payload allowlist and drops `path`, `title`, and `referrer` before storage. CSV exports contain only aggregate counts, opaque resource keys, content titles, ISO-8601 dates, amounts in major units, and currency codes; formula-leading strings are neutralized before export.
+Persisted analytics and report exports must never include names, email addresses, phone numbers, payment tokens, provider payloads, raw IP addresses, raw user-agents, or full referrer URLs. The first-party endpoint validates an explicit payload allowlist and drops `path`, `title`, and `referrer` before storage. Visitor identifiers are one-way hashed and never appear in the CMS or CSV exports. Audience exports contain only aggregate counts, normalized traffic labels, coarse device categories, and country codes; formula-leading strings are neutralized before export.
 
 ## QA Verification
 
@@ -162,5 +169,5 @@ Manual browser verification:
 1. Open any public page with `?analytics_debug=1`.
 2. Click visible actions.
 3. Confirm `[analytics]` console entries appear.
-4. Confirm `window.renyAnalytics.events` contains the events with `screen`, `path`, `item_type`, `item_id`, and `result` where applicable.
+4. Confirm `window.renyAnalytics.events` contains the events with `visitor_id`, `session_id`, `traffic_source`, `traffic_medium`, `screen`, `path`, `item_type`, `item_id`, and `result` where applicable.
 5. Confirm the site still works when no analytics provider is configured.

@@ -1,4 +1,5 @@
 import { trackAccessGateViews } from './access-gate-analytics.js';
+import { createAnalyticsIdentity } from './analytics-identity.js';
 
 const normalizeAnalyticsKey = (value) => String(value || '')
     .trim()
@@ -43,24 +44,23 @@ const analyticsRandomId = () => {
 
 const createAnalyticsId = analyticsRandomId;
 
-const analyticsSessionId = () => {
-    const key = 'reny_analytics_session';
-
+const analyticsStorage = (() => {
     try {
-        const existing = window.sessionStorage?.getItem(key);
-
-        if (existing) {
-            return existing;
-        }
-
-        const created = analyticsRandomId();
-        window.sessionStorage?.setItem(key, created);
-
-        return created;
+        return window.localStorage;
     } catch {
-        return analyticsRandomId();
+        return null;
     }
-};
+})();
+
+const analyticsIdentity = createAnalyticsIdentity({
+    storage: analyticsStorage,
+    createId: analyticsRandomId,
+    href: window.location.href,
+    referrer: document.referrer,
+    siteHostname: window.location.hostname,
+});
+
+const analyticsSessionId = () => analyticsIdentity.sessionId();
 
 const dispatchAnalyticsEvent = (event) => {
     if (Array.isArray(window.dataLayer)) {
@@ -141,13 +141,19 @@ const persistAnalyticsEvent = (event) => {
 const analyticsApi = window.renyAnalytics || {};
 analyticsApi.events = Array.isArray(analyticsApi.events) ? analyticsApi.events : [];
 analyticsApi.sessionId = analyticsSessionId;
+analyticsApi.visitorId = analyticsIdentity.visitorId;
 
 const trackEvent = (name, payload = {}, { eventId = null } = {}) => {
+    const identity = analyticsIdentity.sessionContext();
     const event = {
         name,
-        schema_version: 1,
-        session_id: analyticsSessionId(),
+        schema_version: 2,
+        visitor_id: identity.visitor_id,
+        session_id: identity.session_id,
         event_id: eventId || createAnalyticsId(),
+        traffic_source: identity.traffic_source,
+        traffic_medium: identity.traffic_medium,
+        traffic_campaign: identity.traffic_campaign,
         payload: compactAnalyticsPayload({
             screen: currentAnalyticsScreen(),
             path: window.location.pathname,
@@ -236,6 +242,10 @@ const bindOnce = (element, key, type, handler, options = undefined) => {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
+    if (document.body?.classList.contains('admin-cms-body')) {
+        return;
+    }
+
     trackEvent('page_view', {
         title: document.title,
         referrer: document.referrer || null,
