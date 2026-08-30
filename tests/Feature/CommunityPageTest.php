@@ -33,8 +33,7 @@ class CommunityPageTest extends TestCase
         $response->assertSee('Live Chat');
         $response->assertSee('data-community-tab="feed"', false);
         $response->assertSee('data-community-tab="chat"', false);
-        $response->assertSee('class="tab is-active"', false);
-        $response->assertSee('href="'.route('royals').'"', false);
+        $response->assertDontSee('class="tab is-active"', false);
         $response->assertSee('images/reny-renteria-logo-white.png');
         $response->assertSee('class="stage-lights"', false);
         $response->assertSee('class="community-shell home-shell royals-shell"', false);
@@ -61,13 +60,21 @@ class CommunityPageTest extends TestCase
         $this->assertStringNotContainsString('youtube', strtolower($html));
     }
 
-    public function test_existing_tabs_link_to_royals_route(): void
+    public function test_existing_tabs_do_not_link_to_royals_route(): void
     {
         foreach (['/', '/videos', '/photos'] as $path) {
-            $this->get($path)
+            $html = $this->get($path)
                 ->assertOk()
-                ->assertSee('href="'.route('royals').'"', false)
-                ->assertDontSee('href="#community"', false);
+                ->getContent();
+
+            preg_match_all('/<nav[^>]+aria-label="(?:Main|Mobile) menu"[^>]*>(.*?)<\/nav>/s', $html, $matches);
+
+            $this->assertCount(2, $matches[1], "Missing public navigation on [{$path}]");
+
+            foreach ($matches[1] as $navHtml) {
+                $this->assertStringNotContainsString('href="'.route('royals').'"', $navHtml);
+                $this->assertStringNotContainsString('href="#community"', $navHtml);
+            }
         }
     }
 

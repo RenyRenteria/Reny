@@ -77,7 +77,6 @@ class StorePageTest extends TestCase
         $response->assertSee('Name + email only');
         $response->assertSee('id="paypalButtons"', false);
         $response->assertDontSee('Load PayPal checkout');
-        $response->assertSee('class="tab is-active"', false);
         $response->assertSee('href="'.url('/store').'"', false);
         $response->assertDontSee('data-payment-method="paypal"', false);
         $response->assertDontSee('role="radiogroup"', false);
@@ -87,6 +86,14 @@ class StorePageTest extends TestCase
         $response->assertSee('País');
 
         $html = $response->getContent();
+
+        preg_match_all('/<nav[^>]+aria-label="(?:Main|Mobile) menu"[^>]*>(.*?)<\/nav>/s', $html, $matches);
+
+        $this->assertCount(2, $matches[1]);
+
+        foreach ($matches[1] as $navHtml) {
+            $this->assertStringNotContainsString('href="'.route('store').'"', $navHtml);
+        }
 
         $this->assertSame(3, substr_count($html, 'storefront-card'));
         $this->assertSame(1, substr_count($html, 'storefront-countdown'));
