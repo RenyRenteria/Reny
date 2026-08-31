@@ -5,12 +5,6 @@
 ])
 
 <nav class="{{ trim(($mobile ? 'mobile-bottom-nav' : 'tabs').' '.$extraClass) }}" aria-label="{{ $mobile ? 'Mobile menu' : 'Main menu' }}">
-    <a @class(['tab' => ! $mobile, 'is-active' => $active === 'royals']) href="{{ route('royals') }}"@if ($active === 'royals') aria-current="page"@endif>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-            <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z"></path>
-        </svg>
-        <span @class(['sr-only' => $mobile])>Royals</span>
-    </a>
     <a @class(['tab' => ! $mobile, 'is-active' => $active === 'videos']) href="{{ route('videos') }}"@if ($active === 'videos') aria-current="page"@endif>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
             <path d="m22 8-6 4 6 4V8Z"></path>
@@ -33,14 +27,5 @@
             <path d="m9 14 2 2 4-4"></path>
         </svg>
         <span @class(['sr-only' => $mobile])>Shows</span>
-    </a>
-    <a @class(['tab' => ! $mobile, 'is-active' => $active === 'store']) href="{{ route('store') }}"@if ($active === 'store') aria-current="page"@endif>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-            <path d="M4 10h16"></path>
-            <path d="M5 10l1.5-5h11L19 10"></path>
-            <path d="M6 10v9h12v-9"></path>
-            <path d="M9 19v-5h6v5"></path>
-        </svg>
-        <span @class(['sr-only' => $mobile])>Store</span>
     </a>
 </nav>

@@ -388,7 +388,7 @@ class HomePageTest extends TestCase
             preg_match('/<nav class="'.preg_quote($classes, '/').'" aria-label="Mobile menu">(.*?)<\/nav>/s', $html, $matches);
             $navHtml = $matches[1] ?? '';
 
-            $this->assertSame(5, substr_count($navHtml, '<a '), "Unexpected mobile nav item count on [{$path}]");
+            $this->assertSame(3, substr_count($navHtml, '<a '), "Unexpected mobile nav item count on [{$path}]");
 
             if ($path === '/') {
                 $this->assertStringNotContainsString('is-active', $navHtml);
@@ -403,6 +403,10 @@ class HomePageTest extends TestCase
         $this->assertDoesNotMatchRegularExpression('/\.home-bottom-nav svg\s*\{/s', $css);
         $this->assertMatchesRegularExpression(
             '/\.mobile-bottom-nav\s*\{[^}]*height\s*:\s*calc\(3\.1875rem \+ env\(safe-area-inset-bottom\)\);/s',
+            $css
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.mobile-bottom-nav\s*\{[^}]*grid-template-columns\s*:\s*repeat\(3, minmax\(0, 1fr\)\);/s',
             $css
         );
         $this->assertMatchesRegularExpression(
