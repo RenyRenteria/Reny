@@ -97,6 +97,26 @@ class HomePageTest extends TestCase
             ->assertSee(asset('images/reny-renteria-logo-white.png'), false);
     }
 
+    public function test_home_page_links_take_a_bite_to_spotify_and_apple_music(): void
+    {
+        $response = $this->get('/')
+            ->assertOk()
+            ->assertSee('https://open.spotify.com/album/2PKVLO29avVXOQO6z8hVC3?si=juIxG6rCSqqdinKNJkvFVg', false)
+            ->assertSee('https://music.apple.com/pa/album/take-a-bite/6790568132?l=en-GB', false)
+            ->assertSee('aria-label="Listen to Take a bite on Spotify"', false)
+            ->assertSee('aria-label="Listen to Take a bite on Apple Music"', false);
+
+        $html = $response->getContent();
+
+        preg_match('/<div class="home-album-actions">(.*?)<\/div>/s', $html, $matches);
+        $albumActions = $matches[1] ?? '';
+
+        $this->assertSame(2, substr_count($albumActions, 'class="home-streaming-link"'));
+        $this->assertSame(2, substr_count($albumActions, 'data-analytics-type="album-streaming-link"'));
+        $this->assertSame(2, substr_count($albumActions, 'target="_blank"'));
+        $this->assertSame(2, substr_count($albumActions, 'rel="noopener noreferrer"'));
+    }
+
     public function test_home_page_uses_the_featured_video_instead_of_the_latest_published_video(): void
     {
         $this->publishedContent(ContentType::Video, [
