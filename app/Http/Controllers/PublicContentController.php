@@ -149,7 +149,7 @@ class PublicContentController extends Controller
             : $this->moneyLabel((int) ($product['amount_cents'] ?? 0), (string) ($product['currency'] ?? 'USD'), $kind);
         $summary = filled($slot['description'] ?? null)
             ? str_replace("\n", ' - ', (string) $slot['description'])
-            : $this->checkoutProductSummary($product);
+            : (($product['summary'] ?? '') ?: $this->checkoutProductSummary($product));
         $typeLabel = $this->checkoutProductType($kind);
 
         $details = [
@@ -170,7 +170,7 @@ class PublicContentController extends Controller
         return [
             'key' => $key,
             'title' => (string) ($slot['title'] ?? $product['title'] ?? str($key)->headline()),
-            'eyebrow' => (string) (($slot['eyebrow'] ?? null) ?: $typeLabel),
+            'eyebrow' => (string) (($slot['eyebrow'] ?? null) ?: (($product['eyebrow'] ?? null) ?: $typeLabel)),
             'summary' => $summary,
             'price_label' => $priceLabel,
             'amount' => ((int) ($product['amount_cents'] ?? 0)) / 100,

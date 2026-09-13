@@ -178,6 +178,10 @@ class PayloadMediaResolver
 
     public function availability(EditorialContent $content): string
     {
+        if ($this->metadata($content, 'hide_inventory', false)) {
+            return 'Limited availability';
+        }
+
         $inventory = $this->metadata($content, 'inventory');
 
         if (is_numeric($inventory)) {

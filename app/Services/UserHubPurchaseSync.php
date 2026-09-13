@@ -139,7 +139,8 @@ class UserHubPurchaseSync
     {
         $event = $product['event'];
         $timezone = $event['timezone'] ?? 'America/Panama';
-        $startsAt = CarbonImmutable::parse($event['starts_at'], $timezone);
+        $startsAt = CarbonImmutable::parse($event['starts_at'], $timezone)
+            ->setTimezone(config('app.timezone', 'UTC'));
 
         return FanEvent::firstOrCreate([
             'title' => $event['title'],

@@ -15,6 +15,8 @@ use Throwable;
 
 class ProductCatalog
 {
+    public function __construct(private readonly TicketInventory $inventory) {}
+
     /**
      * @return array<string, mixed>|null
      */
@@ -74,6 +76,8 @@ class ProductCatalog
             'unlock_type' => $product['unlock_type'] ?? null,
             'source_type' => $product['source_type'] ?? 'order',
             'source_id' => $product['source_id'] ?? null,
+            'image_url' => $product['image_url'] ?? null,
+            'image_alt' => $product['image_alt'] ?? null,
             'event' => $product['event'] ?? null,
         ], fn (mixed $value): bool => $value !== null);
     }
@@ -113,6 +117,9 @@ class ProductCatalog
             'source_id' => (string) $content->id,
             'image_url' => $this->contentImageUrl($content),
             'image_alt' => $this->contentImageAlt($content),
+            'summary' => $content->summary ?: $content->body ?: '',
+            'eyebrow' => data_get($content->metadata, 'eyebrow'),
+            'inventory_tracked' => $this->inventory->tracks($content),
             'inventory' => is_numeric(data_get($content->metadata, 'inventory'))
                 ? (int) data_get($content->metadata, 'inventory')
                 : null,
@@ -313,7 +320,10 @@ class ProductCatalog
 
     private function contentImageUrl(EditorialContent $content): ?string
     {
-        return $this->contentImageAsset($content)?->publicUrl();
+        $fallback = data_get($content->metadata, 'fallback_image');
+
+        return $this->contentImageAsset($content)?->publicUrl()
+            ?? (filled($fallback) ? asset($fallback) : null);
     }
 
     private function contentImageAlt(EditorialContent $content): string
@@ -378,6 +388,10 @@ class ProductCatalog
         $inventory = data_get($content->metadata, 'inventory');
 
         if (is_numeric($inventory) && (int) $inventory <= 0) {
+            return false;
+        }
+
+        if ($this->inventory->tracks($content) && $this->inventory->remaining($content) === 0) {
             return false;
         }
 

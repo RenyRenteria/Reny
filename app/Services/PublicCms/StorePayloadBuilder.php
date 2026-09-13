@@ -7,6 +7,7 @@ use App\Models\EditorialContent;
 use App\Models\User;
 use App\Services\Commerce\ProductCatalog;
 use App\Services\StorefrontSettingsService;
+use Illuminate\Support\Carbon;
 
 class StorePayloadBuilder
 {
@@ -111,6 +112,7 @@ class StorePayloadBuilder
     private function event(EditorialContent $content): ?array
     {
         $startsAt = $this->media->metadata($content, 'starts_at');
+        $timezone = $this->media->metadata($content, 'timezone', config('admin.publishing_timezone', 'America/Panama'));
         $isRsvp = $this->media->metadata($content, 'ticketing_mode') === 'rsvp';
         $actionType = (string) $this->media->metadata($content, 'action_type', $isRsvp ? 'rsvp' : 'buy');
         $actionUrl = trim((string) $this->media->metadata($content, 'action_url', ''));
@@ -130,10 +132,10 @@ class StorePayloadBuilder
             'key' => $key,
             'name' => $content->title,
             'kicker' => str((string) $this->media->metadata($content, 'event_kind', 'event'))->headline()->toString(),
-            'date' => $startsAt ? date('M d, Y', strtotime((string) $startsAt)) : 'Date TBA',
+            'date' => $startsAt ? Carbon::parse($startsAt, $timezone)->setTimezone($timezone)->format('M d, Y') : 'Date TBA',
             'place' => $this->media->metadata($content, 'location', 'Online'),
             'starts_at' => $startsAt,
-            'timezone' => $this->media->metadata($content, 'timezone', config('admin.publishing_timezone', 'America/Panama')),
+            'timezone' => $timezone,
             'amount_cents' => $amountCents,
             'currency' => $currency,
             'price' => $amountCents / 100,
