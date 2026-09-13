@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\User;
 use App\Services\Commerce\ProductCatalog;
+use App\Services\Commerce\TicketInventory;
 use App\Services\PayPalService;
 use App\Services\RoyalPassService;
 use App\Services\UserHubPurchaseSync;
@@ -27,7 +28,10 @@ class CheckoutController extends Controller
 
     private const GUEST_CUSTOMER_IDS_SESSION_KEY = 'checkout.guest_customer_ids';
 
-    public function __construct(private readonly ProductCatalog $products) {}
+    public function __construct(
+        private readonly ProductCatalog $products,
+        private readonly TicketInventory $inventory,
+    ) {}
 
     public function store(
         Request $request,
@@ -44,6 +48,8 @@ class CheckoutController extends Controller
         $pendingOrders = $this->pendingPayPalOrders($validated['paypal_order_id'], $authenticatedUser, $checkoutTokenHash);
         $this->ensurePendingPayPalOrders($validated['paypal_order_id'], $pendingOrders);
         $user = $this->pendingOrdersUser($pendingOrders);
+
+        $this->inventory->beginCapture($pendingOrders);
 
         $capture = $payPal->captureOrder(
             $validated['paypal_order_id'],
@@ -128,6 +134,8 @@ class CheckoutController extends Controller
 
         $pendingReference = 'PENDING-'.Str::upper(Str::random(20));
         $orders = DB::transaction(function () use ($checkoutTokenHash, $currency, $pendingReference, $products, $user, $validated) {
+            $this->inventory->reserve($products);
+
             return $products->map(function (array $product, int $index) use ($checkoutTokenHash, $currency, $pendingReference, $user, $validated) {
                 return Order::create([
                     'user_id' => $user->id,
@@ -138,7 +146,7 @@ class CheckoutController extends Controller
                     'currency' => $currency,
                     'status' => 'pending',
                     'grants_royal_month' => true,
-                    'metadata' => $this->orderMetadata($product, $validated, $checkoutTokenHash),
+                    'metadata' => $this->orderMetadata($product, $validated, $checkoutTokenHash, paypal: true),
                 ]);
             });
         });
@@ -200,6 +208,10 @@ class CheckoutController extends Controller
             ->whereKey($pendingOrders->pluck('id'))
             ->where('status', 'pending')
             ->whereNull('provider_capture_id')
+            ->where(function ($query): void {
+                $query->whereNull('metadata->inventory->capture_started')
+                    ->orWhere('metadata->inventory->capture_started', false);
+            })
             ->update([
                 'status' => 'cancelled',
                 'updated_at' => now(),
@@ -230,6 +242,8 @@ class CheckoutController extends Controller
         $products = $this->resolveProducts($validated['product_keys'], $user);
 
         $orders = DB::transaction(function () use ($checkoutTokenHash, $currency, $products, $reference, $royalPass, $user, $validated) {
+            $this->inventory->reserve($products);
+
             return $products->map(function (array $product, int $index) use ($checkoutTokenHash, $currency, $reference, $royalPass, $user, $validated) {
                 $providerOrderId = $this->providerOrderId("LOCAL-{$reference}", $product['key'], $index);
                 $order = Order::create([
@@ -315,11 +329,18 @@ class CheckoutController extends Controller
      * @param  array<string, mixed>  $validated
      * @return array<string, mixed>
      */
-    private function orderMetadata(array $product, array $validated, ?string $checkoutTokenHash = null): array
+    private function orderMetadata(array $product, array $validated, ?string $checkoutTokenHash = null, bool $paypal = false): array
     {
         $metadata = [
             'product' => $this->products->orderSnapshot($product),
         ];
+
+        if ($product['inventory_tracked'] ?? false) {
+            $metadata['inventory'] = [
+                'expires_at' => $paypal ? now()->addMinutes(30)->toISOString() : null,
+                'capture_started' => false,
+            ];
+        }
 
         if ($checkoutTokenHash) {
             $metadata['checkout'] = [

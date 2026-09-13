@@ -386,7 +386,9 @@ class AccountController extends Controller
             'event_key' => $eventKey,
             'fingerprint' => $this->eventFingerprint((string) ($event?->title ?? $eventKey), $startsAt),
             'image_alt' => (string) ($slot['image_alt'] ?? $event?->title ?? 'Event poster'),
-            'image_url' => $slot ? $this->slotImage($slot) : asset('images/store/rosa-dorada.png'),
+            'image_url' => $slot ? $this->slotImage($slot) : (
+                data_get($ticket->order?->metadata, 'product.image_url') ?: asset('images/store/rosa-dorada.png')
+            ),
             'meta' => $this->eventMeta(
                 $startsAt,
                 $this->accountTimezone($user, $event?->timezone),
