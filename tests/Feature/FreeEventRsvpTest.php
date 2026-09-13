@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Rsvp;
 use App\Models\User;
+use App\Services\TakeoverPresaleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
@@ -82,9 +83,10 @@ class FreeEventRsvpTest extends TestCase
 
     public function test_paid_visible_price_is_not_accepted_by_free_event_endpoint(): void
     {
+        app(TakeoverPresaleSeeder::class)->seed();
         $this->postJson(route('community.free-event-rsvp.store'), [
-            'event_key' => 'listening',
-            'event_name' => 'Festival de la Rosa Dorada',
+            'event_key' => 'reny-renteria-takeover-2027',
+            'event_name' => 'Reny Renteria Takeover',
             'name' => 'Paid Fan',
             'email' => 'paid@example.com',
             'country' => 'Panama',

@@ -154,7 +154,7 @@ class AccountDashboardTest extends TestCase
             ->assertSee('No upcoming events')
             ->assertSee('Available Upcoming')
             ->assertSee('Reny Renteria en Concierto')
-            ->assertSee('Festival de la Rosa Dorada')
+            ->assertDontSee('Festival de la Rosa Dorada')
             ->assertSee('Available')
             ->assertSee('Buy Now')
             ->assertSee('0 pts')

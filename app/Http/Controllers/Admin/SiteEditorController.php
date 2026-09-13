@@ -712,6 +712,12 @@ class SiteEditorController extends Controller
                 $productKey = trim((string) ($slot['product_key'] ?? ''));
                 $url = trim((string) ($slot['url'] ?? ''));
 
+                // The secondary event slot can stay empty until another show is selected.
+                if ($slotKey === 'event_secondary' && blank($slot['title'] ?? null)
+                    && empty($slot['content_id']) && $productKey === '' && $url === '') {
+                    continue;
+                }
+
                 if (blank($slot['title'] ?? null) || blank($slot['cta_label'] ?? null)) {
                     $validator->errors()->add("slots.{$slotKey}.title", 'Published cards require a title and CTA label.');
                 }
