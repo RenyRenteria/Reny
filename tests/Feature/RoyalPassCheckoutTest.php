@@ -29,6 +29,17 @@ class RoyalPassCheckoutTest extends TestCase
         parent::setUp();
 
         config([
+            'reny_catalog.products.sample-ticket' => [
+                'title' => 'Sample Ticketed Show',
+                'amount_cents' => 1500,
+                'kind' => 'ticket',
+                'event' => [
+                    'title' => 'Sample Ticketed Show',
+                    'venue' => 'Rock & Folk Pty',
+                    'starts_at' => '2027-10-03 20:30:00',
+                    'timezone' => 'America/Panama',
+                ],
+            ],
             'services.paypal.base_url' => 'https://paypal.test',
             'services.paypal.client_id' => 'client-id',
             'services.paypal.client_secret' => 'client-secret',
@@ -339,7 +350,7 @@ class RoyalPassCheckoutTest extends TestCase
             'customer_email' => 'customer@renyrenteria.com',
             'customer_phone' => '+50760000000',
             'customer_country' => 'Panama',
-            'product_keys' => ['listening'],
+            'product_keys' => ['sample-ticket'],
             'currency' => 'USD',
         ])
             ->assertOk()
@@ -347,7 +358,7 @@ class RoyalPassCheckoutTest extends TestCase
             ->assertJsonPath('paypal_order_id', 'PAYPAL-CUSTOMER-100');
 
         $order = Order::query()
-            ->where('provider_order_id', 'PAYPAL-CUSTOMER-100-1-listening')
+            ->where('provider_order_id', 'PAYPAL-CUSTOMER-100-1-sample-ticket')
             ->firstOrFail();
 
         $this->assertSame('Reny Fan', data_get($order->metadata, 'customer.name'));
@@ -403,7 +414,7 @@ class RoyalPassCheckoutTest extends TestCase
             'customer_email' => 'tickets-items@renyrenteria.com',
             'customer_phone' => '+50760000001',
             'customer_country' => 'Panama',
-            'product_keys' => ['concert', 'concert', 'listening'],
+            'product_keys' => ['concert', 'concert', 'sample-ticket'],
             'currency' => 'USD',
         ])
             ->assertOk()
@@ -411,7 +422,7 @@ class RoyalPassCheckoutTest extends TestCase
             ->assertJsonPath('paypal_order_id', 'PAYPAL-TICKETS-ITEMS')
             ->assertJsonPath('order_ids.0', 'PAYPAL-TICKETS-ITEMS-1-concert')
             ->assertJsonPath('order_ids.1', 'PAYPAL-TICKETS-ITEMS-2-concert')
-            ->assertJsonPath('order_ids.2', 'PAYPAL-TICKETS-ITEMS-3-listening');
+            ->assertJsonPath('order_ids.2', 'PAYPAL-TICKETS-ITEMS-3-sample-ticket');
 
         Http::assertSent(function ($request): bool {
             if ($request->url() !== 'https://paypal.test/v2/checkout/orders') {
@@ -426,7 +437,7 @@ class RoyalPassCheckoutTest extends TestCase
                 && $items->contains(fn (array $item): bool => $item['name'] === 'Reny Live - Studio Night'
                     && $item['quantity'] === '2'
                     && data_get($item, 'unit_amount.value') === '42.00')
-                && $items->contains(fn (array $item): bool => $item['name'] === 'Festival de la Rosa Dorada'
+                && $items->contains(fn (array $item): bool => $item['name'] === 'Sample Ticketed Show'
                     && $item['quantity'] === '1'
                     && data_get($item, 'unit_amount.value') === '15.00');
         });
@@ -922,22 +933,22 @@ class RoyalPassCheckoutTest extends TestCase
 
     public function test_multi_event_checkout_issues_tickets_for_each_event(): void
     {
-        $this->createPendingPayPalOrder('multi-event@renyrenteria.com', ['concert', 'listening'], 'PAYPAL-MULTI-EVENT');
+        $this->createPendingPayPalOrder('multi-event@renyrenteria.com', ['concert', 'sample-ticket'], 'PAYPAL-MULTI-EVENT');
         $this->fakeSuccessfulCapture('PAYPAL-MULTI-EVENT', '57.00', 'CAPTURE-MULTI-EVENT');
 
         $this->postJson('/checkout/paypal', [
             'identifier' => 'multi-event@renyrenteria.com',
-            'product_keys' => ['concert', 'listening'],
+            'product_keys' => ['concert', 'sample-ticket'],
             'currency' => 'USD',
             'paypal_order_id' => 'PAYPAL-MULTI-EVENT',
         ])
             ->assertOk()
             ->assertJsonPath('order_ids.0', 'PAYPAL-MULTI-EVENT-1-concert')
-            ->assertJsonPath('order_ids.1', 'PAYPAL-MULTI-EVENT-2-listening');
+            ->assertJsonPath('order_ids.1', 'PAYPAL-MULTI-EVENT-2-sample-ticket');
 
         $user = User::where('email', 'multi-event@renyrenteria.com')->firstOrFail();
         $concert = FanEvent::where('title', 'Reny Live - Studio Night')->firstOrFail();
-        $listening = FanEvent::where('title', 'Festival de la Rosa Dorada')->firstOrFail();
+        $sampleTicket = FanEvent::where('title', 'Sample Ticketed Show')->firstOrFail();
 
         $this->assertSame(1, Ticket::query()
             ->where('user_id', $user->id)
@@ -946,19 +957,19 @@ class RoyalPassCheckoutTest extends TestCase
             ->count());
         $this->assertSame(1, Ticket::query()
             ->where('user_id', $user->id)
-            ->where('event_id', $listening->id)
+            ->where('event_id', $sampleTicket->id)
             ->where('status', 'confirmed')
             ->count());
     }
 
     public function test_ticket_checkout_rejects_paypal_capture_total_mismatch(): void
     {
-        $this->createPendingPayPalOrder('ticket-mismatch@renyrenteria.com', ['concert', 'listening'], 'PAYPAL-TICKET-MISMATCH');
+        $this->createPendingPayPalOrder('ticket-mismatch@renyrenteria.com', ['concert', 'sample-ticket'], 'PAYPAL-TICKET-MISMATCH');
         $this->fakeSuccessfulCapture('PAYPAL-TICKET-MISMATCH', '42.00', 'CAPTURE-TICKET-MISMATCH');
 
         $this->postJson('/checkout/paypal', [
             'identifier' => 'ticket-mismatch@renyrenteria.com',
-            'product_keys' => ['concert', 'listening'],
+            'product_keys' => ['concert', 'sample-ticket'],
             'currency' => 'USD',
             'paypal_order_id' => 'PAYPAL-TICKET-MISMATCH',
         ])
@@ -971,7 +982,7 @@ class RoyalPassCheckoutTest extends TestCase
             'status' => 'pending',
         ]);
         $this->assertDatabaseHas('orders', [
-            'provider_order_id' => 'PAYPAL-TICKET-MISMATCH-2-listening',
+            'provider_order_id' => 'PAYPAL-TICKET-MISMATCH-2-sample-ticket',
             'provider_capture_id' => null,
             'status' => 'pending',
         ]);
@@ -985,7 +996,7 @@ class RoyalPassCheckoutTest extends TestCase
 
         $response = $this->postJson('/checkout/paypal', [
             'identifier' => 'ticket-snapshot@renyrenteria.com',
-            'product_keys' => ['concert', 'listening'],
+            'product_keys' => ['concert', 'sample-ticket'],
             'currency' => 'USD',
             'paypal_order_id' => 'PAYPAL-TICKET-SNAPSHOT',
         ]);
@@ -1005,7 +1016,7 @@ class RoyalPassCheckoutTest extends TestCase
             ->where('status', 'confirmed')
             ->count());
         $this->assertDatabaseMissing('events', [
-            'title' => 'Festival de la Rosa Dorada',
+            'title' => 'Sample Ticketed Show',
         ]);
     }
 

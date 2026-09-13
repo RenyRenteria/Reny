@@ -80,20 +80,20 @@ class StorefrontSettingsService
                 'event_secondary' => [
                     'key' => 'event_secondary',
                     'kind' => 'event',
-                    'title' => 'Festival de la Rosa Dorada',
+                    'title' => '',
                     'eyebrow' => '',
-                    'description' => 'Rock & Folk Pty, Ciudad de Panama',
+                    'description' => '',
                     'price_label' => '',
                     'cta_label' => 'GET TICKETS',
                     'countdown_at' => '',
                     'timezone' => 'America/Panama',
                     'action_type' => 'buy',
-                    'product_key' => 'listening',
+                    'product_key' => '',
                     'url' => '',
-                    'image' => 'images/store/rosa-dorada.png',
+                    'image' => '',
                     'image_asset_id' => null,
                     'content_id' => null,
-                    'image_alt' => 'Festival de la Rosa Dorada poster',
+                    'image_alt' => '',
                 ],
                 'album' => [
                     'key' => 'album',
@@ -284,6 +284,15 @@ class StorefrontSettingsService
             }
 
             $slot = $slots[$slotKey];
+
+            if ($hideUnavailableLinkedContent && $slotKey === 'event_secondary'
+                && blank($slot['title']) && empty($slot['content_id'])
+                && blank($slot['product_key']) && blank($slot['url'])) {
+                unset($slots[$slotKey]);
+
+                continue;
+            }
+
             $content = $linkedContents->first(function (EditorialContent $content) use ($slot): bool {
                 $contentId = (int) ($slot['content_id'] ?? 0);
 

@@ -94,7 +94,8 @@
         <div class="store-cms-slot-grid">
             @foreach ($slotKeys as $slot)
                 @php
-                    $slotImage = data_get($storefront, "slots.{$slot}.image_url") ?: asset(data_get($storefront, "slots.{$slot}.image", 'images/store/work-in-progress.png'));
+                    $slotImagePath = data_get($storefront, "slots.{$slot}.image");
+                    $slotImage = data_get($storefront, "slots.{$slot}.image_url") ?: (filled($slotImagePath) ? asset($slotImagePath) : null);
                     $slotAction = $slotField($slot, 'action_type');
                     $slotImageAssetId = (string) old("slots.{$slot}.image_asset_id", data_get($storefront, "slots.{$slot}.image_asset_id", ''));
                     $slotContentId = (string) old("slots.{$slot}.content_id", data_get($storefront, "slots.{$slot}.content_id", ''));
@@ -108,7 +109,9 @@
                         </div>
                     </div>
 
-                    <img class="store-cms-thumb" src="{{ $slotImage }}" alt="">
+                    @if ($slotImage)
+                        <img class="store-cms-thumb" src="{{ $slotImage }}" alt="">
+                    @endif
 
                     <label>
                         <span>Contenido canonico</span>

@@ -11,6 +11,7 @@ use App\Models\MediaAsset;
 use App\Models\SitePageSetting;
 use App\Models\User;
 use App\Services\StorefrontSettingsService;
+use App\Services\TakeoverPresaleSeeder;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -27,6 +28,7 @@ class StorePageTest extends TestCase
         config()->set('public_cms.cache_store', 'array');
         Cache::store('array')->flush();
         $this->travelTo(CarbonImmutable::parse('2026-08-14 13:00:00', 'America/Panama'));
+        app(TakeoverPresaleSeeder::class)->seed();
     }
 
     public function test_store_page_hides_removed_concert_and_renders_remaining_slots_for_guest(): void
@@ -42,24 +44,25 @@ class StorePageTest extends TestCase
         $response->assertSee('Royal Pass');
         $response->assertSee('Unlock Royal Pass');
         $response->assertDontSee('Reny Renteria en Concierto');
-        $response->assertSee('Festival de la Rosa Dorada');
+        $response->assertSee('Reny Renteria Takeover');
+        $response->assertDontSee('Festival de la Rosa Dorada');
         $response->assertSee('Work in Progress');
         $response->assertSee('Crown Collection');
         $response->assertDontSee('FREE');
-        $response->assertSee('$15');
+        $response->assertSee('$20');
         $response->assertSee('GET TICKETS');
         $response->assertSee('LISTEN');
         $response->assertSee('GET MERCH');
         $response->assertSee('class="storefront-countdown"', false);
         $response->assertDontSee('data-countdown-at="2026-09-21T19:30:00-05:00"', false);
-        $response->assertSee('data-countdown-at="2026-12-16T19:30:00-05:00"', false);
+        $response->assertSee('data-countdown-at="2027-10-02T20:30:00-05:00"', false);
         $response->assertDontSee('images/store/reny-concert.png');
-        $response->assertSee('images/store/rosa-dorada.png');
+        $response->assertSee('images/store/reny-takeover-2027.png');
         $response->assertSee('images/store/crown-collection.png');
         $response->assertSee('images/store/royal-pass.png');
         $response->assertSee('PayPal charges in USD. Every completed purchase activates Royal Pass for 1 month on this account.');
         $response->assertDontSee('data-free-event-rsvp="concert"', false);
-        $response->assertSee('data-buy="listening"', false);
+        $response->assertSee('data-buy="reny-renteria-takeover-2027"', false);
         $response->assertSee('data-royal-pass-option="royal"', false);
         $response->assertSee('data-royal-pass-selected="true"', false);
         $response->assertSee('aria-pressed="true"', false);
@@ -68,8 +71,8 @@ class StorePageTest extends TestCase
         $response->assertDontSee('data-buy="deluxe"', false);
         $response->assertSee('href="'.url('/music').'"', false);
         $response->assertSee('data-buy="merch"', false);
-        $response->assertSee('data-buy-image="'.asset('images/store/rosa-dorada.png').'"', false);
-        $response->assertSee('data-buy-url="'.route('store.checkout', ['product' => 'listening']).'"', false);
+        $response->assertSee('data-buy-image="'.asset('images/store/reny-takeover-2027.png').'"', false);
+        $response->assertSee('data-buy-url="'.route('store.checkout', ['product' => 'reny-renteria-takeover-2027']).'"', false);
         $response->assertDontSee(route('store.checkout', ['product' => 'deluxe']), false);
         $response->assertSee('data-buy-url="'.route('store.checkout', ['product' => 'merch']).'"', false);
         $response->assertDontSee('data-buy="concert"', false);
@@ -97,7 +100,7 @@ class StorePageTest extends TestCase
 
         $this->assertSame(3, substr_count($html, 'storefront-card'));
         $this->assertSame(1, substr_count($html, 'storefront-countdown'));
-        $this->assertLessThan(strpos($html, 'Festival de la Rosa Dorada'), strpos($html, 'Royal Pass'));
+        $this->assertLessThan(strpos($html, 'Reny Renteria Takeover'), strpos($html, 'Royal Pass'));
         $this->assertStringNotContainsString('is-event-secondary', $html);
         $this->assertStringNotContainsString('Official store', $html);
         $this->assertStringNotContainsString('Reny Shop', $html);
@@ -150,10 +153,10 @@ class StorePageTest extends TestCase
             ->assertSee(asset('images/reny-renteria-logo-white.png'), false)
             ->assertSee('class="stage-lights"', false)
             ->assertSee('Reny Renteria en Concierto')
-            ->assertSee('Festival de la Rosa Dorada')
+            ->assertSee('Reny Renteria Takeover')
             ->assertSee('data-free-event-rsvp="concert"', false)
-            ->assertSee('data-buy="listening"', false)
-            ->assertSee('data-buy-url="'.route('store.checkout', ['product' => 'listening']).'"', false)
+            ->assertSee('data-buy="reny-renteria-takeover-2027"', false)
+            ->assertSee('data-buy-url="'.route('store.checkout', ['product' => 'reny-renteria-takeover-2027']).'"', false)
             ->assertSee('id="paypalButtons"', false)
             ->assertDontSee('Crown Collection')
             ->assertDontSee('data-buy="merch"', false)
@@ -166,7 +169,7 @@ class StorePageTest extends TestCase
         $this->assertSame(2, substr_count($html, 'class="home-show-card"'));
         $this->assertSame(0, substr_count($html, 'storefront-card'));
         $this->assertSame(1, substr_count($html, '<h2>Reny Renteria en Concierto</h2>'));
-        $this->assertLessThan(strpos($html, 'Festival de la Rosa Dorada'), strpos($html, 'Reny Renteria en Concierto'));
+        $this->assertLessThan(strpos($html, 'Reny Renteria Takeover'), strpos($html, 'Reny Renteria en Concierto'));
     }
 
     public function test_shows_page_uses_the_home_show_card_structure_and_segmented_countdown(): void
@@ -236,7 +239,7 @@ class StorePageTest extends TestCase
             ->assertOk()
             ->assertSee('Reny Renteria en Concierto')
             ->assertSee('Future CMS Show')
-            ->assertSee('Festival de la Rosa Dorada')
+            ->assertSee('Reny Renteria Takeover')
             ->assertDontSee('Past CMS Show')
             ->assertSee('data-free-event-rsvp="future-cms-show"', false);
 
@@ -244,7 +247,7 @@ class StorePageTest extends TestCase
 
         $this->assertSame(3, substr_count($html, 'class="home-show-card"'));
         $this->assertLessThan(strpos($html, 'Future CMS Show'), strpos($html, 'Reny Renteria en Concierto'));
-        $this->assertLessThan(strpos($html, 'Festival de la Rosa Dorada'), strpos($html, 'Future CMS Show'));
+        $this->assertLessThan(strpos($html, 'Reny Renteria Takeover'), strpos($html, 'Future CMS Show'));
     }
 
     public function test_store_page_normalizes_legacy_royal_pass_cta_label(): void
@@ -269,7 +272,7 @@ class StorePageTest extends TestCase
 
     public function test_checkout_screen_renders_product_details_and_inline_paypal_flow(): void
     {
-        $response = $this->get(route('store.checkout', ['product' => 'listening']));
+        $response = $this->get(route('store.checkout', ['product' => 'reny-renteria-takeover-2027']));
 
         $response
             ->assertOk()
@@ -277,16 +280,17 @@ class StorePageTest extends TestCase
             ->assertSee('class="store-shell home-shell golden-stage-shell checkout-stage-shell"', false)
             ->assertSee(asset('images/reny-renteria-logo-white.png'), false)
             ->assertSee('class="stage-lights"', false)
-            ->assertSee('Festival de la Rosa Dorada')
-            ->assertSee('Rock &amp; Folk Pty, Ciudad de Panama', false)
-            ->assertSee('Dec 16, 2026 - 7:30 PM')
-            ->assertSee('$15')
-            ->assertSee('images/store/rosa-dorada.png')
+            ->assertSee('Reny Renteria Takeover')
+            ->assertSee('Rock &amp; Folk Pty', false)
+            ->assertSee('Puertas 7:30 PM')
+            ->assertSee('Show 8:30 PM')
+            ->assertSee('$20')
+            ->assertSee('images/store/reny-takeover-2027.png')
             ->assertSee('data-dedicated-checkout', false)
-            ->assertSee('data-checkout-product="listening"', false)
-            ->assertSee('data-product-image="'.asset('images/store/rosa-dorada.png').'"', false)
-            ->assertSee('data-product-price-value="15.00"', false)
-            ->assertSee('data-copy-url="'.route('store.checkout', ['product' => 'listening']).'"', false)
+            ->assertSee('data-checkout-product="reny-renteria-takeover-2027"', false)
+            ->assertSee('data-product-image="'.asset('images/store/reny-takeover-2027.png').'"', false)
+            ->assertSee('data-product-price-value="20.00"', false)
+            ->assertSee('data-copy-url="'.route('store.checkout', ['product' => 'reny-renteria-takeover-2027']).'"', false)
             ->assertDontSee('data-auto-open-checkout', false)
             ->assertDontSee('id="bagLayer"', false)
             ->assertSee('id="paypalButtons"', false)
@@ -350,7 +354,7 @@ class StorePageTest extends TestCase
             'payload' => [
                 'slots' => [
                     'event_secondary' => [
-                        'product_key' => 'listening',
+                        'product_key' => 'reny-renteria-takeover-2027',
                         'image_asset_id' => $asset->id,
                     ],
                 ],
@@ -360,7 +364,7 @@ class StorePageTest extends TestCase
 
         $assetUrl = $asset->publicUrl();
 
-        $this->get(route('store.checkout', ['product' => 'listening']))
+        $this->get(route('store.checkout', ['product' => 'reny-renteria-takeover-2027']))
             ->assertOk()
             ->assertSee('src="'.$assetUrl.'"', false)
             ->assertSee('alt="CMS checkout poster"', false)

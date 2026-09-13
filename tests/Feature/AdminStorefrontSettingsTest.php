@@ -283,15 +283,7 @@ class AdminStorefrontSettingsTest extends TestCase
                     'action_type' => 'rsvp',
                     'product_key' => 'concert',
                 ],
-                'event_secondary' => [
-                    'title' => 'Festival de la Rosa Dorada',
-                    'description' => "Rock & Folk Pty, Ciudad de Panama\n16/ Dic - 7:30 PM",
-                    'price_label' => '$15',
-                    'cta_label' => 'GET TICKETS',
-                    'countdown_at' => '2026-12-16T19:30',
-                    'action_type' => 'buy',
-                    'product_key' => 'listening',
-                ],
+                'event_secondary' => [],
                 'album' => [
                     'title' => 'Work in Progress',
                     'eyebrow' => 'Deluxe Album',
