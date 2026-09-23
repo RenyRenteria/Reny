@@ -24,6 +24,14 @@ class AccountDashboardTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // These scenarios expect the September 2026 catalog concert to be upcoming.
+        $this->travelTo(now()->setDate(2026, 8, 13));
+    }
+
     public function test_account_dashboard_renders_minimal_user_hub_sections(): void
     {
         $renewalDate = now()->addMonth();

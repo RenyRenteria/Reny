@@ -14,6 +14,14 @@ class StoreRsvpTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Keep the fixed catalog concert in the future for RSVP/account assertions.
+        $this->travelTo(now()->setDate(2026, 8, 13));
+    }
+
     public function test_authenticated_user_can_confirm_free_store_rsvp(): void
     {
         $user = User::factory()->create([
