@@ -17,7 +17,7 @@ The supplied photos are encoded as WebP for the website, preserving their compos
 
 ## Contact
 
-The initial contact destination is the official Instagram profile, `https://www.instagram.com/renyrenteria/`, consistent with the project's existing Instagram reference. Booking email/WhatsApp was requested from Reny and is not assumed from admin accounts or private contact details. The page links directly to Instagram; there is no unsent form or implied email delivery.
+The contact page includes a “contactar por correo” button linking to `mailto:reny@portierstrategy.com`, supplied and requested by Reny on September 29, 2026. It opens the visitor's configured email application. The official Instagram profile, `https://www.instagram.com/renyrenteria/`, remains available as a secondary contact option. There is no contact form or server-side email delivery.
 
 ## Validation
 

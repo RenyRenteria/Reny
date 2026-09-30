@@ -214,6 +214,11 @@
 .artist-albums span {
     font-size: .875rem;
 }
+.artist-contact-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .75rem;
+}
 .artist-contact-handle {
     display: block;
     margin-top: .85rem;
