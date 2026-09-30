@@ -86,6 +86,7 @@
     min-height: 34rem;
     max-height: 48rem;
     object-fit: cover;
+    object-position: center 20%;
 }
 .artist-hero-photo figcaption {
     position: absolute;
@@ -168,7 +169,7 @@
     height: auto;
     aspect-ratio: 4/5;
     object-fit: cover;
-    object-position: center 35%;
+    object-position: center bottom;
 }
 .artist-gallery figcaption {
     padding: 1rem 1.25rem;
@@ -282,7 +283,7 @@
         min-height: 0;
         max-height: none;
         aspect-ratio: 4/5;
-        object-position: center 35%;
+        object-position: center 20%;
     }
     .artist-stack h1 {
         font-size: clamp(3.6rem, 13vw, 5rem);

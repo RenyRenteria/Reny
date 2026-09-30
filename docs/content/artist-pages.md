@@ -6,13 +6,14 @@ The public navigation is Home, Videos, Música, Merch, Shows, Bio, Contacto, in 
 
 The biography comes from Reny's supplied two-page “Final - Reny Renteria - Project Intelligence (2).pdf”, received September 29, 2026. It retains the supplied education, television, film, theatre, festival, skills, musical philosophy and discography. The September 21, 2026 concert is described as a past performance.
 
-All selected photos already belong to the site's public image archive. No third-party press photos or generated likenesses were added. The image search also found Telemetro, El Siglo and Día a Día coverage, but those images are not needed for this implementation.
+Bio and Contact use the four recent concert photographs supplied directly by Reny in this thread on September 29, 2026. These replace the initial selection from the site's older public archive, including the pages' social preview images. No third-party press photos or generated likenesses were added.
 
-- `/images/photos/cover.jpg`: biography portrait at a vocal microphone.
-- `/images/photos/studio.jpg`: recording session, illustrating musical creation.
-- `/images/photos/performance.jpg`: television performance, illustrating stage work and the Contact page.
+- `/images/artist/reny-live-portrait.webp`: Bio hero and social preview; source `WhatsApp Image 2026-09-21 at 11.36.02 PM.jpeg` (960 × 1280).
+- `/images/artist/reny-live-dancers.webp`: Bio gallery, singing with dancers; source `DSC04439.JPG` (exported at 1400 × 2100).
+- `/images/artist/reny-live-stage.webp`: Bio gallery, wide stage view; source `DSC04456 (1).JPG` (exported at 1400 × 2100).
+- `/images/artist/reny-live-red.webp`: Contact hero and social preview; source `WhatsApp Image 2026-09-22 at 1.30.45 AM.jpeg` (exported at 1200 × 1875).
 
-Captions do not attribute the photos to specific dated events that cannot be established from the archive.
+The supplied photos are encoded as WebP for the website, preserving their composition and colors. CSS positions the portraits toward the top and the gallery images toward the bottom so the performers stay visible on desktop and mobile. Captions describe the images without assuming an event date or venue. Original archive images remain available to other existing pages.
 
 ## Contact
 
@@ -25,3 +26,9 @@ The initial contact destination is the official Instagram profile, `https://www.
 - Home, Videos, Music and Shows checked at 320 and 1440px. Short desktop navigation also checked at 1024 × 500.
 - All three biography photos and Contact/Merch images loaded. New pages preserve the shared player element across navigation; page language, title, canonical URL and browser Back update correctly.
 - Merch opens the existing checkout with the matching product and amount. Live PayPal payment was not attempted: local credentials are not configured.
+
+### Photo refresh
+
+- ArtistPagesTest and PublicNavigationTest: 4 PHP tests / 483 assertions passed; Pint and Vite build passed.
+- Playwright rechecked Bio and Contact at 320, 375, 430, 768, 1024 and 1440px: all four supplied photos load, no horizontal overflow or JavaScript page errors, updated Open Graph/Twitter images, and the Instagram destination is preserved.
+- Desktop and mobile screenshots were inspected for portrait and stage framing. The four WebP assets total about 382 KiB, compared with about 12 MiB for the supplied originals.

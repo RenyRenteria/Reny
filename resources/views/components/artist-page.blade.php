@@ -1,4 +1,4 @@
-@props(['active', 'title', 'description', 'image' => 'images/photos/cover.jpg'])
+@props(['active', 'title', 'description', 'image' => 'images/artist/reny-live-portrait.webp'])
 <!DOCTYPE html>
 <html lang="es">
     <head>

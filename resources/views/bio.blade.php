@@ -8,7 +8,7 @@
             <a class="artist-button" href="{{ route('music') }}">Escucha su música <span aria-hidden="true">↗</span></a>
         </div>
         <figure class="artist-hero-photo">
-            <img src="{{ asset('images/photos/cover.jpg') }}" alt="Reny Rentería cantando frente a un micrófono" width="640" height="1136" fetchpriority="high">
+            <img src="{{ asset('images/artist/reny-live-portrait.webp') }}" alt="Reny Rentería cantando con un micrófono bajo luces azules" width="960" height="1280" fetchpriority="high">
             <figcaption>La voz detrás de la música.</figcaption>
         </figure>
     </section>
@@ -43,9 +43,9 @@
         <p>Su versatilidad escénica también fue reconocida al obtener el 1.er lugar del concurso de interpretación escénica Panama is Burning, donde brilló por su autenticidad y presencia.</p>
     </section>
 
-    <div class="artist-gallery" aria-label="Reny en el estudio y en escena">
-        <figure><img src="{{ asset('images/photos/studio.jpg') }}" alt="Reny grabando voces con audífonos en el estudio" width="640" height="1136" loading="lazy" decoding="async"><figcaption>En el estudio: voz y creación.</figcaption></figure>
-        <figure><img src="{{ asset('images/photos/performance.jpg') }}" alt="Reny cantando junto a una bailarina durante una presentación en televisión" width="640" height="1136" loading="lazy" decoding="async"><figcaption>En escena: música y movimiento.</figcaption></figure>
+    <div class="artist-gallery" aria-label="Reny en concierto">
+        <figure><img src="{{ asset('images/artist/reny-live-dancers.webp') }}" alt="Reny cantando acompañado de bailarinas bajo luces azules y violetas" width="1400" height="2100" loading="lazy" decoding="async"><figcaption>En escena: música y movimiento.</figcaption></figure>
+        <figure><img src="{{ asset('images/artist/reny-live-stage.webp') }}" alt="Reny con los brazos abiertos y un micrófono en el escenario" width="1400" height="2100" loading="lazy" decoding="async"><figcaption>Una voz que llena el escenario.</figcaption></figure>
     </div>
 
     <section class="artist-panel" aria-labelledby="bio-stage">

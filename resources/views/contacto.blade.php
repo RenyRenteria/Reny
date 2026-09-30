@@ -1,4 +1,4 @@
-<x-artist-page active="contacto" title="Contacto" description="Conecta con Reny Rentería para contrataciones, prensa, colaboraciones y consultas sobre su merch oficial." image="images/photos/performance.jpg">
+<x-artist-page active="contacto" title="Contacto" description="Conecta con Reny Rentería para contrataciones, prensa, colaboraciones y consultas sobre su merch oficial." image="images/artist/reny-live-red.webp">
     <section class="artist-hero artist-contact-hero" aria-labelledby="contact-title">
         <div class="artist-hero-copy">
             <p class="artist-eyebrow">Contacto</p>
@@ -9,7 +9,7 @@
             <span class="artist-contact-handle">@renyrenteria</span>
         </div>
         <figure class="artist-hero-photo">
-            <img src="{{ asset('images/photos/performance.jpg') }}" alt="Reny Rentería durante una presentación musical en televisión" width="640" height="1136" fetchpriority="high">
+            <img src="{{ asset('images/artist/reny-live-red.webp') }}" alt="Reny Rentería en el escenario, con micrófono y luces rojas" width="1200" height="1875" fetchpriority="high">
         </figure>
     </section>
     <section class="artist-panel" aria-labelledby="contact-details">
