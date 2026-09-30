@@ -4,8 +4,11 @@
             <p class="artist-eyebrow">Contacto</p>
             <h1 id="contact-title">Hagamos<br>que pase.</h1>
             <p class="artist-lead">Música, escenarios y nuevas conexiones.</p>
-            <p>Para contrataciones, prensa, colaboraciones o consultas sobre merch, escríbele a Reny a través de su Instagram oficial.</p>
-            <a class="artist-button" href="https://www.instagram.com/renyrenteria/" target="_blank" rel="noopener noreferrer">Contactar por Instagram <span aria-hidden="true">↗</span></a>
+            <p>Para contrataciones, prensa, colaboraciones o consultas sobre merch, escríbele a Reny por correo o a través de su Instagram oficial.</p>
+            <div class="artist-contact-actions">
+                <a class="artist-button" href="mailto:reny@portierstrategy.com">contactar por correo</a>
+                <a class="artist-button artist-button-secondary" href="https://www.instagram.com/renyrenteria/" target="_blank" rel="noopener noreferrer">Contactar por Instagram <span aria-hidden="true">↗</span></a>
+            </div>
             <span class="artist-contact-handle">@renyrenteria</span>
         </div>
         <figure class="artist-hero-photo">
