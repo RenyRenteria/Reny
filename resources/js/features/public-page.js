@@ -94,6 +94,10 @@ const isPersistentPublicPath = (url) => {
         '/royals',
         '/community',
         '/store',
+        '/shows',
+        '/merch',
+        '/bio',
+        '/contacto',
     ]);
 
     return paths.has(url.pathname)
@@ -131,6 +135,7 @@ const navigatePublicPage = async (url, { push = true } = {}) => {
         root.replaceWith(nextRoot);
         syncPublicPageFragments(nextDocument);
         document.title = nextDocument.title;
+        document.documentElement.lang = nextDocument.documentElement.lang || 'en';
 
         const nextScreen = nextDocument.body?.dataset.analyticsScreen;
         if (nextScreen) {

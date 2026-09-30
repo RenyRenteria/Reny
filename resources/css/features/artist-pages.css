@@ -1,0 +1,316 @@
+.sidebar .tab {
+    min-height: 2.75rem;
+}
+
+.artist-shell .artist-main {
+    width: 100%;
+    padding: clamp(2rem, 5vw, 4.25rem) clamp(1.5rem, 4vw, 4rem) 8rem;
+    color: var(--home-cream);
+}
+.artist-stack {
+    display: grid;
+    max-width: 68rem;
+    margin-inline: auto;
+    gap: 1.5rem;
+}
+.artist-panel, .artist-hero {
+    overflow: hidden;
+    border: 1px solid rgba(255, 228, 153, .45);
+    border-radius: 1.2rem;
+    background: linear-gradient(145deg, rgba(23, 17, 11, .98), rgba(43, 31, 20, .96));
+    box-shadow: 0 1.5rem 3.75rem rgba(74, 41, 7, .2);
+}
+.artist-panel {
+    padding: clamp(1.5rem, 3vw, 2.75rem);
+}
+.artist-hero {
+    display: grid;
+    grid-template-columns: 1.15fr 1fr;
+}
+.artist-hero-copy {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    padding: clamp(1.5rem, 3.5vw, 3.25rem);
+}
+.artist-stack p {
+    margin: 0 0 1.1rem;
+    color: var(--home-cream-muted);
+    font-size: 1rem;
+    line-height: 1.75;
+}
+.artist-stack .artist-eyebrow {
+    color: var(--home-gold-light);
+    font-size: .75rem;
+    font-weight: 800;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+}
+.artist-stack h1 {
+    margin: .5rem 0 1.5rem;
+    color: var(--home-gold-light);
+    font-size: clamp(3rem, 6vw, 6rem);
+    font-weight: 900;
+    line-height: .98;
+    letter-spacing: -.055em;
+}
+.artist-stack h2 {
+    max-width: 24ch;
+    margin: 0 0 1.5rem;
+    font-size: clamp(1.8rem, 3vw, 2.8rem);
+    font-weight: 800;
+    letter-spacing: -.035em;
+    line-height: 1.12;
+}
+.artist-stack h3 {
+    margin: 1.5rem 0 .6rem;
+    color: var(--home-gold-light);
+    font-size: 1.1rem;
+    font-weight: 800;
+}
+.artist-stack .artist-lead {
+    color: var(--home-cream);
+    font-size: 1.25rem;
+    line-height: 1.45;
+}
+.artist-hero-photo {
+    position: relative;
+    margin: 0;
+    min-width: 0;
+}
+.artist-hero-photo img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    min-height: 34rem;
+    max-height: 48rem;
+    object-fit: cover;
+    object-position: center 20%;
+}
+.artist-hero-photo figcaption {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    padding: 3rem 1.5rem 1.5rem;
+    background: linear-gradient(transparent, rgba(23,17,11,.9));
+    color: var(--home-cream);
+    font-size: .875rem;
+}
+.artist-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.75rem;
+    gap: 1rem;
+    padding: .8rem 1.2rem;
+    border: 1px solid var(--home-gold-light);
+    border-radius: .72rem;
+    background: linear-gradient(110deg, #e7a551, #ffe499);
+    color: #17110b;
+    font-size: .9rem;
+    font-weight: 800;
+    text-decoration: none;
+}
+.artist-button-secondary {
+    background: transparent;
+    color: var(--home-gold-light);
+}
+.artist-milestones {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1.5rem;
+    margin: 1.75rem 0;
+}
+.artist-milestones article {
+    border-top: 1px solid rgba(255,228,153,.3);
+    padding-top: 1.25rem;
+}
+.artist-milestones article > span {
+    color: var(--home-gold-light);
+    font-size: 1.4rem;
+    font-weight: 800;
+}
+.artist-milestones h3 {
+    margin-top: .5rem;
+}
+.artist-timeline {
+    list-style: none;
+    padding: 0;
+    margin: 1.5rem 0;
+}
+.artist-timeline li {
+    display: grid;
+    grid-template-columns: 3.5rem 1fr;
+    gap: 1rem;
+    padding: .85rem 0;
+    border-bottom: 1px solid rgba(255,228,153,.15);
+}
+.artist-timeline span {
+    color: var(--home-gold-light);
+    font-weight: 800;
+}
+.artist-gallery {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+.artist-gallery figure {
+    margin: 0;
+    overflow: hidden;
+    border: 1px solid rgba(255,228,153,.4);
+    border-radius: 1rem;
+    background: #17110b;
+}
+.artist-gallery img {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 4/5;
+    object-fit: cover;
+    object-position: center bottom;
+}
+.artist-gallery figcaption {
+    padding: 1rem 1.25rem;
+    color: var(--home-cream);
+    font-size: .875rem;
+}
+.artist-skills {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: .85rem 2rem;
+    padding-left: 1.2rem;
+    line-height: 1.6;
+}
+.artist-skills li::marker {
+    color: var(--home-gold-light);
+}
+.artist-philosophy {
+    background: linear-gradient(135deg, #2b1f14, #17110b);
+}
+.artist-philosophy h2 {
+    color: var(--home-gold-light);
+    font-size: clamp(2.2rem, 4vw, 3.6rem);
+}
+.artist-albums {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+.artist-albums > a {
+    display: grid;
+    gap: 1.5rem;
+    padding: 1.5rem;
+    border: 1px solid rgba(255,228,153,.35);
+    border-radius: .9rem;
+    color: var(--home-gold-light);
+    text-decoration: none;
+}
+.artist-albums strong {
+    color: var(--home-cream);
+    font-size: 1.5rem;
+}
+.artist-albums span {
+    font-size: .875rem;
+}
+.artist-contact-handle {
+    display: block;
+    margin-top: .85rem;
+    color: var(--home-cream-muted);
+    font-size: .875rem;
+}
+.merch-empty {
+    grid-column: 1 / -1;
+    padding: 1.5rem;
+    line-height: 1.6;
+}
+.merch-empty p {
+    margin: 1rem 0;
+}
+.store-stage-shell #merch .storefront-card:only-child {
+    grid-column: 1 / -1;
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+    gap: 1.5rem;
+}
+.store-stage-shell #merch .storefront-card:only-child .storefront-copy {
+    padding: 1rem;
+}
+/* All seven destinations fit at 320px while retaining 44px touch targets. */
+@media (max-width: 53.75rem) {
+    .mobile-bottom-nav[aria-label="Mobile menu"] {
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        right: .25rem;
+        left: .25rem;
+        padding: .35rem 0;
+        gap: 0;
+        height: auto;
+        min-height: 4.15rem;
+    }
+    .mobile-bottom-nav[aria-label="Mobile menu"] a {
+        min-width: 2.75rem;
+        min-height: 2.75rem;
+        border: 0;
+    }
+    .mobile-bottom-nav[aria-label="Mobile menu"] svg {
+        width: 1.35rem;
+        height: 1.35rem;
+    }
+    .artist-shell .artist-main {
+        padding: .75rem .7rem calc(7rem + env(safe-area-inset-bottom));
+    }
+    .artist-stack {
+        gap: 1rem;
+    }
+    .artist-hero-copy {
+        padding: 1.5rem;
+    }
+    .artist-hero-photo img {
+        min-height: 30rem;
+    }
+}
+@media (max-width: 38rem) {
+    .store-stage-shell #merch .storefront-card:only-child {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+    .artist-hero, .artist-milestones, .artist-skills, .artist-albums {
+        grid-template-columns: 1fr;
+    }
+    .artist-hero-photo img {
+        height: auto;
+        min-height: 0;
+        max-height: none;
+        aspect-ratio: 4/5;
+        object-position: center 20%;
+    }
+    .artist-stack h1 {
+        font-size: clamp(3.6rem, 13vw, 5rem);
+    }
+    .artist-gallery {
+        gap: .7rem;
+    }
+    .artist-gallery figcaption {
+        padding: .85rem;
+        font-size: .8rem;
+    }
+    .artist-panel {
+        padding: 1.4rem;
+    }
+}
+@media (max-height: 46rem) and (min-width: 53.751rem) {
+    .home-shell .sidebar, .sidebar {
+        overflow-y: auto;
+    }
+    .home-shell .sidebar::before {
+        top: 0;
+        height: 100%;
+    }
+    .sidebar .tabs {
+        gap: .35rem;
+    }
+    .sidebar .tab {
+        min-height: 2.75rem;
+    }
+}

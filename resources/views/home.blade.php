@@ -162,7 +162,7 @@
                         >
                     </a>
 
-                    <x-public-navigation />
+                    <x-public-navigation active="home" />
                 </div>
 
                 <x-member-card />
@@ -426,7 +426,7 @@
                     </section>
                 </div>
 
-                <x-public-navigation mobile extra-class="home-bottom-nav" />
+                <x-public-navigation active="home" mobile extra-class="home-bottom-nav" />
             </main>
         </div>
 

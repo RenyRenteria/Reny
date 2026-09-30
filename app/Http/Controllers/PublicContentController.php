@@ -77,6 +77,14 @@ class PublicContentController extends Controller
         ]);
     }
 
+    public function merch(Request $request, PublicCmsContentService $cms): View
+    {
+        return view('store', [
+            'publicCms' => $cms->store($request->user()),
+            'storePage' => 'merch',
+        ]);
+    }
+
     public function shows(Request $request, PublicCmsContentService $cms, TicketCodeService $ticketCodes): View
     {
         $publicCms = $cms->store($request->user());

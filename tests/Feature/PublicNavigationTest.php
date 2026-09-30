@@ -8,8 +8,8 @@ class PublicNavigationTest extends TestCase
 {
     public function test_public_navigation_uses_the_requested_items_and_order(): void
     {
-        $paths = ['/', '/royals', '/videos', '/music', '/photos', '/shows', '/store'];
-        $labels = ['Videos', 'Music', 'Shows'];
+        $paths = ['/', '/royals', '/videos', '/music', '/photos', '/shows', '/store', '/merch', '/bio', '/contacto'];
+        $labels = ['Home', 'Videos', 'Música', 'Merch', 'Shows', 'Bio', 'Contacto'];
 
         foreach ($paths as $path) {
             $html = $this->get($path)
@@ -21,7 +21,7 @@ class PublicNavigationTest extends TestCase
                 $this->assertArrayHasKey(1, $matches, "Missing {$variant} navigation on [{$path}]");
                 $navHtml = $matches[1];
 
-                $this->assertSame(3, substr_count($navHtml, '<a '), "Unexpected {$variant} nav item count on [{$path}]");
+                $this->assertSame(7, substr_count($navHtml, '<a '), "Unexpected {$variant} nav item count on [{$path}]");
                 $this->assertStringNotContainsString('href="'.url('/royals').'"', $navHtml);
                 $this->assertStringNotContainsString('href="'.url('/store').'"', $navHtml);
                 $this->assertStringNotContainsString('>Royals</span>', $navHtml);
@@ -45,6 +45,10 @@ class PublicNavigationTest extends TestCase
     public function test_public_navigation_marks_each_primary_page_active(): void
     {
         $activePages = [
+            '/' => '/',
+            '/merch' => '/merch',
+            '/bio' => '/bio',
+            '/contacto' => '/contacto',
             '/videos' => '/videos',
             '/music' => '/music',
             '/shows' => '/shows',

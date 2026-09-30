@@ -45,6 +45,8 @@
 @import './features/golden-stage-access-commerce.css';
 
 @import './features/store-golden-stage.css';
+
+@import './features/artist-pages.css';
 .public-page-intro {
     display: grid;
     gap: 0.45rem;

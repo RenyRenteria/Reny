@@ -104,7 +104,7 @@ animation: home-molten-gold 18s ease-in-out infinite alternate;
 - Mantener el sidebar fijo/sticky de `17.125rem` de ancho y `100vh` de alto.
 - Fondo: gradiente vertical de `rgba(23,17,11,.99)` a `rgba(43,31,20,.96)`.
 - Borde derecho dorado claro al `42%` y sombra cálida hacia el contenido.
-- Orden del menú: Royals, Videos, Music, Shows, Store.
+- Orden del menú (actualizado por Reny, septiembre de 2026): Home, Videos, Música, Merch, Shows, Bio, Contacto.
 - Cada entrada conserva icono más label; labels en mayúsculas, `0.875rem`, peso `800`, tracking `0.12em`.
 - Estado normal: crema al `62%`.
 - Hover, focus y página activa: `#FFE499`.
@@ -115,9 +115,9 @@ animation: home-molten-gold 18s ease-in-out infinite alternate;
 ### Mobile
 
 - Breakpoint principal: `53.75rem` / `860px`.
-- Ocultar el sidebar y usar cinco iconos en una cuadrícula de columnas iguales.
+- Ocultar el sidebar y usar siete iconos en una cuadrícula de columnas iguales.
 - Mantener exactamente el mismo orden y las mismas rutas del menú de desktop.
-- Usar el formato flotante de Royals para páginas interiores: inset lateral `0.7rem`, min-height `4.15rem`, padding `0.45rem`, radio `1rem` y fondo `rgba(20,14,9,.94)`.
+- Usar el formato flotante de Royals para páginas interiores: inset lateral `0.25rem`, min-height `4.15rem`, padding vertical `0.35rem` y sin padding horizontal, radio `1rem` y fondo `rgba(20,14,9,.94)`.
 - Estado normal: crema al `48%`.
 - Estado activo: gradiente sutil rojo/dorado y icono `#FFE499`.
 - Cada enlace debe tener un target mínimo de `44 × 44px`.
