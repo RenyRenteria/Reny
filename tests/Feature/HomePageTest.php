@@ -77,8 +77,8 @@ class HomePageTest extends TestCase
 
         $html = $response->getContent();
 
-        $this->assertStringNotContainsString('class="tab is-active"', $html);
-        $this->assertStringNotContainsString('aria-current="page"', $html);
+        $this->assertStringContainsString('class="tab is-active"', $html);
+        $this->assertStringContainsString('aria-current="page"', $html);
         $this->assertStringContainsString('class="home-show-card"', $html);
         $this->assertStringContainsString('class="home-royal-pass is-selected"', $html);
         $this->assertStringContainsString('class="home-royal-pass-selector"', $html);
@@ -392,6 +392,9 @@ class HomePageTest extends TestCase
             '/royals' => 'mobile-bottom-nav',
             '/shows' => 'mobile-bottom-nav',
             '/store' => 'mobile-bottom-nav',
+            '/merch' => 'mobile-bottom-nav',
+            '/bio' => 'mobile-bottom-nav',
+            '/contacto' => 'mobile-bottom-nav',
         ];
 
         foreach ($paths as $path => $classes) {
@@ -408,11 +411,11 @@ class HomePageTest extends TestCase
             preg_match('/<nav class="'.preg_quote($classes, '/').'" aria-label="Mobile menu">(.*?)<\/nav>/s', $html, $matches);
             $navHtml = $matches[1] ?? '';
 
-            $this->assertSame(3, substr_count($navHtml, '<a '), "Unexpected mobile nav item count on [{$path}]");
+            $this->assertSame(7, substr_count($navHtml, '<a '), "Unexpected mobile nav item count on [{$path}]");
 
             if ($path === '/') {
-                $this->assertStringNotContainsString('is-active', $navHtml);
-                $this->assertStringNotContainsString('aria-current="page"', $navHtml);
+                $this->assertStringContainsString('is-active', $navHtml);
+                $this->assertStringContainsString('aria-current="page"', $navHtml);
             }
         }
 
@@ -426,7 +429,7 @@ class HomePageTest extends TestCase
             $css
         );
         $this->assertMatchesRegularExpression(
-            '/\.mobile-bottom-nav\s*\{[^}]*grid-template-columns\s*:\s*repeat\(3, minmax\(0, 1fr\)\);/s',
+            '/\.mobile-bottom-nav\s*\{[^}]*grid-template-columns\s*:\s*repeat\(7, minmax\(0, 1fr\)\);/s',
             $css
         );
         $this->assertMatchesRegularExpression(

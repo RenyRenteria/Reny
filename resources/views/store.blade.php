@@ -1,12 +1,23 @@
 @php
     $isShowsPage = ($storePage ?? 'store') === 'shows';
-    $activeNavigation = $isShowsPage ? 'shows' : 'store';
+    $isMerchPage = ($storePage ?? 'store') === 'merch';
+    $activeNavigation = $isShowsPage ? 'shows' : 'merch';
+    $pageName = $isShowsPage ? 'Shows' : ($isMerchPage ? 'Merch' : 'Store');
     $storefront = $publicCms['storefront'] ?? app(\App\Services\StorefrontSettingsService::class)->publicPayload();
     $pageSettings = $isShowsPage ? [] : ($publicCms['page'] ?? []);
+    if ($isMerchPage) {
+        $pageSettings = [
+            'eyebrow' => 'Tienda oficial',
+            'title' => 'Merch',
+            'subtitle' => 'Lleva la música contigo.',
+            'description' => 'Explora las colecciones y productos oficiales de Reny Rentería.',
+            'meta_description' => 'Merch oficial de Reny Rentería. Descubre las colecciones disponibles y compra desde su tienda oficial.',
+        ];
+    }
     $royalPass = $storefront['royal_pass'] ?? [];
     $baseStorefrontSlots = collect($isShowsPage
         ? ['event_primary', 'event_secondary']
-        : ['event_primary', 'event_secondary', 'album', 'merch'])
+        : ($isMerchPage ? ['merch'] : ['event_primary', 'event_secondary', 'album', 'merch']))
         ->map(fn (string $key): array => data_get($storefront, "slots.{$key}", []))
         ->filter()
         ->values();
@@ -73,6 +84,11 @@
                 'image_alt' => $product['name'] ?? 'Product',
             ];
         });
+    if ($isMerchPage) {
+        $baseStorefrontSlots = $baseStorefrontSlots->whereIn('kind', ['merch', 'physical'])->values();
+        $cmsEventSlots = collect();
+        $cmsProductSlots = $cmsProductSlots->where('kind', 'merch');
+    }
     $representedProductKeys = $baseStorefrontSlots->pluck('product_key')->filter();
     $storefrontSlots = $baseStorefrontSlots
         ->concat($cmsEventSlots)
@@ -161,20 +177,20 @@
 @endphp
 
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="{{ $isMerchPage ? 'es' : str_replace('_', '-', app()->getLocale()) }}">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        @include('partials.public-seo', ['seo' => $pageSettings, 'fallbackTitle' => ($isShowsPage ? 'Shows' : 'Store').' | Reny Renteria'])
+        @include('partials.public-seo', ['seo' => $pageSettings, 'fallbackTitle' => $pageName.' | Reny Renteria'])
 
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="golden-stage-page checkout-page store-stage-page" data-analytics-screen="{{ $isShowsPage ? 'shows' : 'store' }}" data-preferred-currency="{{ auth()->user()?->preferred_currency ?? 'USD' }}">
+    <body class="golden-stage-page checkout-page store-stage-page" data-analytics-screen="{{ strtolower($pageName) }}" data-preferred-currency="{{ auth()->user()?->preferred_currency ?? 'USD' }}">
         <div class="store-shell home-shell golden-stage-shell store-stage-shell" data-public-page-root>
             @include('partials.stage-lights')
 
@@ -195,7 +211,7 @@
                 <x-member-card />
             </aside>
 
-            <main class="main-content store-content golden-stage-main store-stage-main" id="{{ $isShowsPage ? 'shows' : 'store' }}">
+            <main class="main-content store-content golden-stage-main store-stage-main" id="{{ strtolower($pageName) }}">
                 <header class="mobile-header golden-stage-mobile-header store-stage-mobile-header">
                     <div class="mobile-brand">
                         <a class="brand-link" href="{{ route('home') }}" aria-label="Reny Renteria home">
@@ -223,8 +239,15 @@
                         </section>
                     @endunless
 
-                    <section class="storefront" aria-label="{{ $isShowsPage ? 'Shows' : 'Store products' }}">
+                    <section class="storefront" aria-label="{{ $isShowsPage ? 'Shows' : ($isMerchPage ? 'Merch oficial' : 'Store products') }}">
                         <div class="storefront-grid">
+                            @if ($isMerchPage && $storefrontSlots->isEmpty())
+                                <div class="merch-empty">
+                                    <h2>Nuevas colecciones en camino</h2>
+                                    <p>Vuelve pronto para descubrir los próximos lanzamientos de merch.</p>
+                                    <a class="artist-button" href="{{ route('contacto') }}">Consultar por merch</a>
+                                </div>
+                            @endif
                             @foreach ($storefrontSlots as $slot)
                             @php
                                 $slotKey = $slot['key'] ?? 'slot-'.$loop->index;

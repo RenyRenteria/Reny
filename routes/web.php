@@ -90,6 +90,9 @@ Route::post('/community/clubs/{club}/messages', [CommunityInteractionController:
     ->middleware('throttle:community-chat')
     ->name('community.clubs.messages.store');
 Route::get('/shows', [PublicContentController::class, 'shows'])->name('shows');
+Route::get('/merch', [PublicContentController::class, 'merch'])->name('merch');
+Route::view('/bio', 'bio')->name('bio');
+Route::view('/contacto', 'contacto')->name('contacto');
 Route::get('/store', [PublicContentController::class, 'store'])->name('store');
 Route::get('/store/checkout/{product}', [PublicContentController::class, 'checkout'])
     ->where('product', '[A-Za-z0-9._-]+')
