@@ -308,6 +308,7 @@ class AccountController extends Controller
                 'name' => $this->orderProductName($order, $user, $products),
                 'date' => $order->created_at?->timezone($this->accountTimezone($user))->format('F d, Y'),
                 'status' => str($order->status)->replace('_', ' ')->headline()->toString(),
+                'tracking_url' => str_starts_with($order->product_key, 'yoycol-') ? route('yoycol.tracking', $order) : null,
             ]);
     }
 

@@ -17,7 +17,7 @@ class PayPalService
      * @param  array<int, array{name: string, unit_amount_cents: int, quantity: int}>  $items
      * @return array{order_id: string, payload: array<string, mixed>}
      */
-    public function createOrder(int $expectedAmountCents, string $currency, array $items = []): array
+    public function createOrder(int $expectedAmountCents, string $currency, array $items = [], ?array $delivery = null): array
     {
         $endpoint = '/v2/checkout/orders';
         $failureMessage = 'We could not start PayPal checkout. No charge was made. Try again.';
@@ -33,7 +33,7 @@ class PayPalService
             $purchaseUnit['amount']['breakdown'] = [
                 'item_total' => [
                     'currency_code' => $currency,
-                    'value' => $this->centsToDecimal($expectedAmountCents),
+                    'value' => $this->centsToDecimal($expectedAmountCents - ($delivery['amount_cents'] ?? 0)),
                 ],
             ];
             $purchaseUnit['items'] = collect($items)
@@ -49,6 +49,15 @@ class PayPalService
                 ->all();
         }
 
+        $payload = ['intent' => 'CAPTURE', 'purchase_units' => [$purchaseUnit]];
+        if ($delivery) {
+            $payload['purchase_units'][0]['shipping'] = $delivery['shipping'];
+            $payload['purchase_units'][0]['amount']['breakdown']['shipping'] = [
+                'currency_code' => $currency, 'value' => $this->centsToDecimal($delivery['amount_cents']),
+            ];
+            $payload['payment_source']['paypal']['experience_context']['shipping_preference'] = 'SET_PROVIDED_ADDRESS';
+        }
+
         $response = $this->request(
             stage: 'create_order',
             endpoint: $endpoint,
@@ -56,10 +65,7 @@ class PayPalService
             callback: fn (): Response => $this->paypal()
                 ->withToken($this->accessToken('create_order', $failureMessage))
                 ->withHeaders(['PayPal-Request-Id' => 'create-'.Str::uuid()])
-                ->post($this->url($endpoint), [
-                    'intent' => 'CAPTURE',
-                    'purchase_units' => [$purchaseUnit],
-                ]),
+                ->post($this->url($endpoint), $payload),
         );
 
         $this->ensureOk($response, $failureMessage, 'create_order', $endpoint);
@@ -98,10 +104,40 @@ class PayPalService
 
         $this->ensureOk($response, $failureMessage, 'capture_order', $endpoint);
 
+        return $this->completedCapture($response, $paypalOrderId, $expectedAmountCents, $currency);
+    }
+
+    public function confirmedOrder(string $paypalOrderId, int $expectedAmountCents, string $currency): ?array
+    {
+        $endpoint = '/v2/checkout/orders/{order_id}';
+        $failureMessage = 'PayPal payment confirmation is unavailable.';
+        $response = $this->request(
+            stage: 'lookup_order', endpoint: $endpoint, failureMessage: $failureMessage,
+            callback: fn (): Response => $this->paypal()
+                ->withToken($this->accessToken('lookup_order', $failureMessage))
+                ->get($this->url('/v2/checkout/orders/'.rawurlencode($paypalOrderId))),
+        );
+        $this->ensureOk($response, $failureMessage, 'lookup_order', $endpoint);
+        if ($response->json('status') !== 'COMPLETED') {
+            return null;
+        }
+        foreach ($response->json('purchase_units', []) as $unit) {
+            if (! empty($unit['payments']['refunds'])) {
+                return null;
+            }
+        }
+
+        return $this->completedCapture($response, $paypalOrderId, $expectedAmountCents, $currency, 'lookup_order');
+    }
+
+    private function completedCapture(Response $response, string $paypalOrderId, int $expectedAmountCents, string $currency, string $stage = 'capture_order'): array
+    {
+        $endpoint = '/v2/checkout/orders/{order_id}';
+        $failureMessage = 'PayPal approved the payment, but confirmation is pending. Do not retry; contact support with the time and amount.';
         $payload = $response->json();
 
         if (! is_array($payload) || Arr::get($payload, 'status') !== 'COMPLETED') {
-            $this->logUnexpectedResponse($response, 'capture_order', $endpoint, 'capture_not_completed');
+            $this->logUnexpectedResponse($response, $stage, $endpoint, 'capture_not_completed');
 
             throw ValidationException::withMessages([
                 'paypal_order_id' => $failureMessage,
@@ -122,7 +158,7 @@ class PayPalService
         });
 
         if ($capturedAmount !== $expectedAmountCents) {
-            $this->logUnexpectedResponse($response, 'capture_order', $endpoint, 'capture_amount_mismatch');
+            $this->logUnexpectedResponse($response, $stage, $endpoint, 'capture_amount_mismatch');
 
             throw ValidationException::withMessages([
                 'paypal_order_id' => $failureMessage,
@@ -132,7 +168,7 @@ class PayPalService
         $captureId = $completedCaptures->pluck('id')->filter()->first();
 
         if (blank($captureId)) {
-            $this->logUnexpectedResponse($response, 'capture_order', $endpoint, 'missing_capture_id');
+            $this->logUnexpectedResponse($response, $stage, $endpoint, 'missing_capture_id');
 
             throw ValidationException::withMessages([
                 'paypal_order_id' => $failureMessage,

@@ -10,6 +10,7 @@ use App\Services\Commerce\TicketInventory;
 use App\Services\PayPalService;
 use App\Services\RoyalPassService;
 use App\Services\UserHubPurchaseSync;
+use App\Services\Yoycol\YoycolCheckout;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -31,6 +32,7 @@ class CheckoutController extends Controller
     public function __construct(
         private readonly ProductCatalog $products,
         private readonly TicketInventory $inventory,
+        private readonly YoycolCheckout $yoycol,
     ) {}
 
     public function store(
@@ -49,6 +51,7 @@ class CheckoutController extends Controller
         $this->ensurePendingPayPalOrders($validated['paypal_order_id'], $pendingOrders);
         $user = $this->pendingOrdersUser($pendingOrders);
 
+        $this->yoycol->beginCapture($pendingOrders);
         $this->inventory->beginCapture($pendingOrders);
 
         $capture = $payPal->captureOrder(
@@ -133,11 +136,12 @@ class CheckoutController extends Controller
         $products = $this->resolveProducts($validated['product_keys'], $user);
 
         $pendingReference = 'PENDING-'.Str::upper(Str::random(20));
-        $orders = DB::transaction(function () use ($checkoutTokenHash, $currency, $pendingReference, $products, $user, $validated) {
+        $orders = DB::transaction(function () use ($checkoutTokenHash, $currency, $pendingReference, $products, $user, $validated, $request) {
+            $products = $this->yoycol->prepare($request, $products, $validated, paypal: true);
             $this->inventory->reserve($products);
 
             return $products->map(function (array $product, int $index) use ($checkoutTokenHash, $currency, $pendingReference, $user, $validated) {
-                return Order::create([
+                $pendingOrder = Order::create([
                     'user_id' => $user->id,
                     'provider' => 'paypal',
                     'provider_order_id' => $this->providerOrderId($pendingReference, $product['key'], $index),
@@ -148,14 +152,19 @@ class CheckoutController extends Controller
                     'grants_royal_month' => true,
                     'metadata' => $this->orderMetadata($product, $validated, $checkoutTokenHash, paypal: true),
                 ]);
+                $this->yoycol->attach($pendingOrder, $product);
+
+                return $pendingOrder;
             });
         });
 
         try {
+            $delivery = $this->yoycol->paypalDelivery($orders);
             $order = $payPal->createOrder(
                 $orders->sum('amount_cents'),
                 $currency,
                 $this->paypalItems($orders),
+                ...($delivery === null ? [] : [$delivery]),
             );
 
             $orders = DB::transaction(function () use ($order, $orders) {
@@ -166,8 +175,11 @@ class CheckoutController extends Controller
                         ->lockForUpdate()
                         ->firstOrFail();
 
+                    $metadata = $pendingOrder->metadata;
+                    $metadata['checkout']['paypal_order_id'] = $order['order_id'];
                     $pendingOrder->forceFill([
                         'provider_order_id' => $this->providerOrderId($order['order_id'], $pendingOrder->product_key, $index),
+                        'metadata' => $metadata,
                     ])->save();
 
                     return $pendingOrder;
@@ -209,6 +221,10 @@ class CheckoutController extends Controller
             ->where('status', 'pending')
             ->whereNull('provider_capture_id')
             ->where(function ($query): void {
+                $query->whereNull('metadata->checkout->capture_started')
+                    ->orWhere('metadata->checkout->capture_started', false);
+            })
+            ->where(function ($query): void {
                 $query->whereNull('metadata->inventory->capture_started')
                     ->orWhere('metadata->inventory->capture_started', false);
             })
@@ -241,7 +257,8 @@ class CheckoutController extends Controller
         $checkoutTokenHash = $this->checkoutTokenHash($request);
         $products = $this->resolveProducts($validated['product_keys'], $user);
 
-        $orders = DB::transaction(function () use ($checkoutTokenHash, $currency, $products, $reference, $royalPass, $user, $validated) {
+        $orders = DB::transaction(function () use ($checkoutTokenHash, $currency, $products, $reference, $royalPass, $user, $validated, $request) {
+            $products = $this->yoycol->prepare($request, $products, $validated, paypal: false);
             $this->inventory->reserve($products);
 
             return $products->map(function (array $product, int $index) use ($checkoutTokenHash, $currency, $reference, $royalPass, $user, $validated) {
@@ -304,6 +321,7 @@ class CheckoutController extends Controller
             'product_keys' => ['required', 'array', 'min:1'],
             'product_keys.*' => ['required', 'string', 'max:120', 'regex:/^[A-Za-z0-9._-]+$/'],
             'currency' => ['nullable', 'string', 'size:3'],
+            'yoycol_quote_id' => ['sometimes', 'uuid'],
             'analytics_session_id' => ['nullable', 'string', 'max:64', 'regex:/^[A-Za-z0-9._:-]+$/'],
             'customer_name' => [$requireCustomerDetails ? 'required' : 'sometimes', 'string', 'max:120'],
             'customer_email' => [$requireCustomerDetails ? 'required' : 'sometimes', 'email', 'max:255'],
@@ -334,6 +352,15 @@ class CheckoutController extends Controller
         $metadata = [
             'product' => $this->products->orderSnapshot($product),
         ];
+
+        if (isset($product['yoycol'])) {
+            $metadata['merch'] = [
+                'variant' => $product['yoycol']['variant']['label'],
+                'quantity' => $product['yoycol']['quantity'],
+                'subtotal_cents' => $product['yoycol']['subtotal_cents'],
+                'shipping_cents' => $product['yoycol']['shipping']['amount_cents'],
+            ];
+        }
 
         if ($product['inventory_tracked'] ?? false) {
             $metadata['inventory'] = [
@@ -413,6 +440,16 @@ class CheckoutController extends Controller
      */
     private function paypalItems(Collection $orders): array
     {
+        if ($orders->count() === 1 && data_get($orders->first()->metadata, 'merch')) {
+            $metadata = $orders->first()->metadata;
+
+            return [[
+                'name' => $metadata['product']['title'].' · '.$metadata['merch']['variant'],
+                'unit_amount_cents' => intdiv($metadata['merch']['subtotal_cents'], $metadata['merch']['quantity']),
+                'quantity' => $metadata['merch']['quantity'],
+            ]];
+        }
+
         return $orders
             ->groupBy(fn (Order $order): string => $order->product_key.'|'.$order->amount_cents)
             ->map(function (Collection $group): array {

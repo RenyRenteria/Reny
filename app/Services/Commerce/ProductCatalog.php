@@ -8,6 +8,7 @@ use App\Enums\MediaAssetType;
 use App\Models\EditorialContent;
 use App\Models\MediaAsset;
 use App\Models\User;
+use App\Models\YoycolProduct;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Schema;
@@ -23,6 +24,12 @@ class ProductCatalog
     public function find(string $productKey, ?User $user = null): ?array
     {
         $productKey = trim($productKey);
+
+        if (str_starts_with($productKey, 'yoycol-')) {
+            $product = config('yoycol.enabled') ? YoycolProduct::find(substr($productKey, 7)) : null;
+
+            return $product?->purchasable() ? $product->catalogProduct() : null;
+        }
 
         if ($productKey === '') {
             return null;

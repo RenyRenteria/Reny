@@ -1,0 +1,48 @@
+.yoycol-page { margin: 0; color: #f5eedb; background: radial-gradient(ellipse at top, #4c291b 0, #1b1218 40%, #100d12 75%); min-height: 100vh; font-family: 'DM Sans', sans-serif; }
+.yoycol-header { max-width: 1160px; margin: auto; padding: 24px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+.yoycol-header nav { display: flex; gap: 24px; }
+.yoycol-page a { color: #eaca84; text-decoration: underline; text-underline-offset: 4px; }
+.yoycol-main { max-width: 1160px; margin: auto; padding: 24px 24px 64px; }
+.yoycol-back { display: inline-block; margin-bottom: 28px; }
+.yoycol-checkout { display: grid; grid-template-columns: 1fr 1fr; align-items: start; gap: 48px; }
+.yoycol-product > img { width: 100%; max-height: 500px; object-fit: contain; background: #f3eee6; border-radius: 18px; }
+.yoycol-page h1 { font-size: clamp(26px, 3.5vw, 40px); line-height: 1.15; margin: 16px 0; }
+.yoycol-page h2 { font-size: 24px; margin: 0 0 20px; }
+.yoycol-page p { line-height: 1.65; margin: 16px 0; color: #d9cdbc; }
+.yoycol-page .yoycol-eyebrow { color: #eaca84; font-size: 12px; letter-spacing: .14em; margin-top: 28px; }
+.yoycol-price { display: block; color: #f5d78d; font-size: 28px; margin: 20px 0; }
+.yoycol-panel { background: #221a20; border: 1px solid #66503e; border-radius: 18px; padding: 28px; min-width: 0; color: #f5eedb; }
+.yoycol-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.yoycol-wide { grid-column: 1 / -1; }
+.yoycol-panel label { display: grid; gap: 8px; font-size: 14px; margin-bottom: 12px; min-width: 0; }
+.yoycol-panel input, .yoycol-panel select, .yoycol-panel textarea { width: 100%; min-width: 0; box-sizing: border-box; background: #151116; color: #fff4de; border: 1px solid #7c6854; border-radius: 8px; padding: 12px; font: inherit; font-size: 16px; }
+.yoycol-panel input:focus, .yoycol-panel select:focus, .yoycol-panel textarea:focus { outline: 2px solid #edcd81; outline-offset: 2px; }
+.yoycol-panel fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+.yoycol-panel fieldset:disabled { opacity: .65; }
+.yoycol-button { display: inline-block; border: none; border-radius: 8px; background: #e8c982; color: #231618 !important; font: inherit; font-weight: 700; padding: 13px 20px; cursor: pointer; margin: 12px 0; text-decoration: none !important; }
+.yoycol-button:disabled { opacity: .6; cursor: wait; }
+.yoycol-totals { border-block: 1px solid #66503e; padding: 16px 0; margin: 20px 0; }
+.yoycol-totals > div { display: flex; justify-content: space-between; gap: 12px; margin: 10px 0; }
+.yoycol-totals > div:last-child { font-size: 22px; font-weight: 700; color: #f5d78d; }
+.yoycol-totals dd { margin: 0; }
+.yoycol-page [hidden] { display: none !important; }
+.yoycol-admin { max-width: 1200px; margin: auto; padding: 24px; }
+.yoycol-admin h1 { font-size: 28px; }
+.yoycol-admin h2 { font-size: 24px; margin: 30px 0 18px; }
+.yoycol-admin-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 24px; }
+.yoycol-admin-image { width: 100%; height: 180px; object-fit: contain; background: #f4eee6; border-radius: 8px; }
+.yoycol-admin article { margin: 18px 0; overflow-wrap: anywhere; }
+.yoycol-admin p { margin: 12px 0; line-height: 1.6; }
+.yoycol-admin .yoycol-check { display: flex; align-items: flex-start; gap: 10px; }
+.yoycol-check input { width: 20px; flex: 0 0 20px; margin-top: 4px; }
+.yoycol-admin .yoycol-panel a { color: #f5d78d; text-decoration: underline; }
+@media (max-width: 760px) {
+    .yoycol-checkout { grid-template-columns: 1fr; gap: 28px; }
+    .yoycol-header, .yoycol-main { padding-inline: 16px; }
+    .yoycol-header img { width: 110px; }
+    .yoycol-header nav { gap: 16px; font-size: 14px; }
+    .yoycol-panel { padding: 20px; }
+    .yoycol-product > img { max-height: 330px; }
+    .yoycol-admin { padding: 12px; }
+}
+@media (max-width: 380px) { .yoycol-fields { grid-template-columns: 1fr; } }

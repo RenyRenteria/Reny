@@ -390,7 +390,8 @@ class StorePageTest extends TestCase
         $this->assertStringContainsString("image.className = 'store-bag-image';", $js);
         $this->assertStringContainsString('customer_name', $js);
         $this->assertStringContainsString('customer_country', $js);
-        $this->assertStringNotContainsString('customer_phone', $js);
+        // The digital/event modal has no phone field; shipped merch has its own delivery form.
+        $this->assertStringNotContainsString('customer_phone', file_get_contents(resource_path('js/features/checkout.js')));
         $this->assertStringNotContainsString('Add a valid international phone number.', $js);
         $this->assertStringNotContainsString('completePurchaseButton', $js);
         $this->assertStringNotContainsString('Load PayPal checkout', $js);

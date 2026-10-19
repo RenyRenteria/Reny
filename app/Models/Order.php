@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable([
     'user_id',
@@ -35,6 +36,11 @@ class Order extends Model
             'refund_amount_cents' => 'integer',
             'metadata' => 'array',
         ];
+    }
+
+    public function yoycolFulfillment(): HasOne
+    {
+        return $this->hasOne(YoycolFulfillment::class);
     }
 
     public function user(): BelongsTo

@@ -4,6 +4,7 @@ use App\Models\User;
 use App\Services\Media\BackfillCommunityVideoThumbnails;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schedule;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
@@ -107,3 +108,6 @@ Artisan::command('admin:provision
 
     return 0;
 })->purpose('Create or promote an admin CMS account without committing credentials');
+
+Schedule::command('yoycol:sync')->everyMinute()->withoutOverlapping(30);
+Schedule::command('yoycol:sync --catalog')->hourly()->withoutOverlapping(60);

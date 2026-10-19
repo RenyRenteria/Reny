@@ -169,7 +169,7 @@
                                         <strong>{{ $purchase['name'] }}</strong>
                                         <span>{{ $purchase['date'] }}</span>
                                     </div>
-                                    <small>{{ $purchase['status'] }}</small>
+                                    <small>{{ $purchase['status'] }} @if ($purchase['tracking_url'] ?? null)<a href="{{ $purchase['tracking_url'] }}">Track shipment</a>@endif</small>
                                 </div>
                             @empty
                                 <div class="account-empty">

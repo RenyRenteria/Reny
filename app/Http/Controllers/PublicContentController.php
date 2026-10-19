@@ -6,6 +6,7 @@ use App\Enums\ContentType;
 use App\Enums\EditorialStatus;
 use App\Enums\VisibilityAudience;
 use App\Models\EditorialContent;
+use App\Models\YoycolProduct;
 use App\Services\Commerce\ProductCatalog;
 use App\Services\CommunityInteractionService;
 use App\Services\PublicCmsContentService;
@@ -105,6 +106,10 @@ class PublicContentController extends Controller
         $catalogProduct = $products->find($product, $request->user());
 
         abort_unless($catalogProduct, 404);
+
+        if ($catalogProduct['source_type'] === 'yoycol_product') {
+            return view('yoycol.checkout', ['product' => YoycolProduct::findOrFail($catalogProduct['source_id'])]);
+        }
 
         $publicCms = $cms->store($request->user());
 

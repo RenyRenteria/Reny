@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\EditorialContentController;
 use App\Http\Controllers\Admin\MediaLibraryController;
 use App\Http\Controllers\Admin\PhotoLibraryController;
 use App\Http\Controllers\Admin\SiteEditorController;
+use App\Http\Controllers\Admin\YoycolController;
 use App\Http\Controllers\AnalyticsEventController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\NewPasswordController;
@@ -124,6 +125,15 @@ Route::prefix(config('admin.path', 'admin'))->name('admin.')->group(function () 
         Route::get('/reports/export', DashboardExportController::class)->name('reports.export');
         Route::post('/logout', [AdminLoginController::class, 'destroy'])->name('logout');
 
+        Route::prefix('yoycol')->name('yoycol.')->middleware(['admin.cms', 'admin.publish'])->group(function () {
+            Route::get('/', [YoycolController::class, 'index'])->name('index');
+            Route::post('/sync', [YoycolController::class, 'sync'])->middleware('throttle:5,1')->name('sync');
+            Route::patch('/products/{product}', [YoycolController::class, 'update'])->name('update');
+            Route::post('/orders/{fulfillment}/reconcile', [YoycolController::class, 'reconcile'])->middleware('throttle:10,1')->name('reconcile');
+            Route::post('/orders/{fulfillment}/retry', [YoycolController::class, 'retry'])->middleware('throttle:3,1')->name('retry');
+            Route::post('/orders/{fulfillment}/cancel', [YoycolController::class, 'cancel'])->middleware('throttle:3,1')->name('cancel');
+        });
+
         Route::get('/site-editor', [SiteEditorController::class, 'index'])->middleware('admin.cms')->name('site-editor.index');
         Route::get('/site-editor/{page}/preview', [SiteEditorController::class, 'preview'])->middleware('admin.cms')->name('site-editor.preview');
         Route::post('/site-editor/{page}/settings', [SiteEditorController::class, 'updatePageSettings'])->middleware('admin.cms')->name('site-editor.page-settings.update');
@@ -227,3 +237,8 @@ Route::post('/checkout/local', [CheckoutController::class, 'local'])
     ->name('checkout.local');
 Route::post('/paypal/refund', [PaypalWebhookController::class, 'refund'])->name('paypal.refund');
 Route::post('/mux/webhook', MuxWebhookController::class)->name('mux.webhook');
+
+Route::post('/checkout/yoycol/{product}/quote', [App\Http\Controllers\Commerce\YoycolController::class, 'quote'])
+    ->middleware('throttle:20,1')->name('yoycol.quote');
+Route::get('/account/orders/{order}/tracking', [App\Http\Controllers\Commerce\YoycolController::class, 'tracking'])
+    ->middleware('auth')->name('yoycol.tracking');
