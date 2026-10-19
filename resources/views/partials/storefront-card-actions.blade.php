@@ -23,6 +23,8 @@
         data-rsvp-confirmed="{{ $rsvpTicket ? 'true' : 'false' }}"
         aria-describedby="{{ $slotStatusId }}"
     >{{ $rsvpTicket ? 'RSVP confirmed' : ($slot['cta_label'] ?? 'GET TICKETS') }}</button>
+@elseif ($slotActionType === 'yoycol')
+    <a class="{{ $cardButtonClass }}" href="{{ route('store.checkout', ['product' => $slotProductKey]) }}">{{ $slot['cta_label'] }}</a>
 @elseif ($slotActionType === 'link')
     @if (filled($slot['url'] ?? null))
         <a class="{{ $cardButtonClass }}" href="{{ $slot['url'] }}" target="_blank" rel="noreferrer">{{ $slot['cta_label'] ?? 'OPEN' }}</a>

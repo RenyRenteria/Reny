@@ -10,3 +10,5 @@ import './features/admin.js';
 import './features/admin-reports.js';
 import './features/photo-cms.js';
 import './features/video-cms.js';
+
+import './features/yoycol-checkout.js';

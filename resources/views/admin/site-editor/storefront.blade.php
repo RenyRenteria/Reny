@@ -1,3 +1,4 @@
+<p><a href="{{ route('admin.yoycol.index') }}" class="admin-button">Yoycol · Productos y pedidos</a></p>
 @php
     $slotKeys = ['event_primary', 'event_secondary', 'album', 'merch'];
     $slotLabels = [

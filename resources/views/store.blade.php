@@ -89,6 +89,16 @@
         $cmsEventSlots = collect();
         $cmsProductSlots = $cmsProductSlots->where('kind', 'merch');
     }
+    if (! $isShowsPage && config('yoycol.enabled')) {
+        $cmsProductSlots = $cmsProductSlots->concat(\App\Models\YoycolProduct::where('published', true)->get()
+            ->filter(fn ($product) => $product->purchasable())->map(fn ($product) => [
+                'key' => $product->productKey(), 'product_key' => $product->productKey(),
+                'kind' => 'merch', 'title' => $product->title, 'eyebrow' => 'Made to order',
+                'description' => $product->description, 'price_label' => $moneyLabel($product->price_cents, 'USD'),
+                'cta_label' => 'CHOOSE SIZE', 'action_type' => 'yoycol',
+                'image_url' => $product->image_url, 'image_alt' => $product->title,
+            ]));
+    }
     $representedProductKeys = $baseStorefrontSlots->pluck('product_key')->filter();
     $storefrontSlots = $baseStorefrontSlots
         ->concat($cmsEventSlots)
