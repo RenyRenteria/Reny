@@ -93,7 +93,39 @@ class VideoCmsManagementTest extends TestCase
             ->assertSee(route('admin.site-editor.videos.order'), false)
             ->assertSee(route('admin.site-editor.videos.featured'), false)
             ->assertSee('data-video-content-form', false)
+            ->assertDontSee('name="metadata[sort_order]"', false)
             ->assertSee('iframe title="Preview público de Videos"', false);
+    }
+
+    public function test_editing_a_video_cannot_override_the_collection_order(): void
+    {
+        app(PublicVideoCatalogSeeder::class)->seed();
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $this->actingAsAdmin($admin);
+        $video = app(VideoCatalogService::class)->contents()
+            ->first(fn (EditorialContent $content): bool => VideoCatalog::groupFor($content) === 'music_videos'
+                && ! VideoCatalog::isFeaturedOnly($content));
+        $this->assertNotNull($video);
+        $originalSortOrder = VideoCatalog::sortOrder($video);
+
+        $this->patch(route('admin.content.update', $video), [
+            'return_to_video_editor' => '1',
+            '_video_editor_tab' => 'catalog',
+            'action' => 'publish',
+            'type' => ContentType::Video->value,
+            'title' => $video->title,
+            'summary' => $video->summary,
+            'visibility' => $video->visibility->value,
+            'metadata' => [
+                'youtube_url' => data_get($video->metadata, 'youtube_url'),
+                'category' => VideoCatalog::groupFor($video),
+                'access_tier' => data_get($video->metadata, 'access_tier', VisibilityAudience::Open->value),
+                'sort_order' => 999,
+                'is_featured' => VideoCatalog::isFeatured($video),
+            ],
+        ])->assertRedirect(route('admin.site-editor.show', ['page' => 'videos']));
+
+        $this->assertSame($originalSortOrder, VideoCatalog::sortOrder($video->refresh()));
     }
 
     public function test_admin_can_publish_a_video_as_featured_without_removing_it_from_its_collection(): void
@@ -274,6 +306,26 @@ class VideoCmsManagementTest extends TestCase
         $this->post(route('admin.site-editor.videos.order'), [
             'video_ids' => $completeOrder,
         ])->assertRedirect(route('admin.site-editor.show', ['page' => 'videos']));
+
+        foreach (array_keys(VideoCatalog::groups()) as $groupKey) {
+            $expectedGroupIds = $groupKey === 'music_videos'
+                ? $reorderedMusicIds
+                : $originalIdsByGroup[$groupKey];
+            $persistedGroup = EditorialContent::query()
+                ->where('type', ContentType::Video->value)
+                ->where('status', '!=', EditorialStatus::Archived->value)
+                ->get()
+                ->reject(fn (EditorialContent $content): bool => VideoCatalog::isFeaturedOnly($content))
+                ->filter(fn (EditorialContent $content): bool => VideoCatalog::groupFor($content) === $groupKey)
+                ->sortBy(fn (EditorialContent $content): int => VideoCatalog::sortOrder($content))
+                ->values();
+
+            $this->assertSame($expectedGroupIds, $persistedGroup->pluck('id')->all());
+            $this->assertSame(
+                range(1, $persistedGroup->count()),
+                $persistedGroup->map(fn (EditorialContent $content): int => VideoCatalog::sortOrder($content))->all(),
+            );
+        }
 
         $reloadedHtml = $this->get(route('admin.site-editor.show', ['page' => 'videos']))
             ->assertOk()
