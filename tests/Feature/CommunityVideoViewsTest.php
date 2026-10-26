@@ -5,7 +5,9 @@ namespace Tests\Feature;
 use App\Models\CommunityVideoView;
 use App\Models\User;
 use App\Services\CommunityInteractionService;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class CommunityVideoViewsTest extends TestCase
@@ -27,7 +29,7 @@ class CommunityVideoViewsTest extends TestCase
         ]]);
     }
 
-    public function test_guest_video_view_is_counted_once_per_session_and_rendered_in_the_feed(): void
+    public function test_each_guest_video_playback_is_counted_and_rendered_in_the_feed(): void
     {
         $video = $this->videoPayload();
 
@@ -38,18 +40,18 @@ class CommunityVideoViewsTest extends TestCase
 
         $this->postJson($video['view_endpoint'])
             ->assertOk()
-            ->assertJsonPath('counted', false)
-            ->assertJsonPath('view_count', 1);
+            ->assertJsonPath('counted', true)
+            ->assertJsonPath('view_count', 2);
 
-        $this->assertDatabaseCount('community_video_views', 1);
+        $this->assertDatabaseCount('community_video_views', 2);
         $this->get('/royals')
             ->assertOk()
             ->assertSee('data-community-video-view', false)
             ->assertSee('data-view-endpoint="'.$video['view_endpoint'].'"', false)
-            ->assertSee('data-video-view-count-value>1</span>', false);
+            ->assertSee('data-video-view-count-value>2</span>', false);
     }
 
-    public function test_authenticated_video_view_is_counted_once_per_user_across_sessions(): void
+    public function test_each_authenticated_video_playback_is_counted_across_sessions(): void
     {
         $user = User::factory()->create();
         $video = $this->videoPayload($user);
@@ -69,10 +71,42 @@ class CommunityVideoViewsTest extends TestCase
             [],
         );
 
-        $this->assertFalse($result['counted']);
-        $this->assertSame(1, $result['view_count']);
-        $this->assertDatabaseCount('community_video_views', 1);
-        $this->assertSame($user->id, CommunityVideoView::query()->sole()->user_id);
+        $this->assertTrue($result['counted']);
+        $this->assertSame(2, $result['view_count']);
+        $this->assertDatabaseCount('community_video_views', 2);
+        $this->assertSame([$user->id, $user->id], CommunityVideoView::query()->pluck('user_id')->all());
+    }
+
+    public function test_upgrade_replaces_the_existing_unique_viewer_index_without_losing_views(): void
+    {
+        Schema::table('community_video_views', function (Blueprint $table) {
+            $table->dropIndex('community_video_views_viewer_index');
+            $table->unique(['video_key', 'viewer_key'], 'community_video_views_viewer_unique');
+        });
+
+        $video = $this->videoPayload();
+        app(CommunityInteractionService::class)->recordVideoView(
+            null,
+            'returning-viewer',
+            'backstage-post',
+            $video['view_key'],
+            [],
+        );
+
+        $migration = require database_path('migrations/2026_08_14_203000_allow_repeated_community_video_views.php');
+        $migration->up();
+
+        $result = app(CommunityInteractionService::class)->recordVideoView(
+            null,
+            'returning-viewer',
+            'backstage-post',
+            $video['view_key'],
+            [],
+        );
+
+        $this->assertTrue($result['counted']);
+        $this->assertSame(2, $result['view_count']);
+        $this->assertDatabaseCount('community_video_views', 2);
     }
 
     public function test_different_guest_sessions_increment_the_same_video_counter(): void

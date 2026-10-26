@@ -137,6 +137,7 @@ const initializeCommunityReactions = (root = document) => {
 const initializeCommunityVideoViews = (root = document) => {
     root.querySelectorAll('[data-community-video-view]').forEach((video) => {
         let requestInFlight = false;
+        let queuedViews = 0;
 
         const updateViewCount = (count) => {
             const counter = video.closest('[data-community-video]')?.querySelector('[data-video-view-count]');
@@ -157,36 +158,42 @@ const initializeCommunityVideoViews = (root = document) => {
             counter?.setAttribute('aria-label', `${safeCount} ${label}`);
         };
 
-        const recordView = async () => {
-            if (requestInFlight || video.dataset.viewRecorded === 'true' || !video.dataset.viewEndpoint) {
+        const flushQueuedViews = async () => {
+            if (requestInFlight || queuedViews === 0 || !video.dataset.viewEndpoint) {
                 return;
             }
 
             requestInFlight = true;
 
-            try {
-                const payload = await postCommunityJson(video.dataset.viewEndpoint);
+            while (queuedViews > 0) {
+                try {
+                    const payload = await postCommunityJson(video.dataset.viewEndpoint);
 
-                updateViewCount(payload.view_count);
-                video.dataset.viewRecorded = 'true';
+                    queuedViews -= 1;
+                    updateViewCount(payload.view_count);
 
-                if (payload.counted) {
-                    trackElementEvent(video, 'community_video_viewed', {
-                        item_type: 'community_video',
-                        result: 'viewed',
-                    });
+                    if (payload.counted) {
+                        trackElementEvent(video, 'community_video_viewed', {
+                            item_type: 'community_video',
+                            result: 'viewed',
+                        });
+                    }
+                } catch (error) {
+                    queuedViews -= 1;
+                    console.warn('Community video view could not be saved.', error);
                 }
-            } catch (error) {
-                console.warn('Community video view could not be saved.', error);
-            } finally {
-                requestInFlight = false;
             }
+
+            requestInFlight = false;
+        };
+
+        const recordView = () => {
+            queuedViews += 1;
+            void flushQueuedViews();
         };
 
         const tracker = createPlaybackThresholdTracker({
             onQualified: () => {
-                video.dataset.viewQualified = 'true';
-
                 if (video.isConnected) {
                     recordView();
                 }
@@ -195,15 +202,26 @@ const initializeCommunityVideoViews = (root = document) => {
 
         bindOnce(video, 'community-video-view-playing', 'playing', () => {
             tracker.start();
+        });
 
-            if (video.dataset.viewQualified === 'true') {
-                recordView();
+        ['pause', 'waiting'].forEach((eventName) => {
+            bindOnce(video, `community-video-view-${eventName}`, eventName, () => tracker.stop());
+        });
+
+        bindOnce(video, 'community-video-view-seeking', 'seeking', () => {
+            tracker.stop();
+
+            if (video.currentTime < 1 && tracker.snapshot().qualified) {
+                tracker.reset();
             }
         });
 
-        ['pause', 'waiting', 'seeking', 'ended', 'emptied'].forEach((eventName) => {
-            bindOnce(video, `community-video-view-${eventName}`, eventName, () => tracker.stop());
+        bindOnce(video, 'community-video-view-ended', 'ended', () => {
+            tracker.stop();
+            tracker.reset();
         });
+
+        bindOnce(video, 'community-video-view-emptied', 'emptied', () => tracker.reset());
     });
 };
 
