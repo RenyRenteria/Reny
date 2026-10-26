@@ -19,7 +19,7 @@ class CommunityMemberController extends Controller
             echo "\xEF\xBB\xBF";
 
             $output = fopen('php://output', 'w');
-            fputcsv($output, ['plan', 'photo', 'username', 'country', 'member since']);
+            fputcsv($output, ['plan', 'photo', 'username', 'email', 'country', 'member since']);
 
             $directory->query($filters['search'], $filters['plan'])
                 ->oldest('created_at')
@@ -29,6 +29,7 @@ class CommunityMemberController extends Controller
                         $directory->planLabel($user),
                         $user->avatar_path ? url(ltrim($user->avatar_path, '/')) : '',
                         $user->username ?: $user->name,
+                        $user->email,
                         $directory->countryLabel($user->country_code),
                         $user->created_at?->timezone(config('admin.publishing_timezone', 'America/Panama'))->toDateString(),
                     ]);
