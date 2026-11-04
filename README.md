@@ -75,6 +75,27 @@ After the first deploy, configure a queue worker in Forge:
 php artisan queue:work --sleep=3 --tries=3 --max-time=3600
 ```
 
+## Google Analytics
+
+Public pages use GA4 measurement ID `G-VZW6QP0YSW` when `APP_ENV=production`.
+The ID is built into the configuration, so deploying this code with the Forge
+script above enables it without adding an environment variable. Override it with
+`GOOGLE_ANALYTICS_MEASUREMENT_ID`, or set `GOOGLE_ANALYTICS_ENABLED=false` to disable
+it. Local and test environments do not load the tag unless explicitly enabled.
+
+The shared tag initializes before the existing frontend analytics adapter, which
+forwards interaction events to GA4. GA4 handles page views automatically; the
+adapter keeps its manual page views for the internal dashboard and other providers
+without sending a second copy to GA4. Keep Enhanced Measurement's **Page changes
+based on browser history events** enabled in the web stream: the site uses history
+navigation to keep the music player running between pages. Admin pages, CMS
+previews, and password reset pages do not load the tag. Existing custom events
+retain their current names; this does not configure GA4 key events or standard
+ecommerce purchase reporting.
+
+After deploying, open the public site and confirm `G-VZW6QP0YSW` traffic in GA4
+Realtime. See Google's [page view documentation](https://developers.google.com/analytics/devguides/collection/ga4/views).
+
 ## Checks
 
 ```bash
