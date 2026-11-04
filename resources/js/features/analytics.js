@@ -67,7 +67,9 @@ const dispatchAnalyticsEvent = (event) => {
         window.dataLayer.push({ event: event.name, ...event.payload });
     }
 
-    if (typeof window.gtag === 'function') {
+    // GA4 measures page views on load and history changes through Enhanced Measurement.
+    // Keep the manual page_view for the internal dashboard and other providers only.
+    if (typeof window.gtag === 'function' && event.name !== 'page_view') {
         window.gtag('event', event.name, event.payload);
     }
 

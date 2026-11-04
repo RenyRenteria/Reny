@@ -145,6 +145,7 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
         <meta charset="utf-8">
+        @include('partials.google-analytics')
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
         @include('partials.public-seo', ['seo' => $pageSettings, 'fallbackTitle' => 'Photos | Reny Renteria'])
