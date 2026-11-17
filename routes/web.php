@@ -33,6 +33,8 @@ use App\Http\Controllers\TicketCheckInController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [PublicContentController::class, 'home'])->name('home');
+Route::get('/newlanding', fn () => response()->view('newlanding')
+    ->header('X-Robots-Tag', 'noindex, nofollow'))->name('newlanding');
 Route::get('/music', [MusicController::class, 'index'])->name('music');
 Route::get('/music/albums', [MusicController::class, 'albums'])->name('music.albums');
 Route::get('/music/singles', [MusicController::class, 'singles'])->name('music.singles');
