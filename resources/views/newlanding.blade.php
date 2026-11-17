@@ -7,7 +7,7 @@
   <meta name="robots" content="noindex, nofollow">
   <title>Reny Renteria Takeover · Nuevo inicio</title>
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="/newlanding-assets/styles.css?v=20261116">
+  <link rel="stylesheet" href="/newlanding-assets/styles.css?v=20261116-merch">
 </head>
 <body>
   <main>
@@ -46,7 +46,8 @@
       </div>
       <footer class="hero-footer"><span>UNA NOCHE. TODO RENY.</span><span>ROCK &amp; FOLK <i aria-hidden="true">·</i> 02 OCT 2027</span></footer>
     </section>
+    @include('partials.newlanding-merch')
   </main>
-  <script src="/newlanding-assets/script.js?v=20261116" defer></script>
+  <script src="/newlanding-assets/script.js?v=20261116-merch" defer></script>
 </body>
 </html>

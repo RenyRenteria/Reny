@@ -20,3 +20,14 @@ Deploy through the existing main/Forge pipeline. There are no new environment va
 - Countdown checked one second before, at and after the show time; it never goes negative.
 - Existing home, Takeover and analytics feature tests: 9 tests, 173 assertions.
 - Vite production build, PHP/JS syntax, Pint and diff checks passed.
+
+## Merch section (November 16, 2026)
+
+The hero is followed by nine provisional collection pieces on ivory, with ink typography, ruby accents, DM Sans and 8 px controls. The grid uses three columns on desktop and two on phones, with the ninth piece centered. Each card opens a native dialog with a larger image; Escape, the close button or the backdrop closes it and returns focus. Without JavaScript the links open the image directly. “Ver toda la tienda” links to the existing `/store` landing page.
+
+- Collection names and image mapping: `resources/views/partials/newlanding-merch.blade.php`.
+- Generated concept images: `public/newlanding-assets/merch/`, in responsive 480/960 px WebP versions (about 524 KB total on disk). Cards load lazily.
+- Generation prompts and provenance: `docs/newlanding-merch-prompts.md`.
+- Products, names and imagery are explicitly marked provisional. No prices, stock claims, purchase buttons or catalog/database writes are introduced. Confirm the real nine products, images and checkout keys before wiring purchases.
+
+Validation: Playwright at 320, 390, 700, 768, 901 and 1440 px; all nine images and fonts loaded, no horizontal overflow or page errors, all nine dialogs opened, close/Escape/backdrop and focus restoration passed, reduced motion disables image zoom. Desktop/mobile screenshots visually inspected. Existing home, Takeover and analytics tests passed (27 tests, 344 assertions). Blade compilation, JS syntax, Pint, Vite build and diff checks passed.

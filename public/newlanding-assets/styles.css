@@ -70,3 +70,67 @@ h1{margin:0;font-weight:500}
 @media(min-width:500px) and (max-width:900px){.hero{min-height:1120px}.copy{padding-top:545px}.hero-art img{object-position:center top}}
 @media(max-width:359px){:root{--gutter:20px}.hero{min-height:880px}.copy{padding-top:340px}.actions{gap:8px}.primary{padding:0 14px;gap:12px}.calendar{font-size:10px}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* Merch: open cards and the same ivory, ink and ruby palette as the approved system. */
+.merch{background:var(--ivory);color:var(--ink);padding:100px var(--gutter) 80px}
+.merch-inner{max-width:1456px;margin:0 auto}
+.merch :focus-visible,.merch-dialog :focus-visible{outline-color:var(--ruby)}
+.merch-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:32px}
+.merch-eyebrow{display:flex;align-items:center;gap:12px;margin:0 0 22px;color:var(--ruby);font-size:10px;font-weight:500;letter-spacing:.19em;line-height:1.5}
+.merch-eyebrow>span{width:27px;height:2px;background:var(--ruby)}
+.merch h2{margin:0;font-size:clamp(36px,4.45vw,72px);font-weight:500;letter-spacing:-.055em;line-height:1.08}
+.merch-intro{margin:18px 0 0;color:#68615e;font-size:15px;line-height:1.6}
+.merch-count{margin:0 0 4px;text-align:right;display:flex;flex-direction:column;gap:10px;color:#68615e;font-size:9px;letter-spacing:.17em;flex-shrink:0}
+.merch-count span{font-size:52px;font-weight:400;line-height:1;letter-spacing:-.06em;color:var(--ruby)}
+.merch-preview-note{margin:36px 0 18px;padding-top:20px;border-top:1px solid #201d1e26;font-size:11px;line-height:1.5;color:#68615e}
+.merch-grid{list-style:none;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:40px 24px;margin:0;padding:0}
+.merch-item{min-width:0}
+.merch-piece{display:block}
+.merch-media{display:block;position:relative;aspect-ratio:1;background:#e8e4dd;overflow:hidden}
+.merch-media img{display:block;width:100%;height:100%;object-fit:cover;transition:transform .35s ease}
+.merch-number{position:absolute;top:18px;left:18px;color:#534b47;font-size:10px;letter-spacing:.08em}
+.merch-view{position:absolute;bottom:14px;right:14px;display:flex;align-items:center;gap:12px;min-height:36px;padding:0 12px;border-radius:8px;background:var(--ivory);color:var(--ink);font-size:10px;transition:background .2s,color .2s}
+.merch-view>span{font-size:20px;line-height:1}
+.merch-info{display:flex;flex-direction:column;gap:7px;padding-top:17px}
+.merch-piece-name{font-size:17px;font-weight:500;line-height:1.3;letter-spacing:-.025em}
+.merch-piece-detail{font-size:12px;line-height:1.5;color:#68615e}
+.merch-piece:focus-visible .merch-view{background:var(--ruby);color:var(--ivory)}
+.merch-footer{display:flex;align-items:center;justify-content:space-between;gap:24px;margin-top:48px;padding-top:36px;border-top:1px solid #201d1e26}
+.merch-footer p{margin:0;font-size:24px;line-height:1.3;font-weight:500;letter-spacing:-.035em}
+.merch-footer p>span{color:#68615e}
+.merch-shop-all{min-width:226px}
+.merch-dialog{padding:0;border:0;border-radius:8px;width:min(880px,calc(100vw - 40px));max-height:calc(100svh - 40px);color:var(--ink);background:var(--ivory);overscroll-behavior:contain}
+.merch-dialog::backdrop{background:#151112bd}
+.merch-dialog-layout{display:grid;grid-template-columns:1.05fr 1fr}
+.merch-dialog-image{display:block;width:100%;height:100%;min-height:420px;object-fit:contain;background:#e8e4dd}
+.merch-dialog-copy{align-self:center;padding:56px 32px 40px}
+.merch-dialog h2{margin:0;font-size:36px;line-height:1.1;font-weight:500;letter-spacing:-.04em}
+.merch-dialog-detail{margin:14px 0 24px;font-size:13px;color:#68615e}
+#merch-dialog-description{margin:0 0 28px;font-size:14px;line-height:1.7;color:#68615e}
+.merch-dialog .primary{font-size:12px;gap:20px}
+.merch-close{position:absolute;top:12px;right:12px;display:flex;align-items:center;justify-content:center;width:44px;height:44px;border:1px solid #201d1e26;border-radius:8px;background:var(--ivory);color:var(--ink);font-size:27px;line-height:1;z-index:1}
+.merch-close:hover{background:#e8e4dd}
+html:has(.merch-dialog[open]){overflow:hidden}
+@media(hover:hover){.merch-piece:hover .merch-media img{transform:scale(1.035)}.merch-piece:hover .merch-view{background:var(--ruby);color:var(--ivory)}}
+@media(max-width:900px){.merch{padding-top:64px;padding-bottom:56px}.merch-grid{gap:32px 20px}.merch-piece-name{font-size:15px}.merch-count span{font-size:44px}}
+@media(max-width:700px){
+  .merch-heading{gap:18px;align-items:flex-start}
+  .merch h2{font-size:clamp(34px,7.6vw,46px);max-width:9em}
+  .merch-eyebrow{font-size:9px;letter-spacing:.12em;margin-bottom:16px;gap:9px}
+  .merch-eyebrow>span{width:20px}
+  .merch-count{font-size:8px;margin-top:30px;gap:7px}.merch-count span{font-size:34px}
+  .merch-intro{font-size:13px;max-width:19em;margin-top:15px}
+  .merch-preview-note{margin-top:25px;padding-top:16px;font-size:10px}
+  .merch-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:28px 12px}
+  .merch-number{top:10px;left:10px;font-size:9px}
+  .merch-view{bottom:8px;right:8px;padding:0 8px;min-height:30px;font-size:9px;gap:5px}.merch-view>span{font-size:17px}
+  .merch-info{padding-top:12px;gap:4px}.merch-piece-name{font-size:14px}.merch-piece-detail{font-size:11px}
+  .merch-item:last-child{grid-column:1/-1;width:calc((100% - 12px)/2);justify-self:center}
+  .merch-footer{margin-top:36px;padding-top:28px;flex-direction:column;text-align:center;gap:24px}
+  .merch-footer p{font-size:23px}.merch-shop-all{justify-content:center;gap:28px;width:100%;max-width:320px;font-size:13px}
+  .merch-dialog{width:calc(100vw - 32px);max-height:calc(100svh - 32px)}
+  .merch-dialog-layout{grid-template-columns:1fr}.merch-dialog-image{min-height:0;aspect-ratio:1;max-height:42svh;object-fit:contain}
+  .merch-dialog-copy{padding:28px 24px}.merch-dialog h2{font-size:30px}.merch-dialog .merch-eyebrow{font-size:9px}
+  .merch-dialog-detail{margin:10px 0 18px}#merch-dialog-description{font-size:13px;margin-bottom:22px}
+}
+@media(prefers-reduced-motion:reduce){.merch-media img{transform:none!important;transition:none}}
