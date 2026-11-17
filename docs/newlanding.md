@@ -42,3 +42,15 @@ The approved “Lleva el Takeover contigo.” banner sits between the concert he
 - `#coleccion-banner` links directly to the new banner. Smooth scrolling respects reduced-motion preferences. The stylesheet URL is versioned for deployment.
 
 Validation: Playwright at 320, 390, 700, 768, 1000 and 1440 px; banner and all nine product images loaded, no horizontal overflow or JavaScript errors. Collection CTA, product dialog/Escape/focus return and reduced-motion scrolling passed. Mobile and desktop screenshots inspected. Existing home, Takeover and analytics tests: 39 passed, 482 assertions. Blade compilation, Pint, Vite production build and diff checks passed.
+
+## Royal Pass section (November 17, 2026)
+
+Royal Pass follows the nine pieces and the store link at `#royal-pass`. “Hay más de Reny para ti.” introduces exclusive content and the Royals community. The studio portrait blends into the ink background, with ivory typography, ruby accents and 8 px controls. On phones the portrait sits above the invitation. A compact signature footer includes a link back to the concert heading.
+
+- Template: `resources/views/partials/newlanding-royal-pass.blade.php`.
+- Photograph: the existing `public/images/photos/studio.jpg`, re-encoded as `public/newlanding-assets/royal/studio.webp` (640 × 1136, 20,786 bytes). No generated imagery. Grayscale and blending are CSS, and the image loads lazily.
+- “Descubrir Royal Pass” opens the existing `store.checkout` route for `royal`. “Ya soy Royal” opens the existing `royals` route. No new purchase, authentication or entitlement flow.
+- The video teaser is explicitly marked “Adelanto próximamente”. It is a static photograph, with no fake play button, video duration or playback request. Replace this cover with an approved public teaser when Reny supplies the video. Keep member-only video behind the existing entitlement checks.
+- No price or additional membership promises are hardcoded. Current product terms remain in the existing checkout.
+
+Validation: Playwright at 320, 390, 700, 768, 1000 and 1440 px; no horizontal overflow or JavaScript errors, photograph and fonts loaded, correct section order, keyboard focus and tab order, reduced-motion scrolling and return-to-top link passed. Existing merch dialog still opens and closes with Escape. Mobile and desktop screenshots inspected. Existing home, Takeover and analytics tests: 51 passed, 583 assertions. Blade compilation, Pint, Vite build and diff checks passed. The preview still responds with `noindex, nofollow`.

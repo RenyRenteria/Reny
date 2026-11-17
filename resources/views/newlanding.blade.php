@@ -7,7 +7,7 @@
   <meta name="robots" content="noindex, nofollow">
   <title>Reny Renteria Takeover · Nuevo inicio</title>
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="/newlanding-assets/styles.css?v=20261117-merch-banner">
+  <link rel="stylesheet" href="/newlanding-assets/styles.css?v=20261117-royal-pass">
 </head>
 <body>
   <main>
@@ -48,6 +48,7 @@
     </section>
     @include('partials.newlanding-merch-banner')
     @include('partials.newlanding-merch')
+    @include('partials.newlanding-royal-pass')
   </main>
   <script src="/newlanding-assets/script.js?v=20261116-merch" defer></script>
 </body>
