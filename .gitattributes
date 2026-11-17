@@ -5,6 +5,7 @@
 *.html diff=html
 *.md diff=markdown
 *.php diff=php
+/public/newlanding-assets/reny-takeover.ics text eol=crlf
 
 /.github export-ignore
 CHANGELOG.md export-ignore
