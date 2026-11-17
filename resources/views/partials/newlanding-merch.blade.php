@@ -17,13 +17,11 @@
   <div class="merch-inner">
     <header class="merch-heading">
       <div>
-        <p class="merch-eyebrow"><span aria-hidden="true"></span> LA PRIMERA COLECCIÓN</p>
         <h2 id="merch-title">Vístelo a tu manera.</h2>
-        <p class="merch-intro">Del escenario a tu día a día.</p>
       </div>
       <p class="merch-count"><span>09</span> PIEZAS</p>
     </header>
-    <p class="merch-preview-note">Propuesta visual · Piezas y nombres provisionales</p>
+    <p class="merch-preview-note">Propuesta visual · Fotografía, piezas y nombres provisionales</p>
     <ol class="merch-grid" aria-label="Nueve piezas de la propuesta de colección">
       @foreach ($merchConcepts as $piece)
         <li class="merch-item">

@@ -23,7 +23,7 @@ Deploy through the existing main/Forge pipeline. There are no new environment va
 
 ## Merch section (November 16, 2026)
 
-The hero is followed by nine provisional collection pieces on ivory, with ink typography, ruby accents, DM Sans and 8 px controls. The grid uses three columns on desktop and two on phones, with the ninth piece centered. Each card opens a native dialog with a larger image; Escape, the close button or the backdrop closes it and returns focus. Without JavaScript the links open the image directly. “Ver toda la tienda” links to the existing `/store` landing page.
+The hero is followed by the approved collection banner and nine provisional collection pieces on ivory, with ink typography, ruby accents, DM Sans and 8 px controls. The grid uses three columns on desktop and two on phones, with the ninth piece centered. Each card opens a native dialog with a larger image; Escape, the close button or the backdrop closes it and returns focus. Without JavaScript the links open the image directly. “Ver toda la tienda” links to the existing `/store` landing page.
 
 - Collection names and image mapping: `resources/views/partials/newlanding-merch.blade.php`.
 - Generated concept images: `public/newlanding-assets/merch/`, in responsive 480/960 px WebP versions (about 524 KB total on disk). Cards load lazily.
@@ -31,3 +31,14 @@ The hero is followed by nine provisional collection pieces on ivory, with ink ty
 - Products, names and imagery are explicitly marked provisional. No prices, stock claims, purchase buttons or catalog/database writes are introduced. Confirm the real nine products, images and checkout keys before wiring purchases.
 
 Validation: Playwright at 320, 390, 700, 768, 901 and 1440 px; all nine images and fonts loaded, no horizontal overflow or page errors, all nine dialogs opened, close/Escape/backdrop and focus restoration passed, reduced motion disables image zoom. Desktop/mobile screenshots visually inspected. Existing home, Takeover and analytics tests passed (27 tests, 344 assertions). Blade compilation, JS syntax, Pint, Vite build and diff checks passed.
+
+## Collection banner (November 17, 2026)
+
+The approved “Lleva el Takeover contigo.” banner sits between the concert hero and the nine pieces. It reuses the image and layout from `reny-banner-coleccion-prototipo.zip`, approved in the homepage design thread. Desktop uses a wide composition with text to the left; mobile crops around the model and places the text over the dark lower portion. “Explorar la colección” scrolls to the existing `#coleccion` anchor. The collection heading below is compact to match the approved prototype.
+
+- Banner template: `resources/views/partials/newlanding-merch-banner.blade.php`.
+- Image: `public/newlanding-assets/merch/collection-banner.webp`, 1920 × 819, 45,090 bytes, lazy-loaded. Re-encoded from the supplied PNG without changing its composition.
+- Banner text remains selectable HTML, with an H2 below the concert H1. The image is a generated fictional model; the visible provisional-imagery note remains above the products.
+- `#coleccion-banner` links directly to the new banner. Smooth scrolling respects reduced-motion preferences. The stylesheet URL is versioned for deployment.
+
+Validation: Playwright at 320, 390, 700, 768, 1000 and 1440 px; banner and all nine product images loaded, no horizontal overflow or JavaScript errors. Collection CTA, product dialog/Escape/focus return and reduced-motion scrolling passed. Mobile and desktop screenshots inspected. Existing home, Takeover and analytics tests: 39 passed, 482 assertions. Blade compilation, Pint, Vite production build and diff checks passed.
