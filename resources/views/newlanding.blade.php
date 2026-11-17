@@ -7,7 +7,7 @@
   <meta name="robots" content="noindex, nofollow">
   <title>Reny Renteria Takeover · Nuevo inicio</title>
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="/newlanding-assets/styles.css?v=20261117-navigation">
+  <link rel="stylesheet" href="/newlanding-assets/styles.css?v=20261117-social-icons">
 </head>
 <body id="top">
   <a class="skip-link" href="#concert-title">Saltar al contenido</a>

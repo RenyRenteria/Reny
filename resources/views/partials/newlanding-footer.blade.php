@@ -5,14 +5,21 @@
     </a>
     <nav class="footer-nav" aria-label="Información y ayuda">
       <a href="{{ route('contacto') }}">Contacto</a>
-      <details name="site-disclosure" data-disclosure>
-        <summary id="footer-social-label">Redes</summary>
-        <div class="footer-panel" role="region" aria-labelledby="footer-social-label">
-          <p class="footer-panel-title">Nos vemos por aquí.</p>
-          <a href="https://www.instagram.com/renyrenteria/" target="_blank" rel="noopener noreferrer">Instagram <span aria-hidden="true">↗</span><span class="visually-hidden"> (abre otra pestaña)</span></a>
-          <a href="https://www.youtube.com/renyrenteriam" target="_blank" rel="noopener noreferrer">YouTube <span aria-hidden="true">↗</span><span class="visually-hidden"> (abre otra pestaña)</span></a>
-        </div>
-      </details>
+      <div class="footer-social" role="group" aria-label="Redes sociales">
+        <a href="https://www.instagram.com/renyrenteria/" target="_blank" rel="noopener noreferrer" aria-label="Instagram (abre otra pestaña)" title="Instagram">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true" focusable="false">
+            <rect x="3" y="3" width="18" height="18" rx="5"></rect>
+            <circle cx="12" cy="12" r="4"></circle>
+            <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"></circle>
+          </svg>
+        </a>
+        <a href="https://www.youtube.com/renyrenteriam" target="_blank" rel="noopener noreferrer" aria-label="YouTube (abre otra pestaña)" title="YouTube">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true" focusable="false">
+            <rect x="2" y="5" width="20" height="14" rx="4"></rect>
+            <path d="m10 9 5 3-5 3Z" fill="currentColor" stroke="none"></path>
+          </svg>
+        </a>
+      </div>
       <details name="site-disclosure" data-disclosure>
         <summary id="footer-faq-label">Preguntas frecuentes</summary>
         <div class="footer-panel" role="region" aria-labelledby="footer-faq-label">
