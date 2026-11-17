@@ -21,3 +21,32 @@ function tick() {
 }
 tick();
 setInterval(tick, 1000);
+
+// Concepts open an accessible image preview; no mock item enters the live checkout.
+const merchDialog = document.getElementById('merch-dialog');
+if (merchDialog && typeof merchDialog.showModal === 'function') {
+  const image = merchDialog.querySelector('.merch-dialog-image');
+  const close = merchDialog.querySelector('.merch-close');
+  for (const link of document.querySelectorAll('[data-merch-preview]')) {
+    link.setAttribute('aria-haspopup', 'dialog');
+    link.setAttribute('aria-controls', 'merch-dialog');
+    link.addEventListener('click', (event) => {
+      // Preserve opening the full image in a new tab or downloading it.
+      if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button !== 0) return;
+      event.preventDefault();
+      image.src = link.href;
+      image.alt = `Propuesta de ${link.dataset.pieceName}`;
+      merchDialog.querySelector('#merch-dialog-title').textContent = link.dataset.pieceName;
+      merchDialog.querySelector('.merch-dialog-detail').textContent = link.dataset.pieceDetail;
+      merchDialog.showModal();
+    });
+  }
+  close.addEventListener('click', () => merchDialog.close());
+  merchDialog.addEventListener('click', (event) => {
+    if (event.target !== merchDialog) return;
+    const bounds = merchDialog.getBoundingClientRect();
+    if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) {
+      merchDialog.close();
+    }
+  });
+}
