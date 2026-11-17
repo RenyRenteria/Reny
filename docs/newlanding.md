@@ -54,3 +54,11 @@ Royal Pass follows the nine pieces and the store link at `#royal-pass`. “Hay m
 - No price or additional membership promises are hardcoded. Current product terms remain in the existing checkout.
 
 Validation: Playwright at 320, 390, 700, 768, 1000 and 1440 px; no horizontal overflow or JavaScript errors, photograph and fonts loaded, correct section order, keyboard focus and tab order, reduced-motion scrolling and return-to-top link passed. Existing merch dialog still opens and closes with Escape. Mobile and desktop screenshots inspected. Existing home, Takeover and analytics tests: 51 passed, 583 assertions. Blade compilation, Pint, Vite build and diff checks passed. The preview still responds with `noindex, nofollow`.
+
+## Compact concert and Royal Pass (November 17, 2026)
+
+The concert now sizes to its content instead of forcing a full viewport or an 880–1120 px mobile minimum. Smaller vertical gaps preserve the countdown and both actions while revealing the collection below. Royal Pass uses a shorter mobile portrait and tighter typography and spacing. The approved collection banner and nine-product grid retain their existing styles. The stylesheet URL is versioned for the update.
+
+At 1440 × 900, the concert measures 675 px (previously 900) and Royal Pass 636 px (previously 838). At 390 × 844, they measure 683 px (previously 880) and 778 px (previously 1119). Sections can still grow naturally for smaller screens or enlarged text; content and controls are not clipped to a fixed height.
+
+Validation: Playwright at widths 320, 375, 390, 700, 768, 900, 901, 1000, 1280, 1440 and 1920 px found no horizontal overflow or clipped copy. Desktop, mobile and tablet captures inspected. Countdown ticks, collection anchor, product dialog/Escape/focus return, reduced motion and return-to-top passed. Ticket, calendar, store and Royal Pass destinations are preserved; primary buttons remain at least 48 px tall. Existing home, Takeover and analytics tests passed (29 tests, 356 assertions).
