@@ -73,26 +73,20 @@ h1{margin:0;font-weight:500}
 
 /* Approved collection banner; selectable text over the original campaign image. */
 html{scroll-behavior:smooth;scroll-padding-top:24px}
-.collection-banner{position:relative;isolation:isolate;min-height:560px;display:flex;align-items:center;overflow:hidden;background:#161213;color:var(--ivory)}
+.collection-banner{position:relative;isolation:isolate;min-height:280px;display:flex;align-items:center;overflow:hidden;background:#161213;color:var(--ivory)}
 .collection-photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:70% top;z-index:-2}
 .collection-shade{position:absolute;inset:0;z-index:-1;background:linear-gradient(90deg,rgba(20,16,17,.45),transparent 64%),linear-gradient(0deg,rgba(20,16,17,.32),transparent 25%)}
-.collection-copy{width:100%;max-width:1600px;margin:0 auto;padding:70px var(--gutter) 78px}
-.collection-copy .eyebrow{margin-bottom:30px;font-size:10px;letter-spacing:.2em}
-.collection-copy h2{margin:0;max-width:850px;font-size:clamp(48px,5.2vw,80px);font-weight:500;line-height:1.035;letter-spacing:-.06em}
-.collection-tagline{font-size:16px;color:#e2d9d2;margin:24px 0 30px;line-height:1.6}
-.collection-cta{min-height:52px;gap:38px}
-.collection-edition{position:absolute;bottom:24px;right:var(--gutter);font-size:9px;letter-spacing:.18em;color:#ded6cf}
-@media(min-width:701px) and (max-width:1000px){.collection-banner{min-height:460px}.collection-copy{padding-top:60px;padding-bottom:60px}.collection-copy h2{font-size:55px}.collection-photo{object-position:65% center}.collection-shade{background:linear-gradient(90deg,#14101188,transparent 85%)}}
+.collection-copy{width:100%;max-width:1600px;margin:0 auto;padding:32px var(--gutter)}
+.collection-copy h2{margin:0;max-width:60%;font-size:clamp(38px,3.3vw,52px);font-weight:500;line-height:1.05;letter-spacing:-.055em}
+.collection-cta{min-height:48px;gap:28px;margin-top:22px}
+@media(min-width:701px) and (max-width:1000px){.collection-banner{min-height:230px}.collection-copy{padding-top:24px;padding-bottom:24px}.collection-copy h2{font-size:38px}.collection-photo{object-position:65% top}.collection-shade{background:linear-gradient(90deg,#141011bb,transparent 85%)}}
 @media(max-width:700px){
- .collection-banner{min-height:600px;display:flex;align-items:flex-end}
- .collection-photo{height:400px;object-fit:cover;object-position:78% top}
- .collection-shade{background:linear-gradient(180deg,transparent 32%,rgba(22,18,19,.12) 43%,#161213 67%)}
- .collection-copy{padding:315px var(--gutter) 38px;margin:0}
- .collection-copy .eyebrow{font-size:9px;letter-spacing:.15em;margin-bottom:17px}
- .collection-copy h2{font-size:clamp(37px,10.6vw,60px);letter-spacing:-.055em;line-height:1.07;max-width:600px}
- .collection-tagline{font-size:13px;margin:18px 0 23px}
- .collection-cta{font-size:12px;min-height:48px;gap:28px;padding:0 20px}
- .collection-edition{display:none}
+ .collection-banner{min-height:300px;align-items:flex-end}
+ .collection-photo{object-position:72% top}
+ .collection-shade{background:linear-gradient(90deg,#161213d9,rgba(22,18,19,.2) 85%),linear-gradient(0deg,#161213b3,transparent 85%)}
+ .collection-copy{padding:110px var(--gutter) 24px;margin:0}
+ .collection-copy h2{font-size:clamp(30px,8vw,40px);line-height:1.07;max-width:12em}
+ .collection-cta{font-size:12px;margin-top:18px;padding:0 20px}
 }
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
 
