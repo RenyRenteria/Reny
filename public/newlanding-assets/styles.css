@@ -164,7 +164,7 @@ html:has(.merch-dialog[open]){overflow:hidden}
 .royal-inner{max-width:1600px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;position:relative;background:radial-gradient(ellipse at 95% 20%,#8c242b24,transparent 60%)}
 .royal-film{position:relative;min-height:740px;margin:0;isolation:isolate;overflow:hidden}
 .royal-photo,.royal-film-shade{position:absolute;inset:0;width:100%;height:100%;z-index:-2}
-.royal-photo{object-fit:cover;object-position:center 38%;filter:grayscale(1);opacity:.78}
+.royal-photo{object-fit:cover;object-position:center top;opacity:.78}
 .royal-film-shade{z-index:-1;background:linear-gradient(90deg,transparent 55%,#191516),linear-gradient(0deg,#191516 0%,#19151617 65%,#191516a6),linear-gradient(90deg,#8c242b25,transparent 80%)}
 .royal-film-label{position:absolute;top:42px;left:var(--gutter);font-size:9px;letter-spacing:.18em;color:#f5f2ec}
 .royal-film-caption{position:absolute;bottom:72px;left:var(--gutter);right:32px}
@@ -200,7 +200,7 @@ html:has(.merch-dialog[open]){overflow:hidden}
 @media(max-width:700px){
   .royal-inner{grid-template-columns:1fr;background:radial-gradient(ellipse at 100% 70%,#8c242b1f,transparent 60%)}
   .royal-film{min-height:0;height:480px}
-  .royal-photo{object-position:center 32%;opacity:.82}
+  .royal-photo{opacity:.82}
   .royal-film-shade{background:linear-gradient(0deg,#191516 0%,#191516d9 14%,transparent 75%,#191516a6),linear-gradient(90deg,#8c242b25,transparent)}
   .royal-film-label{top:28px;font-size:8px;letter-spacing:.14em}
   .royal-film-caption{bottom:28px}
@@ -220,4 +220,4 @@ html:has(.merch-dialog[open]){overflow:hidden}
   .royal-footer .signature{width:118px}
   .royal-footer>span{display:none}
 }
-@media(min-width:500px) and (max-width:700px){.royal-film{height:560px}.royal-photo{object-position:center 35%}}
+@media(min-width:500px) and (max-width:700px){.royal-film{height:560px}}

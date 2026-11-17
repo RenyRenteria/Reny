@@ -1,9 +1,9 @@
 <section class="royal" id="royal-pass" aria-labelledby="royal-title">
   <div class="royal-inner">
     <figure class="royal-film" aria-labelledby="royal-film-title">
-      <img class="royal-photo" src="/newlanding-assets/royal/studio.webp"
+      <img class="royal-photo" src="/newlanding-assets/royal/reny-recording.webp"
            alt="Reny grabando en el estudio, con audífonos frente al micrófono"
-           width="640" height="1136" loading="lazy" decoding="async">
+           width="399" height="621" loading="lazy" decoding="async">
       <div class="royal-film-shade" aria-hidden="true"></div>
       <span class="royal-film-label">DEL OTRO LADO DEL ESCENARIO</span>
       <figcaption class="royal-film-caption">
