@@ -7,9 +7,10 @@
   <meta name="robots" content="noindex, nofollow">
   <title>Reny Renteria Takeover · Nuevo inicio</title>
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="/newlanding-assets/styles.css?v=20261117-compact-merch-banner">
+  <link rel="stylesheet" href="/newlanding-assets/styles.css?v=20261117-navigation">
 </head>
-<body>
+<body id="top">
+  <a class="skip-link" href="#concert-title">Saltar al contenido</a>
   <main>
     <section class="hero" aria-labelledby="concert-title">
       <picture class="hero-art" aria-hidden="true">
@@ -17,13 +18,7 @@
         <img src="/newlanding-assets/assets/takeover-fondo-escritorio.png" alt="" fetchpriority="high">
       </picture>
       <div class="shade" aria-hidden="true"></div>
-      <header class="masthead">
-        <a class="signature" href="#concert-title" aria-label="Reny Renteria, inicio">
-          <img src="/newlanding-assets/assets/signature-black.png" alt="Reny Renteria" width="170" height="64">
-        </a>
-        <span class="masthead-caption">EL PRÓXIMO ENCUENTRO</span>
-        <a class="top-link" href="#concert-details">02.10.27 <span aria-hidden="true">↗</span></a>
-      </header>
+      @include('partials.newlanding-navigation')
       <div class="copy">
         <p class="eyebrow"><span aria-hidden="true"></span> RENY EN VIVO</p>
         <h1 id="concert-title"><span class="artist-name">Reny Renteria</span><span class="show-name">TAKEOVER</span></h1>
@@ -50,6 +45,7 @@
     @include('partials.newlanding-merch')
     @include('partials.newlanding-royal-pass')
   </main>
-  <script src="/newlanding-assets/script.js?v=20261116-merch" defer></script>
+  @include('partials.newlanding-footer')
+  <script src="/newlanding-assets/script.js?v=20261117-navigation" defer></script>
 </body>
 </html>

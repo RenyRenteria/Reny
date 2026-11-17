@@ -27,11 +27,4 @@
       <a class="royal-member" href="{{ route('royals') }}">Ya soy Royal <span aria-hidden="true">↗</span></a>
     </div>
   </div>
-  <footer class="royal-footer">
-    <a class="signature" href="#concert-title" aria-label="Reny Renteria, volver al inicio">
-      <img src="/newlanding-assets/assets/signature-black.png" alt="Reny Renteria" width="170" height="64" loading="lazy" decoding="async">
-    </a>
-    <span>LA MÚSICA NOS CONECTA.</span>
-    <a href="#concert-title" class="royal-back">Volver arriba <span aria-hidden="true">↑</span></a>
-  </footer>
 </section>

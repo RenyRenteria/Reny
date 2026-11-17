@@ -50,3 +50,41 @@ if (merchDialog && typeof merchDialog.showModal === 'function') {
     }
   });
 }
+
+// Native disclosures also work without JavaScript. Escape, outside clicks and
+// navigation close an open panel; Escape returns focus to its own control.
+for (const disclosure of document.querySelectorAll('[data-disclosure]')) {
+  const summary = disclosure.querySelector('summary');
+  disclosure.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || !disclosure.open) return;
+    event.preventDefault();
+    event.stopPropagation();
+    disclosure.open = false;
+    summary.focus();
+  });
+  disclosure.addEventListener('click', (event) => {
+    const link = event.target.closest('a');
+    if (!link) return;
+    disclosure.open = false;
+    const hash = link.getAttribute('href');
+    if (hash?.startsWith('#')) {
+      const destination = document.querySelector(hash);
+      if (destination) {
+        destination.setAttribute('tabindex', '-1');
+        destination.focus({ preventScroll: true });
+      }
+    } else {
+      summary.focus({ preventScroll: true });
+    }
+  });
+  document.addEventListener('pointerdown', (event) => {
+    if (!disclosure.contains(event.target)) disclosure.open = false;
+  });
+  disclosure.addEventListener('focusout', (event) => {
+    if (event.relatedTarget && !disclosure.contains(event.relatedTarget)) disclosure.open = false;
+  });
+}
+const desktopViewport = window.matchMedia('(min-width: 901px)');
+desktopViewport.addEventListener('change', (event) => {
+  if (event.matches) document.querySelector('.mobile-nav')?.removeAttribute('open');
+});
