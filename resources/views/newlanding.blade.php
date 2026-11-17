@@ -7,7 +7,7 @@
   <meta name="robots" content="noindex, nofollow">
   <title>Reny Renteria Takeover · Nuevo inicio</title>
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="/newlanding-assets/styles.css?v=20261117-royal-photo">
+  <link rel="stylesheet" href="/newlanding-assets/styles.css?v=20261117-compact-sections">
 </head>
 <body>
   <main>
