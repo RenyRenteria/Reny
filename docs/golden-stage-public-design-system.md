@@ -1,8 +1,10 @@
 # Reny Golden Stage — referencia de diseño público
 
-Estado: aprobado a partir de Home y Royals, agosto de 2026.
+Estado: referencia histórica de las páginas Golden Stage, agosto de 2026.
 
-Esta guía es la fuente de verdad para rediseñar las demás páginas públicas de RenyRenteria.com. El objetivo es que todo el website comparta el mismo escenario dorado sin perder el layout, contenido, navegación, CMS ni comportamiento que ya existen.
+Desde el 17 de noviembre de 2026, la dirección para el nuevo website está en [Sistema de diseño de newlanding](newlanding-design-system.md). Esta guía se conserva para mantener las páginas Golden Stage existentes mientras se migran; sus reglas de dorado, gradientes y navegación no se aplican al nuevo diseño.
+
+Esta guía documenta el diseño de las páginas públicas Golden Stage de RenyRenteria.com. Sus reglas originales se conservan abajo como referencia histórica de esa implementación.
 
 ## 1. Principio central
 
