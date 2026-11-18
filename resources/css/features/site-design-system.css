@@ -375,7 +375,7 @@
 .reny-site .home-show-copy p { font-size: 15px; line-height: 1.55; }
 .reny-site .home-video-hero .hero-content { display: block; }
 .reny-site .home-video-hero .featured-meta { display: grid; }
-.reny-site .home-music h1 { display: block; }
+.reny-site #home-music-title { display: block; font-size: 34px; margin-bottom: 24px; }
 .reny-site .home-event-countdown-part:not(:last-child)::after { content: none; }
 .reny-site .home-event-countdown-part + .home-event-countdown-part { border-left: 1px solid var(--line); }
 .reny-site [data-campaign='takeover'] .home-event-countdown-part + .home-event-countdown-part { border-color: #f5f2ec40; }
@@ -388,3 +388,5 @@
  .reny-site .home-album-actions { display: grid; grid-template-columns: 48px 48px; gap: 8px; justify-content: start; }
  .reny-site .home-album-actions .home-play-here { grid-column: 1 / -1; width: 100%; }
 }
+
+.reny-site :where(.hero, .video-hero, .artist-hero, .site-royal-close, [data-campaign="takeover"]) :focus-visible { outline-color: var(--ivory); }

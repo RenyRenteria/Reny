@@ -27,7 +27,8 @@ for (const path of paths) {
         expect.soft(report.scrollWidth).toBeLessThanOrEqual(report.width + 1);
         expect.soft(errors).toEqual([]);
         if (path === '/') {
-            await expect(page.locator('main h1').first()).toBeVisible();
+            await expect(page.locator('main h1')).toHaveCount(1);
+            await expect(page.locator('main h1')).toBeVisible();
             const order = await page.locator('.home-stack > section').evaluateAll((sections) => sections.map((section) => ({
                 className: section.className,
                 top: section.getBoundingClientRect().top,
@@ -45,6 +46,7 @@ for (const path of paths) {
                 await Promise.all([...document.images].map((image) => image.decode().catch(() => {})));
             });
             await page.screenshot({ path: testInfo.outputPath('page.jpg'), type: 'jpeg', quality: 82, fullPage: true });
+            if (path === '/') await page.screenshot({ path: testInfo.outputPath('home-first-view.jpg'), type: 'jpeg', quality: 85 });
         }
         if (page.viewportSize().width <= 900) {
             await expect(page.locator('.site-desktop-nav')).toBeHidden();

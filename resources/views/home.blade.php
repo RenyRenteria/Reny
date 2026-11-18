@@ -326,7 +326,7 @@
 
 
                     <section class="home-music" aria-labelledby="home-music-title">
-                        <h1 id="home-music-title">Music</h1>
+                        <h2 id="home-music-title">Music</h2>
                         <div class="home-music-layout">
                             <article class="home-album-card">
                                 <div class="home-album-heading">
