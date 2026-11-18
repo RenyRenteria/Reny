@@ -7,19 +7,16 @@
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
         <title>Sign in | Reny Renteria</title>
-
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="golden-stage-page auth-page" data-analytics-screen="auth_login">
+    <body class="reny-site golden-stage-page auth-page" data-analytics-screen="auth_login">
+        <x-public-navigation />
         <main class="auth-shell home-shell auth-stage-shell">
-            @include('partials.stage-lights')
+                <span id="site-content" class="sr-only" tabindex="-1"></span>
 
             <section class="auth-panel" aria-labelledby="login-title">
                 <a class="brand-link" href="{{ route('home') }}" aria-label="Reny Renteria home">
-                    <img class="brand-logo" src="{{ asset('images/reny-renteria-logo-white.png') }}" alt="Reny Renteria">
+                    <img class="brand-logo" src="{{ asset('newlanding-assets/assets/signature-black.png') }}" alt="Reny Renteria">
                 </a>
 
                 <p class="auth-kicker">Royal Pass</p>
@@ -63,5 +60,6 @@
                 </div>
             </section>
         </main>
+            <x-public-footer />
     </body>
 </html>

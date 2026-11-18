@@ -99,6 +99,20 @@ class YoycolCommerceTest extends TestCase
         $this->assertSame('payment_required', $fulfillment->fresh()->state);
     }
 
+    public function test_sandbox_checkout_can_quote_shipping_without_submitting_supplier_orders(): void
+    {
+        config(['services.paypal.e2e.enabled' => true]);
+        $this->fakeProviders();
+        $this->quote($this->product());
+        $fulfillment = $this->paidFulfillment();
+
+        app(YoycolFulfillmentService::class)->process($fulfillment);
+
+        $this->assertNull($fulfillment->fresh()->provider_order_id);
+        Http::assertSent(fn ($request) => str_contains($request->url(), '/shipping/sku_quotes'));
+        Http::assertNotSent(fn ($request) => $request->method() !== 'GET');
+    }
+
     public function test_shipping_uses_verified_panama_region_and_quantity_without_trusting_client_prices(): void
     {
         $this->fakeProviders();

@@ -99,6 +99,6 @@ class RoyalPassAccessMatrixTest extends TestCase
 
         $this->get('/')
             ->assertOk()
-            ->assertSee('class="home-royal-pass-images"', false);
+            ->assertSee('newlanding-assets/royal/reny-recording.webp', false);
     }
 }

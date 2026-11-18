@@ -16,21 +16,12 @@
 
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body data-analytics-screen="community_club">
+    <body class="reny-site" data-analytics-screen="community_club">
         <div class="community-shell" data-public-page-root>
-            <aside class="sidebar" aria-label="Primary navigation">
-                <div>
-                    <a class="brand-link" href="{{ url('/') }}" aria-label="Reny Renteria home">
-                        <img class="brand-logo" src="{{ asset('images/reny-renteria-logo.png') }}" alt="Reny Renteria">
-                    </a>
-
-                    <x-public-navigation active="royals" />
-                </div>
-
-                <x-member-card />
-            </aside>
+            <x-public-navigation />
 
             <main class="main-content community-content">
+                <span id="site-content" class="sr-only" tabindex="-1"></span>
                 <section class="community-section community-club-detail" data-club-key="{{ $club['key'] }}">
                     <div class="community-section-head">
                         <div>
@@ -92,6 +83,7 @@
                     </div>
                 </section>
             </main>
+            <x-public-footer />
         </div>
 
         <div class="community-toast" id="communityToast" role="status" aria-live="polite"></div>

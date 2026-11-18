@@ -7,34 +7,14 @@
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
         <title>Points | Reny Renteria</title>
-
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body data-analytics-screen="account_points">
+    <body class="reny-site" data-analytics-screen="account_points">
         <div class="music-shell">
-            <aside class="sidebar" aria-label="Primary navigation">
-                <div>
-                    <a class="brand-link" href="{{ route('home') }}" aria-label="Reny Renteria home">
-                        <img class="brand-logo" src="{{ asset('images/reny-renteria-logo.png') }}" alt="Reny Renteria">
-                    </a>
-
-                    <x-public-navigation />
-                </div>
-
-                <x-member-card />
-            </aside>
+            <x-public-navigation />
 
             <main class="main-content account-content" id="points">
-                <header class="mobile-header">
-                    <div class="mobile-brand">
-                        <a class="brand-link" href="{{ route('home') }}" aria-label="Reny Renteria home">
-                            <img class="brand-logo" src="{{ asset('images/reny-renteria-logo.png') }}" alt="Reny Renteria">
-                        </a>
-                    </div>
-                </header>
+                <span id="site-content" class="sr-only" tabindex="-1"></span>
 
                 <section class="account-hero" aria-labelledby="points-title">
                     <div class="account-profile">
@@ -83,6 +63,7 @@
                     </article>
                 </section>
             </main>
+            <x-public-footer />
         </div>
     </body>
 </html>

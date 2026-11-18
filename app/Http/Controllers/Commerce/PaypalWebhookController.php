@@ -65,9 +65,16 @@ class PaypalWebhookController extends Controller
 
         $processed = DB::transaction(function () use ($orders, $request, $royalPass, $purchaseSync): int {
             $orders = Order::whereKey($orders->modelKeys())->orderBy('id')->lockForUpdate()->get();
+            $providerRefundId = $this->providerRefundId($request);
+
+            // A provider refund covers the whole capture, even when only one line received a cent.
+            if (OrderRefund::whereIn('order_id', $orders->modelKeys())
+                ->where('provider_refund_id', $providerRefundId)->exists()) {
+                return 0;
+            }
+
             $orders->loadSum('refunds', 'amount_cents');
             $refundAmounts = $this->allocateRefund($orders, $this->refundAmountCents($request));
-            $providerRefundId = $this->providerRefundId($request);
             $processed = 0;
 
             $orders->each(function (Order $order) use (&$processed, $providerRefundId, $purchaseSync, $refundAmounts, $royalPass) {
@@ -278,7 +285,6 @@ class PaypalWebhookController extends Controller
 
         if ($captureId !== null) {
             $byCapture = Order::query()
-                ->withSum('refunds', 'amount_cents')
                 ->where('provider', 'paypal')
                 ->where('provider_capture_id', $captureId)
                 ->get();
@@ -293,7 +299,6 @@ class PaypalWebhookController extends Controller
         }
 
         return Order::query()
-            ->withSum('refunds', 'amount_cents')
             ->where('provider', 'paypal')
             ->where(function ($query) use ($providerOrderId) {
                 $query

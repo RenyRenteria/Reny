@@ -17,10 +17,10 @@ class OpenInAuthTest extends TestCase
             ->assertOk()
             ->assertSee('Sign in')
             ->assertSee('Email or phone')
-            ->assertSee('class="golden-stage-page auth-page"', false)
+            ->assertSee('class="reny-site golden-stage-page auth-page"', false)
             ->assertSee('class="auth-shell home-shell auth-stage-shell"', false)
-            ->assertSee(asset('images/reny-renteria-logo-white.png'), false)
-            ->assertSee('class="stage-lights"', false);
+            ->assertSee(asset('newlanding-assets/assets/signature-black.png'), false)
+            ->assertDontSee('class="stage-lights"', false);
 
         $register = $this->get('/register')
             ->assertOk()
@@ -28,14 +28,14 @@ class OpenInAuthTest extends TestCase
             ->assertSee('Public username')
             ->assertSee('Country')
             ->assertSee('brand-link-centered', false)
-            ->assertSee('class="golden-stage-page auth-page"', false)
+            ->assertSee('class="reny-site golden-stage-page auth-page"', false)
             ->assertSee('class="auth-shell home-shell auth-stage-shell"', false)
-            ->assertSee(asset('images/reny-renteria-logo-white.png'), false)
-            ->assertSee('class="stage-lights"', false)
+            ->assertSee(asset('newlanding-assets/assets/signature-black.png'), false)
+            ->assertDontSee('class="stage-lights"', false)
             ->assertDontSee('Open access');
 
-        $this->assertSame(3, substr_count($login->getContent(), 'stage-light stage-light--'));
-        $this->assertSame(3, substr_count($register->getContent(), 'stage-light stage-light--'));
+        $this->assertSame(0, substr_count($login->getContent(), 'stage-light stage-light--'));
+        $this->assertSame(0, substr_count($register->getContent(), 'stage-light stage-light--'));
 
         $this->get('/forgot-password')
             ->assertOk()

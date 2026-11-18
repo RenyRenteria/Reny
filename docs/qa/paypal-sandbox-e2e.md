@@ -36,7 +36,8 @@ PAYPAL_E2E_RELEASE_SHA=<exact deployed git commit SHA>
 
 Requirements:
 
-- The host must not serve production data.
+- Use an isolated database and a mail sink. Enable Yoycol sales only on this sandbox host, sync the catalog and publish one sandbox merch item with a US shipping rate. Keep production sales paused. The app can read supplier quotes with its Yoycol credentials. Supplier writes are blocked while `PAYPAL_E2E_ENABLED=true`.
+- Verify that the Royal Pass checkout opens at `/store/checkout/royal` for USD 3.99 and the chosen physical item is visible on `/merch`.
 - The control surface refuses to run unless the app itself uses `https://api-m.sandbox.paypal.com`.
 - The webhook URL must be reachable publicly on HTTPS port 443.
 - `PAYPAL_E2E_RELEASE_SHA` must be set by the deployment from its immutable revision. The gate refuses evidence when it differs from `GITHUB_SHA`.
@@ -51,6 +52,7 @@ Create the repository environment `paypal-sandbox-e2e`. Add these **environment 
 ```text
 PAYPAL_E2E_BASE_URL=https://<sandbox-host>
 PAYPAL_E2E_EXPECTED_HOST=<sandbox-host>
+PAYPAL_E2E_MERCH_PRODUCT_KEY=yoycol-<published sandbox product id>
 ```
 
 Add these **environment secrets**:
@@ -78,7 +80,8 @@ From GitHub Actions, dispatch **PayPal Sandbox E2E**. The workflow performs:
 4. one-shot post-capture failure into `payment_review`;
 5. same-session retry rejected before another PayPal capture;
 6. actual signed capture webhook resend and replay with exactly one finalization;
-7. full sandbox refunds, signed refund delivery, and refund replay without duplicate local records.
+7. a merch purchase from the public catalog through size, address, shipping quote and PayPal approval, matching the confirmed total and delivery address to the provider capture/order;
+8. full sandbox refunds, signed refund delivery, and refund replay without duplicate local records.
 
 Each scenario gets a new synthetic local account derived from its run reference. Historical orders, refunds, billing records, and access events are retained; the gate never deletes financial history. Fault injection is scoped to that fixture and its PayPal order, so unrelated sandbox traffic cannot consume it or be held.
 

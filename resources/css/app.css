@@ -1,4 +1,5 @@
-@import './features/yoycol.css';
+@layer theme, base, components, utilities, legacy;
+@import './features/yoycol.css' layer(legacy);
 @import 'tailwindcss';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
@@ -11,43 +12,43 @@
         'Segoe UI Symbol', 'Noto Color Emoji';
 }
 
-@import './features/auth-account-admin.css';
+@import './features/auth-account-admin.css' layer(legacy);
 
-@import './features/foundation.css';
+@import './features/foundation.css' layer(legacy);
 
-@import './features/music.css';
+@import './features/music.css' layer(legacy);
 
-@import './features/community-feed.css';
+@import './features/community-feed.css' layer(legacy);
 
-@import './features/videos.css';
+@import './features/videos.css' layer(legacy);
 
-@import './features/photos.css';
+@import './features/photos.css' layer(legacy);
 
-@import './features/community.css';
+@import './features/community.css' layer(legacy);
 
-@import './features/checkout.css';
+@import './features/checkout.css' layer(legacy);
 
-@import './features/account-hub.css';
+@import './features/account-hub.css' layer(legacy);
 
-@import './features/home.css';
+@import './features/home.css' layer(legacy);
 
-@import './features/royals.css';
+@import './features/royals.css' layer(legacy);
 
-@import './features/music-detail.css';
+@import './features/music-detail.css' layer(legacy);
 
-@import './features/public-content.css';
+@import './features/public-content.css' layer(legacy);
 
-@import './features/admin-cms.css';
+@import './features/admin-cms.css' layer(legacy);
 
-@import './features/photo-cms.css';
+@import './features/photo-cms.css' layer(legacy);
 
-@import './features/music-golden-stage.css';
+@import './features/music-golden-stage.css' layer(legacy);
 
-@import './features/golden-stage-access-commerce.css';
+@import './features/golden-stage-access-commerce.css' layer(legacy);
 
-@import './features/store-golden-stage.css';
+@import './features/store-golden-stage.css' layer(legacy);
 
-@import './features/artist-pages.css';
+@import './features/artist-pages.css' layer(legacy);
 .public-page-intro {
     display: grid;
     gap: 0.45rem;
@@ -102,3 +103,5 @@
         text-align: center;
     }
 }
+
+@import './features/site-design-system.css';

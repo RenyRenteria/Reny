@@ -98,52 +98,17 @@
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
         @include('partials.public-seo', ['seo' => $pageSettings, 'fallbackTitle' => 'Videos | Reny Renteria'])
-
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="videos-page" data-analytics-screen="videos">
+    <body class="reny-site videos-page" data-analytics-screen="videos">
         <div class="videos-shell home-shell videos-stage-shell" data-public-page-root>
-            <div class="stage-lights" aria-hidden="true">
-                <span class="stage-light stage-light--one"></span>
-                <span class="stage-light stage-light--two"></span>
-                <span class="stage-light stage-light--three"></span>
-                <span class="stage-light-fixture stage-light-fixture--one"></span>
-                <span class="stage-light-fixture stage-light-fixture--two"></span>
-                <span class="stage-light-fixture stage-light-fixture--three"></span>
-            </div>
 
             @include('partials.cms-preview-banner')
-            <aside class="sidebar" aria-label="Primary navigation">
-                <div>
-                    <a class="brand-link" href="{{ url('/') }}" aria-label="Reny Renteria home">
-                        <img
-                            class="brand-logo"
-                            src="{{ asset('images/reny-renteria-logo-white.png') }}"
-                            alt="Reny Renteria"
-                        >
-                    </a>
-
-                    <x-public-navigation active="videos" />
-                </div>
-
-                <x-member-card />
-            </aside>
+            <x-public-navigation />
 
             <main class="main-content videos-content" id="videos">
-                <header class="mobile-header videos-mobile-header">
-                    <div class="mobile-brand">
-                        <a class="brand-link" href="{{ url('/') }}" aria-label="Reny Renteria home">
-                            <img
-                                class="brand-logo"
-                                src="{{ asset('images/reny-renteria-logo-white.png') }}"
-                                alt="Reny Renteria"
-                            >
-                        </a>
-                    </div>
-                </header>
+                <span id="site-content" class="sr-only" tabindex="-1"></span>
+                <x-media-navigation />
 
                 <x-royal-pass-banner :show-images="false" />
 
@@ -266,9 +231,8 @@
                         @endif
                     </section>
                 @endforeach
-
-                <x-public-navigation active="videos" mobile />
             </main>
+            <x-public-footer />
         </div>
 
         @include('partials.video-player-modal')

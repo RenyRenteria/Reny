@@ -36,7 +36,7 @@ class PhotosPageTest extends TestCase
         $this->assertStringContainsString('data-photo-share-url="'.route('photos', ['photo' => 'photo-1']).'"', $html);
         $this->assertStringNotContainsString('<iframe', $html);
         $this->assertStringNotContainsString('<video', $html);
-        $this->assertStringNotContainsString('youtube', strtolower($html));
+        $this->assertStringNotContainsString('youtube.com/embed/', strtolower($html));
         $this->assertStringNotContainsString('i.ytimg.com', strtolower($html));
         $this->assertStringNotContainsString('photo-comment', strtolower($html));
         $this->assertStringNotContainsString('data-photo-comment', strtolower($html));

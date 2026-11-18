@@ -2,10 +2,12 @@ import { createHash, createHmac } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 
 import { expect, test } from '@playwright/test';
+import { fillMerchDelivery, sandboxAddress } from '../support/merch-delivery.js';
 
 const requiredEnvironment = [
     'PAYPAL_E2E_BASE_URL',
     'PAYPAL_E2E_EXPECTED_HOST',
+    'PAYPAL_E2E_MERCH_PRODUCT_KEY',
     'PAYPAL_E2E_CONTROL_TOKEN',
     'PAYPAL_E2E_REFERENCE_KEY',
     'PAYPAL_SANDBOX_BUSINESS_EMAIL',
@@ -125,10 +127,10 @@ const preflight = async () => {
 };
 
 const fillCheckout = async (page) => {
-    await page.goto('/store/checkout/listening');
+    const response = await page.goto('/store/checkout/royal');
+    expect(response.status()).toBe(200);
     await page.locator('#nameField').fill('PayPal Sandbox QA');
     await page.locator('#emailField').fill(currentCustomerEmail);
-    await page.locator('#phoneField').fill('+50760009998');
     await page.locator('#countryField').selectOption({ label: 'Panama' });
     await expect(page.locator('#paymentStatus')).toContainText(/Use the PayPal button|approve with PayPal/i);
 };
@@ -149,8 +151,8 @@ const firstVisible = async (locators, timeout = 20_000) => {
     throw new Error('Expected PayPal control did not become visible.');
 };
 
-const openPayPal = async (page) => {
-    const frame = page.frameLocator('#paypalButtons iframe').first();
+const openPayPal = async (page, container = '#paypalButtons') => {
+    const frame = page.frameLocator(`${container} iframe`).first();
     const button = await firstVisible([
         frame.getByRole('link', { name: /PayPal/i }).first(),
         frame.getByRole('button', { name: /PayPal/i }).first(),
@@ -295,7 +297,7 @@ const refundAndVerifyReplay = async (orderId, captureId) => {
     const eventId = await findWebhookEvent(
         'PAYMENT.CAPTURE.REFUNDED',
         startedAt,
-        (candidate) => candidate.resource?.supplementary_data?.related_ids?.capture_id === captureId,
+        (candidate) => candidate.resource?.id === refund.id,
     );
 
     await resendEvent(eventId);
@@ -363,7 +365,7 @@ test.describe('reusable PayPal sandbox checkout gate', () => {
 
         expect(providerOrder.status).toBe('COMPLETED');
         expect(captures).toHaveLength(1);
-        expect(captures[0].amount).toMatchObject({ currency_code: 'USD', value: '15.00' });
+        expect(captures[0].amount).toMatchObject({ currency_code: 'USD', value: '3.99' });
         expect(state).toMatchObject({
             order_count: 1,
             statuses: { completed: 1 },
@@ -386,6 +388,58 @@ test.describe('reusable PayPal sandbox checkout gate', () => {
                 memberships: state.membership_event_count,
             },
             cleanup: refundEvidence,
+        });
+    });
+
+    test('merch size and delivery quote match the confirmed sandbox purchase', async ({ page }) => {
+        const key = process.env.PAYPAL_E2E_MERCH_PRODUCT_KEY;
+        expect(key).toMatch(/^yoycol-[1-9]\d*$/);
+        await page.goto('/merch');
+        await page.locator(`a[href$="/store/checkout/${key}"]`).first().click();
+        const checkout = page.locator('[data-yoycol-checkout]');
+        await expect(checkout).toHaveAttribute('data-product-key', key);
+        const size = await fillMerchDelivery(checkout, currentCustomerEmail);
+
+        const quoteResponse = page.waitForResponse((response) => response.request().method() === 'POST'
+            && new URL(response.url()).pathname === `/checkout/yoycol/${key.slice(7)}/quote`);
+        await checkout.getByRole('button', { name: 'Calculate shipping' }).click();
+        const response = await quoteResponse;
+        expect(response.ok()).toBe(true);
+        const quote = await response.json();
+        expect(quote.currency).toBe('USD');
+        expect(quote.subtotal_cents).toBeGreaterThan(0);
+        expect(quote.shipping_cents).toBeGreaterThanOrEqual(0);
+        expect(quote.amount_cents).toBe(quote.subtotal_cents + quote.shipping_cents);
+        const dollars = (cents) => (cents / 100).toFixed(2);
+        const displayed = (cents) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100);
+        await expect(checkout.locator('[data-shipping]')).toHaveText(displayed(quote.shipping_cents));
+        await expect(checkout.locator('[data-total]')).toHaveText(`${displayed(quote.amount_cents)} USD`);
+
+        const { orderId, popup } = await openPayPal(page, '[data-paypal-buttons]');
+        await signInToPayPal(popup);
+        await approvePayPal(popup);
+        await expect(checkout.getByRole('status')).toContainText('Payment confirmed');
+        await expect(checkout.locator('[data-account-link]')).toBeVisible();
+
+        const providerOrder = await paypalRequest(`/v2/checkout/orders/${encodeURIComponent(orderId)}`);
+        const [unit] = providerOrder.purchase_units;
+        expect(unit.shipping.address).toMatchObject({
+            country_code: 'US', address_line_1: sandboxAddress.address1, postal_code: sandboxAddress.zip,
+        });
+        expect(unit.items[0].name).toContain(size);
+        expect(unit.amount.breakdown.shipping.value).toBe(dollars(quote.shipping_cents));
+        expect(unit.amount.breakdown.item_total.value).toBe(dollars(quote.subtotal_cents));
+        const captures = orderCaptures(providerOrder);
+        expect(captures).toHaveLength(1);
+        expect(captures[0].amount).toMatchObject({ currency_code: 'USD', value: dollars(quote.amount_cents) });
+        const state = await waitForState(orderId, (candidate) => candidate.statuses?.completed === 1);
+        expect(state).toMatchObject({ order_count: 1, purchase_event_count: 1 });
+        const cleanup = await refundAndVerifyReplay(orderId, captures[0].id);
+        evidence.push({
+            scenario: 'merch_shipping_capture', order_reference: reference(orderId),
+            capture_reference: reference(captures[0].id), local_statuses: state.statuses,
+            subtotal_cents: quote.subtotal_cents, shipping_cents: quote.shipping_cents,
+            total_cents: quote.amount_cents, cleanup,
         });
     });
 
@@ -449,7 +503,7 @@ test.describe('reusable PayPal sandbox checkout gate', () => {
                 },
                 body: JSON.stringify({
                     identifier,
-                    product_keys: ['listening'],
+                    product_keys: ['royal'],
                     currency: 'USD',
                     paypal_order_id: rawOrderId,
                 }),

@@ -12,3 +12,5 @@ import './features/photo-cms.js';
 import './features/video-cms.js';
 
 import './features/yoycol-checkout.js';
+
+import './features/site-navigation.js';

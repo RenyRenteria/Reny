@@ -8,11 +8,10 @@
     <title>@yield('title', 'Official merch') | Reny Renteria</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="yoycol-page">
-    <header class="yoycol-header">
-        <a href="{{ route('home') }}"><img src="{{ asset('images/reny-renteria-logo-white.png') }}" alt="Reny Renteria" width="150"></a>
-        <nav aria-label="Merch navigation"><a href="{{ route('merch') }}">Merch</a><a href="{{ route('account.show') }}">My account</a></nav>
-    </header>
-    <main class="yoycol-main">@yield('content')</main>
+<body class="reny-site yoycol-page">
+    <x-public-navigation />
+    <main class="yoycol-main">
+                <span id="site-content" class="sr-only" tabindex="-1"></span>@yield('content')</main>
+            <x-public-footer />
 </body>
 </html>
