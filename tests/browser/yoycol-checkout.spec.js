@@ -25,7 +25,9 @@ test('public merch opens size, delivery and quoted total', async ({ page }, test
     await expect(checkout.getByRole('heading', { name: 'QA Merch Hoodie' })).toBeVisible();
     await fillMerchDelivery(checkout, 'qa@example.test');
     await checkout.locator('[name="variant_id"]').selectOption('large');
-    await checkout.getByRole('button', { name: 'Calculate shipping' }).click();
+    const calculate = checkout.getByRole('button', { name: 'Calculate shipping' });
+    await expect(calculate).toHaveCSS('color', 'rgb(245, 242, 236)');
+    await calculate.click();
 
     await expect(checkout.locator('[data-shipping]')).toHaveText('$7.00');
     await expect(checkout.locator('[data-total]')).toHaveText('$55.00 USD');
