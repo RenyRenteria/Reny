@@ -10,6 +10,8 @@ use Throwable;
 
 class YoycolFulfillmentService
 {
+    private const REFUND_WARNING = 'Review the customer refund and cancel the supplier order before production.';
+
     public function __construct(private readonly YoycolClient $client) {}
 
     public function process(YoycolFulfillment $fulfillment): void
@@ -22,16 +24,14 @@ class YoycolFulfillmentService
             if ($fulfillment->state === 'cancelled') {
                 return;
             }
-            if ($fulfillment->order->status !== 'completed' || ! $fulfillment->order->provider_capture_id) {
-                if ($fulfillment->order->status === 'refunded' || $fulfillment->order->refund_amount_cents > 0) {
-                    $fulfillment->update(['state' => 'refund_review', 'last_error' => 'Review the customer refund and cancel the supplier order before production.']);
+            $refunded = $this->requiresRefundReview($fulfillment);
+            if ($refunded) {
+                $fulfillment->update(['state' => 'refund_review', 'last_error' => self::REFUND_WARNING]);
+                // Refunds prohibit creation, but must not hide an existing remote order.
+                if (! $fulfillment->provider_order_id && ! $fulfillment->attempted_at) {
+                    return;
                 }
-
-                return;
-            }
-            if ($fulfillment->order->refund_amount_cents > 0 || $fulfillment->state === 'refund_review') {
-                $fulfillment->update(['state' => 'refund_review']);
-
+            } elseif ($fulfillment->order->status !== 'completed' || ! $fulfillment->order->provider_capture_id) {
                 return;
             }
 
@@ -41,12 +41,21 @@ class YoycolFulfillmentService
                         // A crash/timeout may have happened after Yoycol accepted the write.
                         $found = $this->findRemoteOrder($fulfillment->store_order_sn);
                         if (! $found) {
-                            $fulfillment->update(['state' => 'review', 'last_error' => 'Order submission needs review. No automatic resubmission.']);
+                            $fulfillment->update([
+                                'state' => $refunded ? 'refund_review' : 'review',
+                                'synced_at' => now(),
+                                'last_error' => $refunded ? self::REFUND_WARNING : 'Order submission needs review. No automatic resubmission.',
+                            ]);
 
                             return;
                         }
                         $this->saveSummary($fulfillment, $found);
                     } else {
+                        if ($this->requiresRefundReview($fulfillment)) {
+                            $fulfillment->update(['state' => 'refund_review', 'last_error' => self::REFUND_WARNING]);
+
+                            return;
+                        }
                         // Persist BEFORE calling the provider. A second worker must reconcile.
                         $claimed = YoycolFulfillment::whereKey($fulfillment->id)->whereNull('attempted_at')
                             ->update(['attempted_at' => now(), 'state' => 'submitting']);
@@ -62,16 +71,20 @@ class YoycolFulfillmentService
                 $tracking = $this->client->request('GET', 'orders/'.rawurlencode($fulfillment->provider_order_id).'/tracking');
                 $updates = [
                     'tracking' => Arr::only($tracking, ['waybillCode', 'tailTrackCode', 'carrier', 'lpName', 'headTrackingEvents', 'tailTrackingEvents']),
-                    'synced_at' => now(), 'last_error' => null,
+                    'synced_at' => now(), 'last_error' => $this->requiresRefundReview($fulfillment) ? self::REFUND_WARNING : null,
                 ];
-                if (filled($tracking['waybillCode'] ?? null) && $fulfillment->state !== 'cancelled') {
+                if ($this->requiresRefundReview($fulfillment) && $fulfillment->state !== 'cancelled') {
+                    $updates['state'] = 'refund_review';
+                } elseif (filled($tracking['waybillCode'] ?? null) && $fulfillment->state !== 'cancelled') {
                     $updates['state'] = 'shipped';
                 }
                 $fulfillment->update($updates);
             } catch (Throwable) {
+                $refunded = $this->requiresRefundReview($fulfillment);
                 $fulfillment->refresh()->update([
-                    'state' => $fulfillment->provider_order_id ? $fulfillment->state : 'review',
-                    'last_error' => 'Yoycol could not be synchronized. Reconcile before retrying any submission.',
+                    'state' => $refunded ? 'refund_review' : ($fulfillment->provider_order_id ? $fulfillment->state : 'review'),
+                    'synced_at' => now(),
+                    'last_error' => $refunded ? self::REFUND_WARNING.' Yoycol synchronization failed.' : 'Yoycol could not be synchronized. Reconcile before retrying any submission.',
                 ]);
             }
         });
@@ -81,7 +94,7 @@ class YoycolFulfillmentService
     {
         Cache::lock('yoycol-fulfillment-'.$fulfillment->id, 600)->block(1, function () use ($fulfillment): void {
             $fulfillment->refresh();
-            if ($fulfillment->provider_order_id || $fulfillment->state !== 'review' || $fulfillment->order->status !== 'completed') {
+            if ($fulfillment->provider_order_id || $fulfillment->state !== 'review' || $this->requiresRefundReview($fulfillment) || $fulfillment->order->status !== 'completed') {
                 throw ValidationException::withMessages(['order' => 'This order cannot be resubmitted.']);
             }
             $existing = $this->findRemoteOrder($fulfillment->store_order_sn);
@@ -138,6 +151,15 @@ class YoycolFulfillmentService
         throw ValidationException::withMessages(['order' => 'Order reconciliation limit reached.']);
     }
 
+    private function requiresRefundReview(YoycolFulfillment $fulfillment): bool
+    {
+        $fulfillment->load('order');
+
+        return $fulfillment->state === 'refund_review'
+            || $fulfillment->order->status === 'refunded'
+            || $fulfillment->order->refund_amount_cents > 0;
+    }
+
     private function saveSummary(YoycolFulfillment $fulfillment, array $summary): void
     {
         if (empty($summary['orderId']) || ($summary['storeOrderSn'] ?? '') !== $fulfillment->store_order_sn
@@ -146,6 +168,7 @@ class YoycolFulfillmentService
         }
         $state = match (true) {
             in_array(strtolower($summary['status'] ?? ''), ['cancelled', 'canceled'], true) => 'cancelled',
+            $this->requiresRefundReview($fulfillment) => 'refund_review',
             filled($summary['paidAt'] ?? null) => $fulfillment->state === 'shipped' ? 'shipped' : 'production',
             ($summary['canPay'] ?? false) === true => 'payment_required',
             default => 'review',
@@ -153,7 +176,7 @@ class YoycolFulfillmentService
         $fulfillment->update([
             'provider_order_id' => (string) $summary['orderId'], 'state' => $state,
             'provider_summary' => Arr::only($summary, ['orderId', 'orderNo', 'storeOrderSn', 'orderRealAmount', 'shippingFee', 'taxes', 'currency', 'status', 'statusLabel', 'paidAt', 'canPay', 'canCancel', 'needApprovalReason']),
-            'synced_at' => now(), 'last_error' => null,
+            'synced_at' => now(), 'last_error' => $state === 'refund_review' ? self::REFUND_WARNING : null,
         ]);
     }
 }

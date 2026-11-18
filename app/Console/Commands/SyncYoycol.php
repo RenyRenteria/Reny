@@ -35,7 +35,7 @@ class SyncYoycol extends Command
                     $payments->recover($order);
                 }
             });
-        YoycolFulfillment::whereNotIn('state', ['cancelled', 'refund_review'])
+        YoycolFulfillment::where('state', '!=', 'cancelled')
             ->whereHas('order', fn ($query) => $query->whereIn('status', ['completed', 'refunded']))
             ->where(function ($query): void {
                 $query->whereNull('synced_at')->orWhere('synced_at', '<', now()->subMinutes(15));
