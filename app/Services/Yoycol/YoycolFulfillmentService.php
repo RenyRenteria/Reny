@@ -68,6 +68,9 @@ class YoycolFulfillmentService
                 }
                 $detail = $this->client->request('GET', 'orders/'.rawurlencode($fulfillment->provider_order_id));
                 $this->saveSummary($fulfillment, $detail['order'] ?? []);
+                if ($fulfillment->state === 'cancelled') {
+                    return;
+                }
                 $tracking = $this->client->request('GET', 'orders/'.rawurlencode($fulfillment->provider_order_id).'/tracking');
                 $updates = [
                     'tracking' => Arr::only($tracking, ['waybillCode', 'tailTrackCode', 'carrier', 'lpName', 'headTrackingEvents', 'tailTrackingEvents']),

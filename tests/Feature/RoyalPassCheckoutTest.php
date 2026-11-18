@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Models\UserUnlock;
 use App\Services\RoyalPassService;
 use App\Services\UserHubPurchaseSync;
+use App\Support\PayPalReference;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
@@ -29,6 +30,7 @@ class RoyalPassCheckoutTest extends TestCase
         parent::setUp();
 
         config([
+            'reny_catalog.products.sample-download' => ['title' => 'Download Bundle', 'amount_cents' => 4800, 'kind' => 'digital', 'unlock_type' => 'album'],
             'reny_catalog.products.sample-ticket' => [
                 'title' => 'Sample Ticketed Show',
                 'amount_cents' => 1500,
@@ -49,12 +51,12 @@ class RoyalPassCheckoutTest extends TestCase
 
     public function test_guest_product_checkout_creates_account_and_activates_royal_pass(): void
     {
-        $this->createPendingPayPalOrder('+1 (555) 303-4040', ['merch'], 'PAYPAL-ORDER-100');
+        $this->createPendingPayPalOrder('+1 (555) 303-4040', ['sample-download'], 'PAYPAL-ORDER-100');
         $this->fakeSuccessfulCapture('PAYPAL-ORDER-100', '48.00');
 
         $response = $this->postJson('/checkout/paypal', [
             'identifier' => '+1 (555) 303-4040',
-            'product_keys' => ['merch'],
+            'product_keys' => ['sample-download'],
             'currency' => 'USD',
             'paypal_order_id' => 'PAYPAL-ORDER-100',
         ]);
@@ -74,9 +76,9 @@ class RoyalPassCheckoutTest extends TestCase
         $this->assertDatabaseHas('orders', [
             'user_id' => $user->id,
             'provider' => 'paypal',
-            'provider_order_id' => 'PAYPAL-ORDER-100-1-merch',
+            'provider_order_id' => 'PAYPAL-ORDER-100-1-sample-download',
             'provider_capture_id' => 'CAPTURE-100',
-            'product_key' => 'merch',
+            'product_key' => 'sample-download',
             'status' => 'completed',
             'grants_royal_month' => true,
         ]);
@@ -91,19 +93,20 @@ class RoyalPassCheckoutTest extends TestCase
         $this->assertDatabaseHas('access_events', [
             'user_id' => $user->id,
             'event_name' => 'purchase',
-            'resource_key' => 'PAYPAL-ORDER-100-1-merch',
+            'resource_key' => 'PAYPAL-ORDER-100-1-sample-download',
         ]);
 
         $this->assertDatabaseHas('access_events', [
             'user_id' => $user->id,
             'event_name' => 'membership_started',
-            'resource_key' => 'PAYPAL-ORDER-100-1-merch',
+            'resource_key' => 'PAYPAL-ORDER-100-1-sample-download',
         ]);
     }
 
     public function test_checkout_creates_paypal_order_before_capture(): void
     {
         $this->fakeCreatedOrder('PAYPAL-CREATED-100');
+        Log::spy();
 
         $this->postJson('/checkout/paypal/orders', [
             'identifier' => 'fan@renyrenteria.com',
@@ -148,6 +151,16 @@ class RoyalPassCheckoutTest extends TestCase
             data_get($order->metadata, 'checkout.analytics_session_id'),
         ));
         $orders->each(fn (Order $order) => $this->assertArrayNotHasKey('phone', data_get($order->metadata, 'customer', [])));
+
+        Log::shouldHaveReceived('info')
+            ->once()
+            ->with('PayPal API request completed.', Mockery::on(fn (array $context): bool => $context === [
+                'paypal_debug_id' => 'debug-create-success',
+                'paypal_endpoint' => '/v2/checkout/orders',
+                'paypal_http_status' => 201,
+                'paypal_stage' => 'create_order',
+                'paypal_order_reference' => PayPalReference::hash('PAYPAL-CREATED-100'),
+            ]));
     }
 
     public function test_checkout_requires_customer_details_before_paypal_order_creation(): void
@@ -468,7 +481,7 @@ class RoyalPassCheckoutTest extends TestCase
 
         $this->postJson('/checkout/paypal', [
             'identifier' => 'abc',
-            'product_keys' => ['merch'],
+            'product_keys' => ['sample-download'],
             'currency' => 'USD',
             'paypal_order_id' => 'PAYPAL-INVALID-CONTACT',
         ])
@@ -489,7 +502,7 @@ class RoyalPassCheckoutTest extends TestCase
             'customer_email' => 'fan@renyrenteria.com',
             'customer_phone' => '+50760000003',
             'customer_country' => 'Panama',
-            'product_keys' => ['merch'],
+            'product_keys' => ['sample-download'],
             'currency' => 'DOP',
         ])
             ->assertUnprocessable()
@@ -1022,36 +1035,36 @@ class RoyalPassCheckoutTest extends TestCase
 
     public function test_duplicate_products_in_one_paypal_order_get_unique_provider_order_ids(): void
     {
-        $this->createPendingPayPalOrder('duplicate@renyrenteria.com', ['merch', 'merch'], 'PAYPAL-DUPLICATE-500');
+        $this->createPendingPayPalOrder('duplicate@renyrenteria.com', ['sample-download', 'sample-download'], 'PAYPAL-DUPLICATE-500');
         $this->fakeSuccessfulCapture('PAYPAL-DUPLICATE-500', '96.00');
 
         $response = $this->postJson('/checkout/paypal', [
             'identifier' => 'duplicate@renyrenteria.com',
-            'product_keys' => ['merch', 'merch'],
+            'product_keys' => ['sample-download', 'sample-download'],
             'currency' => 'USD',
             'paypal_order_id' => 'PAYPAL-DUPLICATE-500',
         ]);
 
         $response
             ->assertOk()
-            ->assertJsonPath('order_ids.0', 'PAYPAL-DUPLICATE-500-1-merch')
-            ->assertJsonPath('order_ids.1', 'PAYPAL-DUPLICATE-500-2-merch');
+            ->assertJsonPath('order_ids.0', 'PAYPAL-DUPLICATE-500-1-sample-download')
+            ->assertJsonPath('order_ids.1', 'PAYPAL-DUPLICATE-500-2-sample-download');
 
         $user = User::where('email', 'duplicate@renyrenteria.com')->firstOrFail();
 
         $this->assertDatabaseHas('orders', [
             'user_id' => $user->id,
-            'provider_order_id' => 'PAYPAL-DUPLICATE-500-1-merch',
+            'provider_order_id' => 'PAYPAL-DUPLICATE-500-1-sample-download',
         ]);
         $this->assertDatabaseHas('orders', [
             'user_id' => $user->id,
-            'provider_order_id' => 'PAYPAL-DUPLICATE-500-2-merch',
+            'provider_order_id' => 'PAYPAL-DUPLICATE-500-2-sample-download',
         ]);
     }
 
     public function test_checkout_uses_pending_order_snapshot_instead_of_client_payload(): void
     {
-        $this->createPendingPayPalOrder('snapshot@renyrenteria.com', ['merch'], 'PAYPAL-SNAPSHOT-100');
+        $this->createPendingPayPalOrder('snapshot@renyrenteria.com', ['sample-download'], 'PAYPAL-SNAPSHOT-100');
         $this->fakeSuccessfulCapture('PAYPAL-SNAPSHOT-100', '48.00');
 
         $response = $this->postJson('/checkout/paypal', [
@@ -1063,11 +1076,11 @@ class RoyalPassCheckoutTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertJsonPath('order_ids.0', 'PAYPAL-SNAPSHOT-100-1-merch');
+            ->assertJsonPath('order_ids.0', 'PAYPAL-SNAPSHOT-100-1-sample-download');
 
         $this->assertDatabaseHas('orders', [
-            'provider_order_id' => 'PAYPAL-SNAPSHOT-100-1-merch',
-            'product_key' => 'merch',
+            'provider_order_id' => 'PAYPAL-SNAPSHOT-100-1-sample-download',
+            'product_key' => 'sample-download',
             'amount_cents' => 4800,
             'status' => 'completed',
         ]);
@@ -1079,14 +1092,14 @@ class RoyalPassCheckoutTest extends TestCase
 
     public function test_checkout_rejects_paypal_order_owned_by_another_pending_checkout(): void
     {
-        $this->createPendingPayPalOrder('owner@renyrenteria.com', ['merch'], 'PAYPAL-OWNER-100');
+        $this->createPendingPayPalOrder('owner@renyrenteria.com', ['sample-download'], 'PAYPAL-OWNER-100');
         Auth::logout();
         $this->flushSession();
         Http::fake();
 
         $this->postJson('/checkout/paypal', [
             'identifier' => 'other@renyrenteria.com',
-            'product_keys' => ['merch'],
+            'product_keys' => ['sample-download'],
             'currency' => 'USD',
             'paypal_order_id' => 'PAYPAL-OWNER-100',
         ])
@@ -1095,7 +1108,7 @@ class RoyalPassCheckoutTest extends TestCase
 
         Http::assertNothingSent();
         $this->assertDatabaseHas('orders', [
-            'provider_order_id' => 'PAYPAL-OWNER-100-1-merch',
+            'provider_order_id' => 'PAYPAL-OWNER-100-1-sample-download',
             'status' => 'pending',
             'provider_capture_id' => null,
         ]);
@@ -1116,7 +1129,7 @@ class RoyalPassCheckoutTest extends TestCase
             'customer_email' => $user->email,
             'customer_phone' => '+50760000012',
             'customer_country' => 'Panama',
-            'product_keys' => ['merch'],
+            'product_keys' => ['sample-download'],
             'currency' => 'USD',
         ])->assertOk();
 
@@ -1127,7 +1140,7 @@ class RoyalPassCheckoutTest extends TestCase
 
         $this->postJson('/checkout/paypal', [
             'identifier' => $user->email,
-            'product_keys' => ['merch'],
+            'product_keys' => ['sample-download'],
             'currency' => 'USD',
             'paypal_order_id' => 'PAYPAL-AUTH-SESSION',
         ])
@@ -1137,7 +1150,7 @@ class RoyalPassCheckoutTest extends TestCase
         Http::assertNothingSent();
         $this->assertDatabaseHas('orders', [
             'user_id' => $user->id,
-            'provider_order_id' => 'PAYPAL-AUTH-SESSION-1-merch',
+            'provider_order_id' => 'PAYPAL-AUTH-SESSION-1-sample-download',
             'status' => 'pending',
             'provider_capture_id' => null,
         ]);
@@ -1145,7 +1158,7 @@ class RoyalPassCheckoutTest extends TestCase
 
     public function test_cancel_paypal_order_marks_pending_order_cancelled(): void
     {
-        $this->createPendingPayPalOrder('cancel@renyrenteria.com', ['merch'], 'PAYPAL-CANCEL-100');
+        $this->createPendingPayPalOrder('cancel@renyrenteria.com', ['sample-download'], 'PAYPAL-CANCEL-100');
 
         $this->postJson('/checkout/paypal/orders/cancel', [
             'paypal_order_id' => 'PAYPAL-CANCEL-100',
@@ -1155,7 +1168,7 @@ class RoyalPassCheckoutTest extends TestCase
             ->assertJsonPath('cancelled_orders', 1);
 
         $this->assertDatabaseHas('orders', [
-            'provider_order_id' => 'PAYPAL-CANCEL-100-1-merch',
+            'provider_order_id' => 'PAYPAL-CANCEL-100-1-sample-download',
             'status' => 'cancelled',
             'provider_capture_id' => null,
         ]);
@@ -1185,7 +1198,7 @@ class RoyalPassCheckoutTest extends TestCase
             'customer_email' => 'failed@renyrenteria.com',
             'customer_phone' => '+50760000004',
             'customer_country' => 'Panama',
-            'product_keys' => ['merch'],
+            'product_keys' => ['sample-download'],
             'currency' => 'USD',
         ])
             ->assertStatus(502)
@@ -1197,7 +1210,7 @@ class RoyalPassCheckoutTest extends TestCase
         $this->assertDatabaseHas('orders', [
             'user_id' => $user->id,
             'provider' => 'paypal',
-            'product_key' => 'merch',
+            'product_key' => 'sample-download',
             'status' => 'failed',
             'provider_capture_id' => null,
         ]);
@@ -1216,7 +1229,7 @@ class RoyalPassCheckoutTest extends TestCase
 
     public function test_failed_paypal_capture_is_actionable_and_keeps_pending_order(): void
     {
-        $this->createPendingPayPalOrder('capture-failed@renyrenteria.com', ['merch'], 'PAYPAL-CAPTURE-FAILED');
+        $this->createPendingPayPalOrder('capture-failed@renyrenteria.com', ['sample-download'], 'PAYPAL-CAPTURE-FAILED');
         Log::spy();
         Http::fake([
             'https://paypal.test/v1/oauth2/token' => Http::response([
@@ -1234,7 +1247,7 @@ class RoyalPassCheckoutTest extends TestCase
 
         $this->postJson('/checkout/paypal', [
             'identifier' => 'capture-failed@renyrenteria.com',
-            'product_keys' => ['merch'],
+            'product_keys' => ['sample-download'],
             'currency' => 'USD',
             'paypal_order_id' => 'PAYPAL-CAPTURE-FAILED',
         ])
@@ -1243,7 +1256,7 @@ class RoyalPassCheckoutTest extends TestCase
             ->assertJsonPath('errors.paypal.0', 'PayPal approved the payment, but confirmation is pending. Do not retry; contact support with the time and amount.');
 
         $this->assertDatabaseHas('orders', [
-            'provider_order_id' => 'PAYPAL-CAPTURE-FAILED-1-merch',
+            'provider_order_id' => 'PAYPAL-CAPTURE-FAILED-1-sample-download',
             'provider_capture_id' => null,
             'status' => 'pending',
         ]);
@@ -1258,7 +1271,7 @@ class RoyalPassCheckoutTest extends TestCase
 
     public function test_captured_payment_is_kept_for_review_when_local_persistence_fails(): void
     {
-        $this->createPendingPayPalOrder('review@renyrenteria.com', ['merch'], 'PAYPAL-REVIEW-100');
+        $this->createPendingPayPalOrder('review@renyrenteria.com', ['sample-download'], 'PAYPAL-REVIEW-100');
         $this->fakeSuccessfulCapture('PAYPAL-REVIEW-100', '48.00', 'CAPTURE-REVIEW-100');
 
         $purchaseSync = Mockery::mock(UserHubPurchaseSync::class);
@@ -1270,13 +1283,13 @@ class RoyalPassCheckoutTest extends TestCase
 
         $this->postJson('/checkout/paypal', [
             'identifier' => 'review@renyrenteria.com',
-            'product_keys' => ['merch'],
+            'product_keys' => ['sample-download'],
             'currency' => 'USD',
             'paypal_order_id' => 'PAYPAL-REVIEW-100',
         ])->assertServerError();
 
         $this->assertDatabaseHas('orders', [
-            'provider_order_id' => 'PAYPAL-REVIEW-100-1-merch',
+            'provider_order_id' => 'PAYPAL-REVIEW-100-1-sample-download',
             'provider_capture_id' => 'CAPTURE-REVIEW-100',
             'status' => 'payment_review',
         ]);
@@ -1286,14 +1299,25 @@ class RoyalPassCheckoutTest extends TestCase
         ]);
 
         Log::shouldHaveReceived('error')
-            ->with('Captured PayPal checkout requires local payment review.', Mockery::on(fn (array $context): bool => $context['paypal_stage'] === 'persist_capture'));
+            ->with('Captured PayPal checkout requires local payment review.', Mockery::on(function (array $context): bool {
+                $serialized = json_encode($context);
+
+                return $context['paypal_stage'] === 'persist_capture'
+                    && $context['paypal_endpoint'] === '/v2/checkout/orders/{order_id}/capture'
+                    && $context['paypal_http_status'] === 201
+                    && $context['paypal_debug_id'] === 'debug-capture-success'
+                    && $context['paypal_order_reference'] === PayPalReference::hash('PAYPAL-REVIEW-100')
+                    && $context['paypal_capture_reference'] === PayPalReference::hash('CAPTURE-REVIEW-100')
+                    && ! str_contains($serialized, 'PAYPAL-REVIEW-100')
+                    && ! str_contains($serialized, 'CAPTURE-REVIEW-100');
+            }));
     }
 
     public function test_checkout_requires_paypal_order_capture(): void
     {
         $this->postJson('/checkout/paypal', [
             'identifier' => 'fan@renyrenteria.com',
-            'product_keys' => ['merch'],
+            'product_keys' => ['sample-download'],
             'currency' => 'USD',
         ])->assertUnprocessable();
 
@@ -1306,7 +1330,7 @@ class RoyalPassCheckoutTest extends TestCase
 
     public function test_checkout_rejects_incomplete_paypal_capture(): void
     {
-        $this->createPendingPayPalOrder('fan@renyrenteria.com', ['merch'], 'PAYPAL-ORDER-DECLINED');
+        $this->createPendingPayPalOrder('fan@renyrenteria.com', ['sample-download'], 'PAYPAL-ORDER-DECLINED');
 
         Http::fake([
             'https://paypal.test/v1/oauth2/token' => Http::response([
@@ -1320,7 +1344,7 @@ class RoyalPassCheckoutTest extends TestCase
 
         $this->postJson('/checkout/paypal', [
             'identifier' => 'fan@renyrenteria.com',
-            'product_keys' => ['merch'],
+            'product_keys' => ['sample-download'],
             'currency' => 'USD',
             'paypal_order_id' => 'PAYPAL-ORDER-DECLINED',
         ])->assertUnprocessable();
@@ -1330,14 +1354,14 @@ class RoyalPassCheckoutTest extends TestCase
             'royal_status' => 'royal_active',
         ]);
         $this->assertDatabaseHas('orders', [
-            'provider_order_id' => 'PAYPAL-ORDER-DECLINED-1-merch',
+            'provider_order_id' => 'PAYPAL-ORDER-DECLINED-1-sample-download',
             'status' => 'pending',
         ]);
     }
 
     public function test_checkout_rejects_completed_paypal_capture_without_capture_id(): void
     {
-        $this->createPendingPayPalOrder('fan@renyrenteria.com', ['merch'], 'PAYPAL-NO-CAPTURE-ID');
+        $this->createPendingPayPalOrder('fan@renyrenteria.com', ['sample-download'], 'PAYPAL-NO-CAPTURE-ID');
 
         Http::fake([
             'https://paypal.test/v1/oauth2/token' => Http::response([
@@ -1366,7 +1390,7 @@ class RoyalPassCheckoutTest extends TestCase
 
         $this->postJson('/checkout/paypal', [
             'identifier' => 'fan@renyrenteria.com',
-            'product_keys' => ['merch'],
+            'product_keys' => ['sample-download'],
             'currency' => 'USD',
             'paypal_order_id' => 'PAYPAL-NO-CAPTURE-ID',
         ])
@@ -1374,7 +1398,7 @@ class RoyalPassCheckoutTest extends TestCase
             ->assertJsonValidationErrors('paypal_order_id');
 
         $this->assertDatabaseHas('orders', [
-            'provider_order_id' => 'PAYPAL-NO-CAPTURE-ID-1-merch',
+            'provider_order_id' => 'PAYPAL-NO-CAPTURE-ID-1-sample-download',
             'provider_capture_id' => null,
             'status' => 'pending',
         ]);
@@ -1382,12 +1406,12 @@ class RoyalPassCheckoutTest extends TestCase
 
     public function test_checkout_rejects_reused_paypal_capture(): void
     {
-        $this->createPendingPayPalOrder('first@renyrenteria.com', ['merch'], 'PAYPAL-REPLAY-100');
+        $this->createPendingPayPalOrder('first@renyrenteria.com', ['sample-download'], 'PAYPAL-REPLAY-100');
         $this->fakeSuccessfulCapture('PAYPAL-REPLAY-100', '48.00');
 
         $this->postJson('/checkout/paypal', [
             'identifier' => 'first@renyrenteria.com',
-            'product_keys' => ['merch'],
+            'product_keys' => ['sample-download'],
             'currency' => 'USD',
             'paypal_order_id' => 'PAYPAL-REPLAY-100',
         ])->assertOk();
@@ -1396,8 +1420,8 @@ class RoyalPassCheckoutTest extends TestCase
         Order::create([
             'user_id' => $user->id,
             'provider' => 'paypal',
-            'provider_order_id' => 'PAYPAL-REPLAY-200-1-merch',
-            'product_key' => 'merch',
+            'provider_order_id' => 'PAYPAL-REPLAY-200-1-sample-download',
+            'product_key' => 'sample-download',
             'amount_cents' => 4800,
             'currency' => 'USD',
             'status' => 'pending',
@@ -1408,7 +1432,7 @@ class RoyalPassCheckoutTest extends TestCase
 
         $this->postJson('/checkout/paypal', [
             'identifier' => 'first@renyrenteria.com',
-            'product_keys' => ['merch'],
+            'product_keys' => ['sample-download'],
             'currency' => 'USD',
             'paypal_order_id' => 'PAYPAL-REPLAY-200',
         ])
@@ -1416,7 +1440,7 @@ class RoyalPassCheckoutTest extends TestCase
             ->assertJsonValidationErrors('paypal_order_id');
 
         $this->assertDatabaseHas('orders', [
-            'provider_order_id' => 'PAYPAL-REPLAY-200-1-merch',
+            'provider_order_id' => 'PAYPAL-REPLAY-200-1-sample-download',
             'status' => 'pending',
             'provider_capture_id' => null,
         ]);
@@ -1428,8 +1452,8 @@ class RoyalPassCheckoutTest extends TestCase
         $order = Order::create([
             'user_id' => $user->id,
             'provider' => 'paypal',
-            'provider_order_id' => 'PAYPAL-REFUND-200-1-merch',
-            'product_key' => 'merch',
+            'provider_order_id' => 'PAYPAL-REFUND-200-1-sample-download',
+            'product_key' => 'sample-download',
             'amount_cents' => 4800,
             'currency' => 'USD',
             'status' => 'completed',
@@ -1461,7 +1485,7 @@ class RoyalPassCheckoutTest extends TestCase
         $this->assertDatabaseHas('access_events', [
             'user_id' => $user->id,
             'event_name' => 'membership_expired',
-            'resource_key' => 'PAYPAL-REFUND-200-1-merch',
+            'resource_key' => 'PAYPAL-REFUND-200-1-sample-download',
         ]);
     }
 
@@ -1515,8 +1539,8 @@ class RoyalPassCheckoutTest extends TestCase
         $order = Order::create([
             'user_id' => $user->id,
             'provider' => 'paypal',
-            'provider_order_id' => 'PAYPAL-REFUND-UNSIGNED-merch',
-            'product_key' => 'merch',
+            'provider_order_id' => 'PAYPAL-REFUND-UNSIGNED-sample-download',
+            'product_key' => 'sample-download',
             'amount_cents' => 4800,
             'currency' => 'USD',
             'status' => 'completed',
@@ -1538,8 +1562,8 @@ class RoyalPassCheckoutTest extends TestCase
         $order = Order::create([
             'user_id' => $user->id,
             'provider' => 'paypal',
-            'provider_order_id' => 'PAYPAL-NON-REFUND-merch',
-            'product_key' => 'merch',
+            'provider_order_id' => 'PAYPAL-NON-REFUND-sample-download',
+            'product_key' => 'sample-download',
             'amount_cents' => 4800,
             'currency' => 'USD',
             'status' => 'completed',
@@ -1638,7 +1662,9 @@ class RoyalPassCheckoutTest extends TestCase
             'https://paypal.test/v2/checkout/orders' => Http::response([
                 'id' => $orderId,
                 'status' => 'CREATED',
-            ], 201),
+            ], 201, [
+                'PayPal-Debug-Id' => 'debug-create-success',
+            ]),
         ]);
     }
 
@@ -1693,7 +1719,9 @@ class RoyalPassCheckoutTest extends TestCase
                         ],
                     ],
                 ],
-            ], 201),
+            ], 201, [
+                'PayPal-Debug-Id' => 'debug-capture-success',
+            ]),
         ]);
     }
 

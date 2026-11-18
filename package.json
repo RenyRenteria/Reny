@@ -6,9 +6,11 @@
         "build": "vite build",
         "dev": "vite",
         "lint": "composer exec pint -- --test",
+        "test:e2e:paypal": "playwright test --config=playwright.paypal.config.js",
         "test:js": "node --test tests/js/*.test.js"
     },
     "devDependencies": {
+        "@playwright/test": "^1.62.1",
         "@tailwindcss/vite": "^4.3.1",
         "concurrently": "^9.2.3",
         "laravel-vite-plugin": "^3.1",

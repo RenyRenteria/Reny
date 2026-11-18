@@ -40,6 +40,12 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(20)->by(SecurityRateLimits::checkoutKey($request));
         });
 
+        RateLimiter::for('paypal-e2e', function (Request $request) {
+            $key = $request->bearerToken() ?: ($request->ip() ?: 'anonymous');
+
+            return Limit::perMinute(120)->by(hash('sha256', $key));
+        });
+
         RateLimiter::for('analytics-events', function (Request $request) {
             return Limit::perMinute(60)->by($request->ip() ?: 'anonymous');
         });

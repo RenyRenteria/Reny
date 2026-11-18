@@ -20,8 +20,9 @@ class YoycolProduct extends Model
 
     public function purchasable(): bool
     {
-        return config('yoycol.enabled') && $this->published && $this->price_cents > 0
+        return config('yoycol.enabled') && config('yoycol.sales_enabled') && $this->published && $this->price_cents > 0
             && filled($this->design_code) && count($this->variants ?? []) > 0
+            && $this->price_cents > (int) collect($this->variants)->max('cost_cents')
             && $this->synced_at?->gt(now()->subDay());
     }
 

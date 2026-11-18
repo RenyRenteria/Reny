@@ -111,3 +111,5 @@ Artisan::command('admin:provision
 
 Schedule::command('yoycol:sync')->everyMinute()->withoutOverlapping(30);
 Schedule::command('yoycol:sync --catalog')->hourly()->withoutOverlapping(60);
+Schedule::command('paypal:reconcile')->everyFiveMinutes()->withoutOverlapping(30);
+Schedule::command('commerce:notify')->everyFiveMinutes()->withoutOverlapping(30);

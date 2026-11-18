@@ -26,7 +26,7 @@ class YoycolPostMergeReviewTest extends TestCase
     {
         parent::setUp();
         config([
-            'yoycol.enabled' => true,
+            'yoycol.enabled' => true, 'yoycol.sales_enabled' => true,
             'yoycol.access_key' => 'qa-access',
             'yoycol.secret_key' => 'qa-secret',
             'admin.cms_enabled' => true,

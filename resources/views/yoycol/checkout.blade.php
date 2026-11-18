@@ -17,6 +17,7 @@
         <strong class="yoycol-price">${{ number_format($product->price_cents / 100, 2) }} USD</strong>
         <p>Shipping calculated below. Includes one month of Royal Pass.</p>
         <p>Made after your purchase. Shipping estimates exclude production time. Import duties and local import taxes, if applicable, are paid by the recipient.</p>
+        @if (config('yoycol.policy_url'))<p><a href="{{ config('yoycol.policy_url') }}">Shipping, returns and cancellations</a></p>@endif
     </section>
     <section class="yoycol-panel" aria-label="Delivery and payment">
         <h2>Your delivery</h2>

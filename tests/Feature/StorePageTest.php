@@ -47,18 +47,18 @@ class StorePageTest extends TestCase
         $response->assertSee('Reny Renteria Takeover');
         $response->assertDontSee('Festival de la Rosa Dorada');
         $response->assertSee('Work in Progress');
-        $response->assertSee('Crown Collection');
+        $response->assertDontSee('Crown Collection');
         $response->assertDontSee('FREE');
         $response->assertSee('$20');
         $response->assertSee('GET TICKETS');
         $response->assertSee('LISTEN');
-        $response->assertSee('GET MERCH');
+        $response->assertDontSee('GET MERCH');
         $response->assertSee('class="storefront-countdown"', false);
         $response->assertDontSee('data-countdown-at="2026-09-21T19:30:00-05:00"', false);
         $response->assertSee('data-countdown-at="2027-10-02T20:30:00-05:00"', false);
         $response->assertDontSee('images/store/reny-concert.png');
         $response->assertSee('images/store/reny-takeover-2027.png');
-        $response->assertSee('images/store/crown-collection.png');
+        $response->assertDontSee('images/store/crown-collection.png');
         $response->assertSee('images/store/royal-pass.png');
         $response->assertSee('PayPal charges in USD. Every completed purchase activates Royal Pass for 1 month on this account.');
         $response->assertDontSee('data-free-event-rsvp="concert"', false);
@@ -70,11 +70,11 @@ class StorePageTest extends TestCase
         $response->assertSee('data-buy-image="'.asset('images/store/royal-pass.png').'"', false);
         $response->assertDontSee('data-buy="deluxe"', false);
         $response->assertSee('href="'.url('/music').'"', false);
-        $response->assertSee('data-buy="merch"', false);
+        $response->assertDontSee('data-buy="merch"', false);
         $response->assertSee('data-buy-image="'.asset('images/store/reny-takeover-2027.png').'"', false);
         $response->assertSee('data-buy-url="'.route('store.checkout', ['product' => 'reny-renteria-takeover-2027']).'"', false);
         $response->assertDontSee(route('store.checkout', ['product' => 'deluxe']), false);
-        $response->assertSee('data-buy-url="'.route('store.checkout', ['product' => 'merch']).'"', false);
+        $response->assertDontSee('data-buy-url="'.route('store.checkout', ['product' => 'merch']).'"', false);
         $response->assertDontSee('data-buy="concert"', false);
         $response->assertSee('Complete your order');
         $response->assertSee('Name + email only');
@@ -98,7 +98,7 @@ class StorePageTest extends TestCase
             $this->assertStringNotContainsString('href="'.route('store').'"', $navHtml);
         }
 
-        $this->assertSame(3, substr_count($html, 'storefront-card'));
+        $this->assertSame(2, substr_count($html, 'storefront-card'));
         $this->assertSame(1, substr_count($html, 'storefront-countdown'));
         $this->assertLessThan(strpos($html, 'Reny Renteria Takeover'), strpos($html, 'Royal Pass'));
         $this->assertStringNotContainsString('is-event-secondary', $html);
