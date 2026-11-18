@@ -4,7 +4,7 @@ Executed November 17, 2026, Panama time, on `dos/ecommerce-closeout-20261117`, b
 
 ## Results
 
-- PHPUnit: 489 passed, 5,443 assertions. Includes all 21 original refund audit regressions, shared capture/webhook finalization, signed-webhook replay, general multi-item payment recovery, disabled-supplier recovery, sales pause, price floor, notification deduplication/retry and atomic refund rollback.
+- PHPUnit: 490 passed, 5,446 assertions. Includes all 21 original refund audit regressions, shared capture/webhook finalization, signed-webhook replay, general multi-item payment recovery, disabled-supplier recovery, sales pause, price floor, notification deduplication/retry and atomic refund rollback.
 - JavaScript: 38 passed.
 - Vite build: passed.
 - Composer validation, Pint and diff whitespace validation: passed.
@@ -21,6 +21,7 @@ Playwright MCP was available in this execution. Local PHP app, isolated SQLite d
 - New guest checkout authenticated its own account; the order appeared under `/account`.
 - Mobile cancellation after order creation: pending payment cancelled, old quote hidden, controls unlocked; new quote and subsequent purchase succeeded.
 - Generic ticket modal: 374 px wide at a 390 px viewport and 900 px wide on desktop; no horizontal overflow, focus moved into the dialog, Escape closed it and returned focus to the initiating product button.
+- Browser verification also found checkout analytics rejected display labels such as `Presale [Limited]` with HTTP 422. Item types are now normalized before persistence; the same event returned HTTP 201 after the fix.
 - The generic modal's initial attempt to load the actual PayPal SDK with the intentionally fake client ID produced the expected invalid-client/network errors. This does not verify real PayPal button rendering or buyer approval. The real sandbox gate remains mandatory.
 
 No production write, real charge, refund, supplier order/payment, or outbound customer/operator email was performed. Mail delivery was verified with fakes, including retry after transport failure. No manufacturing/tracking SLA can be certified locally.

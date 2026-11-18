@@ -127,8 +127,9 @@ class PayPalService
             callback: fn (): Response => $this->paypal()
                 ->withToken($this->accessToken('lookup_order', $failureMessage))
                 ->get($this->url('/v2/checkout/orders/'.rawurlencode($paypalOrderId))),
+            context: $references,
         );
-        $this->ensureOk($response, $failureMessage, 'lookup_order', $endpoint);
+        $this->ensureOk($response, $failureMessage, 'lookup_order', $endpoint, $references);
         if ($response->json('status') !== 'COMPLETED') {
             return null;
         }

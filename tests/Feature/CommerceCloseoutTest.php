@@ -10,6 +10,7 @@ use App\Models\YoycolFulfillment;
 use App\Services\Commerce\CommerceNotifications;
 use App\Services\Commerce\PayPalCheckoutFinalizer;
 use App\Services\Commerce\PayPalPaymentRecovery;
+use App\Services\Commerce\PayPalSandboxE2eControl;
 use App\Services\PayPalService;
 use App\Services\UserHubPurchaseSync;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -176,6 +177,16 @@ class CommerceCloseoutTest extends TestCase
         $this->postJson('/paypal/refund', $payload)->assertOk()->assertJsonPath('refunded_orders', 1);
         $this->assertDatabaseCount('order_refunds', 1);
         $this->assertSame('refunded', $order->fresh()->status);
+    }
+
+    public function test_background_recovery_respects_the_isolated_sandbox_fault_hold(): void
+    {
+        $order = $this->order();
+        $this->mock(PayPalSandboxE2eControl::class)
+            ->shouldReceive('shouldHoldCaptureWebhook')->once()->with('PP-RECOVERY')->andReturnTrue();
+        $this->mock(PayPalService::class)->shouldNotReceive('confirmedOrder');
+        app(PayPalPaymentRecovery::class)->recover($order);
+        $this->assertSame('pending', $order->fresh()->status);
     }
 
     private function enableMail(): void

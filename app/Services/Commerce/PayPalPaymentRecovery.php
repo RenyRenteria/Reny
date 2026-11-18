@@ -14,6 +14,7 @@ class PayPalPaymentRecovery
     public function __construct(
         private readonly PayPalService $paypal,
         private readonly PayPalCheckoutFinalizer $finalizer,
+        private readonly PayPalSandboxE2eControl $e2eControl,
     ) {}
 
     public function recover(Order $order): void
@@ -23,6 +24,10 @@ class PayPalPaymentRecovery
         if ($order->provider !== 'paypal' || ! is_string($reference) || $reference === ''
             || ! in_array($order->status, ['pending', 'payment_review'], true)
             || ! data_get($order->metadata, 'checkout.capture_started')) {
+            return;
+        }
+        // The isolated sandbox gate must retain its forced failure until it releases the webhook.
+        if ($this->e2eControl->shouldHoldCaptureWebhook($reference)) {
             return;
         }
 
