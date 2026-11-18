@@ -27,13 +27,24 @@ for (const path of paths) {
         expect.soft(report.scrollWidth).toBeLessThanOrEqual(report.width + 1);
         expect.soft(errors).toEqual([]);
         if ([390, 1440].includes(page.viewportSize().width)) {
-            await page.screenshot({ path: testInfo.outputPath('page.png'), fullPage: true });
+            await page.evaluate(async () => {
+                for (let y = 0; y < document.body.scrollHeight; y += innerHeight) {
+                    scrollTo(0, y);
+                    await new Promise((resolve) => setTimeout(resolve, 50));
+                }
+                scrollTo(0, 0);
+                await Promise.all([...document.images].map((image) => image.decode().catch(() => {})));
+            });
+            await page.screenshot({ path: testInfo.outputPath('page.jpg'), type: 'jpeg', quality: 82, fullPage: true });
         }
         if (page.viewportSize().width <= 900) {
             await expect(page.locator('.site-desktop-nav')).toBeHidden();
             const menu = page.locator('.site-mobile-nav');
             await menu.locator('summary').click();
             await expect(menu.getByRole('link')).toHaveCount(5);
+            if (path === '/store' && page.viewportSize().width === 390) {
+                await page.screenshot({ path: testInfo.outputPath('mobile-menu.jpg'), type: 'jpeg', quality: 82 });
+            }
             await menu.getByRole('link').first().focus();
             await page.keyboard.press('Escape');
             await expect(menu).not.toHaveAttribute('open');
@@ -54,7 +65,7 @@ test('navigation updates active state and preserves the music player node', asyn
         await nav.getByRole('link', { name: label, exact: page.viewportSize().width > 900 }).click();
         await expect(page).toHaveURL(new RegExp(`${path}$`));
         await expect(page.locator('[data-global-music-player]')).toHaveAttribute('data-browser-check', 'persistent');
-        await expect(nav.getByRole('link', { name: label, exact: page.viewportSize().width > 900 })).toHaveAttribute('aria-current', 'page');
+        await expect(nav.getByRole('link', { name: label, exact: page.viewportSize().width > 900, includeHidden: true })).toHaveAttribute('aria-current', 'page');
     }
     await page.goBack();
     await expect(page).toHaveURL(/\/royals$/);
@@ -70,8 +81,10 @@ test('member account and access states remain usable', async ({ page }, testInfo
     await expect(page.getByRole('heading', { name: 'Profile', exact: true })).toBeVisible();
     await expect(page.locator('.site-member')).toContainText('ROYAL MEMBER');
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(page.viewportSize().width + 1);
-    await page.screenshot({ path: testInfo.outputPath('account.png'), fullPage: true });
+    await page.screenshot({ path: testInfo.outputPath('account.jpg'), type: 'jpeg', quality: 82, fullPage: true });
     await page.goto('/royals');
+    const chatTab = page.locator('[data-community-tab="chat"]');
+    if (await chatTab.isVisible()) await chatTab.click();
     await expect(page.locator('[data-community-live-chat-form]')).toBeVisible();
     await expect(page.locator('[data-royal-pass-banner]')).toHaveCount(0);
 });

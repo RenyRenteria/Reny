@@ -334,3 +334,35 @@
 .reny-site .photo-lightbox-copy h2 { color: var(--ivory); }
 .reny-site .photo-lightbox-nav { border-radius: 8px; }
 .reny-site .photo-lightbox-nav:hover { background: var(--ruby); }
+.reny-site [hidden] { display: none !important; }
+.reny-site :where(.home-shows, .home-music) { background: transparent; color: var(--ink); border: 0; border-radius: 0; padding: 0; box-shadow: none; }
+.reny-site :where(.home-shows, .home-music, .home-royal-pass)::before,
+.reny-site :where(.home-unlock-button, .home-pill-button, .home-play-here, .home-streaming-link)::after { content: none; }
+.reny-site .auth-shell { display: grid; place-items: center; }
+.reny-site :where(.cover, .single-art) { background-image: none; }
+.reny-site :where(.play-button, .mini-play, .playlist-play-button, .album-track-play-button) span { border-left-color: var(--ivory); }
+.reny-site :where(.music-player-control, .music-player-close) { background: transparent; border-color: #f5f2ec40; border-radius: 8px; }
+.reny-site .music-player-control.is-active { background: var(--ruby); border-color: var(--ruby); }
+.reny-site :where(.store-dialog-head, .store-checkout-dialog .store-bag-item, .artist-milestones article, .artist-timeline li) { border-color: var(--line); }
+.reny-site .site-member { margin-bottom: 0; }
+.reny-site .site-member .member-card { width: auto; max-width: none; min-height: 0; margin: 0; padding: 8px 0; gap: 12px; }
+.reny-site .site-member .member-card > div:last-child { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; }
+.reny-site .site-member .member-card strong { font-size: 14px; font-weight: 500; margin: 0; }
+.reny-site .site-member .member-card span { font-size: 11px; font-weight: 400; color: #d4c9c3; margin: 0; }
+.reny-site .site-member .member-card-link { font-size: 12px; font-weight: 400; margin: 0; }
+.reny-site .site-member .member-avatar { width: 32px; height: 32px; min-width: 32px; margin: 0; }
+.reny-site .home-royal-pass { margin-bottom: 32px; }
+.reny-site .site-royal-close .home-royal-pass { margin-bottom: 0; }
+.reny-site .artist-hero .artist-button-secondary { color: var(--ivory); border-color: #f5f2ec55; background: transparent; }
+.reny-site .artist-hero .artist-contact-handle { color: #d4c9c3; }
+.reny-site .artist-gallery figure { border: 0; border-radius: 0; background: var(--ink); }
+.reny-site .artist-gallery figcaption { color: var(--ivory); }
+.reny-site .artist-albums article { border-color: var(--line); border-radius: 8px; }
+.reny-site :where(.account-ghost-button, .checkout-copy-link, .checkout-secure-badge) { background: transparent; border: 1px solid var(--line); border-radius: 8px; min-height: 48px; padding: 12px 16px; color: var(--ink); box-shadow: none; }
+.reny-site .account-ghost-button:hover { background: #e8e4dd; color: var(--ink); border-color: #201d1e55; }
+.reny-site .account-event-image { height: 280px; aspect-ratio: auto; object-fit: contain; background: #e8e4dd; border-radius: 0; box-shadow: none; }
+.reny-site .account-row { padding: 16px; }
+.reny-site :where(.account-empty, .checkout-payment-box, .checkout-benefits li::before) { border-color: var(--line); }
+.reny-site .video-frame { border: 1px solid #f5f2ec40; border-radius: 8px; box-shadow: none; }
+.reny-site .youtube-pill { border-color: #f5f2ec40; }
+.reny-site .home-streaming-link { border: 0; min-width: 48px; min-height: 48px; }
