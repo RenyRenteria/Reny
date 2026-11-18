@@ -60,7 +60,7 @@ class VideosPageTest extends TestCase
         $response->assertDontSee('class="stage-light stage-light--two"', false);
         $response->assertDontSee('class="stage-light stage-light--three"', false);
         $response->assertDontSee('class="home-royal-pass-images"', false);
-        $response->assertSee('family=DM+Sans', false);
+        $response->assertDontSee('fonts.googleapis.com', false);
 
         $html = $response->getContent();
 

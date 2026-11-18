@@ -328,3 +328,9 @@
  .reny-site #shows .home-show-card { grid-template-columns: 1fr; grid-template-areas: 'image' 'copy' 'countdown' 'actions'; gap: 20px; }
  .reny-site #shows .home-show-image { width: 100%; max-height: 440px; }
 }
+.reny-site .video-hero .featured-meta strong { color: var(--ivory); }
+.reny-site .video-hero .featured-meta span { color: #d4c9c3; }
+.reny-site .video-hero :where(.youtube-pill, .home-watch-more) { color: var(--ivory); }
+.reny-site .photo-lightbox-copy h2 { color: var(--ivory); }
+.reny-site .photo-lightbox-nav { border-radius: 8px; }
+.reny-site .photo-lightbox-nav:hover { background: var(--ruby); }
