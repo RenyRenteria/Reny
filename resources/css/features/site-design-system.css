@@ -1,0 +1,330 @@
+/* Public website. The approved /newlanding palette and typography.
+   Older feature layouts remain in the legacy layer; admin and the prototype
+   do not opt into this theme. Keep interactive state/visibility selectors. */
+@font-face { font-family: 'DM Sans'; src: url('/newlanding-assets/assets/dm-sans-400.ttf') format('truetype'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'DM Sans'; src: url('/newlanding-assets/assets/dm-sans-500.ttf') format('truetype'); font-weight: 500; font-display: swap; }
+@font-face { font-family: 'DM Sans'; src: url('/newlanding-assets/assets/dm-sans-600.ttf') format('truetype'); font-weight: 600 950; font-display: swap; }
+.reny-site {
+    --ivory: #f5f2ec; --ink: #201d1e; --ruby: #8c242b; --ruby-hover: #6f1b22;
+    --paper: var(--ivory); --paper-deep: #e8e4dd; --panel: var(--ivory); --panel-bright: #fff;
+    --line: #201d1e26; --soft-ink: #403a3b; --muted: #68615e;
+    --accent: var(--ruby); --accent-dark: var(--ruby-hover); --accent-soft: #eee0df;
+    --red: var(--ruby); --shadow: none; --gutter: clamp(28px, 5vw, 96px);
+    --home-cream: var(--ink); --home-cream-muted: var(--muted);
+    --home-gold-light: var(--ruby); --home-gold-deep: var(--ruby); --home-gold-warm: var(--ruby); --home-gold-bright: var(--ruby);
+    --home-ink: var(--ivory); --home-ink-soft: var(--ivory);
+    --music-cream: var(--ink); --music-cream-muted: var(--muted);
+    --music-gold-light: var(--ruby); --music-gold-deep: var(--ruby); --music-gold-warm: var(--ruby); --music-gold-bright: var(--ruby);
+    --music-ink: var(--ink); --music-ink-soft: var(--ivory);
+    color: var(--ink); background: var(--ivory); font-family: 'DM Sans', sans-serif;
+    font-size: 16px; font-weight: 400; line-height: 1.6; color-scheme: light;
+}
+.reny-site :where(.home-shell, .golden-stage-shell, .royals-shell) {
+    --home-cream: var(--ink); --home-cream-muted: var(--muted);
+    --home-gold-light: var(--ruby); --home-gold-deep: var(--ruby); --home-gold-warm: var(--ruby); --home-gold-bright: var(--ruby);
+    --home-ink: var(--ivory); --home-ink-soft: var(--ivory);
+    --royals-ink: var(--ink); --royals-cream: var(--ivory); --royals-muted: var(--muted);
+    --royals-red: var(--ruby); --royals-red-deep: var(--ruby-hover); --royals-line: var(--line); --royals-shadow: none;
+}
+.reny-site :where(.store-shell, .music-shell, .videos-shell, .photos-shell, .community-shell, .home-shell) {
+    display: block; min-height: 0; background: var(--ivory); color: var(--ink);
+}
+.reny-site :where(.home-shell, .golden-stage-shell, .hero, .video-hero, .content-section, .video-list-section, .storefront, .public-page-intro, .artist-panel, .account-section, .auth-panel, .community-welcome-card, .album-detail-view, .checkout-screen)::before,
+.reny-site :where(.home-shell, .golden-stage-shell, .hero, .video-hero, .content-section, .video-list-section, .storefront, .public-page-intro, .artist-panel, .account-section, .auth-panel, .community-welcome-card, .album-detail-view, .checkout-screen)::after { content: none; }
+.reny-site .main-content { width: 100%; max-width: 1600px; margin: 0 auto; padding: 48px var(--gutter) 72px; color: var(--ink); }
+.reny-site :where(.home-stack, .store-stage-stack, .artist-stack, .account-stack) { width: 100%; max-width: 1456px; gap: 48px; }
+.reny-site :where(h1, h2, h3, h4) { background: none; color: var(--ink); -webkit-text-fill-color: currentColor; font-weight: 500; letter-spacing: -.045em; text-shadow: none; filter: none; animation: none; }
+.reny-site h1 { font-size: clamp(36px, 5vw, 64px); line-height: 1.06; }
+.reny-site h2 { font-size: clamp(26px, 3vw, 40px); line-height: 1.15; }
+.reny-site h3 { font-size: 22px; line-height: 1.25; }
+.reny-site :where(button, input, select, textarea) { font: inherit; }
+.reny-site :where(button, a) { -webkit-tap-highlight-color: transparent; }
+.reny-site :where(a, button, input, select, textarea, summary):focus-visible { outline: 2px solid var(--ruby); outline-offset: 4px; }
+.reny-site :where(button, a)[aria-disabled="true"], .reny-site button:disabled { opacity: .55; cursor: not-allowed; }
+.reny-site :where(p, strong, small, span, label) { text-shadow: none; }
+.reny-site :where(.eyebrow, .site-eyebrow, .artist-eyebrow, .auth-kicker, .checkout-kicker) { color: var(--ruby); font-size: 11px; font-weight: 500; letter-spacing: .16em; }
+.reny-site :where(.hero-copy, .artist-stack p, .auth-copy, .storefront-copy p, .public-page-intro span) { color: var(--muted); font-weight: 400; }
+.reny-site :where(.store-button, .auth-button, .home-pill-button, .home-play-here, .home-unlock-button, .checkout-primary-button, .artist-button, .play-button, .music-play-button, .community-primary-button, .yoycol-pay, .account-primary-button) {
+    min-height: 48px; padding: 12px 24px; border: 1px solid var(--ruby); border-radius: 8px;
+    background: var(--ruby); color: var(--ivory); box-shadow: none; font-weight: 500; letter-spacing: 0; text-shadow: none; animation: none;
+    transition: background-color 180ms ease; transform: none;
+}
+.reny-site :where(.store-button, .auth-button, .home-pill-button, .home-play-here, .home-unlock-button, .checkout-primary-button, .artist-button):hover { background: var(--ruby-hover); border-color: var(--ruby-hover); color: var(--ivory); transform: none; box-shadow: none; }
+.reny-site :where(.store-button-light, .artist-button-secondary, .youtube-pill, .view-all, .home-watch-more, .site-text-link) { display: inline-flex; min-height: 48px; align-items: center; gap: 12px; background: transparent; color: var(--ruby); border-radius: 8px; box-shadow: none; font-weight: 500; }
+.reny-site :where(input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='hidden']), select, textarea) { min-height: 48px; max-width: 100%; padding: 12px; border: 1px solid #201d1e55; border-radius: 8px; background: #fff; color: var(--ink); box-shadow: none; font-weight: 400; font-size: 16px; }
+.reny-site :where(input, select, textarea)::placeholder { color: var(--muted); }
+.reny-site :where(input[type='checkbox'], input[type='radio'], input[type='range']) { accent-color: var(--ruby); }
+.reny-site :where(.auth-form label span, .store-field span, .account-field span) { color: var(--ink); font-weight: 500; letter-spacing: 0; text-transform: none; font-size: 14px; }
+.reny-site :where(.auth-form small, .account-field-error, .store-error, .photo-error) { color: var(--ruby-hover); }
+
+/* One header on every public route, including authentication and purchases. */
+.reny-site .site-header { position: relative; z-index: 40; display: flex; align-items: center; justify-content: space-between; gap: 24px; min-height: 94px; padding: 16px var(--gutter); border-bottom: 1px solid var(--line); background: var(--ivory); color: var(--ink); }
+.reny-site .site-signature { display: block; width: 170px; flex: none; line-height: 0; }
+.reny-site .site-signature img { width: 100%; height: auto; }
+.reny-site .site-desktop-nav { display: flex; align-items: center; gap: clamp(20px, 2.6vw, 42px); }
+.reny-site .site-desktop-nav a { display: flex; align-items: center; min-height: 48px; font-size: 13px; font-weight: 500; white-space: nowrap; text-underline-offset: 7px; }
+.reny-site .site-header a:is(:hover, [aria-current='page']) { color: var(--ruby); text-decoration: underline; }
+.reny-site .site-desktop-nav .site-nav-account { border: 1px solid #201d1e55; border-radius: 8px; padding: 0 20px; }
+.reny-site .site-mobile-nav { display: none; }
+.reny-site .site-skip { position: absolute; left: var(--gutter); top: 8px; padding: 12px 24px; border-radius: 8px; background: var(--ink); color: var(--ivory); transform: translateY(-200%); }
+.reny-site .site-skip:focus { transform: none; z-index: 10; color: var(--ivory); }
+.reny-site summary { cursor: pointer; }
+
+/* Open, straight catalog cards; no illuminated borders or gold gradients. */
+.reny-site :where(.content-section, .video-list-section, .storefront, .public-page-intro, .artist-panel, .album-detail-view, .home-album-section, .home-show-card, .account-section, .public-content-card) { background: transparent; color: var(--ink); border: 0; border-radius: 0; box-shadow: none; }
+.reny-site :where(.content-section, .video-list-section, .storefront, .public-page-intro, .album-detail-view, .home-album-section) { padding: 0; overflow: visible; }
+.reny-site .public-page-intro { margin: 0; gap: 12px; }
+.reny-site .public-page-intro h1 { font-size: clamp(36px, 5vw, 64px); }
+.reny-site .public-page-intro p { color: var(--ruby); font-weight: 500; }
+.reny-site .public-page-intro strong { color: var(--ink); font-weight: 400; }
+.reny-site .storefront-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px 24px; }
+.reny-site :where(.storefront-card, .album, .single-row, .playlist, .video-card, .photo-tile, .storefront-image, .album-cover, .playlist-cover) { border: 0; border-radius: 0; box-shadow: none; background: transparent; color: var(--ink); }
+.reny-site :where(.storefront-card, .album, .playlist, .video-card) { padding: 0; }
+.reny-site :where(.storefront-card, .storefront-image):hover { transform: none; filter: none; box-shadow: none; }
+.reny-site .storefront-image { background: #e8e4dd; }
+.reny-site .storefront-copy h2 { font-size: 20px; line-height: 1.3; }
+.reny-site .storefront-copy > span { color: var(--muted); font-weight: 400; }
+.reny-site .storefront-price { color: var(--ink); font-weight: 500; }
+.reny-site .storefront-countdown { background: transparent; border: 1px solid var(--line); border-radius: 8px; color: var(--ruby); }
+.reny-site #shows .storefront-grid { grid-template-columns: 1fr; }
+.reny-site #shows .storefront-card { grid-template-columns: minmax(200px, .7fr) minmax(0, 1fr); gap: 40px; padding-bottom: 32px; border-bottom: 1px solid var(--line); }
+.reny-site #shows .storefront-image { max-height: 440px; object-fit: cover; }
+.reny-site #shows .storefront-copy { padding: 0; gap: 12px; }
+.reny-site #shows .storefront-copy h2 { font-size: clamp(28px, 4vw, 48px); }
+.reny-site :where(.hero, .video-hero, .artist-hero) { border: 0; border-radius: 0; background: var(--ink); color: var(--ivory); box-shadow: none; }
+.reny-site :where(.hero, .video-hero, .artist-hero) :is(h1, h2, h3) { color: var(--ivory); }
+.reny-site :where(.hero, .video-hero, .artist-hero) :is(p, .hero-link) { color: #d4c9c3; }
+.reny-site :where(.hero, .video-hero) .hero-content { padding: clamp(24px, 4vw, 56px); }
+.reny-site .artist-card { box-shadow: none; border: 0; border-radius: 0; background: #403a3b; }
+.reny-site .artist-card::before { background: var(--ink); border-radius: 0; }
+.reny-site .artist-sticker { border: 0; background: var(--ruby); color: var(--ivory); border-radius: 8px; }
+.reny-site .content-section { margin-top: 48px; }
+.reny-site :where(.album-title, .album h4, .single-info strong, .playlist-info strong, .video-card-title, .album-detail-title) { color: var(--ink); font-weight: 500; }
+.reny-site :where(.album-meta, .single-info span, .playlist-info span, .video-card-meta) { color: var(--muted); }
+.reny-site :where(.single-row, .album-track-row) { border-bottom: 1px solid var(--line); }
+.reny-site :where(.single-row, .album-track-row):hover { background: #e8e4dd; }
+.reny-site :where(.music-library-nav, .photo-album-strip) a { color: var(--ink); }
+.reny-site :where(.music-library-nav a[aria-current], .photo-album-strip .is-active) { color: var(--ruby); border-color: var(--ruby); }
+
+/* Home keeps CMS events, release data and real checkout actions. */
+.reny-site .home-shows { order: -1; }
+.reny-site .home-show-list { gap: 32px; }
+.reny-site .home-show-card { padding: 0; border-bottom: 1px solid var(--line); padding-bottom: 32px; }
+.reny-site .home-show-image { border-radius: 0; box-shadow: none; }
+.reny-site .home-show-copy { color: var(--ink); }
+.reny-site .home-show-copy p { color: var(--muted); }
+.reny-site .home-event-countdown { background: transparent; border: 0; border-radius: 0; color: var(--ink); box-shadow: none; }
+.reny-site .home-event-countdown-part { border-color: var(--line); }
+.reny-site .home-event-countdown-part strong { color: var(--ruby); font-weight: 400; font-variant-numeric: tabular-nums; }
+.reny-site :where(.home-event-countdown-kicker, .home-event-countdown-part span) { color: var(--muted); }
+.reny-site .home-album-card { border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.reny-site .home-album-image { border-radius: 0; box-shadow: none; }
+.reny-site .home-album-heading :is(span, p) { color: var(--muted); }
+.reny-site .home-streaming-link { color: var(--ruby); background: transparent; box-shadow: none; }
+.reny-site .home-royal-pass { width: 100%; margin: 32px 0 0; padding: 24px; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: var(--ink); box-shadow: none; order: 10; }
+.reny-site .home-royal-pass-copy strong { color: var(--ruby); }
+.reny-site .site-royal-close { display: grid; grid-template-columns: .8fr 1fr; background: #191516; color: var(--ivory); align-items: center; gap: 48px; }
+.reny-site .site-royal-close > img { width: 100%; height: 520px; object-fit: cover; object-position: top; mask-image: linear-gradient(to right, #000 70%, transparent); }
+.reny-site .site-royal-close > div { padding: 40px 40px 40px 0; }
+.reny-site .site-royal-close h2 { color: var(--ivory); font-size: clamp(36px, 4.1vw, 64px); line-height: 1.04; }
+.reny-site .site-royal-close p { color: #d4c9c3; }
+.reny-site .site-royal-close .home-royal-pass { display: flex; flex-wrap: wrap; padding: 0; border: 0; color: var(--ivory); }
+.reny-site .site-royal-close .home-royal-pass-selector { display: none; }
+.reny-site .site-royal-close .site-text-link { color: var(--ivory); margin-top: 12px; }
+
+/* Reading, community, account, forms and all purchase states. */
+.reny-site :where(.auth-shell, .public-content-shell) { min-height: 60vh; padding: 48px var(--gutter); background: var(--ivory); }
+.reny-site :where(.auth-panel, .store-dialog, .store-checkout-panel, .checkout-screen, .checkout-info-panel, .store-detail, .access-gate, .community-post-card, .community-empty-state, .poll-card, .community-chat-card, .community-card, .group-card, .account-event-card, .account-billing-card, .account-card, .account-preferences-card, .yoycol-card) { background: var(--ivory); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; box-shadow: none; backdrop-filter: none; }
+.reny-site .auth-panel { background: transparent; border: 0; padding: 24px 0; }
+.reny-site .auth-panel .brand-link { display: none; }
+.reny-site .auth-panel h1 { font-size: 36px; }
+.reny-site :where(.auth-links, .auth-links a, .auth-panel a, .checkout-back-link, .checkout-copy-link) { color: var(--ruby); }
+.reny-site :where(.auth-error-box, .auth-success-box, .account-status, .auth-status) { border-radius: 8px; box-shadow: none; }
+.reny-site .account-section { padding: 0 0 32px; border-bottom: 1px solid var(--line); }
+.reny-site :where(.account-profile-section, .account-upcoming-section, .account-billing-section, .account-preferences-section) { color: var(--ink); }
+.reny-site .account-avatar-button { background: #e8e4dd; border-color: var(--line); box-shadow: none; color: var(--ruby); }
+.reny-site :where(.account-event-title, .account-billing-copy strong, .account-section-head h2, .account-section-head h1, .store-total-row, .store-field, .checkout-product-price) { color: var(--ink); }
+.reny-site :where(.account-event-meta, .account-billing-copy p, .account-note, .store-currency-note, .store-dialog-head p, .checkout-product-copy > p) { color: var(--muted); }
+.reny-site :where(.checkout-product-media, .store-detail-art, .store-bag-image) { border-radius: 0; border: 0; box-shadow: none; }
+.reny-site .checkout-screen { padding: clamp(20px, 4vw, 48px); }
+.reny-site :where(.store-checkout-panel, .checkout-info-panel) { background: #fff; }
+.reny-site :where(.store-royal-pass, .store-local-panel, .store-bag-item, .store-payment-option, .currency-switch) { background: #e8e4dd; color: var(--ink); border-color: var(--line); box-shadow: none; border-radius: 8px; }
+.reny-site :where(.store-icon-button, .store-checkout-close) { background: transparent; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); box-shadow: none; min-width: 44px; min-height: 44px; }
+.reny-site .currency-button { color: var(--ink); border-radius: 8px; }
+.reny-site .currency-button.is-active { background: var(--ink); color: var(--ivory); box-shadow: none; }
+.reny-site .community-welcome-card { background: var(--ink); color: var(--ivory); border: 0; border-radius: 0; box-shadow: none; }
+.reny-site .community-welcome-card h1 { color: var(--ivory); }
+.reny-site :where(.community-post-actions button, .community-post-head strong, .community-post-copy, .community-feed-heading, .community-chat-heading) { color: var(--ink); }
+.reny-site :where(.community-post-actions button.is-active, .community-post-head strong span, .community-feed-heading b) { background: var(--ruby); color: var(--ivory); }
+.reny-site :where(.community-tabs, .community-chat-composer, .community-post-comment, .community-chat-message) { background: #e8e4dd; color: var(--ink); border-color: var(--line); border-radius: 8px; }
+.reny-site .yoycol-main { padding: 48px var(--gutter); max-width: 1456px; }
+.reny-site .yoycol-pay { display: inline-flex; align-items: center; justify-content: center; }
+.reny-site .artist-panel { padding: 24px 0; }
+.reny-site .artist-hero-copy { padding: clamp(24px, 4vw, 56px); }
+.reny-site .artist-stack .artist-lead { color: inherit; }
+.reny-site .artist-contact-card { background: transparent; border: 1px solid var(--line); border-radius: 8px; box-shadow: none; }
+
+@media (max-width: 900px) {
+    .reny-site { --gutter: 24px; }
+    .reny-site .main-content { padding-top: 28px; padding-bottom: 48px; }
+    .reny-site .site-header { min-height: 80px; padding-block: 12px; }
+    .reny-site .site-signature { width: 134px; }
+    .reny-site .site-desktop-nav { display: none; }
+    .reny-site .site-mobile-nav { display: block; }
+    .reny-site .site-mobile-nav > summary { display: flex; gap: 14px; align-items: center; justify-content: center; min-height: 48px; min-width: 100px; padding: 0 16px; border: 1px solid #201d1e55; border-radius: 8px; font-size: 13px; list-style: none; }
+    .reny-site .site-mobile-nav summary::-webkit-details-marker { display: none; }
+    .reny-site .site-mobile-nav nav { position: absolute; top: calc(100% - 1px); left: var(--gutter); right: var(--gutter); padding: 10px 20px; background: var(--ivory); border: 1px solid var(--line); border-radius: 8px; max-height: calc(100svh - 100px); overflow: auto; overscroll-behavior: contain; }
+    .reny-site .site-mobile-nav nav a { display: flex; align-items: center; justify-content: space-between; min-height: 52px; gap: 20px; font-size: 14px; }
+    .reny-site .site-mobile-nav nav a + a { border-top: 1px solid var(--line); }
+    .reny-site :where(.home-stack, .store-stage-stack, .artist-stack, .account-stack) { gap: 32px; }
+    .reny-site .storefront-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 16px; }
+}
+@media (max-width: 700px) {
+    .reny-site #shows .storefront-card { grid-template-columns: 1fr; gap: 20px; }
+    .reny-site #shows .storefront-image { width: 100%; max-height: none; }
+    .reny-site .storefront-copy .store-button { width: 100%; min-width: 0; padding-inline: 12px; }
+    .reny-site .home-royal-pass { grid-template-columns: 1fr; padding: 20px; }
+    .reny-site .home-royal-pass-copy { flex-wrap: wrap; }
+    .reny-site .site-royal-close { grid-template-columns: 1fr; gap: 0; }
+    .reny-site .site-royal-close > img { height: 280px; mask-image: linear-gradient(#000 65%, transparent); }
+    .reny-site .site-royal-close > div { padding: 0 24px 32px; }
+    .reny-site .storefront-copy h2 { font-size: 17px; }
+    .reny-site .storefront-copy p { font-size: 14px; }
+}
+@media (max-width: 359px) { .reny-site { --gutter: 20px; } }
+@media (prefers-reduced-motion: reduce) {
+    .reny-site *, .reny-site *::before, .reny-site *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
+
+/* Approved shared footer from /newlanding. */
+.reny-site .site-footer{position:relative;background:#191516;padding:0 var(--gutter);color:var(--ivory)}
+.reny-site .footer-main,.reny-site .footer-bottom{max-width:1456px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:24px;border-top:1px solid #f5f2ec26}
+.reny-site .footer-main{padding:22px 0}
+.reny-site .footer-main .signature{width:130px}
+.reny-site .footer-nav{display:flex;align-items:center;gap:clamp(16px,2vw,32px)}
+.reny-site .footer-nav>a,.reny-site .footer-nav>details>summary{display:flex;align-items:center;gap:8px;min-height:48px;font-size:12px;color:#e2d9d2}
+.reny-site .footer-nav>a:hover,.reny-site .footer-nav>details>summary:hover{text-decoration:underline;text-underline-offset:5px}
+.reny-site .footer-nav>details>summary::after{content:'+';font-size:16px;color:#bda9a4}
+.reny-site .footer-nav>details[open]>summary::after{content:'−'}
+.reny-site .footer-social{display:flex;align-items:center;gap:4px}
+.reny-site .footer-social>a{display:flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:8px;color:#e2d9d2}
+.reny-site .footer-social>a:hover{color:#fff;background:#f5f2ec14}
+.reny-site .footer-social svg{display:block;flex-shrink:0}
+.reny-site .footer-panel{position:absolute;z-index:6;bottom:calc(100% - 12px);right:var(--gutter);width:min(520px,calc(100% - 2 * var(--gutter)));max-height:60svh;overflow:auto;overscroll-behavior:contain;background:var(--ink);border:1px solid #f5f2ec40;border-radius:8px;padding:24px;font-size:14px;line-height:1.65}
+.reny-site .footer-panel-title{font-size:24px;line-height:1.2;letter-spacing:-.035em;margin:0 0 18px}
+.reny-site .footer-panel>p:last-child{margin-bottom:0;color:#d4c9c3}
+.reny-site .footer-panel>a{display:flex;justify-content:space-between;align-items:center;min-height:48px;border-top:1px solid #f5f2ec26}
+.reny-site .footer-panel p a{text-decoration:underline;text-underline-offset:4px}
+.reny-site .footer-panel a:hover{color:#fff}
+.reny-site .footer-faq{border-top:1px solid #f5f2ec26}
+.reny-site .footer-faq>summary{cursor:pointer;padding:14px 2px;font-size:13px}
+.reny-site .footer-faq p{margin:0 0 16px;font-size:13px;color:#d4c9c3}
+.reny-site .footer-bottom{min-height:62px;color:#bda9a4;font-size:10px}
+.reny-site .footer-motto{font-size:9px;letter-spacing:.16em}
+.reny-site .footer-bottom>a{display:flex;align-items:center;gap:12px;min-height:48px}
+.reny-site .footer-bottom>a:hover{text-decoration:underline;text-underline-offset:5px}
+.reny-site .footer-bottom>a>span{font-size:20px}
+.reny-site .site-footer .signature { display: block; width: 130px; line-height: 0; }
+.reny-site .site-footer .signature img { width: 100%; height: auto; filter: invert(1); }
+.reny-site .site-footer :focus-visible { outline-color: var(--ivory); }
+.reny-site .site-explore { display: flex; flex-wrap: wrap; gap: 8px 28px; max-width: 1456px; margin: 0 auto; padding-bottom: 16px; font-size: 12px; color: #d4c9c3; }
+.reny-site .site-explore a { display: inline-flex; min-height: 48px; align-items: center; }
+.reny-site .site-explore a:hover { text-decoration: underline; }
+@media (max-width: 900px) {
+ .reny-site .footer-main { align-items: flex-start; flex-direction: column; gap: 14px; padding: 24px 0 18px; }
+ .reny-site .footer-nav { width: 100%; flex-wrap: wrap; gap: 0 28px; }
+}
+@media (max-width: 600px) {
+ .reny-site .footer-nav { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; align-items: start; }
+ .reny-site .footer-motto { display: none; }
+ .reny-site .footer-bottom { min-height: 60px; gap: 16px; }
+ .reny-site .footer-panel { padding: 20px; max-height: 55svh; }
+}
+.reny-site .site-member { max-width: 1456px; margin: 0 auto 16px; }
+.reny-site .site-member .member-card { display: flex; align-items: center; max-width: 400px; padding: 16px 0; background: transparent; border: 0; box-shadow: none; color: var(--ivory); }
+.reny-site .site-member .member-card :is(strong, span, a) { color: var(--ivory); }
+.reny-site .site-member .member-card-link { display: inline-flex; align-items: center; min-height: 44px; text-decoration: underline; }
+.reny-site .site-member .member-avatar { background: #403a3b; border-color: #f5f2ec55; box-shadow: none; }
+.reny-site .home-shows { order: initial; }
+.reny-site .home-shows > .site-eyebrow { font-size: 11px; font-weight: 500; letter-spacing: .16em; margin: 0 0 16px; text-transform: uppercase; }
+.reny-site .home-show-copy h1 { font-size: clamp(30px, 4.5vw, 64px); margin: 0 0 20px; }
+.reny-site .site-release-title { font-size: clamp(36px, 5vw, 64px); }
+.reny-site .home-show-card[data-campaign='takeover'] { position: relative; isolation: isolate; overflow: hidden; display: grid; grid-template-columns: minmax(0, 54%) 1fr; grid-template-areas: 'copy .' 'countdown .' 'actions .'; padding: clamp(28px, 4vw, 64px); gap: 24px 0; background: var(--ink); color: var(--ivory); border: 0; }
+.reny-site .site-concert-art { position: absolute; inset: 0; z-index: -2; }
+.reny-site .site-concert-art img { width: 100%; height: 100%; object-fit: cover; object-position: 70% center; }
+.reny-site .home-show-card[data-campaign='takeover']::before { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg, #201d1e99, transparent 80%); }
+.reny-site .home-show-card[data-campaign='takeover'] > .home-show-image { display: none; }
+.reny-site .home-show-card[data-campaign='takeover'] :is(h1, p, .home-event-countdown-part strong) { color: var(--ivory); }
+.reny-site .home-show-card[data-campaign='takeover'] :is(.home-event-countdown-kicker, .home-event-countdown-part span) { color: #d4c9c3; }
+.reny-site .home-event-countdown::before, .reny-site .home-show-card .home-show-copy::before { content: none; }
+.reny-site .home-event-countdown-part:not(:last-child)::after { background: var(--line); }
+.reny-site .home-show-card[data-campaign='takeover'] .home-event-countdown-part:not(:last-child)::after { background: #f5f2ec40; }
+.reny-site .home-event-countdown-part strong { background: none; -webkit-text-fill-color: currentColor; }
+.reny-site .home-show-card:hover { background-color: transparent; box-shadow: none; transform: none; }
+.reny-site .home-show-card[data-campaign='takeover']:hover { background-color: var(--ink); }
+.reny-site .home-show-card:hover .home-show-image { transform: none; filter: none; }
+.reny-site :where(.yoycol-panel, .account-modal-card, .account-settings-card) { background: var(--ivory); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; box-shadow: none; }
+.reny-site.yoycol-page p { color: var(--muted); }
+.reny-site.yoycol-page a { color: var(--ruby); }
+.reny-site :where(.yoycol-price, .yoycol-totals > div:last-child) { color: var(--ink); }
+.reny-site .yoycol-button { min-height: 48px; background: var(--ruby); color: var(--ivory) !important; font-weight: 500; }
+.reny-site :where(.access-gate-button, .community-button) { background: var(--ruby); color: var(--ivory); min-height: 48px; border-radius: 8px; box-shadow: none; }
+.reny-site .yoycol-product > img { border-radius: 0; background: #e8e4dd; }
+.reny-site .yoycol-totals { border-color: var(--line); }
+@media (max-width: 700px) {
+ .reny-site .home-show-card[data-campaign='takeover'] { grid-template-columns: 1fr; grid-template-areas: 'copy' 'countdown' 'actions'; padding: 280px 24px 32px; gap: 20px; }
+ .reny-site .site-concert-art img { object-position: center top; }
+ .reny-site .home-show-card[data-campaign='takeover']::before { background: linear-gradient(transparent 20%, #201d1e88 40%, #201d1e 85%); }
+ .reny-site .home-show-card[data-campaign='takeover'] .home-show-copy h1 { font-size: clamp(32px, 9vw, 48px); }
+}
+/* Media controls use ink surfaces, with the same ruby actions on every route. */
+.reny-site :where(.single, .playlist-card, .music-empty-state, .video-empty-state, .music-state-badge, .music-inline-state, .album-track-row) { background: transparent; color: var(--ink); border-color: var(--line); border-radius: 8px; box-shadow: none; }
+.reny-site :where(.album, .video-card):hover { background: transparent; border-color: var(--line); box-shadow: none; transform: none; }
+.reny-site :where(.cover, .single-art, .album-detail-cover-button img) { border: 0; border-radius: 0; box-shadow: none; background-color: #e8e4dd; }
+.reny-site .playlist-stack { background: var(--thumb-url, none) center / cover, #e8e4dd; border-radius: 0; box-shadow: none; }
+.reny-site .playlist-stack::before, .reny-site .playlist-stack::after { border-color: var(--line); }
+.reny-site :where(.mini-play, .playlist-play-button, .album-track-play-button, .album-detail-pill, .video-player-primary, .music-player-toggle, .music-player-primary, .music-player-restore-icon) { background: var(--ruby); color: var(--ivory); border: 0; border-radius: 8px; box-shadow: none; min-height: 44px; min-width: 44px; font-weight: 500; }
+.reny-site :where(.album-detail-pill, .video-player-primary) { min-height: 48px; }
+.reny-site .video-play-icon { background: var(--ruby); color: var(--ivory); border: 0; box-shadow: none; }
+.reny-site :where(.music-player-layer, .music-player-restore, .video-player-dialog, .photo-lightbox-inner) { background: var(--ink); color: var(--ivory); border: 1px solid #f5f2ec40; border-radius: 8px; box-shadow: none; }
+.reny-site :where(.music-player-layer, .music-player-restore, .video-player-dialog) :is(h2, h3, p, strong, span, a, button) { color: var(--ivory); }
+.reny-site :where(.music-player-layer, .music-player-restore, .video-player-dialog, .photo-lightbox-inner) :focus-visible { outline-color: var(--ivory); }
+.reny-site :where(.music-player-artwork, .video-unavailable-thumb) { background: #403a3b; }
+.reny-site .music-player-link { border-color: #f5f2ec55; border-radius: 8px; background: transparent; }
+.reny-site .music-player-tracks { background: #191516; border-color: #f5f2ec40; color: var(--ivory); }
+.reny-site .music-player-track.is-active { background: var(--ruby); color: var(--ivory); }
+.reny-site .site-media-nav { display: flex; flex-wrap: wrap; gap: 24px; margin-bottom: 32px; border-bottom: 1px solid var(--line); }
+.reny-site .site-media-nav a { display: inline-flex; align-items: center; min-height: 48px; font-size: 14px; }
+.reny-site .site-media-nav a[aria-current] { color: var(--ruby); border-bottom: 2px solid var(--ruby); }
+.reny-site :where(.account-modal-dialog, .community-live-chat-card) { background: var(--ivory); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; box-shadow: none; }
+.reny-site :where(.community-chat-head div span, .community-chat-head p, .community-live-message time, .community-live-message p, .community-chat-composer > p, .community-chat-empty, .community-chat-empty strong, .community-live-message-actions button, .community-pinned-message p) { color: var(--muted); }
+.reny-site :where(.community-chat-head, .community-live-message strong, .community-chat-composer .access-gate) { color: var(--ink); }
+.reny-site :where(.community-pinned-message, .community-reny-avatar, .community-chat-avatar, .community-mobile-tabs) { background: #e8e4dd; color: var(--ink); border-color: var(--line); box-shadow: none; }
+.reny-site .community-mobile-tabs button.is-active { background: var(--ink); color: var(--ivory); border-radius: 8px; }
+.reny-site .community-chat-composer form button { background: var(--ruby); color: var(--ivory); border-radius: 8px; min-height: 48px; }
+.reny-site :where(.checkout-summary, .checkout-payment, .checkout-confirmation) { background: transparent; border-color: var(--line); }
+.reny-site :where(.checkout-summary-details div, .checkout-total, .checkout-payment-option, .checkout-success-icon, .account-event-badge, .account-row, .account-status, .auth-success-box) { background: #e8e4dd; border-color: var(--line); color: var(--ink); border-radius: 8px; box-shadow: none; }
+.reny-site :where(.checkout-summary-details dt, .checkout-total small, .checkout-payment-security, .store-checkout-order-note, .store-checkout-security, .store-checkout-benefits span, .store-checkout-dialog .store-contact-grid label, .store-bag-copy p, .store-total-row small) { color: var(--muted); }
+.reny-site .checkout-field-error { color: var(--ruby-hover); }
+.reny-site .checkout-fields .store-input[aria-invalid='true'] { border-color: var(--ruby); }
+.reny-site :where(.checkout-confirmation-button, .account-event-cta, .auth-secondary-button) { background: var(--ruby); color: var(--ivory); min-height: 48px; border: 0; border-radius: 8px; padding: 12px 24px; box-shadow: none; font-weight: 500; }
+.reny-site .checkout-product-media figcaption, .reny-site .checkout-product-media figcaption span { color: var(--ivory); }
+.reny-site .account-points-total strong { background: none; color: var(--ruby); -webkit-text-fill-color: currentColor; }
+.reny-site .store-bag-item::after { content: none; }
+.reny-site .store-payments button { border-radius: 8px; color: var(--ink); }
+.reny-site .store-payments button.is-active { background: var(--ink); color: var(--ivory); }
+.reny-site .artist-philosophy { background: transparent; border-color: var(--line); }
+.reny-site .artist-hero-photo figcaption { color: var(--ivory); }
+.reny-site .artist-contact-grid a { border-color: var(--line); }
+.reny-site .cms-preview-banner { bottom: 16px; }
+@media (max-width: 700px) {
+ .reny-site .music-player-layer { right: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); left: 16px; width: auto; }
+ .reny-site .music-player-restore { bottom: calc(16px + env(safe-area-inset-bottom)); }
+ .reny-site .checkout-screen { padding: 0; }
+}
+.reny-site #shows .home-show-card { grid-template-columns: minmax(200px, .7fr) minmax(0, 1fr); column-gap: 40px; padding-bottom: 32px; }
+.reny-site #shows .home-show-copy h2 { font-size: clamp(28px, 4vw, 48px); margin-bottom: 20px; }
+@media (max-width: 700px) {
+ .reny-site #shows .home-show-card { grid-template-columns: 1fr; grid-template-areas: 'image' 'copy' 'countdown' 'actions'; gap: 20px; }
+ .reny-site #shows .home-show-image { width: 100%; max-height: 440px; }
+}

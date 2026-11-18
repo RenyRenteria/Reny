@@ -153,37 +153,14 @@
         <meta name="csrf-token" content="{{ csrf_token() }}">
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body data-analytics-screen="photos">
+    <body class="reny-site" data-analytics-screen="photos">
         <div class="photos-shell" data-public-page-root>
             @include('partials.cms-preview-banner')
-            <aside class="sidebar" aria-label="Primary navigation">
-                <div>
-                    <a class="brand-link" href="{{ url('/') }}" aria-label="Reny Renteria home">
-                        <img
-                            class="brand-logo"
-                            src="{{ asset('images/reny-renteria-logo.png') }}"
-                            alt="Reny Renteria"
-                        >
-                    </a>
-
-                    <x-public-navigation />
-                </div>
-
-                <x-member-card />
-            </aside>
+            <x-public-navigation />
 
             <main class="main-content photos-content" id="photos">
-                <header class="mobile-header">
-                    <div class="mobile-brand">
-                        <a class="brand-link" href="{{ url('/') }}" aria-label="Reny Renteria home">
-                            <img
-                                class="brand-logo"
-                                src="{{ asset('images/reny-renteria-logo.png') }}"
-                                alt="Reny Renteria"
-                            >
-                        </a>
-                    </div>
-                </header>
+                <span id="site-content" class="sr-only" tabindex="-1"></span>
+                <x-media-navigation />
 
                 <section class="public-page-intro" aria-labelledby="photos-page-title">
                     <p>{{ $pageSettings['eyebrow'] ?? 'Photos' }}</p>
@@ -215,9 +192,8 @@
                         @endif
                     @endforeach
                 </section>
-
-                <x-public-navigation mobile />
             </main>
+            <x-public-footer />
 
             <button
                 class="sr-only"

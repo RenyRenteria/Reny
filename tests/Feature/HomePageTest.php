@@ -77,7 +77,7 @@ class HomePageTest extends TestCase
 
         $html = $response->getContent();
 
-        $this->assertStringContainsString('class="tab is-active"', $html);
+        $this->assertStringContainsString('class="site-header"', $html);
         $this->assertStringContainsString('aria-current="page"', $html);
         $this->assertStringContainsString('class="home-show-card"', $html);
         $this->assertStringContainsString('class="home-royal-pass is-selected"', $html);
@@ -93,8 +93,8 @@ class HomePageTest extends TestCase
             ->assertSee('https://www.youtube.com/embed/UWDLtZCoTag?autoplay=1&amp;mute=1&amp;playsinline=1&amp;rel=0', false)
             ->assertSee('https://www.youtube.com/watch?v=UWDLtZCoTag', false)
             ->assertSee('Reny Renteria - Take a bite (Official Music Video)')
-            ->assertSee('class="stage-lights"', false)
-            ->assertSee(asset('images/reny-renteria-logo-white.png'), false);
+            ->assertDontSee('class="stage-lights"', false)
+            ->assertSee(asset('newlanding-assets/assets/signature-black.png'), false);
     }
 
     public function test_home_page_links_take_a_bite_to_spotify_and_apple_music(): void
@@ -155,7 +155,7 @@ class HomePageTest extends TestCase
             ->assertDontSee('data-countdown-at="2026-12-16T19:30:00-05:00"', false)
             ->getContent();
 
-        preg_match_all('/<article class="home-show-card">(.*?)<\/article>/s', $html, $matches);
+        preg_match_all('/<article class="home-show-card"[^>]*>(.*?)<\/article>/s', $html, $matches);
 
         $this->assertCount(1, $matches[1]);
 
@@ -382,60 +382,14 @@ class HomePageTest extends TestCase
             ->assertSee('data-buy-url="'.route('store.checkout', ['product' => 'cms-paid-checkout-show']).'"', false);
     }
 
-    public function test_mobile_navigation_uses_shared_compact_sizing_across_public_tabs(): void
+    public function test_mobile_navigation_is_a_single_disclosure_across_public_pages(): void
     {
-        $paths = [
-            '/' => 'mobile-bottom-nav home-bottom-nav',
-            '/music' => 'mobile-bottom-nav',
-            '/videos' => 'mobile-bottom-nav',
-            '/photos' => 'mobile-bottom-nav',
-            '/royals' => 'mobile-bottom-nav',
-            '/shows' => 'mobile-bottom-nav',
-            '/store' => 'mobile-bottom-nav',
-            '/merch' => 'mobile-bottom-nav',
-            '/bio' => 'mobile-bottom-nav',
-            '/contacto' => 'mobile-bottom-nav',
-        ];
-
-        foreach ($paths as $path => $classes) {
-            $html = $this->get($path)
-                ->assertOk()
-                ->getContent();
-
-            $this->assertMatchesRegularExpression(
-                '/<nav class="'.preg_quote($classes, '/').'" aria-label="Mobile menu">.*?<\/nav>/s',
-                $html,
-                "Missing mobile nav on [{$path}]"
-            );
-
-            preg_match('/<nav class="'.preg_quote($classes, '/').'" aria-label="Mobile menu">(.*?)<\/nav>/s', $html, $matches);
-            $navHtml = $matches[1] ?? '';
-
-            $this->assertSame(7, substr_count($navHtml, '<a '), "Unexpected mobile nav item count on [{$path}]");
-
-            if ($path === '/') {
-                $this->assertStringContainsString('is-active', $navHtml);
-                $this->assertStringContainsString('aria-current="page"', $navHtml);
-            }
+        foreach (['/', '/music', '/videos', '/photos', '/royals', '/shows', '/store', '/merch', '/bio', '/contacto'] as $path) {
+            $html = $this->get($path)->assertOk()->getContent();
+            $this->assertSame(1, substr_count($html, 'class="site-mobile-nav"'), "Duplicate menu on [{$path}]");
+            $this->assertStringNotContainsString('mobile-bottom-nav', $html);
+            $this->assertMatchesRegularExpression('/<details class="site-mobile-nav"[^>]*>.*?<summary>.*?<nav aria-label="Mobile menu">/s', $html);
         }
-
-        $css = $this->frontendCssSource();
-
-        $this->assertDoesNotMatchRegularExpression('/\.home-bottom-nav\s*\{[^}]*display\s*:\s*none\s*;/s', $css);
-        $this->assertDoesNotMatchRegularExpression('/\.home-bottom-nav\s*\{[^}]*height\s*:/s', $css);
-        $this->assertDoesNotMatchRegularExpression('/\.home-bottom-nav svg\s*\{/s', $css);
-        $this->assertMatchesRegularExpression(
-            '/\.mobile-bottom-nav\s*\{[^}]*height\s*:\s*calc\(3\.1875rem \+ env\(safe-area-inset-bottom\)\);/s',
-            $css
-        );
-        $this->assertMatchesRegularExpression(
-            '/\.mobile-bottom-nav\s*\{[^}]*grid-template-columns\s*:\s*repeat\(7, minmax\(0, 1fr\)\);/s',
-            $css
-        );
-        $this->assertMatchesRegularExpression(
-            '/\.mobile-bottom-nav svg\s*\{[^}]*width\s*:\s*1\.75rem;[^}]*height\s*:\s*1\.75rem;/s',
-            $css
-        );
     }
 
     public function test_home_preserves_guest_content_for_authenticated_users_without_singles(): void

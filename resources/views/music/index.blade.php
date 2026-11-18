@@ -14,36 +14,16 @@
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
         <title>{{ $title }} | Reny Renteria</title>
-
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="home-page music-page" data-analytics-screen="music_{{ $section }}">
+    <body class="reny-site home-page music-page" data-analytics-screen="music_{{ $section }}">
         <div class="music-shell home-shell music-stage-shell" data-public-page-root>
-            @include('partials.stage-lights')
 
-            <aside class="sidebar" aria-label="Primary navigation">
-                <div>
-                    <a class="brand-link" href="{{ route('home') }}" aria-label="Reny Renteria home">
-                        <img class="brand-logo" src="{{ asset('images/reny-renteria-logo-white.png') }}" alt="Reny Renteria">
-                    </a>
-
-                    <x-public-navigation active="music" />
-                </div>
-
-                <x-member-card />
-            </aside>
+            <x-public-navigation />
 
             <main class="main-content music-stage-main music-collection-main" id="music-{{ $section }}">
-                <header class="mobile-header home-mobile-header music-mobile-header">
-                    <div class="mobile-brand">
-                        <a class="brand-link" href="{{ route('home') }}" aria-label="Reny Renteria home">
-                            <img class="brand-logo" src="{{ asset('images/reny-renteria-logo-white.png') }}" alt="Reny Renteria">
-                        </a>
-                    </div>
-                </header>
+                <span id="site-content" class="sr-only" tabindex="-1"></span>
+                <x-media-navigation />
 
                 <section class="content-section music-list-section" aria-labelledby="music-list-title">
                     <div class="section-head">
@@ -114,9 +94,8 @@
                         </div>
                     @endif
                 </section>
-
-                <x-public-navigation active="music" mobile />
             </main>
+            <x-public-footer />
         </div>
 
         @include('partials.store-checkout-modals')

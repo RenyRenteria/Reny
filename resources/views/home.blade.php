@@ -135,101 +135,22 @@
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
         @include('partials.public-seo', ['seo' => [], 'fallbackTitle' => 'Reny Renteria'])
-
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="home-page" data-analytics-screen="home" data-preferred-currency="{{ auth()->user()?->preferred_currency ?? 'USD' }}">
+    <body class="reny-site home-page" data-analytics-screen="home" data-preferred-currency="{{ auth()->user()?->preferred_currency ?? 'USD' }}">
         <div class="store-shell home-shell" data-public-page-root>
-            <div class="stage-lights" aria-hidden="true">
-                <span class="stage-light stage-light--one"></span>
-                <span class="stage-light stage-light--two"></span>
-                <span class="stage-light stage-light--three"></span>
-                <span class="stage-light-fixture stage-light-fixture--one"></span>
-                <span class="stage-light-fixture stage-light-fixture--two"></span>
-                <span class="stage-light-fixture stage-light-fixture--three"></span>
-            </div>
 
             @include('partials.cms-preview-banner')
-            <aside class="sidebar" aria-label="Primary navigation">
-                <div>
-                    <a class="brand-link" href="{{ route('home') }}" aria-label="Reny Renteria home">
-                        <img
-                            class="brand-logo"
-                            src="{{ asset('images/reny-renteria-logo-white.png') }}"
-                            alt="Reny Renteria"
-                        >
-                    </a>
-
-                    <x-public-navigation active="home" />
-                </div>
-
-                <x-member-card />
-            </aside>
+            <x-public-navigation />
 
             <main class="main-content store-content home-content" id="home">
-                <header class="mobile-header home-mobile-header">
-                    <div class="mobile-brand">
-                        <a class="brand-link" href="{{ route('home') }}" aria-label="Reny Renteria home">
-                            <img
-                                class="brand-logo"
-                                src="{{ asset('images/reny-renteria-logo-white.png') }}"
-                                alt="Reny Renteria"
-                            >
-                        </a>
-                    </div>
-                </header>
+                <span id="site-content" class="sr-only" tabindex="-1"></span>
 
                 <div class="home-stack">
-                    <x-royal-pass-banner :pass="$royalPass" :images="$royalImages" />
 
-                    <section class="video-hero home-video-hero" aria-label="Featured video">
-                        <div class="hero-content">
-                            <p class="eyebrow">Video<br>Premiere</p>
-                            <h1>Watch<br>Now</h1>
-                            <h2>Official Music Videos</h2>
-                            <p class="hero-copy">
-                                A YouTube-first video hub for Reny Renteria with official releases,
-                                live performances, playlists, behind the scenes clips, and vlogs in one place.
-                            </p>
-                            <p class="hero-link">Streaming from<br>youtube.com/renyrenteriam</p>
-                        </div>
-
-                        <div class="featured-video">
-                            <div class="video-frame">
-                                <iframe
-                                    src="https://www.youtube.com/embed/{{ $featuredVideo['id'] }}?autoplay=1&amp;mute=1&amp;playsinline=1&amp;rel=0"
-                                    title="{{ $featuredVideo['title'] }}"
-                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                                    loading="eager"
-                                    referrerpolicy="strict-origin-when-cross-origin"
-                                    allowfullscreen>
-                                </iframe>
-                            </div>
-                            <div class="featured-meta">
-                                <div>
-                                    <strong>{{ $featuredVideo['title'] }}</strong>
-                                    <span>{{ $featuredVideo['meta'] }}</span>
-                                </div>
-                                @if (! empty($featuredVideo['external_url']))
-                                    <a
-                                        class="youtube-pill"
-                                        href="{{ $featuredVideo['external_url'] }}"
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        data-analytics-type="video"
-                                        data-analytics-label="{{ $featuredVideo['title'] }}"
-                                    >Open YouTube</a>
-                                @endif
-                            </div>
-                            <a class="home-watch-more" href="{{ route('videos') }}">Watch more</a>
-                        </div>
-                    </section>
-
+                    @if ($events->isNotEmpty())
                     <section class="home-shows" aria-labelledby="home-shows-title">
-                        <h1 id="home-shows-title">Upcoming Shows</h1>
+                        <h2 id="home-shows-title" class="site-eyebrow">Upcoming Shows</h2>
                         <div class="home-show-list">
                             @foreach ($events as $event)
                                 @php
@@ -248,10 +169,16 @@
                                     );
                                     $countdownParts = $countdownTarget ? $eventCountdownParts($countdownTarget) : null;
                                 @endphp
-                                <article class="home-show-card">
+                                <article class="home-show-card" @if ($eventKey === \App\Services\TakeoverPresaleSeeder::KEY) data-campaign="takeover" @endif>
+                                    @if ($eventKey === \App\Services\TakeoverPresaleSeeder::KEY)
+                                        <picture class="site-concert-art" aria-hidden="true">
+                                            <source media="(max-width: 700px)" srcset="{{ asset('newlanding-assets/assets/takeover-fondo-movil.png') }}">
+                                            <img src="{{ asset('newlanding-assets/assets/takeover-fondo-escritorio.png') }}" alt="" fetchpriority="high">
+                                        </picture>
+                                    @endif
                                     <img class="home-show-image" src="{{ $slotImage($event) }}" alt="{{ $event['image_alt'] ?? $event['title'] }}" loading="{{ $loop->first ? 'eager' : 'lazy' }}" decoding="async">
                                     <div class="home-show-copy">
-                                        <h2>{{ $event['title'] }}</h2>
+                                        <h1>{{ $event['title'] }}</h1>
                                         @foreach ($eventLinesForSlot as $line)
                                             <p>{{ $line }}</p>
                                         @endforeach
@@ -347,6 +274,56 @@
                             @endforeach
                         </div>
                     </section>
+                    @endif
+
+                    <section class="video-hero home-video-hero" aria-label="Featured video">
+                        <div class="hero-content">
+                            <p class="eyebrow">Video<br>Premiere</p>
+                            @if ($events->isEmpty())
+                                <h1>Watch<br>Now</h1>
+                            @else
+                                <h2 class="site-release-title">Watch<br>Now</h2>
+                            @endif
+                            <h2>Official Music Videos</h2>
+                            <p class="hero-copy">
+                                A YouTube-first video hub for Reny Renteria with official releases,
+                                live performances, playlists, behind the scenes clips, and vlogs in one place.
+                            </p>
+                            <p class="hero-link">Streaming from<br>youtube.com/renyrenteriam</p>
+                        </div>
+
+                        <div class="featured-video">
+                            <div class="video-frame">
+                                <iframe
+                                    src="https://www.youtube.com/embed/{{ $featuredVideo['id'] }}?autoplay=1&amp;mute=1&amp;playsinline=1&amp;rel=0"
+                                    title="{{ $featuredVideo['title'] }}"
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                    loading="eager"
+                                    referrerpolicy="strict-origin-when-cross-origin"
+                                    allowfullscreen>
+                                </iframe>
+                            </div>
+                            <div class="featured-meta">
+                                <div>
+                                    <strong>{{ $featuredVideo['title'] }}</strong>
+                                    <span>{{ $featuredVideo['meta'] }}</span>
+                                </div>
+                                @if (! empty($featuredVideo['external_url']))
+                                    <a
+                                        class="youtube-pill"
+                                        href="{{ $featuredVideo['external_url'] }}"
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        data-analytics-type="video"
+                                        data-analytics-label="{{ $featuredVideo['title'] }}"
+                                    >Open YouTube</a>
+                                @endif
+                            </div>
+                            <a class="home-watch-more" href="{{ route('videos') }}">Watch more</a>
+                        </div>
+                    </section>
+
+
 
                     <section class="home-music" aria-labelledby="home-music-title">
                         <h1 id="home-music-title">Music</h1>
@@ -425,10 +402,19 @@
 
                         </div>
                     </section>
+                    <section class="site-royal-close" id="royal-pass" aria-labelledby="site-royal-title">
+                        <img src="{{ asset('newlanding-assets/royal/reny-recording.webp') }}" alt="Reny grabando en el estudio" loading="lazy" width="399" height="621">
+                        <div>
+                            <p class="site-eyebrow">ROYAL PASS</p>
+                            <h2 id="site-royal-title">Hay más de Reny para ti.</h2>
+                            <p>Contenido exclusivo. Una comunidad para vivir la música más cerca.</p>
+                            <x-royal-pass-banner :pass="$royalPass" :show-images="false" />
+                            <a class="site-text-link" href="{{ route('royals') }}">Ya soy Royal <span aria-hidden="true">↗</span></a>
+                        </div>
+                    </section>
                 </div>
-
-                <x-public-navigation active="home" mobile extra-class="home-bottom-nav" />
             </main>
+            <x-public-footer />
         </div>
 
         @include('partials.store-checkout-modals')

@@ -34,8 +34,8 @@ class CommunityPageTest extends TestCase
         $response->assertSee('data-community-tab="feed"', false);
         $response->assertSee('data-community-tab="chat"', false);
         $response->assertDontSee('class="tab is-active"', false);
-        $response->assertSee('images/reny-renteria-logo-white.png');
-        $response->assertSee('class="stage-lights"', false);
+        $response->assertSee('newlanding-assets/assets/signature-black.png');
+        $response->assertDontSee('class="stage-lights"', false);
         $response->assertSee('class="community-shell home-shell royals-shell"', false);
         $response->assertSee('<link rel="canonical" href="'.route('royals').'">', false);
 
@@ -45,7 +45,7 @@ class CommunityPageTest extends TestCase
             '/<div class="community-welcome-card">\s*<h1>Directo de Reny\. Cerca de la comunidad\.<\/h1>\s*<\/div>/',
             $html,
         );
-        $this->assertSame(2, substr_count($html, 'images/reny-renteria-logo-white.png'));
+        $this->assertSame(2, substr_count($html, 'newlanding-assets/assets/signature-black.png'));
         $this->assertSame(1, substr_count($html, 'class="community-experience"'));
         $this->assertSame(1, substr_count($html, 'class="community-live-chat-panel"'));
         $this->assertSame(0, substr_count($html, 'class="community-post-card'));
@@ -57,10 +57,10 @@ class CommunityPageTest extends TestCase
         $this->assertStringNotContainsString('Publish post', $html);
         $this->assertStringNotContainsString('<iframe', $html);
         $this->assertStringNotContainsString('<video', $html);
-        $this->assertStringNotContainsString('youtube', strtolower($html));
+        $this->assertStringNotContainsString('youtube.com/embed/', strtolower($html));
     }
 
-    public function test_existing_tabs_do_not_link_to_royals_route(): void
+    public function test_royal_pass_navigation_links_to_the_royals_route(): void
     {
         foreach (['/', '/videos', '/photos'] as $path) {
             $html = $this->get($path)
@@ -72,7 +72,7 @@ class CommunityPageTest extends TestCase
             $this->assertCount(2, $matches[1], "Missing public navigation on [{$path}]");
 
             foreach ($matches[1] as $navHtml) {
-                $this->assertStringNotContainsString('href="'.route('royals').'"', $navHtml);
+                $this->assertStringContainsString('href="'.route('royals').'"', $navHtml);
                 $this->assertStringNotContainsString('href="#community"', $navHtml);
             }
         }

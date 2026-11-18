@@ -195,50 +195,27 @@
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
         @include('partials.public-seo', ['seo' => $pageSettings, 'fallbackTitle' => $pageName.' | Reny Renteria'])
-
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="golden-stage-page checkout-page store-stage-page" data-analytics-screen="{{ strtolower($pageName) }}" data-preferred-currency="{{ auth()->user()?->preferred_currency ?? 'USD' }}">
+    <body class="reny-site golden-stage-page checkout-page store-stage-page" data-analytics-screen="{{ strtolower($pageName) }}" data-preferred-currency="{{ auth()->user()?->preferred_currency ?? 'USD' }}">
         <div class="store-shell home-shell golden-stage-shell store-stage-shell" data-public-page-root>
-            @include('partials.stage-lights')
 
             @include('partials.cms-preview-banner')
-            <aside class="sidebar" aria-label="Primary navigation">
-                <div>
-                    <a class="brand-link" href="{{ route('home') }}" aria-label="Reny Renteria home">
-                        <img
-                            class="brand-logo"
-                            src="{{ asset('images/reny-renteria-logo-white.png') }}"
-                            alt="Reny Renteria"
-                        >
-                    </a>
-
-                    <x-public-navigation :active="$activeNavigation" />
-                </div>
-
-                <x-member-card />
-            </aside>
+            <x-public-navigation />
 
             <main class="main-content store-content golden-stage-main store-stage-main" id="{{ strtolower($pageName) }}">
-                <header class="mobile-header golden-stage-mobile-header store-stage-mobile-header">
-                    <div class="mobile-brand">
-                        <a class="brand-link" href="{{ route('home') }}" aria-label="Reny Renteria home">
-                            <img
-                                class="brand-logo"
-                                src="{{ asset('images/reny-renteria-logo-white.png') }}"
-                                alt="Reny Renteria"
-                            >
-                        </a>
-                    </div>
-                </header>
+                <span id="site-content" class="sr-only" tabindex="-1"></span>
 
                 <div class="store-stage-stack">
-                    <x-royal-pass-banner :pass="$royalPass" :show-images="false" />
 
-                    @unless ($isShowsPage)
+
+                    @if ($isShowsPage)
+                        <section class="public-page-intro">
+                            <p>RENY EN VIVO</p>
+                            <h1>Shows</h1>
+                            <span>Nos vemos frente al escenario.</span>
+                        </section>
+                    @else
                         <section class="public-page-intro" aria-labelledby="store-page-title">
                             <p>{{ $pageSettings['eyebrow'] ?? 'Official Store' }}</p>
                             <h1 id="store-page-title">{{ $pageSettings['title'] ?? 'Shows and releases' }}</h1>
@@ -248,7 +225,7 @@
                                 <img src="{{ $pageSettings['cover_url'] }}" alt="{{ $pageSettings['cover_alt'] ?? '' }}">
                             @endif
                         </section>
-                    @endunless
+                    @endif
 
                     <section class="storefront" aria-label="{{ $isShowsPage ? 'Shows' : ($isMerchPage ? 'Merch oficial' : 'Store products') }}">
                         <div class="storefront-grid">
@@ -376,10 +353,10 @@
                             @endforeach
                         </div>
                     </section>
+                    <x-royal-pass-banner :pass="$royalPass" :show-images="false" />
                 </div>
-
-                <x-public-navigation :active="$activeNavigation" mobile />
             </main>
+            <x-public-footer />
         </div>
 
         @include('partials.store-checkout-modals')

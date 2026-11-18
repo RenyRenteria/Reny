@@ -26,45 +26,14 @@
 
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body data-analytics-screen="community">
+    <body class="reny-site" data-analytics-screen="community">
         <div class="community-shell home-shell royals-shell" data-public-page-root>
-            <div class="stage-lights" aria-hidden="true">
-                <span class="stage-light stage-light--one"></span>
-                <span class="stage-light stage-light--two"></span>
-                <span class="stage-light stage-light--three"></span>
-                <span class="stage-light-fixture stage-light-fixture--one"></span>
-                <span class="stage-light-fixture stage-light-fixture--two"></span>
-                <span class="stage-light-fixture stage-light-fixture--three"></span>
-            </div>
 
             @include('partials.cms-preview-banner')
-            <aside class="sidebar" aria-label="Primary navigation">
-                <div>
-                    <a class="brand-link" href="{{ url('/') }}" aria-label="Reny Renteria home">
-                        <img
-                            class="brand-logo"
-                            src="{{ asset('images/reny-renteria-logo-white.png') }}"
-                            alt="Reny Renteria"
-                        >
-                    </a>
-
-                    <x-public-navigation active="royals" />
-                </div>
-
-                <x-member-card />
-            </aside>
+            <x-public-navigation />
 
             <main class="main-content community-content" id="royals">
-                <header class="mobile-header community-mobile-header">
-                    <a class="brand-link" href="{{ url('/') }}" aria-label="Reny Renteria home">
-                        <img
-                            class="brand-logo"
-                            src="{{ asset('images/reny-renteria-logo-white.png') }}"
-                            alt="Reny Renteria"
-                        >
-                    </a>
-                    <span class="community-live-status"><span aria-hidden="true"></span> En vivo</span>
-                </header>
+                <span id="site-content" class="sr-only" tabindex="-1"></span>
 
                 <x-royal-pass-banner :show-images="false" />
 
@@ -401,9 +370,8 @@
                         </section>
                     </section>
                 </div>
-
-                <x-public-navigation active="royals" mobile />
             </main>
+            <x-public-footer />
         </div>
 
         <div class="community-toast" id="communityToast" role="status" aria-live="polite"></div>

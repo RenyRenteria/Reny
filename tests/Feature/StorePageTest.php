@@ -36,10 +36,10 @@ class StorePageTest extends TestCase
         $response = $this->get('/store');
 
         $response->assertOk();
-        $response->assertSee('class="golden-stage-page checkout-page store-stage-page"', false);
+        $response->assertSee('class="reny-site golden-stage-page checkout-page store-stage-page"', false);
         $response->assertSee('class="store-shell home-shell golden-stage-shell store-stage-shell"', false);
-        $response->assertSee(asset('images/reny-renteria-logo-white.png'), false);
-        $response->assertSee('class="stage-lights"', false);
+        $response->assertSee(asset('newlanding-assets/assets/signature-black.png'), false);
+        $response->assertDontSee('class="stage-lights"', false);
         $response->assertSee('Get your');
         $response->assertSee('Royal Pass');
         $response->assertSee('Unlock Royal Pass');
@@ -95,12 +95,12 @@ class StorePageTest extends TestCase
         $this->assertCount(2, $matches[1]);
 
         foreach ($matches[1] as $navHtml) {
-            $this->assertStringNotContainsString('href="'.route('store').'"', $navHtml);
+            $this->assertStringContainsString('href="'.route('store').'"', $navHtml);
         }
 
         $this->assertSame(3, substr_count($html, 'storefront-card'));
         $this->assertSame(1, substr_count($html, 'storefront-countdown'));
-        $this->assertLessThan(strpos($html, 'Reny Renteria Takeover'), strpos($html, 'Royal Pass'));
+        $this->assertLessThan(strpos($html, 'data-royal-pass-banner'), strpos($html, 'Reny Renteria Takeover'));
         $this->assertStringNotContainsString('is-event-secondary', $html);
         $this->assertStringNotContainsString('Official store', $html);
         $this->assertStringNotContainsString('Reny Shop', $html);
@@ -114,7 +114,7 @@ class StorePageTest extends TestCase
         $this->assertStringNotContainsString('aria-selected', $html);
         $this->assertStringNotContainsString('<iframe', $html);
         $this->assertStringNotContainsString('<video', $html);
-        $this->assertStringNotContainsString('youtube', strtolower($html));
+        $this->assertStringNotContainsString('youtube.com/embed/', strtolower($html));
         $this->assertStringContainsString('deluxe album', strtolower($html));
     }
 
@@ -148,10 +148,10 @@ class StorePageTest extends TestCase
             ->assertOk()
             ->assertSee('<title>Shows | Reny Renteria</title>', false)
             ->assertSee('data-analytics-screen="shows"', false)
-            ->assertSee('class="golden-stage-page checkout-page store-stage-page"', false)
+            ->assertSee('class="reny-site golden-stage-page checkout-page store-stage-page"', false)
             ->assertSee('class="store-shell home-shell golden-stage-shell store-stage-shell"', false)
-            ->assertSee(asset('images/reny-renteria-logo-white.png'), false)
-            ->assertSee('class="stage-lights"', false)
+            ->assertSee(asset('newlanding-assets/assets/signature-black.png'), false)
+            ->assertDontSee('class="stage-lights"', false)
             ->assertSee('Reny Renteria en Concierto')
             ->assertSee('Reny Renteria Takeover')
             ->assertSee('data-free-event-rsvp="concert"', false)
@@ -162,7 +162,7 @@ class StorePageTest extends TestCase
             ->assertDontSee('data-buy="merch"', false)
             ->assertSee('data-royal-pass-banner', false)
             ->assertDontSee('home-royal-pass-images', false)
-            ->assertSee('class="tab is-active" href="'.route('shows').'" aria-current="page"', false);
+            ->assertSee('aria-current="page"', false);
 
         $html = $response->getContent();
 
@@ -276,10 +276,10 @@ class StorePageTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertSee('class="golden-stage-page checkout-page checkout-dedicated-page"', false)
+            ->assertSee('class="reny-site golden-stage-page checkout-page checkout-dedicated-page"', false)
             ->assertSee('class="store-shell home-shell golden-stage-shell checkout-stage-shell"', false)
-            ->assertSee(asset('images/reny-renteria-logo-white.png'), false)
-            ->assertSee('class="stage-lights"', false)
+            ->assertSee(asset('newlanding-assets/assets/signature-black.png'), false)
+            ->assertDontSee('class="stage-lights"', false)
             ->assertSee('Reny Renteria Takeover')
             ->assertSee('Rock &amp; Folk Pty', false)
             ->assertSee('Puertas 7:30 PM')
