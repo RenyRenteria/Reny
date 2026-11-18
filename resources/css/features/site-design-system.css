@@ -265,7 +265,7 @@
 .reny-site .home-show-card:hover .home-show-image { transform: none; filter: none; }
 .reny-site :where(.yoycol-panel, .account-modal-card, .account-settings-card) { background: var(--ivory); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; box-shadow: none; }
 .reny-site.yoycol-page p { color: var(--muted); }
-.reny-site.yoycol-page a { color: var(--ruby); }
+.reny-site .yoycol-main a { color: var(--ruby); }
 .reny-site :where(.yoycol-price, .yoycol-totals > div:last-child) { color: var(--ink); }
 .reny-site .yoycol-button { min-height: 48px; background: var(--ruby); color: var(--ivory) !important; font-weight: 500; }
 .reny-site :where(.access-gate-button, .community-button) { background: var(--ruby); color: var(--ivory); min-height: 48px; border-radius: 8px; box-shadow: none; }
@@ -366,3 +366,6 @@
 .reny-site .video-frame { border: 1px solid #f5f2ec40; border-radius: 8px; box-shadow: none; }
 .reny-site .youtube-pill { border-color: #f5f2ec40; }
 .reny-site .home-streaming-link { border: 0; min-width: 48px; min-height: 48px; }
+
+.reny-site .site-header a { color: var(--ink); text-decoration: none; }
+.reny-site .site-header a:is(:hover, [aria-current='page']) { color: var(--ruby); text-decoration: underline; }
