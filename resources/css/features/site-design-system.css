@@ -369,3 +369,22 @@
 
 .reny-site .site-header a { color: var(--ink); text-decoration: none; }
 .reny-site .site-header a:is(:hover, [aria-current='page']) { color: var(--ruby); text-decoration: underline; }
+/* Mobile keeps the same reading order and visible headings as desktop. */
+.reny-site .home-stack > section { order: 0; }
+.reny-site .home-show-copy h1 { display: block; white-space: normal; max-width: 100%; }
+.reny-site .home-show-copy p { font-size: 15px; line-height: 1.55; }
+.reny-site .home-video-hero .hero-content { display: block; }
+.reny-site .home-video-hero .featured-meta { display: grid; }
+.reny-site .home-music h1 { display: block; }
+.reny-site .home-event-countdown-part:not(:last-child)::after { content: none; }
+.reny-site .home-event-countdown-part + .home-event-countdown-part { border-left: 1px solid var(--line); }
+.reny-site [data-campaign='takeover'] .home-event-countdown-part + .home-event-countdown-part { border-color: #f5f2ec40; }
+@media (max-width: 700px) {
+ .reny-site .home-video-hero { padding: 0; }
+ .reny-site .home-video-hero .hero-content { padding: 24px; }
+ .reny-site .home-video-hero .featured-video { padding: 0 24px 16px; }
+ .reny-site .home-video-hero .featured-meta { grid-template-columns: 1fr; gap: 8px; }
+ .reny-site .home-video-hero .hero-copy { font-size: 14px; }
+ .reny-site .home-album-actions { display: grid; grid-template-columns: 48px 48px; gap: 8px; justify-content: start; }
+ .reny-site .home-album-actions .home-play-here { grid-column: 1 / -1; width: 100%; }
+}

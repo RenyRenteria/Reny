@@ -26,6 +26,15 @@ for (const path of paths) {
         await testInfo.attach('layout.json', { body: JSON.stringify(report, null, 2), contentType: 'application/json' });
         expect.soft(report.scrollWidth).toBeLessThanOrEqual(report.width + 1);
         expect.soft(errors).toEqual([]);
+        if (path === '/') {
+            await expect(page.locator('main h1').first()).toBeVisible();
+            const order = await page.locator('.home-stack > section').evaluateAll((sections) => sections.map((section) => ({
+                className: section.className,
+                top: section.getBoundingClientRect().top,
+            })));
+            expect(order.map((section) => section.top)).toEqual(order.map((section) => section.top).sort((a, b) => a - b));
+            expect(order.at(-1).className).toContain('site-royal-close');
+        }
         if ([390, 1440].includes(page.viewportSize().width)) {
             await page.evaluate(async () => {
                 for (let y = 0; y < document.body.scrollHeight; y += innerHeight) {
