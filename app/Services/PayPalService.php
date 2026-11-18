@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\PayPalReference;
 use Illuminate\Http\Client\Response;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -78,20 +79,28 @@ class PayPalService
             throw $this->providerFailure($failureMessage);
         }
 
+        $orderId = (string) Arr::get($payload, 'id');
+        $this->logCompletedRequest($response, 'create_order', $endpoint, [
+            'paypal_order_reference' => $this->reference($orderId),
+        ]);
+
         return [
-            'order_id' => (string) Arr::get($payload, 'id'),
+            'order_id' => $orderId,
             'payload' => $payload,
         ];
     }
 
     /**
-     * @return array{order_id: string, capture_id: string, payer_id: string|null, payload: array<string, mixed>}
+     * @return array{order_id: string, capture_id: string, payer_id: string|null, payload: array<string, mixed>, debug_id: string|null, http_status: int}
      */
     public function captureOrder(string $paypalOrderId, int $expectedAmountCents, string $currency): array
     {
         $endpoint = '/v2/checkout/orders/{order_id}/capture';
         $requestEndpoint = "/v2/checkout/orders/{$paypalOrderId}/capture";
         $failureMessage = 'PayPal approved the payment, but confirmation is pending. Do not retry; contact support with the time and amount.';
+        $references = [
+            'paypal_order_reference' => $this->reference($paypalOrderId),
+        ];
         $response = $this->request(
             stage: 'capture_order',
             endpoint: $endpoint,
@@ -100,9 +109,10 @@ class PayPalService
                 ->withToken($this->accessToken('capture_order', $failureMessage))
                 ->withHeaders(['PayPal-Request-Id' => "capture-{$paypalOrderId}"])
                 ->post($this->url($requestEndpoint)),
+            context: $references,
         );
 
-        $this->ensureOk($response, $failureMessage, 'capture_order', $endpoint);
+        $this->ensureOk($response, $failureMessage, 'capture_order', $endpoint, $references);
 
         return $this->completedCapture($response, $paypalOrderId, $expectedAmountCents, $currency);
     }
@@ -110,14 +120,16 @@ class PayPalService
     public function confirmedOrder(string $paypalOrderId, int $expectedAmountCents, string $currency): ?array
     {
         $endpoint = '/v2/checkout/orders/{order_id}';
+        $references = ['paypal_order_reference' => $this->reference($paypalOrderId)];
         $failureMessage = 'PayPal payment confirmation is unavailable.';
         $response = $this->request(
             stage: 'lookup_order', endpoint: $endpoint, failureMessage: $failureMessage,
             callback: fn (): Response => $this->paypal()
                 ->withToken($this->accessToken('lookup_order', $failureMessage))
                 ->get($this->url('/v2/checkout/orders/'.rawurlencode($paypalOrderId))),
+            context: $references,
         );
-        $this->ensureOk($response, $failureMessage, 'lookup_order', $endpoint);
+        $this->ensureOk($response, $failureMessage, 'lookup_order', $endpoint, $references);
         if ($response->json('status') !== 'COMPLETED') {
             return null;
         }
@@ -132,12 +144,13 @@ class PayPalService
 
     private function completedCapture(Response $response, string $paypalOrderId, int $expectedAmountCents, string $currency, string $stage = 'capture_order'): array
     {
-        $endpoint = '/v2/checkout/orders/{order_id}';
+        $endpoint = $stage === 'capture_order' ? '/v2/checkout/orders/{order_id}/capture' : '/v2/checkout/orders/{order_id}';
+        $references = ['paypal_order_reference' => $this->reference($paypalOrderId)];
         $failureMessage = 'PayPal approved the payment, but confirmation is pending. Do not retry; contact support with the time and amount.';
         $payload = $response->json();
 
         if (! is_array($payload) || Arr::get($payload, 'status') !== 'COMPLETED') {
-            $this->logUnexpectedResponse($response, $stage, $endpoint, 'capture_not_completed');
+            $this->logUnexpectedResponse($response, $stage, $endpoint, 'capture_not_completed', $references);
 
             throw ValidationException::withMessages([
                 'paypal_order_id' => $failureMessage,
@@ -158,7 +171,7 @@ class PayPalService
         });
 
         if ($capturedAmount !== $expectedAmountCents) {
-            $this->logUnexpectedResponse($response, $stage, $endpoint, 'capture_amount_mismatch');
+            $this->logUnexpectedResponse($response, $stage, $endpoint, 'capture_amount_mismatch', $references);
 
             throw ValidationException::withMessages([
                 'paypal_order_id' => $failureMessage,
@@ -168,18 +181,23 @@ class PayPalService
         $captureId = $completedCaptures->pluck('id')->filter()->first();
 
         if (blank($captureId)) {
-            $this->logUnexpectedResponse($response, $stage, $endpoint, 'missing_capture_id');
+            $this->logUnexpectedResponse($response, $stage, $endpoint, 'missing_capture_id', $references);
 
             throw ValidationException::withMessages([
                 'paypal_order_id' => $failureMessage,
             ]);
         }
 
+        $references['paypal_capture_reference'] = $this->reference((string) $captureId);
+        $this->logCompletedRequest($response, $stage, $endpoint, $references);
+
         return [
             'order_id' => (string) Arr::get($payload, 'id', $paypalOrderId),
             'capture_id' => (string) $captureId,
             'payer_id' => Arr::get($payload, 'payer.payer_id'),
             'payload' => $payload,
+            'debug_id' => $response->header('PayPal-Debug-Id'),
+            'http_status' => $response->status(),
         ];
     }
 
@@ -219,15 +237,37 @@ class PayPalService
             return false;
         }
 
-        $response = $this->paypal()
-            ->withToken($this->accessToken('webhook_verification', 'PayPal webhook verification failed.'))
-            ->post($this->url('/v1/notifications/verify-webhook-signature'), [
-                ...$headers,
-                'webhook_id' => $webhookId,
-                'webhook_event' => $request->all(),
-            ]);
+        $endpoint = '/v1/notifications/verify-webhook-signature';
+        $failureMessage = 'PayPal webhook verification failed.';
+        $eventId = (string) $request->input('id', '');
+        $context = filled($eventId)
+            ? ['paypal_event_reference' => $this->reference($eventId)]
+            : [];
+        $response = $this->request(
+            stage: 'webhook_verification',
+            endpoint: $endpoint,
+            failureMessage: $failureMessage,
+            callback: fn (): Response => $this->paypal()
+                ->withToken($this->accessToken('webhook_verification', $failureMessage))
+                ->post($this->url($endpoint), [
+                    ...$headers,
+                    'webhook_id' => $webhookId,
+                    'webhook_event' => $request->all(),
+                ]),
+            context: $context,
+        );
 
-        return $response->json('verification_status') === 'SUCCESS';
+        $this->ensureOk($response, $failureMessage, 'webhook_verification', $endpoint, $context);
+
+        if ($response->json('verification_status') !== 'SUCCESS') {
+            $this->logUnexpectedResponse($response, 'webhook_verification', $endpoint, 'signature_not_verified', $context);
+
+            return false;
+        }
+
+        $this->logCompletedRequest($response, 'webhook_verification', $endpoint, $context);
+
+        return true;
     }
 
     private function accessToken(string $stage, string $failureMessage): string
@@ -262,7 +302,10 @@ class PayPalService
         return (string) $response->json('access_token');
     }
 
-    private function ensureOk(Response $response, string $message, string $stage, string $endpoint): void
+    /**
+     * @param  array<string, string|null>  $context
+     */
+    private function ensureOk(Response $response, string $message, string $stage, string $endpoint, array $context = []): void
     {
         if ($response->successful()) {
             return;
@@ -275,12 +318,16 @@ class PayPalService
             'paypal_error_issue' => $response->json('details.0.issue'),
             'paypal_http_status' => $response->status(),
             'paypal_stage' => $stage,
+            ...$context,
         ]);
 
         throw $this->providerFailure($message);
     }
 
-    private function request(string $stage, string $endpoint, string $failureMessage, callable $callback): Response
+    /**
+     * @param  array<string, string|null>  $context
+     */
+    private function request(string $stage, string $endpoint, string $failureMessage, callable $callback, array $context = []): Response
     {
         try {
             return $callback();
@@ -291,6 +338,7 @@ class PayPalService
                 'exception' => $exception::class,
                 'paypal_endpoint' => $endpoint,
                 'paypal_stage' => $stage,
+                ...$context,
             ]);
 
             throw $this->providerFailure($failureMessage);
@@ -304,7 +352,10 @@ class PayPalService
         ])->status($status);
     }
 
-    private function logUnexpectedResponse(Response $response, string $stage, string $endpoint, string $issue): void
+    /**
+     * @param  array<string, string|null>  $context
+     */
+    private function logUnexpectedResponse(Response $response, string $stage, string $endpoint, string $issue, array $context = []): void
     {
         Log::warning('PayPal API returned an unexpected checkout response.', [
             'paypal_debug_id' => $response->header('PayPal-Debug-Id'),
@@ -313,7 +364,27 @@ class PayPalService
             'paypal_issue' => $issue,
             'paypal_provider_status' => $response->json('status'),
             'paypal_stage' => $stage,
+            ...$context,
         ]);
+    }
+
+    /**
+     * @param  array<string, string|null>  $context
+     */
+    private function logCompletedRequest(Response $response, string $stage, string $endpoint, array $context = []): void
+    {
+        Log::info('PayPal API request completed.', [
+            'paypal_debug_id' => $response->header('PayPal-Debug-Id'),
+            'paypal_endpoint' => $endpoint,
+            'paypal_http_status' => $response->status(),
+            'paypal_stage' => $stage,
+            ...$context,
+        ]);
+    }
+
+    private function reference(string $value): string
+    {
+        return PayPalReference::hash($value);
     }
 
     private function paypal()

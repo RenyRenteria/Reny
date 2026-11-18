@@ -24,7 +24,7 @@ class YoycolCommerceTest extends TestCase
     {
         parent::setUp();
         config([
-            'yoycol.enabled' => true, 'yoycol.access_key' => 'test-access', 'yoycol.secret_key' => 'test-secret',
+            'yoycol.enabled' => true, 'yoycol.sales_enabled' => true, 'yoycol.access_key' => 'test-access', 'yoycol.secret_key' => 'test-secret',
             'services.paypal.base_url' => 'https://paypal.test', 'services.paypal.client_id' => 'client', 'services.paypal.client_secret' => 'secret',
             'admin.cms_enabled' => true,
         ]);
@@ -86,6 +86,31 @@ class YoycolCommerceTest extends TestCase
         $product = $this->product();
         $this->get('/merch')->assertOk()->assertSee($product->title)->assertSee('CHOOSE SIZE');
         $this->get('/store/checkout/'.$product->productKey())->assertOk()->assertSee('Size / color')->assertSee('Delivery phone');
+    }
+
+    public function test_sales_can_be_paused_without_stopping_existing_order_reconciliation(): void
+    {
+        $product = $this->product();
+        config(['yoycol.sales_enabled' => false]);
+        $this->get('/store/checkout/'.$product->productKey())->assertNotFound();
+        $fulfillment = $this->paidFulfillment();
+        $this->fakeProviders();
+        app(YoycolFulfillmentService::class)->process($fulfillment);
+        $this->assertSame('payment_required', $fulfillment->fresh()->state);
+    }
+
+    public function test_sandbox_checkout_can_quote_shipping_without_submitting_supplier_orders(): void
+    {
+        config(['services.paypal.e2e.enabled' => true]);
+        $this->fakeProviders();
+        $this->quote($this->product());
+        $fulfillment = $this->paidFulfillment();
+
+        app(YoycolFulfillmentService::class)->process($fulfillment);
+
+        $this->assertNull($fulfillment->fresh()->provider_order_id);
+        Http::assertSent(fn ($request) => str_contains($request->url(), '/shipping/sku_quotes'));
+        Http::assertNotSent(fn ($request) => $request->method() !== 'GET');
     }
 
     public function test_shipping_uses_verified_panama_region_and_quantity_without_trusting_client_prices(): void
@@ -309,7 +334,7 @@ class YoycolCommerceTest extends TestCase
     {
         $fulfillment = $this->paidFulfillment();
         $order = $fulfillment->order;
-        $order->update(['status' => 'pending', 'provider_capture_id' => null, 'metadata' => [
+        $order->update(['status' => 'pending', 'provider_order_id' => 'PP-RECOVERY-1-yoycol-1', 'provider_capture_id' => null, 'metadata' => [
             'checkout' => ['capture_started' => true, 'paypal_order_id' => 'PP-RECOVERY'],
             'product' => ['title' => 'Shoes', 'kind' => 'physical', 'source_type' => 'yoycol_product'],
         ]]);
@@ -332,7 +357,7 @@ class YoycolCommerceTest extends TestCase
     {
         $fulfillment = $this->paidFulfillment();
         $order = $fulfillment->order;
-        $order->update(['status' => 'pending', 'provider_capture_id' => null, 'metadata' => [
+        $order->update(['status' => 'pending', 'provider_order_id' => 'PP-RECOVERY-1-yoycol-1', 'provider_capture_id' => null, 'metadata' => [
             'checkout' => ['capture_started' => true, 'paypal_order_id' => 'PP-RECOVERY'],
         ]]);
         Http::fake(fn ($r) => str_contains($r->url(), '/oauth2/token')
@@ -344,6 +369,17 @@ class YoycolCommerceTest extends TestCase
         $this->assertSame('pending', $order->fresh()->status);
         $this->assertNotNull($fulfillment->fresh()->last_error);
         Http::assertNotSent(fn ($r) => str_contains($r->url(), 'yoycol.com'));
+    }
+
+    public function test_product_cannot_be_published_or_sold_below_the_cost_of_any_variant(): void
+    {
+        $product = $this->product(['price_cents' => 2500]);
+        $this->assertFalse($product->purchasable());
+        $this->get('/store/checkout/'.$product->productKey())->assertNotFound();
+        $this->actingAs(User::factory()->create(['role' => User::ROLE_ADMIN]))
+            ->withSession(['admin_authenticated_at' => now()->timestamp]);
+        $this->patch(route('admin.yoycol.update', $product), ['title' => 'Shoes', 'published' => 1, 'price' => '26.00'])
+            ->assertSessionHasErrors('price');
     }
 
     private function product(array $attributes = []): YoycolProduct

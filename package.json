@@ -1,11 +1,13 @@
 {
     "$schema": "https://www.schemastore.org/package.json",
+    "name": "reny",
     "private": true,
     "type": "module",
     "scripts": {
         "build": "vite build",
         "dev": "vite",
         "lint": "composer exec pint -- --test",
+        "test:e2e:paypal": "playwright test --config=playwright.paypal.config.js",
         "test:js": "node --test tests/js/*.test.js",
         "test:browser": "playwright test"
     },

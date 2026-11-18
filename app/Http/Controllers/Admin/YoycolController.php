@@ -41,6 +41,9 @@ class YoycolController extends Controller
         if ($request->boolean('published') && (! $price || ! count($product->variants) || ! $product->synced_at?->gt(now()->subDay()))) {
             throw ValidationException::withMessages(['published' => 'Define el precio y sincroniza las variantes antes de publicar.']);
         }
+        if ($request->boolean('published') && $price <= (int) collect($product->variants)->max('cost_cents')) {
+            throw ValidationException::withMessages(['price' => 'El precio debe superar el costo base de todas las variantes. Revisa además comisiones, impuestos y margen antes de publicar.']);
+        }
         $product->update([
             'title' => $data['title'], 'description' => $data['description'] ?? null,
             'price_cents' => $price, 'published' => $request->boolean('published'),

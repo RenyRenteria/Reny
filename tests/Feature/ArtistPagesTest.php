@@ -54,11 +54,11 @@ class ArtistPagesTest extends TestCase
 
         $this->get('/merch')->assertOk()
             ->assertSee('Official tour shirt')
-            ->assertSee('Crown Collection')
+            ->assertDontSee('Crown Collection')
             ->assertDontSee('Download album')
             ->assertDontSee('Unannounced shirt')
             ->assertDontSee('Reny Renteria en Concierto')
             ->assertDontSee('class="home-show-card"', false)
-            ->assertSee('data-buy-url="'.route('store.checkout', ['product' => 'merch']).'"', false);
+            ->assertDontSee('data-buy-url="'.route('store.checkout', ['product' => 'merch']).'"', false);
     }
 }

@@ -22,7 +22,7 @@ No migrations, product changes, payment provider changes or entitlement changes.
 
 Run `composer test`, `npm run test:js`, `npm run build`, and `vendor/bin/pint --dirty --test`.
 
-Browser checks run with `npm run test:browser`, using an isolated local Laravel server and the existing QA accounts. Set `RENY_QA_PASSWORD` before seeding with `php artisan db:seed --class=QaAccountStateSeeder`. Chromium is installed with `npx playwright install --with-deps chromium`.
+Browser checks run with `npm run test:browser`, using an isolated local Laravel server and the existing QA accounts. Set `RENY_QA_PASSWORD` before seeding with `php artisan db:seed --class=QaAccountStateSeeder`. For the merch checkout, seed the isolated SQLite database with `php artisan db:seed --class=QaMerchProductSeeder` and set `YOYCOL_ENABLED=true YOYCOL_SALES_ENABLED=true` on the local browser server. The browser supplies the shipping quote and a test PayPal SDK. Chromium is installed with `npx playwright install --with-deps chromium`.
 
 The 80 browser cases cover 17 public routes at 320, 390, 768 and 1440px, mobile disclosure/Escape/focus, active navigation, back navigation, preservation of the audio-player node, account sign-in, Royal access, footer disclosure and skip link. Desktop/mobile screenshots and traces are uploaded as `public-website-browser-evidence` in CI. These checks do not place an order or charge a payment method.
 

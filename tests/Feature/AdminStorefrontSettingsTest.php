@@ -296,8 +296,9 @@ class AdminStorefrontSettingsTest extends TestCase
                     'title' => 'Crown Collection',
                     'description' => 'Limited edition merch package',
                     'cta_label' => 'GET MERCH',
-                    'action_type' => 'buy',
+                    'action_type' => 'link',
                     'product_key' => 'merch',
+                    'url' => '/merch',
                 ],
             ],
         ], $overrides);

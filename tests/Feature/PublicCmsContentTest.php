@@ -108,7 +108,7 @@ class PublicCmsContentTest extends TestCase
         $this->get('/store')
             ->assertOk()
             ->assertDontSee('Reny Renteria en Concierto')
-            ->assertSee('Crown Collection');
+            ->assertDontSee('Crown Collection');
         $this->getJson(route('public-content.payload', 'store'))
             ->assertOk()
             ->assertJsonPath('products.0.name', 'CMS Digital Product')

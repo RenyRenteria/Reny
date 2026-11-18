@@ -2,6 +2,8 @@
 
 return [
     'enabled' => env('YOYCOL_ENABLED', false),
+    'sales_enabled' => env('YOYCOL_SALES_ENABLED', false),
+    'policy_url' => env('YOYCOL_POLICY_URL'),
     'access_key' => env('YOYCOL_ACCESS_KEY'),
     'secret_key' => env('YOYCOL_SECRET_KEY'),
     'quote_minutes' => 15,

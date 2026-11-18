@@ -11,6 +11,10 @@ class YoycolClient
 {
     public function request(string $method, string $endpoint, array $data = []): mixed
     {
+        if ($method !== 'GET' && config('services.paypal.e2e.enabled')) {
+            throw ValidationException::withMessages(['yoycol' => 'Supplier writes are disabled during PayPal sandbox tests.']);
+        }
+
         $access = (string) config('yoycol.access_key');
         $secret = (string) config('yoycol.secret_key');
         if (! config('yoycol.enabled') || $access === '' || $secret === '') {

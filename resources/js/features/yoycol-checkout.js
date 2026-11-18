@@ -128,7 +128,8 @@ document.querySelectorAll('[data-yoycol-checkout]').forEach((root) => {
                         const result = await post(root.dataset.captureUrl, { ...payload(), paypal_order_id: data.orderID });
                         completed = true;
                         buttons.replaceChildren();
-                        status.textContent = 'Payment confirmed. Your merch order is being prepared. Follow its progress in your account.';
+                        const reference = result.order_references?.join(', ') || '';
+                        status.textContent = `Payment confirmed${reference ? ` · ${reference}` : ''}. We will update your account when your order ships.`;
                         const link = root.querySelector('[data-account-link]');
                         link.href = result.account_url;
                         link.hidden = false;

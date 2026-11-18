@@ -6,6 +6,8 @@
     <h1>Yoycol · Productos y pedidos</h1>
     <p>Importa los diseños, define el precio de venta y publica. El cliente paga en PayPal; fabricación y envío se pagan por separado en Yoycol.</p>
     @unless (config('yoycol.enabled'))<p role="alert">Integración desactivada. Configura las nuevas credenciales y YOYCOL_ENABLED antes de vender.</p>@endunless
+    @unless (config('yoycol.sales_enabled'))<p role="alert">Ventas pausadas. La conciliación de pedidos existentes continúa si la integración está activa.</p>@endunless
+    <p>Responsable de operación: {{ config('commerce.operations_email') ?: 'Pendiente de configurar' }}. Avisos: {{ config('commerce.notifications_enabled') && config('commerce.notifications_since') ? 'habilitados' : 'desactivados' }}.</p>
     <form method="POST" action="{{ route('admin.yoycol.sync') }}">@csrf<button class="yoycol-button">Sincronizar diseños</button></form>
     <h2>Catálogo</h2>
     <div class="yoycol-admin-grid">
@@ -18,6 +20,7 @@
                 <label>Descripción<textarea name="description" maxlength="3000">{{ $product->description }}</textarea></label>
                 <p>Costo base: @if (count($product->variants))${{ number_format(collect($product->variants)->min('cost_cents') / 100, 2) }}–${{ number_format(collect($product->variants)->max('cost_cents') / 100, 2) }} USD @else No disponible @endif · Envío aparte</p>
                 <label>Precio al cliente (USD)<input name="price" type="number" step="0.01" min="0.01" max="10000" value="{{ $product->price_cents ? number_format($product->price_cents / 100, 2, '.', '') : '' }}"></label>
+                <p>El precio debe cubrir la variante más cara, comisiones e impuestos y dejar el margen aprobado. El costo base no incluye esos gastos.</p>
                 <label class="yoycol-check"><input type="checkbox" name="published" value="1" @checked($product->published)> Publicar en la tienda</label>
                 <button class="yoycol-button">Guardar</button>
                 @if ($product->purchasable())<a href="{{ route('store.checkout', $product->productKey()) }}">Ver producto</a>@endif

@@ -126,6 +126,9 @@ const persistAnalyticsEvent = (event) => {
     if (payload.reason) {
         payload.reason = normalizeAnalyticsKey(payload.reason).slice(0, 80);
     }
+    if (payload.item_type) {
+        payload.item_type = normalizeAnalyticsKey(payload.item_type).slice(0, 80);
+    }
 
     fetch(analyticsEndpoint(), {
         method: 'POST',

@@ -119,9 +119,9 @@ class StorefrontSettingsService
                     'description' => 'Limited edition merch package',
                     'price_label' => '',
                     'cta_label' => 'GET MERCH',
-                    'action_type' => 'buy',
+                    'action_type' => 'link',
                     'product_key' => 'merch',
-                    'url' => '',
+                    'url' => '/merch',
                     'image' => 'images/store/crown-collection.png',
                     'image_asset_id' => null,
                     'content_id' => null,
@@ -302,6 +302,13 @@ class StorefrontSettingsService
 
             if ($content instanceof EditorialContent) {
                 $slots[$slotKey] = $this->commerceSlot($slot, $content);
+            } elseif ($slotKey === 'merch' && ($slot['product_key'] ?? '') === 'merch') {
+                // Retire the placeholder without breaking edits to unrelated storefront cards.
+                if ($hideUnavailableLinkedContent) {
+                    unset($slots[$slotKey]);
+                } else {
+                    $slots[$slotKey] = [...$slot, 'action_type' => 'link', 'url' => route('merch')];
+                }
             } elseif ($hideUnavailableLinkedContent && (int) ($slot['content_id'] ?? 0) > 0) {
                 unset($slots[$slotKey]);
             } elseif (($slot['action_type'] ?? null) === 'buy') {

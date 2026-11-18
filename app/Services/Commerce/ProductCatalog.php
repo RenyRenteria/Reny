@@ -96,6 +96,11 @@ class ProductCatalog
      */
     public function forContent(EditorialContent $content, ?string $requestedKey = null): ?array
     {
+        // Physical goods require a real Yoycol variant, address and shipping quote.
+        if (in_array($this->kind($content), ['physical', 'merch'], true)) {
+            return null;
+        }
+
         $amountCents = $this->amountCents($content);
 
         if ($amountCents === null || $amountCents <= 0 || ! $this->isAvailable($content)) {
@@ -163,6 +168,10 @@ class ProductCatalog
         $product = is_array($products) ? ($products[$productKey] ?? null) : null;
 
         if (! is_array($product)) {
+            return null;
+        }
+
+        if (in_array($product['kind'] ?? null, ['physical', 'merch'], true)) {
             return null;
         }
 

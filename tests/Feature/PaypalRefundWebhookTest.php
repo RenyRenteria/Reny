@@ -172,6 +172,31 @@ class PaypalRefundWebhookTest extends TestCase
         ]);
     }
 
+    public function test_a_partial_refund_is_recorded_once_across_all_lines_of_a_capture(): void
+    {
+        $user = $this->royalUser();
+        $first = $this->paypalOrder($user, 'BASKET-1', 'CAPTURE-BASKET');
+        $second = $this->paypalOrder($user, 'BASKET-2', 'CAPTURE-BASKET');
+        $notification = ['resource' => [
+            'id' => 'PARTIAL',
+            'amount' => ['currency_code' => 'USD', 'value' => '0.01'],
+            'supplementary_data' => ['related_ids' => ['capture_id' => 'CAPTURE-BASKET']],
+        ]];
+
+        $this->postRefund($notification)->assertOk()->assertJsonPath('refunded_orders', 1);
+        $this->postRefund($notification)->assertOk()->assertJsonPath('refunded_orders', 0);
+
+        $this->assertDatabaseCount('order_refunds', 1);
+        $this->assertSame(1, $first->fresh()->refund_amount_cents);
+        $this->assertSame('completed', $second->fresh()->status);
+        $this->assertDatabaseCount('access_events', 1);
+
+        $notification['resource']['id'] = 'NEXT-PARTIAL';
+        $this->postRefund($notification)->assertOk()->assertJsonPath('refunded_orders', 1);
+        $this->assertSame(1, $second->fresh()->refund_amount_cents);
+        $this->assertDatabaseCount('order_refunds', 2);
+    }
+
     public function test_refund_without_reference_returns_422(): void
     {
         $this->postRefund(['resource' => []])->assertStatus(422);

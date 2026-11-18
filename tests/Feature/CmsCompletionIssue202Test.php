@@ -180,6 +180,7 @@ class CmsCompletionIssue202Test extends TestCase
         $this->actingAsAdmin($admin);
         $storefront = app(StorefrontSettingsService::class)->defaults();
         data_set($storefront, 'slots.merch.product_key', 'does-not-exist');
+        data_set($storefront, 'slots.merch.action_type', 'buy');
 
         $this->post(route('admin.site-editor.storefront.update'), [
             'action' => 'publish',

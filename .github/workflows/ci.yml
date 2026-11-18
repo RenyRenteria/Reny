@@ -48,7 +48,7 @@ jobs:
         run: composer test
 
       - name: Install frontend dependencies
-        run: npm install
+        run: npm ci
 
       - name: Build assets
         run: npm run build
@@ -59,6 +59,7 @@ jobs:
         run: |
           php artisan migrate --force
           php artisan db:seed --class=QaAccountStateSeeder --force
+          php artisan db:seed --class=QaMerchProductSeeder --force
 
       - name: Install browser
         run: npx playwright install --with-deps chromium
@@ -68,6 +69,8 @@ jobs:
           APP_URL: http://127.0.0.1:8000
           SESSION_DRIVER: file
           CACHE_STORE: file
+          YOYCOL_ENABLED: 'true'
+          YOYCOL_SALES_ENABLED: 'true'
           RENY_QA_PASSWORD: Browser-only-fixture-password-2026
         run: npm run test:browser
 

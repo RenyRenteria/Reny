@@ -11,12 +11,13 @@ Do not describe this integration as unattended fulfillment. No browser automatio
 ## Activation
 
 1. Deploy this branch using the normal reviewed release process. Run `php artisan migrate --force` and build assets with `npm ci && npm run build`.
-2. Rotate the keys previously posted in Slack. Configure fresh `YOYCOL_ACCESS_KEY` and `YOYCOL_SECRET_KEY` through the deployment secret manager, then `YOYCOL_ENABLED=true`. Do not commit them. Rebuild the configuration cache after changing deployment variables.
+2. Rotate the keys previously posted in Slack. Configure fresh `YOYCOL_ACCESS_KEY` and `YOYCOL_SECRET_KEY` through the deployment secret manager, then `YOYCOL_ENABLED=true`. Keep `YOYCOL_SALES_ENABLED=false` while configuring and validating the store. Do not commit them. Rebuild the configuration cache after changing deployment variables.
 3. Preserve `APP_KEY`: quote addresses and supplier order payloads are encrypted with Laravel's application key. Use the shared database and cache for all application instances.
-4. Ensure Laravel's scheduler runs every minute. The registered schedules are `yoycol:sync` every minute and `yoycol:sync --catalog` hourly. They use overlap locks. No separate queue worker is required.
-5. Open **CMS → Store → Yoycol → Sincronizar diseños**, or run `php artisan yoycol:sync --catalog`. New products are drafts with no retail price. Set the title, description and approved USD retail price, then publish each selected product. Sync preserves editorial text and prices.
+4. Ensure Laravel's scheduler runs every minute. The registered schedules are `yoycol:sync` every minute and `yoycol:sync --catalog` hourly. They use overlap locks. Also schedule `paypal:reconcile` and `commerce:notify` every five minutes (registered in the application). No separate queue worker is required.
+5. Open **CMS → Store → Yoycol → Sincronizar diseños**, or run `php artisan yoycol:sync --catalog`. New products are drafts with no retail price. Set the title, description and approved USD retail price, then publish each selected product. The retail price must exceed the most expensive variant base cost; this minimum does not replace an approved margin calculation including payment fees, taxes and fulfillment costs. Sync preserves editorial text and prices.
 6. Complete a PayPal sandbox purchase using a test shipping destination before enabling customer sales. Validate the provider order, pay it only with merchant approval, and check production/tracking on both systems. The test suite and browser UAT use simulated payment and supplier writes; no real order has been placed by this implementation task.
-7. Review the payment-required and review states in the CMS regularly. PayPal refunds still use the existing verified `/paypal/refund` webhook. Supplier cancellation and customer refund remain separate operations.
+7. Configure `YOYCOL_POLICY_URL` with approved delivery/return/cancellation terms. Set `COMMERCE_OPERATIONS_EMAIL`, a working production mail transport, `COMMERCE_NOTIFICATIONS_SINCE` to the activation timestamp and `COMMERCE_NOTIFICATIONS_ENABLED=true`. Verify a receipt and operator alert arrive. See [operations and activation](ecommerce-operations.md). Only after the sandbox gate and commercial approvals, set `YOYCOL_SALES_ENABLED=true`.
+8. Review the payment-required and review states in the CMS regularly. PayPal refunds still use the existing verified `/paypal/refund` webhook. Supplier cancellation and customer refund remain separate operations.
 
 SSH is not required to develop or test the integration. Production deployment and secret configuration were not performed in this runtime.
 
@@ -48,12 +49,12 @@ Known supplier states:
 - `production`: the provider reports `paidAt`.
 - `shipped`: a tracking number has been returned.
 - `review`: ambiguous submission or provider approval requires attention.
-- `refund_review`: customer refund recorded; stop further submission and review supplier cancellation.
+- `refund_review`: customer refund recorded; prohibit further creation, continue read-only reference recovery/tracking and require explicit supplier cancellation.
 - `cancelled`: cancelled at the supplier; this does not itself refund PayPal.
 
 Updates normally poll every 15 minutes; initial paid submissions are processed on the next scheduler run. The CMS also offers an explicit state refresh. Customers see a simplified status and carrier/tracking events from their own account; authorization prevents access to another customer's tracking. API secrets, raw supplier payloads and delivery addresses are not returned on that page.
 
-To pause new sales and API processing, set `YOYCOL_ENABLED=false` and rebuild the configuration cache. Keep the tables and encryption key for reconciliation; do not roll back commerce tables after orders exist.
+To pause new sales while continuing recovery/tracking, set `YOYCOL_SALES_ENABLED=false` and rebuild the configuration cache. Set `YOYCOL_ENABLED=false` only when supplier API processing must also stop. Keep the tables and encryption key for reconciliation; do not roll back commerce tables after orders exist.
 
 ## Official contracts consulted
 
@@ -62,3 +63,11 @@ To pause new sales and API processing, set `YOYCOL_ENABLED=false` and rebuild th
 - [Auto-Pay limitations](https://www.yoycol.com/helpcenter/10/275/Why-my-Auto-Pay-isn%27t-working)
 - [Shipping zones](https://www.yoycol.com/helpcenter/4/228) and [shipping calculation](https://www.yoycol.com/shipping)
 - [PayPal fixed shipping address](https://developer.paypal.com/serversdk/php/models/enumerations/experience-context-shipping-preference)
+
+## Checkout and customer communications
+
+The unconfigured `merch` placeholder and generic physical CMS products cannot create payments. Published Yoycol cards use the dedicated size/address/shipping checkout. Existing orders retain their financial history and refund handling.
+
+Capture intent is persisted for every PayPal product before capture. `paypal:reconcile` recovers the full checkout amount, including multiple digital/ticket/pass lines, through read-only provider lookup and a shared transactional finalizer. Signed `PAYMENT.CAPTURE.COMPLETED` events at `/paypal/webhook` share that finalizer. Refund records and related access changes are committed atomically. Keep the legacy `/paypal/refund` subscription until the new webhook subscription has been verified.
+
+`commerce:notify` sends receipts, refund notices, shipment updates, and daily operator reminders for supplier payment and payment/refund review. Delivery is opt-in and starts only at the configured activation timestamp, preventing a historical mail blast. Successful notices are recorded in `commerce_notices`; failed deliveries retry on the next schedule. Mail is at-least-once: a process crash after transport acceptance but before recording success can duplicate an email. No customer delivery addresses or payment secrets are included in operator alerts.
