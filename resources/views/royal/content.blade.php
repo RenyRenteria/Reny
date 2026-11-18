@@ -10,8 +10,10 @@
 
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body data-analytics-screen="royal_content">
+    <body class="reny-site" data-analytics-screen="royal_content">
+        <x-public-navigation />
         <main class="auth-shell">
+                <span id="site-content" class="sr-only" tabindex="-1"></span>
             <section class="auth-panel" aria-labelledby="royal-content-title">
                 <a class="brand-link" href="{{ route('home') }}" aria-label="Reny Renteria home">
                     <img class="brand-logo" src="{{ asset('images/reny-renteria-logo.png') }}" alt="Reny Renteria">
@@ -21,5 +23,6 @@
                 <p class="auth-copy">{{ $secureStreamToken }}</p>
             </section>
         </main>
+            <x-public-footer />
     </body>
 </html>

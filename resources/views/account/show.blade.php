@@ -13,36 +13,15 @@
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
         <title>Account | Reny Renteria</title>
-
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="golden-stage-page account-page" data-analytics-screen="account" data-preferred-currency="{{ $selectedCurrency }}">
+    <body class="reny-site golden-stage-page account-page" data-analytics-screen="account" data-preferred-currency="{{ $selectedCurrency }}">
         <div class="store-shell home-shell golden-stage-shell account-shell account-stage-shell">
-            @include('partials.stage-lights')
 
-            <aside class="sidebar" aria-label="Primary navigation">
-                <div>
-                    <a class="brand-link" href="{{ route('home') }}" aria-label="Reny Renteria home">
-                        <img class="brand-logo" src="{{ asset('images/reny-renteria-logo-white.png') }}" alt="Reny Renteria">
-                    </a>
-
-                    <x-public-navigation />
-                </div>
-
-                <x-member-card />
-            </aside>
+            <x-public-navigation />
 
             <main class="main-content store-content account-content golden-stage-main" id="account">
-                <header class="mobile-header golden-stage-mobile-header">
-                    <div class="mobile-brand">
-                        <a class="brand-link" href="{{ route('home') }}" aria-label="Reny Renteria home">
-                            <img class="brand-logo" src="{{ asset('images/reny-renteria-logo-white.png') }}" alt="Reny Renteria">
-                        </a>
-                    </div>
-                </header>
+                <span id="site-content" class="sr-only" tabindex="-1"></span>
 
                 <div class="account-stack">
                     @if (session('login_success'))
@@ -246,9 +225,8 @@
                         </form>
                     </section>
                 </div>
-
-                <x-public-navigation mobile />
             </main>
+            <x-public-footer />
         </div>
 
         <section class="account-modal-layer" id="pauseSubscriptionModal" hidden inert>

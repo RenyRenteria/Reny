@@ -52,3 +52,31 @@ jobs:
 
       - name: Build assets
         run: npm run build
+
+      - name: Prepare isolated browser database
+        env:
+          RENY_QA_PASSWORD: Browser-only-fixture-password-2026
+        run: |
+          php artisan migrate --force
+          php artisan db:seed --class=QaAccountStateSeeder --force
+
+      - name: Install browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Verify public website in desktop and mobile browsers
+        env:
+          APP_URL: http://127.0.0.1:8000
+          SESSION_DRIVER: file
+          CACHE_STORE: file
+          RENY_QA_PASSWORD: Browser-only-fixture-password-2026
+        run: npm run test:browser
+
+      - name: Save browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-website-browser-evidence
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

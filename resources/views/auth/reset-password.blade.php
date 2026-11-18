@@ -6,14 +6,12 @@
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
         <title>Reset password | Reny Renteria</title>
-
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body data-analytics-screen="auth_reset_password">
+    <body class="reny-site" data-analytics-screen="auth_reset_password">
+        <x-public-navigation />
         <main class="auth-shell">
+                <span id="site-content" class="sr-only" tabindex="-1"></span>
             <section class="auth-panel" aria-labelledby="reset-title">
                 <a class="brand-link" href="{{ route('home') }}" aria-label="Reny Renteria home">
                     <img class="brand-logo" src="{{ asset('images/reny-renteria-logo.png') }}" alt="Reny Renteria">
@@ -53,5 +51,6 @@
                 </div>
             </section>
         </main>
+            <x-public-footer />
     </body>
 </html>

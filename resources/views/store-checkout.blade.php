@@ -12,44 +12,15 @@
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
         <title>{{ $checkoutProduct['title'] }} Checkout | Reny Renteria</title>
-
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="golden-stage-page checkout-page checkout-dedicated-page" data-analytics-screen="store_checkout" data-preferred-currency="{{ auth()->user()?->preferred_currency ?? 'USD' }}">
+    <body class="reny-site golden-stage-page checkout-page checkout-dedicated-page" data-analytics-screen="store_checkout" data-preferred-currency="{{ auth()->user()?->preferred_currency ?? 'USD' }}">
         <div class="store-shell home-shell golden-stage-shell checkout-stage-shell">
-            @include('partials.stage-lights')
 
-            <aside class="sidebar" aria-label="Primary navigation">
-                <div>
-                    <a class="brand-link" href="{{ url('/') }}" aria-label="Reny Renteria home">
-                        <img
-                            class="brand-logo"
-                            src="{{ asset('images/reny-renteria-logo-white.png') }}"
-                            alt="Reny Renteria"
-                        >
-                    </a>
-
-                    <x-public-navigation active="store" />
-                </div>
-
-                <x-member-card />
-            </aside>
+            <x-public-navigation />
 
             <main class="main-content store-content checkout-content golden-stage-main" id="store-checkout">
-                <header class="mobile-header golden-stage-mobile-header">
-                    <div class="mobile-brand">
-                        <a class="brand-link" href="{{ url('/') }}" aria-label="Reny Renteria home">
-                            <img
-                                class="brand-logo"
-                                src="{{ asset('images/reny-renteria-logo-white.png') }}"
-                                alt="Reny Renteria"
-                            >
-                        </a>
-                    </div>
-                </header>
+                <span id="site-content" class="sr-only" tabindex="-1"></span>
 
                 <div class="checkout-page-layout">
                     <div class="checkout-topline">
@@ -207,9 +178,8 @@
                         </section>
                     </section>
                 </div>
-
-                <x-public-navigation active="store" mobile />
             </main>
+            <x-public-footer />
         </div>
 
         <div class="store-toast" id="storeToast" role="status" aria-live="polite"></div>

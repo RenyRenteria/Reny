@@ -54,13 +54,13 @@ class VideosPageTest extends TestCase
         $response->assertSee('CMS Video Card');
         $response->assertDontSee('I Swear');
         $response->assertSee('class="videos-shell home-shell videos-stage-shell"', false);
-        $response->assertSee('images/reny-renteria-logo-white.png', false);
-        $response->assertSee('class="stage-lights" aria-hidden="true"', false);
-        $response->assertSee('class="stage-light stage-light--one"', false);
-        $response->assertSee('class="stage-light stage-light--two"', false);
-        $response->assertSee('class="stage-light stage-light--three"', false);
+        $response->assertSee('newlanding-assets/assets/signature-black.png', false);
+        $response->assertDontSee('class="stage-lights" aria-hidden="true"', false);
+        $response->assertDontSee('class="stage-light stage-light--one"', false);
+        $response->assertDontSee('class="stage-light stage-light--two"', false);
+        $response->assertDontSee('class="stage-light stage-light--three"', false);
         $response->assertDontSee('class="home-royal-pass-images"', false);
-        $response->assertSee('family=DM+Sans', false);
+        $response->assertDontSee('fonts.googleapis.com', false);
 
         $html = $response->getContent();
 
