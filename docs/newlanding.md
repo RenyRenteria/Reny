@@ -1,5 +1,7 @@
 # New homepage workspace
 
+Current design reference: [New website design system](newlanding-design-system.md), version 2, November 17, 2026. It consolidates the approved palette, integrated artwork, compact sections, merch, Royal Pass, navigation and social icons. The dated implementation checks below are historical; current reference measurements and scope are in that guide.
+
 `/newlanding` hosts the approved Takeover hero while the rest of the new homepage is developed. It uses a standalone Blade view and local assets, with no database changes or changes to `/`. The preview returns `noindex, nofollow` in its HTML and HTTP header, and does not load production analytics.
 
 - View: `resources/views/newlanding.blade.php`
@@ -73,7 +75,7 @@ Validation: Playwright at widths 320, 375, 390, 700, 701, 768, 900, 1000, 1001, 
 
 The compact masthead now follows Reny's requested order: Shop (`store`), Shows (`shows`), Royal Pass (`#royal-pass`), Music (`music`), My Account (`account.show`). The last destination keeps the existing authenticated account flow and sends guests through login. At 900 px and below, a native disclosure opens the same five destinations over the hero. The logo returns to the top of this preview.
 
-The page-level footer replaces the small Royal Pass footer, in this order: Contacto, Redes, Preguntas frecuentes, Biography, Políticas. Contact and biography use the existing routes. Social links reuse the Instagram and YouTube destinations already present on the site. Social, FAQ and policies panels use native disclosures, with Escape/focus restoration, outside-click closing and at most one panel open. The menu and FAQ remain operable without JavaScript.
+The page-level footer replaces the small Royal Pass footer, in this order: Contacto, Instagram/YouTube icons, Preguntas frecuentes, Biography, Políticas. Contact and biography use the existing routes. Social links reuse the Instagram and YouTube destinations already present on the site. Direct accessible icon links replaced the initial social disclosure in PR #286, as requested by Reny. FAQ and policies panels use native disclosures, with Escape/focus restoration, outside-click closing and at most one panel open. The menu and FAQ remain operable without JavaScript.
 
 The FAQ explains existing navigation, account access, the provisional collection and contact for order help. No published policy page or approved policy text exists in the repository, so Políticas explicitly displays “Próximamente” and a contact link until Reny supplies it. No purchase or legal terms are invented.
 

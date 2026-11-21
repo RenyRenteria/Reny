@@ -1,0 +1,46 @@
+/* Reny Renteria · v2 · 2026-11-17
+   Reference tokens extracted from /newlanding (7c03de2).
+   Opt-in only: this file is not loaded by the website.
+   Breakpoints are documented in JSON; CSS variables cannot be used in media queries. */
+:root {
+  --rr-color-ivory: #F5F2EC;
+  --rr-color-ink: #201D1E;
+  --rr-color-ruby: #8C242B;
+  --rr-color-ruby-hover: #6F1B22;
+  --rr-color-surface-dark: #191516;
+  --rr-color-surface-banner: #161213;
+  --rr-color-surface-product: #E8E4DD;
+  --rr-color-text-muted-light: #68615E;
+  --rr-color-text-muted-dark: #D4C9C3;
+  --rr-color-border-light: #201D1E26;
+  --rr-color-border-dark: #F5F2EC26;
+  --rr-radius-control: 8px;
+  --rr-radius-dialog: 8px;
+  --rr-radius-product: 0px;
+  --rr-layout-gutter-desktop: clamp(28px, 5vw, 96px);
+  --rr-layout-gutter-mobile: 24px;
+  --rr-layout-gutter-narrow: 20px;
+  --rr-layout-content-max: 1456px;
+  --rr-layout-campaign-max: 1600px;
+  --rr-layout-banner-min-desktop: 280px;
+  --rr-layout-banner-min-tablet: 230px;
+  --rr-layout-banner-min-mobile: 300px;
+  --rr-layout-grid-gap-desktop: 40px 24px;
+  --rr-layout-grid-gap-tablet: 32px 20px;
+  --rr-layout-grid-gap-mobile: 28px 12px;
+  --rr-layout-royal-photo-mobile: clamp(220px, 29svh, 260px);
+  --rr-control-primary-desktop: 52px;
+  --rr-control-primary-mobile: 50px;
+  --rr-control-collection-action: 48px;
+  --rr-control-secondary: 48px;
+  --rr-control-dialog-close: 44px;
+  --rr-control-padding-desktop: 24px;
+  --rr-control-padding-mobile: 20px;
+  --rr-control-focus-width: 2px;
+  --rr-control-focus-offset: 6px;
+  --rr-motion-button: 180ms;
+  --rr-motion-product-label: 200ms;
+  --rr-motion-product-image: 350ms;
+  --rr-motion-product-image-scale: 1.035;
+  --rr-font-family: "DM Sans", Arial, sans-serif;
+}

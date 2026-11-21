@@ -2,6 +2,10 @@
 
 Laravel application scaffold for the Reny web app.
 
+## Website design
+
+The new public design reference is [the newlanding design system](docs/newlanding-design-system.md), with a [printable visual guide](docs/design-system/newlanding/guide.html) and reusable CSS/JSON tokens. It reflects `/newlanding`; existing pages retain their current design until migrated.
+
 ## Local setup
 
 ```bash
