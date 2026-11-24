@@ -1,0 +1,29 @@
+.rehearsal-status{margin:0;padding:16px 24px;background:#fff4d7;color:#493711;font-size:13px;line-height:1.5;text-align:center}
+.rehearsal-status a{text-decoration:underline;text-underline-offset:3px}
+.dragon-product{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:clamp(24px,5vw,80px);align-items:center;max-width:1080px;margin:32px auto 0}
+.dragon-open:not(.primary){border:0;padding:0;display:block;width:100%;background:#fff;position:relative;color:var(--ink);border-radius:8px;overflow:hidden}
+.dragon-open img{display:block;width:100%;height:auto}
+.dragon-summary h3{font-size:clamp(30px,3.3vw,48px);line-height:1.1;letter-spacing:-.045em;font-weight:500;margin:0 0 20px}
+.dragon-price{font-size:30px;line-height:1.2;letter-spacing:-.035em;margin:20px 0}
+.dragon-price span{font-size:12px;letter-spacing:.04em;color:#68615e}
+.dragon-summary .primary{margin-top:16px}
+.dragon-muted{font-size:12px;line-height:1.6;color:#68615e}
+.dragon-dialog{width:min(1020px,calc(100vw - 32px));max-height:calc(100svh - 32px)}
+.dragon-dialog .merch-dialog-copy{padding:60px 32px 32px}
+.dragon-gallery{align-self:center;min-width:0;padding:20px;background:#fff}
+.dragon-photo{display:block;width:100%;height:auto;aspect-ratio:1;object-fit:contain}
+.dragon-thumbnails{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-top:16px}
+.dragon-thumbnails button{padding:2px;border:2px solid transparent;border-radius:6px;background:#fff;min-height:44px;min-width:0}
+.dragon-thumbnails button[aria-pressed=true]{border-color:var(--ruby)}
+.dragon-thumbnails img{display:block;width:100%;height:auto}
+.dragon-sizes{padding:0;margin:24px 0 0;border:0;min-width:0}
+.dragon-sizes legend{font-size:13px;margin-bottom:12px}
+.dragon-sizes>div{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.dragon-sizes label{position:relative;cursor:pointer}
+.dragon-sizes input{position:absolute;opacity:0;width:1px;height:1px}
+.dragon-sizes span{display:flex;align-items:center;justify-content:center;min-height:44px;border:1px solid #a59d98;border-radius:8px;font-size:13px}
+.dragon-sizes input:checked+span{background:var(--ink);border-color:var(--ink);color:var(--ivory)}
+.dragon-sizes input:focus-visible+span{outline:2px solid var(--ruby);outline-offset:3px}
+.dragon-choice{font-size:12px;line-height:1.5;min-height:36px;margin:18px 0}
+.dragon-pay:disabled{width:100%;justify-content:center;background:#ddd5ce;color:#615651;cursor:not-allowed}
+@media(max-width:700px){.dragon-product{grid-template-columns:1fr;gap:28px}.dragon-dialog .merch-dialog-layout{grid-template-columns:1fr}.dragon-dialog .merch-dialog-copy{padding:28px 24px}.dragon-dialog h2{font-size:30px}.dragon-gallery{padding:52px 16px 16px}.dragon-photo{max-height:310px}.dragon-price{font-size:27px}.dragon-summary .primary{width:100%}}

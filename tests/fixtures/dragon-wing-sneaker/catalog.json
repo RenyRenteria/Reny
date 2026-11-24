@@ -1,0 +1,19 @@
+{
+  "name": "Dragon Wing Sneaker",
+  "currency": "USD",
+  "price_cents": 17900,
+  "requested_sizes": ["US3", "US4", "US5", "US6", "US7", "US8", "US9", "US10", "US11", "US12", "US13"],
+  "supplier_url": null,
+  "supplier_design_code": null,
+  "supplier_variant_mapping": null,
+  "shipping_cents": null,
+  "tax_cents": null,
+  "checkout_enabled": false,
+  "photos": [
+    {"file": "pair-front.png", "label": "Par, vista frontal"},
+    {"file": "left-side.png", "label": "Lateral izquierdo"},
+    {"file": "right-side.png", "label": "Lateral derecho"},
+    {"file": "pair-back.png", "label": "Par, vista posterior"},
+    {"file": "pair-alternate.png", "label": "Par, vista alternativa"}
+  ]
+}
