@@ -57,7 +57,7 @@ class HomePageTest extends TestCase
             ->assertOk()
             ->assertSee('data-analytics-screen="home"', false)
             ->assertSee('CMS Home Video')
-            ->assertSee('https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&amp;mute=1&amp;playsinline=1&amp;rel=0', false)
+            ->assertSee('data-home-video="dQw4w9WgXcQ"', false)
             ->assertSee('Reny Renteria en Concierto')
             ->assertDontSee('Festival de la Rosa Dorada')
             ->assertSee('CMS Album')
@@ -90,7 +90,7 @@ class HomePageTest extends TestCase
     {
         $this->get('/')
             ->assertOk()
-            ->assertSee('https://www.youtube.com/embed/UWDLtZCoTag?autoplay=1&amp;mute=1&amp;playsinline=1&amp;rel=0', false)
+            ->assertSee('data-home-video="UWDLtZCoTag"', false)
             ->assertSee('https://www.youtube.com/watch?v=UWDLtZCoTag', false)
             ->assertSee('Reny Renteria - Take a bite (Official Music Video)')
             ->assertDontSee('class="stage-lights"', false)
@@ -143,8 +143,8 @@ class HomePageTest extends TestCase
 
         $this->get('/')
             ->assertOk()
-            ->assertSee('https://www.youtube.com/embed/UWDLtZCoTag?autoplay=1&amp;mute=1&amp;playsinline=1&amp;rel=0', false)
-            ->assertDontSee('https://www.youtube.com/embed/6PSCI5m43wk', false);
+            ->assertSee('data-home-video="UWDLtZCoTag"', false)
+            ->assertDontSee('data-home-video="6PSCI5m43wk"', false);
     }
 
     public function test_home_renders_only_the_next_event_with_a_realtime_countdown_between_details_and_cta(): void

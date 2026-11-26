@@ -1,0 +1,146 @@
+/* Mobile first home: video, tickets, album, Royal Pass. */
+.reny-site.home-page .home-content {
+    max-width: 1360px;
+    padding: 32px var(--gutter) 64px;
+}
+
+.reny-site.home-page .home-stack { gap: 48px; }
+.reny-site.home-page .home-stack > section { min-width: 0; order: 0; }
+.reny-site.home-page .home-premiere {
+    display: block;
+    min-height: 0;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    overflow: visible;
+}
+.reny-site.home-page .home-premiere::before,
+.reny-site.home-page .home-premiere::after { content: none; }
+.reny-site.home-page .home-premiere-heading { margin-bottom: 24px; }
+.reny-site.home-page .home-premiere-heading .site-eyebrow { margin: 0 0 12px; text-transform: uppercase; }
+.reny-site.home-page .home-premiere h1 {
+    max-width: 100%;
+    margin: 0;
+    color: var(--ink);
+    font-size: clamp(44px, 12vw, 92px);
+    font-weight: 500;
+    letter-spacing: -.06em;
+    line-height: 1.02;
+    overflow-wrap: anywhere;
+}
+.home-premiere-frame { position: relative; aspect-ratio: 16 / 9; background: var(--ink); }
+.home-premiere-play { position: absolute; inset: 0; display: block; overflow: hidden; color: var(--ivory); }
+.home-premiere-play > img { width: 100%; height: 100%; object-fit: cover; }
+.home-premiere-play::after { content: ''; position: absolute; inset: 50% 0 0; background: linear-gradient(transparent, #0009); pointer-events: none; }
+.home-premiere-play-icon {
+    position: absolute;
+    top: 50%; left: 50%;
+    display: grid; place-items: center;
+    width: 60px; height: 60px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: var(--ivory);
+    color: var(--ruby);
+    transition: background-color 180ms, color 180ms;
+}
+.home-premiere-play-icon svg { width: 28px; height: 28px; }
+.home-premiere-play-label { position: absolute; z-index: 1; right: 16px; bottom: 12px; left: 16px; display: flex; justify-content: space-between; font-size: 12px; }
+.home-premiere-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.reny-site.home-page .home-premiere-play:focus-visible { outline-offset: 4px; outline-color: var(--ruby); }
+.home-premiere-play:is(:hover, :focus-visible) .home-premiere-play-icon { background: var(--ruby); color: var(--ivory); }
+.home-premiere-footer { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0 16px; border-bottom: 1px solid var(--line); padding: 8px 0; }
+.reny-site.home-page .home-premiere-footer a { width: auto; min-width: 0; min-height: 48px; margin: 0; padding: 0; border: 0; border-radius: 0; font-size: 12px; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--ink); }
+.reny-site.home-page .home-premiere-footer a:hover { color: var(--ruby); text-decoration: underline; text-underline-offset: 4px; }
+.reny-site.home-page .home-section-heading { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px; margin-bottom: 20px; }
+.reny-site.home-page .home-section-heading h2 { margin: 0; font-size: clamp(28px, 7vw, 40px); line-height: 1.15; }
+.reny-site.home-page .home-section-heading .site-eyebrow { color: var(--muted); font-size: 10px; text-transform: uppercase; }
+
+/* Keep the campaign artwork while making the ticket details easier to scan. */
+.reny-site.home-page .home-show-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: 'image' 'copy' 'countdown' 'actions';
+    gap: 24px;
+    padding: 0 0 28px;
+}
+.reny-site.home-page .home-show-image { width: 100%; height: auto; max-height: 440px; object-fit: contain; }
+.reny-site.home-page .home-show-copy h3 { margin: 0 0 16px; font-size: clamp(30px, 8vw, 52px); font-weight: 500; line-height: 1.05; }
+.reny-site.home-page .home-show-copy p { margin: 3px 0; font-size: 14px; white-space: normal; }
+.reny-site.home-page .home-event-countdown { width: 100%; margin: 0; padding: 0; }
+.reny-site.home-page .home-event-countdown-kicker { font-size: 9px; letter-spacing: .12em; }
+.reny-site.home-page .home-event-countdown-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 10px; gap: 0; }
+.reny-site.home-page .home-event-countdown-part { min-width: 0; padding: 0 6px; }
+.reny-site.home-page .home-event-countdown-part strong { font-size: clamp(26px, 7vw, 40px); line-height: 1.1; }
+.reny-site.home-page .home-event-countdown-part span { font-size: 8px; }
+.reny-site.home-page .home-show-actions .home-pill-button { width: 100%; min-height: 52px; margin: 0; font-size: 14px; }
+.reny-site.home-page .home-show-card[data-campaign='takeover'] {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: 'copy' 'countdown' 'actions';
+    padding: 140px 24px 28px;
+    gap: 24px;
+}
+.reny-site.home-page [data-campaign='takeover'] .home-show-copy h3 { color: var(--ivory); }
+.reny-site.home-page .site-concert-art img { object-position: center top; }
+.reny-site.home-page [data-campaign='takeover']::before { background: linear-gradient(transparent, #201d1eaa 25%, #201d1e 78%); }
+
+/* A record sleeve stays square and fully visible, including on narrow phones. */
+.reny-site.home-page .home-music-layout { display: block; margin: 0; padding: 0; border: 0; }
+.reny-site.home-page .home-album-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: 'image' 'heading' 'actions';
+    gap: 24px;
+    min-height: 0;
+    padding: 0;
+    margin: 0;
+}
+.reny-site.home-page .home-album-heading { margin: 0; }
+.reny-site.home-page .home-album-heading > span { margin: 0 0 8px; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; }
+.reny-site.home-page .home-album-heading > span::after { content: none; }
+.reny-site.home-page .home-album-heading h3 { margin: 0; font-size: clamp(36px, 9vw, 60px); line-height: 1.06; }
+.reny-site.home-page .home-album-heading p { display: block; margin: 12px 0 0; font-size: 14px; }
+.reny-site.home-page .home-album-cover-button,
+.reny-site.home-page .home-album-card > .home-album-image { grid-area: image; width: 100%; max-width: none; height: auto; margin: 0; padding: 0; border: 0; border-radius: 0; }
+.reny-site.home-page .home-album-image { display: block; width: 100%; height: auto; min-height: 0; aspect-ratio: 1; object-fit: contain; background: var(--paper-deep); transform: none; }
+.reny-site.home-page .home-album-cover-button:is(:hover, :focus-visible) .home-album-image { transform: none; }
+.reny-site.home-page .home-album-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 0; align-content: start; }
+.reny-site.home-page .home-album-actions .home-play-here { grid-column: 1 / -1; width: 100%; min-height: 52px; font-size: 15px; }
+.reny-site.home-page .home-streaming-link { display: flex; align-items: center; justify-content: center; width: auto; height: auto; min-height: 48px; padding: 8px; gap: 8px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); font-size: 12px; }
+.reny-site.home-page .home-streaming-link svg { flex: none; width: 19px; height: 19px; }
+.reny-site.home-page .home-streaming-link:hover { color: var(--ruby); border-color: var(--ruby); background: transparent; transform: none; }
+
+.reny-site.home-page .site-royal-close { grid-template-columns: minmax(0, 1fr); gap: 0; }
+.reny-site.home-page .site-royal-close > img { height: 280px; object-position: center 38%; mask-image: linear-gradient(#000 65%, transparent); }
+.reny-site.home-page .site-royal-close > div { padding: 0 24px 28px; }
+.reny-site.home-page .site-royal-close h2 { font-size: clamp(34px, 9vw, 52px); margin: 12px 0 16px; }
+.reny-site.home-page .site-royal-close p { font-size: 14px; }
+.reny-site.home-page .site-royal-close .site-eyebrow { font-size: 11px; }
+.reny-site.home-page .site-royal-close .home-royal-pass { margin-top: 24px; }
+.reny-site.home-page .site-royal-close .home-unlock-button { width: 100%; min-height: 52px; }
+.reny-site.home-page .site-royal-close .site-text-link { font-size: 13px; }
+
+@media (min-width: 701px) {
+    .reny-site.home-page .home-content { padding-top: 48px; padding-bottom: 88px; }
+    .reny-site.home-page .home-stack { gap: 72px; }
+    .reny-site.home-page .home-premiere-heading { margin-bottom: 32px; }
+    .home-premiere-play-icon { width: 80px; height: 80px; }
+    .home-premiere-play-icon svg { width: 36px; height: 36px; }
+    .home-premiere-play-label { right: 28px; bottom: 24px; left: 28px; font-size: 15px; }
+    .reny-site.home-page .home-premiere-footer a { font-size: 14px; }
+    .reny-site.home-page .home-section-heading { margin-bottom: 28px; }
+    .reny-site.home-page .home-show-card { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: 'image copy' 'image countdown' 'image actions'; gap: 24px 40px; }
+    .reny-site.home-page .home-show-card[data-campaign='takeover'] { grid-template-columns: minmax(0, 1fr) minmax(0, .6fr); grid-template-areas: 'copy .' 'countdown .' 'actions .'; padding: 48px; gap: 28px; }
+    .reny-site.home-page [data-campaign='takeover']::before { background: linear-gradient(90deg, #201d1eee, #201d1e99 50%, transparent); }
+    .reny-site.home-page .site-concert-art img { object-position: center; }
+    .reny-site.home-page .home-album-card { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: 'image heading' 'image actions'; column-gap: clamp(32px, 6vw, 88px); row-gap: 28px; align-items: start; }
+    .reny-site.home-page .home-album-heading { align-self: end; }
+    .reny-site.home-page .site-royal-close { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 40px; }
+    .reny-site.home-page .site-royal-close > img { height: 520px; mask-image: linear-gradient(to right, #000 70%, transparent); }
+    .reny-site.home-page .site-royal-close > div { padding: 40px 40px 40px 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .home-premiere-play-icon { transition: none; }
+}
