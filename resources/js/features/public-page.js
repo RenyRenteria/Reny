@@ -15,6 +15,7 @@ import {
 import { initializePhotoInteractions } from './photos.js';
 import { initializeCommunityInteractions } from './community.js';
 import { initializeStoreInteractions } from './checkout.js';
+import { initializeHomeVideo } from './home-video.js';
 import { syncPublicPageBody } from './public-page-body.js';
 import { syncPublicPageHead } from './public-page-head.js';
 
@@ -222,6 +223,7 @@ document.addEventListener('keydown', (event) => {
 
 function initializePublicPage(root = document) {
     activateTab(tabFromHash());
+    initializeHomeVideo(root);
     initializeVideoInteractions(root);
     initializePhotoInteractions(root);
     initializeCommunityInteractions(root);
