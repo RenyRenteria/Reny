@@ -14,4 +14,3 @@ import './features/video-cms.js';
 import './features/yoycol-checkout.js';
 
 import './features/site-navigation.js';
-import './features/home-video.js';
