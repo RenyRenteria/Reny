@@ -212,8 +212,9 @@
                                             <source media="(max-width: 700px)" srcset="{{ asset('newlanding-assets/assets/takeover-fondo-movil.png') }}">
                                             <img src="{{ asset('newlanding-assets/assets/takeover-fondo-escritorio.png') }}" alt="" loading="lazy" decoding="async">
                                         </picture>
+                                    @else
+                                        <img class="home-show-image" src="{{ $slotImage($event) }}" alt="{{ $event['image_alt'] ?? $event['title'] }}" loading="lazy" decoding="async">
                                     @endif
-                                    <img class="home-show-image" src="{{ $slotImage($event) }}" alt="{{ $event['image_alt'] ?? $event['title'] }}" loading="lazy" decoding="async">
                                     <div class="home-show-copy">
                                         <h3>{{ $event['title'] }}</h3>
                                         @foreach ($eventLinesForSlot as $line)
